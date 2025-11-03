@@ -1,12 +1,12 @@
-# Serin - Serialized In
+# Ctoon - Serialized In
 
 <div align="center">
   <div style="display: flex; align-items: center; justify-content: center; gap: 40px;">
     <div style="flex: 0 0 auto;">
-      <img src="docs/images/serin.svg" alt="Serin Logo" width="130" >
+      <img src="docs/images/ctoon.png" alt="Ctoon Logo" width="130" >
     </div>
     <div style="flex: 1;">
-      <p><strong>Serin</strong> (acronym for Serialized In) is a C++ and Python serialization library that supports multiple formats like JSON, YAML, and TOON, and can convert data from any format to another.</p>
+      <p><strong>Ctoon</strong> (acronym for Serialized In) is a C++ and Python serialization library that supports multiple formats like JSON and TOON, and can convert data from any format to another.</p>
       <p>This project is written using the C++17 standard and is highly efficient and fast.</p>
     </div>
   </div>
@@ -14,7 +14,7 @@
 
 ## 🚀 Features
 
-- **Multiple Format Support**: JSON, YAML, and TOON
+- **Multiple Format Support**: JSON and TOON
 - **Bidirectional Conversion**: Convert data between all supported formats
 - **High Performance**: Optimized with C++17 for fast performance
 - **Python Friendly**: Python interfaces for easy use
@@ -27,8 +27,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/MohammadRaziei/serin.git
-cd serin
+git clone https://github.com/MohammadRaziei/ctoon.git
+cd ctoon
 
 # Build the project
 mkdir build && cd build
@@ -46,7 +46,7 @@ sudo make install
 pip install .
 
 # Or use the Python bindings directly
-import serin
+import ctoon
 ```
 
 ## 🎯 Quick Start
@@ -54,31 +54,30 @@ import serin
 ### Using C++
 
 ```cpp
-#include "serin.h"
+#include "ctoon.h"
 #include <iostream>
 
 int main() {
     // Create sample data
-    serin::Object data;
-    data["name"] = serin::Value("Test User");
-    data["age"] = serin::Value(30.0);
-    data["active"] = serin::Value(true);
+    ctoon::Object data;
+    data["name"] = ctoon::Value("Test User");
+    data["age"] = ctoon::Value(30.0);
+    data["active"] = ctoon::Value(true);
     
-    serin::Array tags;
-    tags.push_back(serin::Value("programming"));
-    tags.push_back(serin::Value("c++"));
-    tags.push_back(serin::Value("serialization"));
-    data["tags"] = serin::Value(tag
-s);
+    ctoon::Array tags;
+    tags.push_back(ctoon::Value("programming"));
+    tags.push_back(ctoon::Value("c++"));
+    tags.push_back(ctoon::Value("serialization"));
+    data["tags"] = ctoon::Value(tags);
     
-    serin::Value value(data);
+    ctoon::Value value(data);
 
     // Serialize to JSON
-    std::string jsonStr = serin::dumpsJson(value);
+    std::string jsonStr = ctoon::dumpsJson(value);
     std::cout << "JSON: " << jsonStr << std::endl;
     
     // Serialize to TOON
-    std::string toonStr = serin::dumpsToon(value);
+    std::string toonStr = ctoon::dumpsToon(value);
     std::cout << "TOON:" << std::endl;
     std::cout << toonStr << std::endl;
     
@@ -89,7 +88,7 @@ s);
 ### Using Python
 
 ```python
-import serin
+import ctoon
 
 # Create sample data
 data = {
@@ -100,44 +99,44 @@ data = {
 }
 
 # Serialize to JSON
-json_str = serin.dumps_json(data)
+json_str = ctoon.dumps_json(data)
 print(f"JSON: {json_str}")
 
 # Serialize to TOON
-toon_str = serin.dumps_toon(data)
+toon_str = ctoon.dumps_toon(data)
 print(f"TOON:\n{toon_str}")
 
 # Save to file
-serin.dump_json(data, "output.json")
-serin.dump_toon(data, "output.toon")
+ctoon.dump_json(data, "output.json")
+ctoon.dump_toon(data, "output.toon")
 
 # Load from file
-loaded_data = serin.load_json("output.json")
+loaded_data = ctoon.load_json("output.json")
 print(f"Loaded data: {loaded_data}")
 ```
 
 ## 🔧 Command Line Interface (CLI)
 
-Serin includes a powerful command-line tool for file conversion:
+Ctoon includes a powerful command-line tool for file conversion:
 
 ```bash
 # Show help and available options
-serin --help
+ctoon --help
 
-# Show the current Serin version
-serin --version
+# Show the current Ctoon version
+ctoon --version
 
 # Convert JSON to TOON and write to a file (format inferred from extension)
-serin input.json -o output.toon
+ctoon input.json -o output.toon
 
 # Output a conversion directly to the terminal (defaults to TOON)
-serin input.json
+ctoon input.json
 
 # Select an explicit output format when streaming to stdout
-serin input.toon -t yaml
+ctoon input.toon -t json
 
 # Control indentation for structured formats
-serin data.toon -t json -i 4
+ctoon data.toon -t json -i 4
 ```
 
 ## 📊 TOON Format
@@ -187,27 +186,25 @@ The project includes multiple examples for quick start:
 - `dumpJson(value, filename)` / `dumpsJson(value)` - Save JSON
 - `loadToon(filename)` / `loadsToon(string)` - Load TOON
 - `dumpToon(value, filename)` / `dumpsToon(value)` - Save TOON
-- `loadYaml(filename)` / `loadsYaml(string)` - Load YAML
-- `dumpYaml(value, filename)` / `dumpsYaml(value)` - Save YAML
 
 ### Data Structures
 
-- `serin::Value` - Main data type
-- `serin::Object` - Object (dictionary)
-- `serin::Array` - Array
-- `serin::Primitive` - Primitive values (string, number, boolean, null)
-- `serin::ToonOptions` - Configure TOON serialization (indentation, delimiter, strict mode)
+- `ctoon::Value` - Main data type
+- `ctoon::Object` - Object (dictionary)
+- `ctoon::Array` - Array
+- `ctoon::Primitive` - Primitive values (string, number, boolean, null)
+- `ctoon::ToonOptions` - Configure TOON serialization (indentation, delimiter, strict mode)
 
 ### TOON Configuration
 
 ```cpp
-serin::ToonOptions options;
-options.setIndent(4).setDelimiter(serin::Delimiter::Pipe);
+ctoon::ToonOptions options;
+options.setIndent(4).setDelimiter(ctoon::Delimiter::Pipe);
 
-auto toon = serin::dumpsToon(value, options);
+auto toon = ctoon::dumpsToon(value, options);
 ```
 
-To confirm that Serin's TOON output matches the reference implementation, run the C++ tests with
+To confirm that Ctoon's TOON output matches the reference implementation, run the C++ tests with
 `npx` available. The `TOON output matches @byjohann/toon when available` test will invoke
 `npx @byjohann/toon` to compare the serialized output whenever the package can be downloaded.
 
@@ -219,7 +216,7 @@ cd build
 make test
 
 # Or directly
-./test_serin
+./test_ctoon
 ```
 
 ## 🤝 Contribution

@@ -27,25 +27,25 @@ project(${PyProject_NAME} LANGUAGES CXX C VERSION ${PyProject_VERSION})
 
 
 
-file(GLOB SERIN_SOURCES_C ${PROJECT_SOURCE_DIR}/src/sources/*.c)
-file(GLOB SERIN_SOURCES_CPP ${PROJECT_SOURCE_DIR}/src/sources/*.cpp)
-set(SERIN_SOURCES ${SERIN_SOURCES_CPP} ${SERIN_SOURCES_C})
+file(GLOB CTOON_SOURCES_C ${PROJECT_SOURCE_DIR}/src/sources/*.c)
+file(GLOB CTOON_SOURCES_CPP ${PROJECT_SOURCE_DIR}/src/sources/*.cpp)
+set(CTOON_SOURCES ${CTOON_SOURCES_CPP} ${CTOON_SOURCES_C})
 
 # Create library
-add_library(serin ${SERIN_SOURCES})
+add_library(ctoon ${CTOON_SOURCES})
 
 # Include directories
-target_include_directories(serin
+target_include_directories(ctoon
     PUBLIC ${PROJECT_SOURCE_DIR}/includes
     PRIVATE ${PROJECT_SOURCE_DIR}/src/sources
 )
 
-target_compile_definitions(serin PUBLIC
-    SERIN_VERSION=${PROJECT_VERSION}
+target_compile_definitions(ctoon PUBLIC
+    CTOON_VERSION=${PROJECT_VERSION}
 )
 
 # Compiler options
-target_compile_options(serin PRIVATE
+target_compile_options(ctoon PRIVATE
     -Wall
     -Wextra
     -Wpedantic
@@ -66,22 +66,22 @@ if (BUILD_EXAMPLES)
     foreach(EXAMPLE_SOURCE IN LISTS EXAMPLE_SOURCES)
         get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
         add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE})
-        target_link_libraries(${EXAMPLE_NAME} PUBLIC serin)
+        target_link_libraries(${EXAMPLE_NAME} PUBLIC ctoon)
     endforeach()
 endif()
 
 # Build CLI tool
-add_executable(serin-cli src/sources/cli.cpp)
-target_link_libraries(serin-cli PUBLIC serin)
-set_target_properties(serin-cli PROPERTIES OUTPUT_NAME serin)
+add_executable(ctoon-cli src/sources/cli.cpp)
+target_link_libraries(ctoon-cli PUBLIC ctoon)
+set_target_properties(ctoon-cli PROPERTIES OUTPUT_NAME ctoon)
 
-option(SERIN_BUILD_TESTS "Build C++ tests" ON)
+option(CTOON_BUILD_TESTS "Build C++ tests" ON)
 
-if(SERIN_BUILD_TESTS)
+if(CTOON_BUILD_TESTS)
     enable_testing()
-    add_executable(serin_tests tests/cpp/test_serin.cpp)
-    target_include_directories(serin_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests/cpp)
-    target_link_libraries(serin_tests PRIVATE serin)
-    add_test(NAME serin_tests COMMAND serin_tests)
-    set_tests_properties(serin_tests PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    add_executable(ctoon_tests tests/cpp/test_ctoon.cpp)
+    target_include_directories(ctoon_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests/cpp)
+    target_link_libraries(ctoon_tests PRIVATE ctoon)
+    add_test(NAME ctoon_tests COMMAND ctoon_tests)
+    set_tests_properties(ctoon_tests PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 endif()

@@ -8,7 +8,7 @@
 
 #include "ordered_map.h"
 
-namespace serin {
+namespace ctoon {
 
 // Format types enum
 enum class Type {
@@ -125,4 +125,4 @@ void dump(const Value& value, const std::string& filename);
 Value loads(const std::string& content, Type format);
 std::string dumps(const Value& value, Type format, int indent = 2);
 
-} // namespace serin
+} // namespace ctoon

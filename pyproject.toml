@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 
 
 [project]
-name = "serin"
+name = "ctoon"
 version = "0.1.0"
 description = ""
 readme = "README.md"
@@ -34,9 +34,9 @@ test = ["pytest-xdist"]
 
 
 [project.urls]
-"Homepage" = "https://github.com/mohammadraziei/serin"
-"Bug Tracker" = "https://github.com/mohammadraziei/serin/issues"
-"Document" = "https://mohammadraziei.github.io/serin/latest"
+"Homepage" = "https://github.com/mohammadraziei/ctoon"
+"Bug Tracker" = "https://github.com/mohammadraziei/ctoon/issues"
+"Document" = "https://mohammadraziei.github.io/ctoon/latest"
 
 
 [tool.cibuildwheel]
@@ -115,6 +115,3 @@ exclude = ["third_party"]
 "tests/**" = ["F841", "ARG001", "PT004"]
 "src/**/__main__.py" = ["T20", "ARG001"]
 "src/**/core.py" = ["ARG001", "F401"]
-
-
-
