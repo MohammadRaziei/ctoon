@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <algorithm>
 
-namespace serin {
+namespace ctoon {
 
 std::string trim(std::string_view view) {
     size_t begin = 0;
@@ -63,4 +63,4 @@ std::string toLower(std::string value) {
     return value;
 }
 
-} // namespace serin
+} // namespace ctoon

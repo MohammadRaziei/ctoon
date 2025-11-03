@@ -1,4 +1,4 @@
-#include "serin.h"
+#include "ctoon.h"
 #include "utils.h"
 
 #include <algorithm>
@@ -7,7 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace serin {
+namespace ctoon {
 
 namespace {
 
@@ -365,4 +365,4 @@ void dumpToon(const Value& value, const std::string& filename, const EncoderOpti
     encodeToFile(value, filename, options);
 }
 
-} // namespace serin
+} // namespace ctoon

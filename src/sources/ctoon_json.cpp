@@ -1,4 +1,4 @@
-#include "serin.h"
+#include "ctoon.h"
 #include "yyjson.h"
 #include "utils.h"
 
@@ -7,7 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace serin {
+namespace ctoon {
 
 // =====================
 // Internal helpers
@@ -170,7 +170,7 @@ Value loadJson(const std::string& filename) {
         return obj;
     }
 
-// Serialize serin::Value → JSON string
+// Serialize ctoon::Value → JSON string
     std::string dumpsJson(const Value& value, int indent) {
         yyjson_mut_doc* doc = yyjson_mut_doc_new(nullptr);
         yyjson_mut_val* root = buildYyjson(doc, value);
@@ -199,4 +199,4 @@ void dumpJson(const Value& value, const std::string& filename, int indent) {
 // =====================
 
 
-} // namespace serin
+} // namespace ctoon

@@ -1,4 +1,4 @@
-#include "serin.h"
+#include "ctoon.h"
 #include "yyjson.h"
 #include "utils.h"
 
@@ -9,7 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace serin {
+namespace ctoon {
 
 // Primitive type checking methods
 bool Primitive::isString() const { return std::holds_alternative<std::string>(*this); }
@@ -115,17 +115,14 @@ bool isArray(const Value& value) { return value.isArray(); }
 
 
 Type stringToType(const std::string &name) {
-    const auto lowered = serin::toLower(name);
+    const auto lowered = ctoon::toLower(name);
     if (lowered == "json") {
-        return serin::Type::JSON;
+        return ctoon::Type::JSON;
     }
     if (lowered == "toon") {
-        return serin::Type::TOON;
+        return ctoon::Type::TOON;
     }
-    if (lowered == "yaml" || lowered == "yml") {
-        return serin::Type::YAML;
-    }
-    return serin::Type::UNKOWN;
+    return ctoon::Type::UNKOWN;
 }
 
 // Generic file format functions (auto-detect format from file extension)
@@ -142,11 +139,9 @@ Value load(const std::string& filename) {
         return loadJson(filename);
     } else if (extension == ".toon") {
         return loadToon(filename);
-    } else if (extension == ".yaml" || extension == ".yml") {
-        return loadYaml(filename);
     } else {
         throw std::runtime_error("Unsupported file format: " + extension + 
-                               ". Supported formats: .json, .toon, .yaml, .yml");
+                               ". Supported formats: .json, .toon");
     }
 }
 
@@ -163,11 +158,9 @@ void dump(const Value& value, const std::string& filename) {
         dumpJson(value, filename);
     } else if (extension == ".toon") {
         dumpToon(value, filename);
-    } else if (extension == ".yaml" || extension == ".yml") {
-        dumpYaml(value, filename);
     } else {
         throw std::runtime_error("Unsupported file format: " + extension + 
-                               ". Supported formats: .json, .toon, .yaml, .yml");
+                               ". Supported formats: .json, .toon");
     }
 }
 
@@ -177,8 +170,6 @@ Value loads(const std::string& content, Type type) {
             return loadsJson(content);
         case Type::TOON:
             return loadsToon(content);
-        case Type::YAML:
-            return loadsYaml(content);
         default:
             throw std::runtime_error("Unsupported format type");
     }
@@ -190,8 +181,6 @@ std::string dumps(const Value& value, Type format, int indent) {
             return dumpsJson(value, indent);
         case Type::TOON:
             return dumpsToon(value, EncoderOptions(indent));
-        case Type::YAML:
-            return dumpsYaml(value, indent);
         default:
             throw std::runtime_error("Unsupported format type");
     }
@@ -223,4 +212,4 @@ std::string dumps(const Value& value, Type format, int indent) {
 // }
 
 
-} // namespace serin
+} // namespace ctoon

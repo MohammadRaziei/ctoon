@@ -1,4 +1,4 @@
-#include "serin.h"
+#include "ctoon.h"
 #include "CLI11.hpp"
 
 #include <filesystem>
@@ -12,12 +12,12 @@
 namespace fs = std::filesystem;
 
 namespace {
-const std::string serinVersion = MACRO_STRINGIFY(SERIN_VERSION);
+const std::string ctoonVersion = MACRO_STRINGIFY(CTOON_VERSION);
 
 
 
 std::string availableFormats() {
-    return "json, toon, yaml";
+    return "json, toon";
 }
 
 void printHelp(const CLI::App &app) {
@@ -27,16 +27,16 @@ void printHelp(const CLI::App &app) {
 } // namespace
 
 int main(int argc, char **argv) {
-    CLI::App app{"Serin - A modern C++ serialization library and CLI tool\n"
-                 "Version: " + serinVersion + "\n"
+    CLI::App app{"Ctoon - A modern C++ serialization library and CLI tool\n"
+                 "Version: " + ctoonVersion + "\n"
                  "\n"
-                 "Serin provides fast and flexible serialization between JSON, YAML, and Toon formats. "
+                 "Ctoon provides fast and flexible serialization between JSON and Toon formats. "
                  "It can convert between different serialization formats and manipulate structured data.\n"
                  "\n"
                  "Examples:\n"
-                 "$  serin input.json -o output.yaml          # Convert JSON to YAML\n"
-                 "$  serin input.yaml -t json                 # Convert YAML to JSON (stdout)\n"
-                 "$  serin input.toon -o output.json -i 4     # Convert Toon to JSON with 4-space indent"};
+                 "$  ctoon input.json -o output.toon          # Convert JSON to TOON\n"
+                 "$  ctoon input.toon -t json                 # Convert TOON to JSON (stdout)\n"
+                 "$  ctoon input.toon -o output.json -i 4     # Convert Toon to JSON with 4-space indent"};
 
     std::string inputPath;
     std::string outputPath;
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     }
 
     if (showVersion) {
-        std::cout << "serin " << serinVersion << std::endl;
+        std::cout << "ctoon " << ctoonVersion << std::endl;
         return 0;
     }
 
@@ -89,17 +89,17 @@ int main(int argc, char **argv) {
 
     try {
         // Load the file using auto-detection
-        serin::Value value = serin::load(inputPath);
+        ctoon::Value value = ctoon::load(inputPath);
 
         if (!outputPath.empty()) {
             // Dump to file using auto-detection
-            serin::dump(value, outputPath);
+            ctoon::dump(value, outputPath);
         } else {
             // Determine output format for stdout
-            serin::Type type = serin::Type::TOON; // default
+            ctoon::Type type = ctoon::Type::TOON; // default
             if (!outputType.empty()) {
-                serin::Type requested = serin::stringToType(outputType);
-                if (requested == serin::Type::UNKOWN) {
+                ctoon::Type requested = ctoon::stringToType(outputType);
+                if (requested == ctoon::Type::UNKOWN) {
                     std::cerr << "Unknown output type: " << outputType << std::endl;
                     std::cerr << "Supported formats: " << availableFormats() << std::endl;
                     return 1;
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
                 type = requested;
             }
             // Dump to stdout with specified format and indent
-            std::cout << serin::dumps(value, type, indent) << std::endl;
+            std::cout << ctoon::dumps(value, type, indent) << std::endl;
         }
     } catch (const std::exception &error) {
         std::cerr << "Failed to process: " << error.what() << std::endl;

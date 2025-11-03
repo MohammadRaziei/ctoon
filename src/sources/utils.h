@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-namespace serin {
+namespace ctoon {
 
 // Removes leading and trailing ASCII whitespace characters from the given string view.
 // Returns a new std::string containing the trimmed text.
@@ -19,4 +19,4 @@ void writeStringToFile(const std::string& content, const std::string& filename);
 
 std::string toLower(std::string value);
 
-} // namespace serin
+} // namespace ctoon

@@ -2,12 +2,12 @@
 // Created by mohammad on 11/1/25.
 //
 
-// serin_bind.cpp
+// ctoon_bind.cpp
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/unordered_map.h>
 #include <nanobind/stl/variant.h>
-#include "serin.h"
+#include "ctoon.h"
 
 
 #define STRINGIFY(x) #x
@@ -17,7 +17,7 @@
 namespace nb = nanobind;
 
 
-serin::Value dict2value(nb::handle obj) {
+ctoon::Value dict2value(nb::handle obj) {
     if (obj.is_none()) {
         return Value(nullptr);
     } else if (nb::isinstance<nb::bool_>(obj)) {
@@ -29,23 +29,23 @@ serin::Value dict2value(nb::handle obj) {
     } else if (nb::isinstance<nb::str>(obj)) {
         return Value(nb::cast<std::string>(obj));
     } else if (nb::isinstance<nb::list>(obj)) {
-        serin::Array arr;
+        ctoon::Array arr;
         nb::list pylist = nb::cast<nb::list>(obj);
         for (auto item : pylist)
             arr.push_back(dict2value(item));
         return Value(arr);
     } else if (nb::isinstance<nb::dict>(obj)) {
-        serin::Object map;
+        ctoon::Object map;
         nb::dict d = nb::cast<nb::dict>(obj);
         for (auto [k, v] : d) {
             map[nb::cast<std::string>(k)] = dict2value(v);
         }
         return Value(map);
     }
-    throw std::runtime_error("Unsupported Python type for serin::Value conversion");
+    throw std::runtime_error("Unsupported Python type for ctoon::Value conversion");
 }
 
-nb::object value2dict(const serin::Value& val) {
+nb::object value2dict(const ctoon::Value& val) {
     if (val.isPrimitive()) {
         const auto& p = val.asPrimitive();
         return std::visit([](auto&& arg) -> nb::object {
@@ -64,68 +64,68 @@ nb::object value2dict(const serin::Value& val) {
             out[nb::cast(kv.first)] = value2dict(kv.second);
         return std::move(out);
     }
-    throw std::runtime_error("Unknown serin::Value type");
+    throw std::runtime_error("Unknown ctoon::Value type");
 }
 
 
 template<typename Func, typename... Args>
-std::string dumpsDict(Func f, const serin::Object& dict, Args&&... args) {
-    serin::Value v(dict);
+std::string dumpsDict(Func f, const ctoon::Object& dict, Args&&... args) {
+    ctoon::Value v(dict);
     return f(v, std::forward<Args>(args)...);
 }
 
 template<typename Func, typename... Args>
-std::string dumpDict(Func f, const serin::Object& dict, Args&&... args) {
-    serin::Value v(dict);
+std::string dumpDict(Func f, const ctoon::Object& dict, Args&&... args) {
+    ctoon::Value v(dict);
     return f(v, std::forward<Args>(args)...);
 
 // loadsXDict : str -> dict
 template<typename Func, typename... Args>
-serin::Object loadsDict(Func f, const std::string& s, Args&&... args) {
-    serin::Value v = f(s, std::forward<Args>(args)...);
+ctoon::Object loadsDict(Func f, const std::string& s, Args&&... args) {
+    ctoon::Value v = f(s, std::forward<Args>(args)...);
     return v.asObject();
 }
 
 
 
 NB_MODULE(NB_MODULE_NAME, m) {
-    nb::class_<serin::Value>(m, "Value")
+    nb::class_<ctoon::Value>(m, "Value")
     .def(nb::init<>())
-    .def("is_object", &serin::Value::isObject)
-    .def("is_array", &serin::Value::isArray)
-    .def("is_primitive", &serin::Value::isPrimitive);
+    .def("is_object", &ctoon::Value::isObject)
+    .def("is_array", &ctoon::Value::isArray)
+    .def("is_primitive", &ctoon::Value::isPrimitive);
 
-    nb::enum_<serin::Delimiter>(m, "Delimiter")
-        .value("Comma", serin::Delimiter::Comma)
-        .value("Tab", serin::Delimiter::Tab)
-        .value("Pipe", serin::Delimiter::Pipe);
+    nb::enum_<ctoon::Delimiter>(m, "Delimiter")
+        .value("Comma", ctoon::Delimiter::Comma)
+        .value("Tab", ctoon::Delimiter::Tab)
+        .value("Pipe", ctoon::Delimiter::Pipe);
 
-    nb::class_<serin::ToonOptions>(m, "ToonOptions")
+    nb::class_<ctoon::ToonOptions>(m, "ToonOptions")
         .def(nb::init<>())
         .def(nb::init<int>(), nb::arg("indent"))
-        .def("set_indent", &serin::ToonOptions::setIndent, nb::arg("indent"), nb::rv_policy::reference_internal)
-        .def("set_delimiter", &serin::ToonOptions::setDelimiter, nb::arg("delimiter"), nb::rv_policy::reference_internal)
-        .def("set_length_marker", &serin::ToonOptions::setLengthMarker, nb::arg("enabled"), nb::rv_policy::reference_internal)
-        .def("set_strict", &serin::ToonOptions::setStrict, nb::arg("strict"), nb::rv_policy::reference_internal)
-        .def("indent", &serin::ToonOptions::indent)
-        .def("delimiter", &serin::ToonOptions::delimiter)
-        .def("length_marker", &serin::ToonOptions::lengthMarker)
-        .def("strict", &serin::ToonOptions::strict);
+        .def("set_indent", &ctoon::ToonOptions::setIndent, nb::arg("indent"), nb::rv_policy::reference_internal)
+        .def("set_delimiter", &ctoon::ToonOptions::setDelimiter, nb::arg("delimiter"), nb::rv_policy::reference_internal)
+        .def("set_length_marker", &ctoon::ToonOptions::setLengthMarker, nb::arg("enabled"), nb::rv_policy::reference_internal)
+        .def("set_strict", &ctoon::ToonOptions::setStrict, nb::arg("strict"), nb::rv_policy::reference_internal)
+        .def("indent", &ctoon::ToonOptions::indent)
+        .def("delimiter", &ctoon::ToonOptions::delimiter)
+        .def("length_marker", &ctoon::ToonOptions::lengthMarker)
+        .def("strict", &ctoon::ToonOptions::strict);
 
-    m.def("value_loads_json", &serin::loadsJson);
-    m.def("value_dumps_json", &serin::dumpsJson);
+    m.def("value_loads_json", &ctoon::loadsJson);
+    m.def("value_dumps_json", &ctoon::dumpsJson);
     m.def("value_loads_toon",
-          [](const std::string& toon, const serin::ToonOptions& options) {
-              return serin::loadsToon(toon, options);
+          [](const std::string& toon, const ctoon::ToonOptions& options) {
+              return ctoon::loadsToon(toon, options);
           },
-          nb::arg("toon"), nb::arg("options") = serin::ToonOptions());
+          nb::arg("toon"), nb::arg("options") = ctoon::ToonOptions());
     m.def("value_dumps_toon",
-          [](const serin::Value& value, const serin::ToonOptions& options) {
-              return serin::dumpsToon(value, options);
+          [](const ctoon::Value& value, const ctoon::ToonOptions& options) {
+              return ctoon::dumpsToon(value, options);
           },
-          nb::arg("value"), nb::arg("options") = serin::ToonOptions());
+          nb::arg("value"), nb::arg("options") = ctoon::ToonOptions());
 
-    m.def("loads_json", &serin::loadsJson)
+    m.def("loads_json", &ctoon::loadsJson)
 
     #ifdef VERSION_INFO
         m.attr("__version__") = MACRO_STRINGIFY(VERSION_INFO);

@@ -14,7 +14,6 @@ namespace ctoon {
 enum class Type {
     JSON,
     TOON,
-    YAML,
     UNKOWN
 };
 
@@ -111,11 +110,6 @@ Value loadsToon(const std::string& toonString, bool strict = true);
 std::string dumpsToon(const Value& value, const EncoderOptions& options = {});
 void dumpToon(const Value& value, const std::string& filename, const EncoderOptions& options = {});
 
-// YAML functions
-Value loadYaml(const std::string& filename);
-Value loadsYaml(const std::string& yamlString);
-std::string dumpsYaml(const Value& value, int indent = 2);
-void dumpYaml(const Value& value, const std::string& filename, int indent = 2);
 
 // Generic file format functions (auto-detect format from file extension)
 Value load(const std::string& filename);
