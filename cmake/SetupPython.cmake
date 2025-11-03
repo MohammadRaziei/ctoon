@@ -43,7 +43,7 @@ if(DEFINED PYTHON_PROJECT_NAME)
 
 
 
-    set(NB_MODULE _serin)
+    set(NB_MODULE _${PROJECT_NAME})
 
     nanobind_add_module(
             # Name of the extension
