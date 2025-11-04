@@ -1,4 +1,4 @@
-# Ctoon - Serialized In
+# Ctoon - C++ Implementation of TOON
 
 <div align="center">
   <div style="display: flex; align-items: center; justify-content: center; gap: 40px;">
@@ -6,7 +6,7 @@
       <img src="docs/images/ctoon.png" alt="Ctoon Logo" width="130" >
     </div>
     <div style="flex: 1;">
-      <p><strong>Ctoon</strong> (acronym for Serialized In) is a C++ and Python serialization library that supports multiple formats like JSON and TOON, and can convert data from any format to another.</p>
+      <p><strong>Ctoon</strong> is a C++ and Python implementation of the <a href="https://github.com/toon-format/toon">TOON format</a> (Token-Oriented Object Notation), a serialization library that supports multiple formats like JSON and TOON, and can convert data between formats.</p>
       <p>This project is written using the C++17 standard and is highly efficient and fast.</p>
     </div>
   </div>
@@ -141,12 +141,20 @@ ctoon data.toon -t json -i 4
 
 ## 📊 TOON Format
 
-TOON (Token-Oriented Object Notation) is a compact, human-readable format designed for transferring structured data to Large Language Models (LLMs) with significantly lower token consumption.
+![TOON logo with step‑by‑step guide](docs/images/og.png)
 
-### TOON Example
+**Token-Oriented Object Notation** is a compact, human-readable serialization format designed for passing structured data to Large Language Models with significantly reduced token usage. It's intended for LLM input, not output.
 
-```js
-// JSON
+TOON's sweet spot is **uniform arrays of objects** – multiple fields per row, same structure across items. It borrows YAML's indentation-based structure for nested objects and CSV's tabular format for uniform data rows, then optimizes both for token efficiency in LLM contexts. For deeply nested or non-uniform data, JSON may be more efficient.
+
+> [!TIP]
+> Think of TOON as a translation layer: use JSON programmatically, convert to TOON for LLM input.
+
+### Why TOON?
+
+AI is becoming cheaper and more accessible, but larger context windows allow for larger data inputs as well. **LLM tokens still cost money** – and standard JSON is verbose and token-expensive:
+
+```json
 {
   "users": [
     { "id": 1, "name": "Alice", "role": "admin" },
@@ -155,8 +163,9 @@ TOON (Token-Oriented Object Notation) is a compact, human-readable format design
 }
 ```
 
-```js
-// TOON (42.3% fewer tokens)
+TOON conveys the same information with **fewer tokens**:
+
+```
 users[2]{id,name,role}:
   1,Alice,admin
   2,Bob,user
@@ -169,6 +178,86 @@ users[2]{id,name,role}:
 - **🍱 Minimal Syntax**: Eliminates repetitive punctuation
 - **📐 Indentation-based Structure**: Replaces braces with whitespace
 - **🧺 Tabular Arrays**: Declare keys once, stream rows
+
+
+### Format Overview
+
+#### Objects
+
+Simple objects with primitive values:
+
+```
+id: 123
+name: Ada
+active: true
+```
+
+Nested objects:
+
+```
+user:
+  id: 123
+  name: Ada
+```
+
+#### Arrays
+
+**Primitive Arrays (Inline):**
+```
+tags[3]: admin,ops,dev
+```
+
+**Arrays of Objects (Tabular):**
+When all objects share the same primitive fields, TOON uses an efficient **tabular format**:
+
+```
+items[2]{sku,qty,price}:
+  A1,2,9.99
+  B2,1,14.5
+```
+
+**Mixed and Non-Uniform Arrays:**
+Arrays that don't meet the tabular requirements use list format:
+
+```
+items[3]:
+  - 1
+  - a: 1
+  - text
+```
+
+### Using TOON in LLM Prompts
+
+TOON works best when you show the format instead of describing it. The structure is self-documenting – models parse it naturally once they see the pattern.
+
+#### Sending TOON to LLMs (Input)
+
+Wrap your encoded data in a fenced code block (label it ````toon` for clarity). The indentation and headers are usually enough – models treat it like familiar YAML or CSV. The explicit length markers (`[N]`) and field headers (`{field1,field2}`) help the model track structure, especially for large tables.
+
+#### Generating TOON from LLMs (Output)
+
+For output, be more explicit. When you want the model to **generate** TOON:
+
+- **Show the expected header** (`users[N]{id,name,role}:`). The model fills rows instead of repeating keys, reducing generation errors.
+- **State the rules:** 2-space indent, no trailing spaces, `[N]` matches row count.
+
+Here's a prompt that works for both reading and generating:
+
+````
+Data is in TOON format (2-space indent, arrays show length and fields).
+
+```toon
+users[3]{id,name,role,lastLogin}:
+  1,Alice,admin,2025-01-15T10:30:00Z
+  2,Bob,user,2025-01-14T15:22:00Z
+  3,Charlie,user,2025-01-13T09:45:00Z
+```
+
+Task: Return only users with role "user" as TOON. Use the same header. Set [N] to match the row count. Output only the code block.
+````
+
+> [!TIP]
+> For large uniform tables, use tab delimiters and tell the model "fields are tab-separated." Tabs often tokenize better than commas and reduce the need for quote-escaping.
 
 ## 🧪 Examples
 
