@@ -2,7 +2,13 @@
 #include "doctest.h"
 #include "ctoon.h"
 
+#include <filesystem>
 #include <variant>
+
+namespace fs = std::filesystem;
+
+const fs::path cwd = fs::path(__FILE__).parent_path();
+const fs::path datapath = cwd.parent_path() / "data";
 
 namespace {
 
@@ -116,8 +122,8 @@ void expectConversion(const ctoon::Value& source,
 }
 
 TEST_CASE("Sample 1 stays consistent across formats") {
-    const auto jsonValue = ctoon::loadJson("tests/data/sample1_user.json");
-    const auto toonValue = ctoon::loadToon("tests/data/sample1_user.toon");
+    const auto jsonValue = ctoon::loadJson((datapath / "sample1_user.json").string());
+    const auto toonValue = ctoon::loadToon((datapath / "sample1_user.toon").string());
     const auto& toonText = expectString(toonValue);
 
     checkSample1User(jsonValue);
@@ -172,8 +178,8 @@ TEST_CASE("Sample 1 stays consistent across formats") {
 }
 
 TEST_CASE("Sample 2 stays consistent across formats") {
-    const auto jsonValue = ctoon::loadJson("tests/data/sample2_users.json");
-    const auto toonValue = ctoon::loadToon("tests/data/sample2_users.toon");
+    const auto jsonValue = ctoon::loadJson((datapath / "sample2_users.json").string());
+    const auto toonValue = ctoon::loadToon((datapath / "sample2_users.toon").string());
     const auto& toonText = expectString(toonValue);
 
     checkSample2Users(jsonValue);
@@ -194,8 +200,8 @@ TEST_CASE("Sample 2 stays consistent across formats") {
 }
 
 TEST_CASE("Sample 3 stays consistent across formats") {
-    const auto jsonValue = ctoon::loadJson("tests/data/sample3_nested.json");
-    const auto toonValue = ctoon::loadToon("tests/data/sample3_nested.toon");
+    const auto jsonValue = ctoon::loadJson((datapath / "sample3_nested.json").string());
+    const auto toonValue = ctoon::loadToon((datapath / "sample3_nested.toon").string());
     const auto& toonText = expectString(toonValue);
 
     checkSample3Nested(jsonValue);

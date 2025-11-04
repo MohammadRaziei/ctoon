@@ -98,14 +98,12 @@ struct EncodeOptions {
 };
 
 struct DecodeOptions {
-    int indent = 2;
     bool strict = true;
 
     DecodeOptions() = default;
-    DecodeOptions(int indent) : indent(std::max(0, indent)) {}
-    
+    DecodeOptions(bool strict) : strict(strict) {}
+
     // Builder pattern methods
-    DecodeOptions& setIndent(int indent) { this->indent = std::max(0, indent); return *this; }
     DecodeOptions& setStrict(bool strict) { this->strict = strict; return *this; }
 };
 
