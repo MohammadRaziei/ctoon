@@ -7,7 +7,7 @@
     </div>
     <div style="flex: 1;">
       <p><strong>Ctoon</strong> is a C++ and Python implementation of the <a href="https://github.com/toon-format/toon">TOON format</a> (Token-Oriented Object Notation), a serialization library that supports multiple formats like JSON and TOON, and can convert data between formats.</p>
-      <p>This project is written using the C++17 standard and is highly efficient and fast.</p>
+      <p>This project is written using the C++17 standard and is efficient and fast.</p>
     </div>
   </div>
 </div>
