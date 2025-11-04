@@ -118,11 +118,11 @@ bool collectUniformObjectFields(const Array& array, std::vector<std::string>& fi
     return true;
 }
 
-std::string encodeValue(const std::string& key, const Value& value, const EncoderOptions& options, int depth);
+std::string encodeValue(const std::string& key, const Value& value, const EncodeOptions& options, int depth);
 
 std::string encodeNonUniformArrayOfObjects(const std::string& key,
                                            const Array& array,
-                                           const EncoderOptions& options,
+                                           const EncodeOptions& options,
                                            int depth) {
     std::ostringstream oss;
     oss << key << OPEN_BRACKET << array.size() << CLOSE_BRACKET << COLON << NEWLINE;
@@ -169,7 +169,7 @@ std::string encodeNonUniformArrayOfObjects(const std::string& key,
     return oss.str();
 }
 
-std::string encodeArrayOfPrimitives(const std::string& key, const Array& array, const EncoderOptions& options) {
+std::string encodeArrayOfPrimitives(const std::string& key, const Array& array, const EncodeOptions& options) {
     std::ostringstream oss;
     oss << key << OPEN_BRACKET << array.size() << CLOSE_BRACKET << COLON;
 
@@ -183,10 +183,10 @@ std::string encodeArrayOfPrimitives(const std::string& key, const Array& array, 
     return oss.str();
 }
 
-std::string encodeArrayOfObjects(const std::string& key, const Array& array, const EncoderOptions& options, int depth);
-std::string encodeObject(const Object& obj, const EncoderOptions& options, int depth);
+std::string encodeArrayOfObjects(const std::string& key, const Array& array, const EncodeOptions& options, int depth);
+std::string encodeObject(const Object& obj, const EncodeOptions& options, int depth);
 
-std::string encodeValue(const std::string& key, const Value& value, const EncoderOptions& options, int depth) {
+std::string encodeValue(const std::string& key, const Value& value, const EncodeOptions& options, int depth) {
     if (value.isPrimitive()) {
         return key + COLON + SPACE + encodePrimitive(value.asPrimitive(), options.delimiter);
     }
@@ -229,7 +229,7 @@ std::string encodeValue(const std::string& key, const Value& value, const Encode
     return key + COLON + SPACE + NULL_LITERAL;
 }
 
-std::string encodeArrayOfObjects(const std::string& key, const Array& array, const EncoderOptions& options, int depth) {
+std::string encodeArrayOfObjects(const std::string& key, const Array& array, const EncodeOptions& options, int depth) {
     if (array.empty()) {
         return key + "[0]{}:\n";
     }
@@ -277,7 +277,7 @@ std::string encodeArrayOfObjects(const std::string& key, const Array& array, con
     return oss.str();
 }
 
-std::string encodeObject(const Object& obj, const EncoderOptions& options, int depth) {
+std::string encodeObject(const Object& obj, const EncodeOptions& options, int depth) {
     std::ostringstream oss;
     const std::string indent(depth * options.indent, SPACE);
 
@@ -296,7 +296,7 @@ std::string encodeObject(const Object& obj, const EncoderOptions& options, int d
 
 } // namespace
 
-std::string encode(const Value& value, const EncoderOptions& options) {
+std::string encodeInternal(const Value& value, const EncodeOptions& options) {
     if (value.isPrimitive()) {
         return encodePrimitive(value.asPrimitive(), options.delimiter);
     }
@@ -339,29 +339,39 @@ Value decode(const std::string& input, bool strict) {
     return Value(input);
 }
 
-void encodeToFile(const Value& value, const std::string& outputFile, const EncoderOptions& options) {
-    writeStringToFile(encode(value, options), outputFile);
+void encodeToFile(const Value& value, const std::string& outputFile, const EncodeOptions& options) {
+    writeStringToFile(encodeInternal(value, options), outputFile);
 }
 
 Value decodeFromFile(const std::string& inputFile, bool strict) {
     return decode(readStringFromFile(inputFile), strict);
 }
 
-// TOON functions implementation
+// Main TOON API implementation
+std::string encode(const Value& value, const EncodeOptions& options) {
+    return encodeInternal(value, options);
+}
+
+Value decode(const std::string& input, const DecodeOptions& options) {
+    // TODO: Implement proper TOON decoding with options
+    // For now, use the basic decode with strict option
+    return decode(input, options.strict);
+}
+
+// TOON functions implementation (legacy API)
 Value loadToon(const std::string& filename, bool strict) {
     return decodeFromFile(filename, strict);
 }
-
 
 Value loadsToon(const std::string& toonString, bool strict) {
     return decode(toonString, strict);
 }
 
-std::string dumpsToon(const Value& value, const EncoderOptions& options) {
+std::string dumpsToon(const Value& value, const EncodeOptions& options) {
     return encode(value, options);
 }
 
-void dumpToon(const Value& value, const std::string& filename, const EncoderOptions& options) {
+void dumpToon(const Value& value, const std::string& filename, const EncodeOptions& options) {
     encodeToFile(value, filename, options);
 }
 

@@ -180,7 +180,7 @@ std::string dumps(const Value& value, Type format, int indent) {
         case Type::JSON:
             return dumpsJson(value, indent);
         case Type::TOON:
-            return dumpsToon(value, EncoderOptions(indent));
+            return dumpsToon(value, EncodeOptions(indent));
         default:
             throw std::runtime_error("Unsupported format type");
     }

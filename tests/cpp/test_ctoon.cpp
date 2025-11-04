@@ -224,7 +224,7 @@ TEST_CASE("Toon options customize formatting supports alternate delimiters") {
     tags.emplace_back(ctoon::Value("blue"));
     obj["tags"] = ctoon::Value(tags);
 
-    ctoon::EncoderOptions options;
+    ctoon::EncodeOptions options;
     options.delimiter = ctoon::Delimiter::Pipe; 
     options.indent = 4;
     

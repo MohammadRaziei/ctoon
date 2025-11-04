@@ -83,13 +83,30 @@ enum class Delimiter {
     Pipe = '|'
 };
 
-struct EncoderOptions {
+struct EncodeOptions {
     int indent = 2;
     Delimiter delimiter = Delimiter::Comma;
     bool lengthMarker = false;
 
-    EncoderOptions() = default;
-    EncoderOptions(int indent) : indent(std::max(0, indent)) {}
+    EncodeOptions() = default;
+    EncodeOptions(int indent) : indent(std::max(0, indent)) {}
+    
+    // Builder pattern methods
+    EncodeOptions& setIndent(int indent) { this->indent = std::max(0, indent); return *this; }
+    EncodeOptions& setDelimiter(Delimiter delimiter) { this->delimiter = delimiter; return *this; }
+    EncodeOptions& setLengthMarker(bool lengthMarker) { this->lengthMarker = lengthMarker; return *this; }
+};
+
+struct DecodeOptions {
+    int indent = 2;
+    bool strict = true;
+
+    DecodeOptions() = default;
+    DecodeOptions(int indent) : indent(std::max(0, indent)) {}
+    
+    // Builder pattern methods
+    DecodeOptions& setIndent(int indent) { this->indent = std::max(0, indent); return *this; }
+    DecodeOptions& setStrict(bool strict) { this->strict = strict; return *this; }
 };
 
 // Utility functions
@@ -104,12 +121,15 @@ Value loadsJson(const std::string& jsonString);
 std::string dumpsJson(const Value& value, int indent = 2);
 void dumpJson(const Value& value, const std::string& filename, int indent = 2);
 
-// TOON functions
+// TOON functions (legacy API - for backward compatibility)
 Value loadToon(const std::string& filename, bool strict = true);
 Value loadsToon(const std::string& toonString, bool strict = true);
-std::string dumpsToon(const Value& value, const EncoderOptions& options = {});
-void dumpToon(const Value& value, const std::string& filename, const EncoderOptions& options = {});
+std::string dumpsToon(const Value& value, const EncodeOptions& options = {});
+void dumpToon(const Value& value, const std::string& filename, const EncodeOptions& options = {});
 
+// Main TOON API (matching reference implementation)
+std::string encode(const Value& value, const EncodeOptions& options = {});
+Value decode(const std::string& input, const DecodeOptions& options = {});
 
 // Generic file format functions (auto-detect format from file extension)
 Value load(const std::string& filename);
