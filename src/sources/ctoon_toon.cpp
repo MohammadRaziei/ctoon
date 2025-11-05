@@ -551,6 +551,10 @@ void assertExpectedCount(int actual, int expected, const std::string& itemType, 
     }
 }
 
+// Forward declarations for internal functions
+Value decodeObject(LineCursor& cursor, int baseDepth, const DecodeOptions& options);
+std::pair<std::string, Value> decodeKeyValuePair(const ParsedLine& line, LineCursor& cursor, int baseDepth, const DecodeOptions& options);
+
 // Main decoding functions
 Value decodeValueFromLines(LineCursor& cursor, const DecodeOptions& options) {
     const ParsedLine* first = cursor.peek();
@@ -980,11 +984,11 @@ Value decode(const std::string& input, const DecodeOptions& options) {
 
 // TOON functions implementation (legacy API)
 Value loadToon(const std::string& filename, bool strict) {
-    return decodeFromFile(filename, strict);
+    return Value(readStringFromFile(filename));
 }
 
 Value loadsToon(const std::string& toonString, bool strict) {
-    return decode(toonString, strict);
+    return Value(toonString);
 }
 
 std::string dumpsToon(const Value& value, const EncodeOptions& options) {
