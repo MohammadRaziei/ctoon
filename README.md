@@ -15,9 +15,8 @@
 ## 🚀 Features
 
 - **Multiple Format Support**: JSON and TOON
-- **Bidirectional Conversion**: Convert data between all supported formats
+- **Bidirectional Conversion**: Convert data between supported formats
 - **High Performance**: Optimized with C++17 for fast performance
-- **Python Friendly**: Python interfaces for easy use
 - **Powerful CLI**: Command-line tool for file conversion
 - **TOON Integration**: Full TOON format support for token efficiency in LLM
 
@@ -39,15 +38,6 @@ make
 sudo make install
 ```
 
-### Python
-
-```python
-# Install from source
-pip install .
-
-# Or use the Python bindings directly
-import ctoon
-```
 
 ## 🎯 Quick Start
 
@@ -85,35 +75,6 @@ int main() {
 }
 ```
 
-### Using Python
-
-```python
-import ctoon
-
-# Create sample data
-data = {
-    "name": "Test User",
-    "age": 30,
-    "active": True,
-    "tags": ["programming", "c++", "serialization"]
-}
-
-# Serialize to JSON
-json_str = ctoon.dumps_json(data)
-print(f"JSON: {json_str}")
-
-# Serialize to TOON
-toon_str = ctoon.dumps_toon(data)
-print(f"TOON:\n{toon_str}")
-
-# Save to file
-ctoon.dump_json(data, "output.json")
-ctoon.dump_toon(data, "output.toon")
-
-# Load from file
-loaded_data = ctoon.load_json("output.json")
-print(f"Loaded data: {loaded_data}")
-```
 
 ## 🔧 Command Line Interface (CLI)
 
