@@ -122,7 +122,7 @@ Type stringToType(const std::string &name) {
     if (lowered == "toon") {
         return ctoon::Type::TOON;
     }
-    return ctoon::Type::UNKOWN;
+    return ctoon::Type::UNKNOWN;
 }
 
 // Generic file format functions (auto-detect format from file extension)

@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
             ctoon::Type type = ctoon::Type::TOON; // default
             if (!outputType.empty()) {
                 ctoon::Type requested = ctoon::stringToType(outputType);
-                if (requested == ctoon::Type::UNKOWN) {
+                if (requested == ctoon::Type::UNKNOWN) {
                     std::cerr << "Unknown output type: " << outputType << std::endl;
                     std::cerr << "Supported formats: " << availableFormats() << std::endl;
                     return 1;

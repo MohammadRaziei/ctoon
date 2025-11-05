@@ -14,7 +14,7 @@ namespace ctoon {
 enum class Type {
     JSON,
     TOON,
-    UNKOWN
+    UNKNOWN
 };
 
 Type stringToType(const std::string & name);
@@ -112,7 +112,6 @@ bool isPrimitive(const Value& value);
 bool isObject(const Value& value);
 bool isArray(const Value& value);
 
-// Serialization functions (load/loads/dumps/dump)
 // JSON functions
 Value loadJson(const std::string& filename);
 Value loadsJson(const std::string& jsonString);
@@ -128,6 +127,8 @@ void dumpToon(const Value& value, const std::string& filename, const EncodeOptio
 // Main TOON API (matching reference implementation)
 std::string encode(const Value& value, const EncodeOptions& options = {});
 Value decode(const std::string& input, const DecodeOptions& options = {});
+void encodeToFile(const Value& value, const std::string& outputFile, const EncodeOptions& options = {});
+Value decodeFromFile(const std::string& inputFile, const DecodeOptions& options = {});
 
 // Generic file format functions (auto-detect format from file extension)
 Value load(const std::string& filename);
