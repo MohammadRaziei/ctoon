@@ -1,4 +1,5 @@
 # CTOON - C++ TOON Format Library
+<img src="docs/images/ctoon.png" width=200 />
 
 A modern C++ serialization library for the TOON format that provides bidirectional conversion between JSON and TOON formats.
 
