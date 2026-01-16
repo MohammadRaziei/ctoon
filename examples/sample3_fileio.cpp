@@ -7,15 +7,15 @@ int main() {
 
     // Create test data
     ctoon::Object data;
-    data["name"] = ctoon::Value("Test User");
-    data["age"] = ctoon::Value(30.0);
-    data["active"] = ctoon::Value(true);
+    data["name"] = std::make_shared<ctoon::Value>("Test User");
+    data["age"] = std::make_shared<ctoon::Value>(30.0);
+    data["active"] = std::make_shared<ctoon::Value>(true);
 
     ctoon::Array tags;
-    tags.push_back(ctoon::Value("programming"));
-    tags.push_back(ctoon::Value("c++"));
-    tags.push_back(ctoon::Value("serialization"));
-    data["tags"] = ctoon::Value(tags);
+    tags.push_back(std::make_shared<ctoon::Value>("programming"));
+    tags.push_back(std::make_shared<ctoon::Value>("c++"));
+    tags.push_back(std::make_shared<ctoon::Value>("serialization"));
+    data["tags"] = std::make_shared<ctoon::Value>(tags);
 
     ctoon::Value value(data);
 

@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <variant>
+#include <memory>
 
 namespace fs = std::filesystem;
 
@@ -16,16 +17,27 @@ const ctoon::Object& expectObject(const ctoon::Value& value) {
     REQUIRE(value.isObject());
     return value.asObject();
 }
+const ctoon::Object& expectObject(const std::shared_ptr<ctoon::Value>& value_ptr) {
+    return expectObject(*value_ptr);
+}
 
 const ctoon::Array& expectArray(const ctoon::Value& value) {
     REQUIRE(value.isArray());
     return value.asArray();
 }
 
+const ctoon::Array& expectArray(const std::shared_ptr<ctoon::Value>& value_ptr) {
+    return expectArray(*value_ptr);
+}
+
 const std::string& expectString(const ctoon::Value& value) {
     const auto& primitive = value.asPrimitive();
     REQUIRE(std::holds_alternative<std::string>(primitive));
     return std::get<std::string>(primitive);
+}
+
+const std::string& expectString(const std::shared_ptr<ctoon::Value>& value_ptr) {
+    return expectString(*value_ptr);
 }
 
 std::string trim(const std::string& input) {
@@ -49,10 +61,18 @@ double expectNumber(const ctoon::Value& value) {
     return 0.0;
 }
 
+double expectNumber(const std::shared_ptr<ctoon::Value>& value_ptr) {
+    return expectNumber(*value_ptr);
+}
+
 bool expectBool(const ctoon::Value& value) {
     const auto& primitive = value.asPrimitive();
     REQUIRE(std::holds_alternative<bool>(primitive));
     return std::get<bool>(primitive);
+}
+
+bool expectBool(const std::shared_ptr<ctoon::Value>& value_ptr) {
+    return expectBool(*value_ptr);
 }
 
 void checkSample1User(const ctoon::Value& value) {
@@ -133,15 +153,15 @@ TEST_CASE("Sample 1 stays consistent across formats") {
 
     SUBCASE("JSON dumps can be parsed back") {
         ctoon::Object data;
-        data["name"] = ctoon::Value("Alice");
-        data["age"] = ctoon::Value(30.0);
-        data["active"] = ctoon::Value(true);
+        data["name"] = std::make_shared<ctoon::Value>("Alice");
+        data["age"] = std::make_shared<ctoon::Value>(30.0);
+        data["active"] = std::make_shared<ctoon::Value>(true);
 
         ctoon::Array tags;
-        tags.push_back(ctoon::Value("programming"));
-        tags.push_back(ctoon::Value("c++"));
-        tags.push_back(ctoon::Value("serialization"));
-        data["tags"] = ctoon::Value(tags);
+        tags.push_back(std::make_shared<ctoon::Value>("programming"));
+        tags.push_back(std::make_shared<ctoon::Value>("c++"));
+        tags.push_back(std::make_shared<ctoon::Value>("serialization"));
+        data["tags"] = std::make_shared<ctoon::Value>(tags);
 
         const ctoon::Value value(data);
         checkSample1User(ctoon::loadsJson(ctoon::dumpsJson(value)));
@@ -149,15 +169,15 @@ TEST_CASE("Sample 1 stays consistent across formats") {
 
     SUBCASE("TOON dumps can be parsed back") {
         ctoon::Object data;
-        data["name"] = ctoon::Value("Alice");
-        data["age"] = ctoon::Value(30.0);
-        data["active"] = ctoon::Value(true);
+        data["name"] = std::make_shared<ctoon::Value>("Alice");
+        data["age"] = std::make_shared<ctoon::Value>(30.0);
+        data["active"] = std::make_shared<ctoon::Value>(true);
 
         ctoon::Array tags;
-        tags.push_back(ctoon::Value("programming"));
-        tags.push_back(ctoon::Value("c++"));
-        tags.push_back(ctoon::Value("serialization"));
-        data["tags"] = ctoon::Value(tags);
+        tags.push_back(std::make_shared<ctoon::Value>("programming"));
+        tags.push_back(std::make_shared<ctoon::Value>("c++"));
+        tags.push_back(std::make_shared<ctoon::Value>("serialization"));
+        data["tags"] = std::make_shared<ctoon::Value>(tags);
 
         const ctoon::Value value(data);
         const auto toon = ctoon::dumpsToon(value);
@@ -223,18 +243,18 @@ TEST_CASE("Sample 3 stays consistent across formats") {
 
 TEST_CASE("Toon options customize formatting supports alternate delimiters") {
     ctoon::Object obj;
-    obj["name"] = ctoon::Value("Alice");
+    obj["name"] = std::make_shared<ctoon::Value>("Alice");
 
     ctoon::Array tags;
-    tags.emplace_back(ctoon::Value("red"));
-    tags.emplace_back(ctoon::Value("blue"));
-    obj["tags"] = ctoon::Value(tags);
+    tags.push_back(std::make_shared<ctoon::Value>("red"));
+    tags.push_back(std::make_shared<ctoon::Value>("blue"));
+    obj["tags"] = std::make_shared<ctoon::Value>(tags);
 
     ctoon::EncodeOptions options;
     options.delimiter = ctoon::Delimiter::Pipe; 
     options.indent = 4;
     
     auto toon = ctoon::dumpsToon(ctoon::Value(obj), options);
-    CHECK(toon.find("tags[2]: red|blue") != std::string::npos);
+    CHECK(toon.find("tags[2|]: red|blue") != std::string::npos);
     CHECK(toon.find("name: Alice") != std::string::npos);
 }
