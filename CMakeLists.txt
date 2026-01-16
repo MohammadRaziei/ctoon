@@ -46,9 +46,8 @@ target_compile_definitions(ctoon PUBLIC
 
 # Compiler options
 target_compile_options(ctoon PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
 
 

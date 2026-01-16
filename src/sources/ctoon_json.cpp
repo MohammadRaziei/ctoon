@@ -16,7 +16,7 @@ namespace ctoon {
 static Value parseYyjson(yyjson_val *val) {
     if (yyjson_is_null(val)) return Value(nullptr);
     if (yyjson_is_bool(val)) return Value(yyjson_get_bool(val));
-    if (yyjson_is_int(val)) return Value(yyjson_get_int(val));
+    if (yyjson_is_int(val)) return Value(yyjson_get_sint(val));
     if (yyjson_is_num(val))  return Value(yyjson_get_real(val));
     if (yyjson_is_str(val)) return Value(yyjson_get_str(val));
 
@@ -24,7 +24,7 @@ static Value parseYyjson(yyjson_val *val) {
         Array arr;
         size_t len = yyjson_arr_size(val);
         for (size_t i = 0; i < len; ++i) {
-            arr.push_back(parseYyjson(yyjson_arr_get(val, i)));
+            arr.push_back(std::make_shared<Value>(parseYyjson(yyjson_arr_get(val, i))));
         }
         return Value(arr);
     }
@@ -35,7 +35,7 @@ static Value parseYyjson(yyjson_val *val) {
         yyjson_val *key;
         while ((key = yyjson_obj_iter_next(&iter))) {
             yyjson_val *item = yyjson_obj_iter_get_val(key);
-            obj[yyjson_get_str(key)] = parseYyjson(item);
+            obj[yyjson_get_str(key)] = std::make_shared<Value>(parseYyjson(item));
         }
         return Value(obj);
     }
@@ -154,7 +154,7 @@ Value loadJson(const std::string& filename) {
         if (val.isArray()) {
             yyjson_mut_val* arr = yyjson_mut_arr(doc);
             for (const auto& e : val.asArray()) {
-                yyjson_mut_val* child = buildYyjson(doc, e);
+                yyjson_mut_val* child = buildYyjson(doc, *e);
                 yyjson_mut_arr_append(arr, child);
             }
             return arr;
@@ -163,7 +163,7 @@ Value loadJson(const std::string& filename) {
         // Object
         yyjson_mut_val* obj = yyjson_mut_obj(doc);
         for (const auto& kv : val.asObject()) {
-            yyjson_mut_val* child = buildYyjson(doc, kv.second);
+            yyjson_mut_val* child = buildYyjson(doc, *kv.second);
             yyjson_mut_val* key = yyjson_mut_strcpy(doc, kv.first.c_str());
             yyjson_mut_obj_add(obj, key, child);
         }
