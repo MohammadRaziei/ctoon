@@ -588,7 +588,7 @@ Array parseInlineArray(const std::string& inlineArray, const Delimiter delimiter
     std::vector<std::string> items = parseDelimitedValues(inlineArray, delimiter);
     Array array;
     for (const auto& item : items) {
-        array.push_back(std::make_shared<Value>(parsePrimitiveToken(item)));
+        array.push_back(parsePrimitiveToken(item));
     }
     return array;
 }
@@ -670,7 +670,7 @@ Value decodeObject(LineCursor& cursor, int baseDepth, const DecodeOptions& optio
 
         if (line->depth == baseDepth) {
             auto [key, value] = decodeKeyValuePair(*line, cursor, baseDepth, options);
-            obj[key] = std::make_shared<Value>(value);
+            obj[key] = value;
         } else {
             // Different depth - stop object parsing
             break;
@@ -720,7 +720,7 @@ Value decodeListItem(LineCursor& cursor, int baseDepth, const DecodeOptions& opt
 
         // Regular object
         auto [key, value] = decodeKeyValuePair(firstLine, cursor, baseDepth, options);
-        obj[key] = std::make_shared<Value>(value);
+        obj[key] = value;
     }
     else {
         return obj;
@@ -735,7 +735,7 @@ Value decodeListItem(LineCursor& cursor, int baseDepth, const DecodeOptions& opt
 
         if (line->depth == baseDepth) {
             auto [key, value] = decodeKeyValuePair(*line, cursor, baseDepth, options);
-            obj[key] = std::make_shared<Value>(value);
+            obj[key] = value;
         }
         else {
             // Different depth - stop object parsing
@@ -759,7 +759,7 @@ Array decodeList(LineCursor& cursor, int baseDepth, const DecodeOptions& options
         if (line->depth == baseDepth) {
             // List item
             Value item = decodeListItem(cursor, baseDepth, options);
-            array.push_back(std::make_shared<Value>(item));
+            array.push_back(item);
         } else {
             // Different depth - stop list parsing
             break;
@@ -787,11 +787,11 @@ Array decodeTabularArray(LineCursor& cursor, int baseDepth, const DecodeOptions&
             // Convert to object
             Object obj;
             for (size_t i = 0; i < fields.size() && i < values.size(); ++i) {
-                obj[fields[i]] = std::make_shared<Value>(parsePrimitiveToken(values[i]));
+                obj[fields[i]] = parsePrimitiveToken(values[i]);
             }
 
             // Add to array
-            array.push_back(std::make_shared<Value>(obj));
+            array.push_back(obj);
 
             // Advance cursor to next line
             cursor.advance();
@@ -991,20 +991,20 @@ std::string encodeAndJoinPrimitives(const std::vector<Primitive>& primitives, De
 }
 
 bool isArrayOfPrimitives(const Array& array) {
-    return std::all_of(array.begin(), array.end(), [](const std::shared_ptr<Value>& value) {
-        return value->isPrimitive();
+    return std::all_of(array.begin(), array.end(), [](const Value& value) {
+        return value.isPrimitive();
     });
 }
 
 bool isArrayOfObjects(const Array& array) {
-    return std::all_of(array.begin(), array.end(), [](const std::shared_ptr<Value>& value) {
-        return value->isObject();
+    return std::all_of(array.begin(), array.end(), [](const Value& value) {
+        return value.isObject();
     });
 }
 
 bool isArrayOfArrays(const Array& array) {
-    return std::all_of(array.begin(), array.end(), [](const std::shared_ptr<Value>& value) {
-        return value->isArray();
+    return std::all_of(array.begin(), array.end(), [](const Value& value) {
+        return value.isArray();
     });
 }
 
@@ -1013,17 +1013,17 @@ bool collectUniformObjectFields(const Array& array, std::vector<std::string>& fi
         return true;
     }
 
-    const Object& firstObj = array.front()->asObject();
+    const Object& firstObj = array.front().asObject();
     fields.reserve(firstObj.size());
     for (const auto& [field, value] : firstObj) {
-        if (!value->isPrimitive()) {
+        if (!value.isPrimitive()) {
             return false;
         }
         fields.push_back(field);
     }
 
     for (size_t i = 1; i < array.size(); ++i) {
-        const Object& obj = array[i]->asObject();
+        const Object& obj = array[i].asObject();
         if (obj.size() != fields.size()) {
             return false;
         }
@@ -1033,7 +1033,7 @@ bool collectUniformObjectFields(const Array& array, std::vector<std::string>& fi
             if (it == obj.end()) {
                 return false;
             }
-            if (!it->second->isPrimitive()) {
+            if (!it->second.isPrimitive()) {
                 return false;
             }
         }
@@ -1095,8 +1095,8 @@ std::string encodeNonUniformArrayOfObjects(const std::optional<std::string>& key
         const auto& item = array[index];
         oss << itemIndent << LIST_ITEM_MARKER;
 
-        if (item->isObject()) {
-            const Object& obj = item->asObject();
+        if (item.isObject()) {
+            const Object& obj = item.asObject();
             bool firstField = true;
             for (const auto& [field, fieldValue] : obj) {
                 if (!firstField) {
@@ -1106,7 +1106,7 @@ std::string encodeNonUniformArrayOfObjects(const std::optional<std::string>& key
                     // one indent after hyphen
                     oss << std::string(options.indent - 1, SPACE);
                 }
-                oss << encodeValue(field, *fieldValue, options, depth + 2);
+                oss << encodeValue(field, fieldValue, options, depth + 2);
                 firstField = false;
             }
             if (firstField) {
@@ -1129,7 +1129,7 @@ std::string encodeArrayOfPrimitives(const std::optional<std::string>& key, const
     std::vector<Primitive> primitives;
     primitives.reserve(array.size());
     for (const auto& value : array) {
-        primitives.push_back(value->asPrimitive());
+        primitives.push_back(value.asPrimitive());
     }
 
     oss << SPACE << encodeAndJoinPrimitives(primitives, options.delimiter);
@@ -1179,9 +1179,9 @@ std::string encodeValue(const std::optional<std::string>& key, const Value& valu
             }
             oss << std::string((depth + 1) * options.indent, SPACE)
                 << LIST_ITEM_MARKER;
-            if (!item->isObject() || !item->asObject().empty()) {
+            if (!item.isObject() || !item.asObject().empty()) {
                 oss << std::string(options.indent - 1, SPACE)
-                    << encodeValue(std::nullopt, *item, options, depth + 1);
+                    << encodeValue(std::nullopt, item, options, depth + 1);
             }
             first = false;
         }
@@ -1228,7 +1228,7 @@ std::string encodeArrayOfArrays(const std::optional<std::string>& key, const Arr
         }
         oss << std::string((depth + 1) * options.indent, SPACE)
             << LIST_ITEM_MARKER << std::string(options.indent - 1, SPACE)
-            << encodeValue(std::nullopt, *item, options, depth + 1);
+            << encodeValue(std::nullopt, item, options, depth + 1);
         first = false;
     }
 
@@ -1257,17 +1257,17 @@ std::string encodeArrayOfObjects(const std::optional<std::string>& key, const Ar
 
     bool first = true;
     for (const auto& item : array) {
-        if (!item->isObject()) {
+        if (!item.isObject()) {
             continue;
         }
 
-        const Object& obj = item->asObject();
+        const Object& obj = item.asObject();
         std::vector<Primitive> values;
         values.reserve(fields.size());
         for (const auto& field : fields) {
             const auto it = obj.find(field);
-            if (it != obj.end() && it->second->isPrimitive()) {
-                values.push_back(it->second->asPrimitive());
+            if (it != obj.end() && it->second.isPrimitive()) {
+                values.push_back(it->second.asPrimitive());
             } else {
                 values.push_back(nullptr);
             }
@@ -1294,7 +1294,7 @@ std::string encodeObject(const Object& obj, const EncodeOptions& options, int de
             oss << NEWLINE
                 << indent;
         }
-        oss << encodeValue(key, *value, options, depth);
+        oss << encodeValue(key, value, options, depth);
         first = false;
     }
 

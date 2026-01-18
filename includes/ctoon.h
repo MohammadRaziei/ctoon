@@ -23,8 +23,8 @@ Type stringToType(const std::string & name);
 struct Value;
 
 // TOON value types
-using Object = tsl::ordered_map<std::string, std::shared_ptr<Value>>;
-using Array = std::vector<std::shared_ptr<Value>>;
+using Object = tsl::ordered_map<std::string, Value>;
+using Array = std::vector<Value>;
 
 struct Primitive: std::variant<std::string, double, int64_t, bool, std::nullptr_t> {
     using Base = std::variant<std::string, double, int64_t, bool, std::nullptr_t>;
