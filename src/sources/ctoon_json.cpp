@@ -16,7 +16,7 @@ namespace ctoon {
 static Value parseYyjson(yyjson_val *val) {
     if (yyjson_is_null(val)) return Value(nullptr);
     if (yyjson_is_bool(val)) return Value(yyjson_get_bool(val));
-    if (yyjson_is_int(val)) return Value(yyjson_get_int(val));
+    if (yyjson_is_int(val)) return Value(yyjson_get_sint(val));
     if (yyjson_is_num(val))  return Value(yyjson_get_real(val));
     if (yyjson_is_str(val)) return Value(yyjson_get_str(val));
 

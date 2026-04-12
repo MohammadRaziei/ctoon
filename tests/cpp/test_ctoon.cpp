@@ -235,6 +235,6 @@ TEST_CASE("Toon options customize formatting supports alternate delimiters") {
     options.indent = 4;
     
     auto toon = ctoon::dumpsToon(ctoon::Value(obj), options);
-    CHECK(toon.find("tags[2]: red|blue") != std::string::npos);
+    CHECK(toon.find("tags[2|]: red|blue") != std::string::npos);
     CHECK(toon.find("name: Alice") != std::string::npos);
 }

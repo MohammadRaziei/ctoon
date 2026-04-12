@@ -46,9 +46,8 @@ target_compile_definitions(ctoon PUBLIC
 
 # Compiler options
 target_compile_options(ctoon PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /EHsc>
+    $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
 
 
@@ -82,6 +81,9 @@ if(CTOON_BUILD_TESTS)
     add_executable(ctoon_tests tests/cpp/test_ctoon.cpp)
     target_include_directories(ctoon_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests/cpp)
     target_link_libraries(ctoon_tests PRIVATE ctoon)
+    target_compile_options(ctoon_tests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/EHsc>
+    )
     add_test(NAME ctoon_tests COMMAND ctoon_tests)
     set_tests_properties(ctoon_tests PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
 endif()

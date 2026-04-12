@@ -60,7 +60,7 @@ struct Value {
     Value(const Primitive& p) : value(p) {}
     Value(const Object& o) : value(o) {}
     Value(const Array& a) : value(a) {}
-    
+
     // Type checking
     bool isPrimitive() const { return std::holds_alternative<Primitive>(value); }
     bool isObject() const { return std::holds_alternative<Object>(value); }
@@ -90,7 +90,7 @@ struct EncodeOptions {
 
     EncodeOptions() = default;
     EncodeOptions(int indent) : indent(std::max(0, indent)) {}
-    
+
     // Builder pattern methods
     EncodeOptions& setIndent(int indent) { this->indent = std::max(0, indent); return *this; }
     EncodeOptions& setDelimiter(Delimiter delimiter) { this->delimiter = delimiter; return *this; }
@@ -99,12 +99,14 @@ struct EncodeOptions {
 
 struct DecodeOptions {
     bool strict = true;
+    int indent = 2;
 
     DecodeOptions() = default;
     DecodeOptions(bool strict) : strict(strict) {}
 
     // Builder pattern methods
     DecodeOptions& setStrict(bool strict) { this->strict = strict; return *this; }
+    DecodeOptions& setIndent(int indent) { this->indent = std::max(0, indent); return *this; }
 };
 
 // Utility functions

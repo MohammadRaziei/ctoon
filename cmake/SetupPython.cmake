@@ -1,9 +1,9 @@
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
 if(DEFINED SKBUILD)
     set(PYTHON_PROJECT_NAME "${SKBUILD_PROJECT_NAME}")
 elseif(BUILD_PYTHON)
     set(PYTHON_PROJECT_NAME "${CMAKE_BINARY_DIR}")
+
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     if(NOT PYTHON_REQUIREMENT_INSTALLED)
         execute_process(

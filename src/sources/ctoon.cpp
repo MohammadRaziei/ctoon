@@ -138,7 +138,7 @@ Value load(const std::string& filename) {
     if (extension == ".json") {
         return loadJson(filename);
     } else if (extension == ".toon") {
-        return loadToon(filename);
+        return decodeFromFile(filename);
     } else {
         throw std::runtime_error("Unsupported file format: " + extension + 
                                ". Supported formats: .json, .toon");
@@ -157,7 +157,7 @@ void dump(const Value& value, const std::string& filename) {
     if (extension == ".json") {
         dumpJson(value, filename);
     } else if (extension == ".toon") {
-        dumpToon(value, filename);
+        encodeToFile(value, filename);
     } else {
         throw std::runtime_error("Unsupported file format: " + extension + 
                                ". Supported formats: .json, .toon");
@@ -169,7 +169,7 @@ Value loads(const std::string& content, Type type) {
         case Type::JSON:
             return loadsJson(content);
         case Type::TOON:
-            return loadsToon(content);
+            return decode(content);
         default:
             throw std::runtime_error("Unsupported format type");
     }
@@ -180,7 +180,7 @@ std::string dumps(const Value& value, Type format, int indent) {
         case Type::JSON:
             return dumpsJson(value, indent);
         case Type::TOON:
-            return dumpsToon(value, EncodeOptions(indent));
+            return encode(value, EncodeOptions(indent));
         default:
             throw std::runtime_error("Unsupported format type");
     }

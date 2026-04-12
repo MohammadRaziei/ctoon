@@ -5,5 +5,5 @@ order:
     name: John Doe
     email: john@example.com
   items[2]{product,quantity,price}:
-    Book,2,15.0
+    Book,2,15
     Pen,5,2.5
