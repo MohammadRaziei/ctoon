@@ -1,303 +1,215 @@
-# CTOON - C++ TOON Format Library
-<img src="docs/images/ctoon.png" width=200 />
+# CToon
 
-A modern C++ serialization library for the TOON format that provides bidirectional conversion between JSON and TOON formats.
+<div align="center">
+<img src="docs/images/ctoon.png" width="160" alt="CToon Logo">
+</div>
 
-## Features
+<div align="center">
 
-- **Bidirectional Serialization**: Convert JSON to TOON and vice versa
-- **Data Type Support**: Strings, numbers, booleans, null, arrays, and objects
-- **Configurable Formatting**: Multiple delimiters (comma, tab, pipe) and indentation sizes
-- **File Processing**: Direct reading and writing from/to files
-- **CLI Tool**: Command-line utility for file conversion
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+[![CMake](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
 
-## Installation & Compilation
+</div>
 
-```bash
-mkdir build && cd build
-cmake ..
-make -j4
-```
+CToon is a high-performance C++ serialization library that provides fast, bidirectional conversion between JSON and TOON formats. It features a modern API, configurable output formatting, and Python bindings through nanobind.
 
-## Core API
+## ✨ Features
 
-### Encode Functions (Convert to TOON)
+### Core Library
+- **JSON & TOON support** – Full bidirectional serialization for both formats
+- **Modern C++17 API** – Type-safe interface with RAII semantics
+- **Flexible formatting** – Configurable indentation, delimiters, and encoding options
+- **CLI tool** – Command-line utility for batch conversion and processing
+- **Cross-platform** – Works on Windows, Linux, and macOS
+- **Python bindings** – Full Python API via nanobind integration
 
-#### `std::string encode(const Value& value, const EncodeOptions& options)`
-Convert a value to TOON string.
+### Command-Line Interface
+- **Format conversion** – Convert between JSON and TOON
+- **Batch processing** – Process multiple files at once
+- **Configurable output** – Control indentation and delimiter choices
 
-```cpp
-#include "ctoon.h"
+## 🚀 Quick Start
 
-ctoon::Object obj;
-obj["name"] = ctoon::Value("Ali");
-obj["age"] = ctoon::Value(25);
-
-ctoon::EncodeOptions options;
-options.indent = 2;
-options.delimiter = ctoon::Delimiter::Comma;
-
-std::string toon = ctoon::encode(ctoon::Value(obj), options);
-// Output: name: Ali\nage: 25
-```
-
-#### `std::string dumpsToon(const Value& value, const EncodeOptions& options)`
-Legacy function for compatibility - similar to `encode`.
-
-#### `void encodeToFile(const Value& value, const std::string& filename, const EncodeOptions& options)`
-Save value directly to TOON file.
-
-```cpp
-ctoon::encodeToFile(value, "output.toon", options);
-```
-
-#### `void dumpToon(const Value& value, const std::string& filename, const EncodeOptions& options)`
-Legacy function for compatibility - similar to `encodeToFile`.
-
-### Decode Functions (Convert from TOON)
-
-#### `Value decode(const std::string& input, const DecodeOptions& options)`
-Convert TOON string to data structure.
+### C++ Usage
 
 ```cpp
 #include "ctoon.h"
 
-std::string toonText = "name: Ali\nage: 25";
+int main() {
+    // Create data
+    ctoon::Object user;
+    user["name"] = ctoon::Value("Ali");
+    user["age"] = ctoon::Value(30);
+    user["active"] = ctoon::Value(true);
 
-ctoon::DecodeOptions options;
-options.strict = true;
+    ctoon::Array tags;
+    tags.push_back(ctoon::Value("developer"));
+    tags.push_back(ctoon::Value("C++"));
+    user["tags"] = ctoon::Value(tags);
 
-ctoon::Value value = ctoon::decode(toonText, options);
-const auto& obj = value.asObject();
-std::string name = obj.at("name").asPrimitive().getString();
-// name = "Ali"
-```
+    // Encode to JSON
+    std::string json = ctoon::dumpsJson(ctoon::Value(user), 2);
+    std::cout << json << std::endl;
 
-#### `Value decode(const std::string& input, bool strict)`
-Simplified version of decode function.
+    // Encode to TOON
+    ctoon::EncodeOptions options;
+    options.indent = 2;
+    std::string toon = ctoon::encode(ctoon::Value(user), options);
+    std::cout << toon << std::endl;
 
-#### `Value loadsToon(const std::string& toonString, bool strict)`
-Legacy function for compatibility - similar to `decode`.
-
-#### `Value loadToon(const std::string& filename, bool strict)`
-Read directly from TOON file and return text content.
-
-```cpp
-ctoon::Value toonContent = ctoon::loadToon("input.toon", true);
-std::string toonText = toonContent.asPrimitive().getString();
-```
-
-#### `Value decodeFromFile(const std::string& filename, bool strict)`
-Read from file and parse into data structure.
-
-```cpp
-ctoon::Value parsedData = ctoon::decodeFromFile("input.toon", true);
-```
-
-## Encode Options
-
-```cpp
-struct EncodeOptions {
-    int indent = 2;                    // Indentation size
-    Delimiter delimiter = Delimiter::Comma;  // Array delimiter
-};
-```
-
-### Delimiter Types
-
-```cpp
-enum class Delimiter {
-    Comma = ',',    // Comma separator
-    Tab = '\t',     // Tab separator  
-    Pipe = '|'      // Pipe separator
-};
-```
-
-## Decode Options
-
-```cpp
-struct DecodeOptions {
-    bool strict = true;  // Strict mode for parsing
-};
-```
-
-## Usage Examples
-
-### Example 1: Basic Conversion
-
-```cpp
-#include "ctoon.h"
-
-// Create data
-ctoon::Object data;
-data["name"] = ctoon::Value("Mohammad");
-data["age"] = ctoon::Value(30);
-data["active"] = ctoon::Value(true);
-
-ctoon::Array tags;
-tags.push_back(ctoon::Value("programming"));
-tags.push_back(ctoon::Value("C++"));
-tags.push_back(ctoon::Value("serialization"));
-data["tags"] = ctoon::Value(tags);
-
-// Convert to TOON
-ctoon::EncodeOptions options;
-options.indent = 2;
-std::string toon = ctoon::encode(ctoon::Value(data), options);
-
-std::cout << "TOON Output:\n" << toon << std::endl;
-```
-
-Output:
-```
-name: Mohammad
-age: 30
-active: true
-tags[3]: programming,C++,serialization
-```
-
-### Example 2: Array of Objects
-
-```cpp
-ctoon::Object root;
-ctoon::Array users;
-
-// First user
-ctoon::Object user1;
-user1["id"] = ctoon::Value(1);
-user1["name"] = ctoon::Value("Sara");
-user1["role"] = ctoon::Value("admin");
-users.push_back(ctoon::Value(user1));
-
-// Second user  
-ctoon::Object user2;
-user2["id"] = ctoon::Value(2);
-user2["name"] = ctoon::Value("Reza");
-user2["role"] = ctoon::Value("user");
-users.push_back(ctoon::Value(user2));
-
-root["users"] = ctoon::Value(users);
-
-// Convert with tab delimiter
-ctoon::EncodeOptions options;
-options.delimiter = ctoon::Delimiter::Tab;
-std::string toon = ctoon::encode(ctoon::Value(root), options);
-```
-
-Output:
-```
-users[2]{id	name	role}:
-  1	Sara	admin
-  2	Reza	user
-```
-
-### Example 3: Reading and Parsing
-
-```cpp
-// Read from file
-ctoon::Value parsed = ctoon::decodeFromFile("data.toon", true);
-
-if (parsed.isObject()) {
-    const auto& obj = parsed.asObject();
+    // Decode from JSON
+    std::string input = R"({"name": "Ali", "age": 30})";
+    ctoon::Value parsed = ctoon::loadsJson(input);
     
-    if (obj.find("users") != obj.end() && obj.at("users").isArray()) {
-        const auto& users = obj.at("users").asArray();
-        
-        for (const auto& user : users) {
-            if (user.isObject()) {
-                const auto& userObj = user.asObject();
-                std::string name = userObj.at("name").asPrimitive().getString();
-                int age = userObj.at("age").asPrimitive().getInt();
-                std::cout << "User: " << name << ", Age: " << age << std::endl;
-            }
-        }
-    }
+    return 0;
 }
 ```
 
-### Example 4: CLI Usage
+### Command-Line Usage
 
 ```bash
 # Convert JSON to TOON
-./ctoon input.json -o output.toon
+ctoon input.json -o output.toon
 
 # Convert TOON to JSON
-./ctoon input.toon -t json -o output.json
+ctoon input.toon -t json -o output.json
 
 # Convert with 4-space indentation
-./ctoon input.toon -t json -i 4
+ctoon input.toon -t json -i 4
 
 # Convert with pipe delimiter
-./ctoon input.json --delimiter "|" -o output.toon
+ctoon input.json --delimiter "|" -o output.toon
 ```
 
-## TOON Format Structure
+### Python Usage
 
-### Basic Format
+```python
+from ctoon import loads_json, dumps_json
 
-```
-key: value
-nested key:
-  subkey: value
-array[3]: value1,value2,value3
-object array[2]{field1,field2}:
-  value1,value2
-  value3,value4
+# Load JSON
+data = loads_json('{"name": "Ali", "age": 30}')
+
+# Dump to JSON
+json_str = dumps_json(data, indent=2)
 ```
 
-### Value Types
+## 📦 Installation
 
-- **String**: `name: "Ali"` or `name: Ali` (if quoting not needed)
-- **Number**: `age: 25` or `score: 95.5`
-- **Boolean**: `active: true` or `active: false`
-- **Null**: `value: null`
-- **Array**: `tags[3]: programming,C++,serialization`
-- **Object**: Nested with indentation
+### Building from Source
 
-### Array Formats
-
-**Primitive Arrays:**
-```
-tags[3]: red,blue,green
+```bash
+git clone https://github.com/mohammadraziei/ctoon.git
+cd ctoon
+mkdir build && cd build
+cmake .. -DCTOON_BUILD_EXAMPLES=ON -DCTOON_BUILD_TESTS=ON
+make -j4
 ```
 
-**Object Arrays (Tabular):**
-```
-users[2]{id,name,role}:
-  1,Alice,admin
-  2,Bob,user
+### With Python Bindings
+
+```bash
+pip install .
 ```
 
-**Object Arrays (Nested):**
-```
-users[2]:
-  id: 1
-  name: Alice
-  role: admin
-  id: 2
-  name: Bob  
-  role: user
+Or with scikit-build:
+
+```bash
+pip install scikit-build-core nanobind
+pip install . -v
 ```
 
-## Testing
+## 🔧 Build Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `CTOON_BUILD_EXAMPLES` | Build example programs | `ON` |
+| `CTOON_BUILD_TESTS` | Build unit tests | `ON` |
+| `CTOON_BUILD_PYTHON` | Build Python bindings | `ON` |
+| `CTOON_BUILD_DOCS` | Build documentation with Doxygen | `OFF` |
+
+## 📚 API Overview
+
+### Core Types
+
+#### `Value`
+- `isPrimitive()` / `isObject()` / `isArray()` – Type checking
+- `asPrimitive()` / `asObject()` / `asArray()` – Type-specific access
+
+#### `Primitive`
+- `isString()` / `isInt()` / `isDouble()` / `isBool()` / `isNull()` – Type checking
+- `getString()` / `getInt()` / `getDouble()` / `getBool()` – Type-safe getters
+- `asString()` – Convert to string representation
+
+### JSON Functions
+- `loadsJson()` – Parse JSON from string
+- `dumpsJson()` – Serialize to JSON string
+- `loadJson()` – Load JSON from file
+- `dumpJson()` – Save to JSON file
+
+### TOON Functions
+- `encode()` – Encode value to TOON string
+- `decode()` – Decode TOON string to value
+- `encodeToFile()` – Encode and save to file
+- `decodeFromFile()` – Load and decode from file
+
+### Version Information
+- `ctoon::Version::major()` – Major version number
+- `ctoon::Version::minor()` – Minor version number
+- `ctoon::Version::patch()` – Patch version number
+- `ctoon::Version::string()` – Version string (e.g., "0.1.0")
+- `ctoon::Version::isAtLeast(major, minor, patch)` – Version comparison
+
+## 🧪 Testing
 
 Run the test suite:
 
 ```bash
-cd build && ./ctoon_tests
+cd build && ctest --output-on-failure
 ```
 
-Run examples:
+Or run tests directly:
 
 ```bash
-cd build && ./example_basic
-cd build && ./example_tabular
+cd build && ./tests/cpp/test_ctoon_cpp
 ```
 
-## Python Integration
+## 🎯 Use Cases
 
-The project includes a Python implementation in the `toon-python/` directory with the same API design for cross-language compatibility.
+1. **Configuration files** – Store app settings in TOON format
+2. **Data exchange** – Fast JSON/TOON serialization for APIs
+3. **Data processing** – Efficient parsing of structured data
+4. **CLI tools** – Quick format conversion for data pipelines
+5. **Python integration** – Use C++ performance from Python code
 
-## License
+## 📖 Documentation
 
-MIT License - See LICENSE file for details.
+- **API Reference**: Built with Doxygen (enable with `-DCTOON_BUILD_DOCS=ON`)
+- **Examples**: See `examples/` directory
+- **Test coverage**: `cmake --build build --target ctoon_coverage`
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+CToon is distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+## 📞 Support
+
+- **GitHub Issues**: https://github.com/mohammadraziei/ctoon/issues
+- **Documentation**: https://mohammadraziei.github.io/ctoon
+
+---
+
+<div align="center">
+<em>CToon – Fast, flexible serialization for JSON and TOON formats</em>
+</div>
