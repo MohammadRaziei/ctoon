@@ -48,6 +48,7 @@ Documentation = "https://mohammadraziei.github.io/ctoon"
 
 
 [tool.scikit-build.cmake]
+verbose = true
 args = ["-DCMAKE_BUILD_TYPE=Release", "--no-warn-unused-cli"]
 build-type = "Release"
 define.CMAKE_BUILD_PARALLEL_LEVEL = "8"
@@ -66,10 +67,6 @@ regex = '''(?sx)
 \#define \s+ CTOON_VERSION_PATCH \s+ (?P<patch>\d+) .*?
 '''
 result = "{major}.{minor}.{patch}"
-
-
-[tool.scikit-build]
-cmake.verbose = true
 
 
 [tool.cibuildwheel]
