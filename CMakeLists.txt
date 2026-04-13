@@ -9,7 +9,7 @@ extract_version_string(
     OUTPUT_VAR PROJECT_VERSION
 )
 
-project(CToon LANGUAGES CXX VERSION ${PROJECT_VERSION})
+project(CToon LANGUAGES CXX C VERSION ${PROJECT_VERSION})
 message(STATUS "Project: ${PROJECT_NAME}@v${PROJECT_VERSION}")
 include(Startup)
 
@@ -45,7 +45,8 @@ target_include_directories(ctoon
 )
 
 target_compile_definitions(ctoon PUBLIC
-    CTOON_VERSION=${PROJECT_VERSION}
+    # CTOON_VERSION is defined in header, use CTOON_VERSION_NUMBER for CMake
+    CTOON_VERSION_NUMBER=${PROJECT_VERSION}
 )
 
 # Compiler options
