@@ -21,19 +21,40 @@
 
 namespace ctoon {
 
-// Version information
-constexpr int versionMajor = CTOON_VERSION_MAJOR;
-constexpr int versionMinor = CTOON_VERSION_MINOR;
-constexpr int versionPatch = CTOON_VERSION_PATCH;
-constexpr int version = CTOON_VERSION;
-constexpr const char* versionString = CTOON_VERSION_STRING;
-
-// Version helper functions
-inline int getVersionMajor() { return versionMajor; }
-inline int getVersionMinor() { return versionMinor; }
-inline int getVersionPatch() { return versionPatch; }
-inline int getVersion() { return version; }
-inline const char* getVersionString() { return versionString; }
+// Version class with static methods for version information
+class Version {
+public:
+    // Get major version number
+    static constexpr int major() noexcept { return CTOON_VERSION_MAJOR; }
+    
+    // Get minor version number
+    static constexpr int minor() noexcept { return CTOON_VERSION_MINOR; }
+    
+    // Get patch version number
+    static constexpr int patch() noexcept { return CTOON_VERSION_PATCH; }
+    
+    // Get encoded version number (major * 10000 + minor * 100 + patch)
+    static constexpr int encoded() noexcept { return CTOON_VERSION; }
+    
+    // Get version string (e.g., "0.1.0")
+    static std::string string() noexcept { return CTOON_VERSION_STRING; }
+    
+    // Check if version is at least the specified version
+    static constexpr bool isAtLeast(int major, int minor = 0, int patch = 0) noexcept {
+        return encoded() >= CTOON_VERSION_ENCODE(major, minor, patch);
+    }
+    
+    // Compare with another version
+    static constexpr int compare(int otherMajor, int otherMinor = 0, int otherPatch = 0) noexcept {
+        int otherEncoded = CTOON_VERSION_ENCODE(otherMajor, otherMinor, otherPatch);
+        return (encoded() > otherEncoded) ? 1 : (encoded() < otherEncoded) ? -1 : 0;
+    }
+    
+    // Check if this version equals another
+    static constexpr bool equals(int otherMajor, int otherMinor = 0, int otherPatch = 0) noexcept {
+        return encoded() == CTOON_VERSION_ENCODE(otherMajor, otherMinor, otherPatch);
+    }
+};
 
 // Format types enum
 enum class Type {
