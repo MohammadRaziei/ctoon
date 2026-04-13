@@ -1,62 +1,81 @@
 [build-system]
-requires = ["scikit-build-core>=0.3.3", "nanobind==1.4.0"]
-# requires = ["scikit-build-core==0.4.6", "nanobind==1.4.0"]
+requires = [
+    "scikit-build-core>=0.8.0",
+    "nanobind>=2.0.0"
+]
 build-backend = "scikit_build_core.build"
 
 
 [project]
 name = "ctoon"
-version = "0.1.0"
-description = ""
+dynamic = ["version"]
+description = "A C++ TOON/JSON serialization library with Python bindings"
 readme = "README.md"
-authors = [
-  { name = "Mohammad Raziei", email = "mohammadraziei1375@gmail.com" },
-]
 requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Mohammad Raziei", email = "mohammadraziei1375@gmail.com"}
+]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
-  "Programming Language :: C++",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
 ]
+scripts.ctoon = "ctoon.__main__:main"
+scripts.ctoon-cli = "ctoon.native_cli:run"
+
 
 [project.optional-dependencies]
 test = ["pytest-xdist"]
 
 
 [project.urls]
-"Homepage" = "https://github.com/mohammadraziei/ctoon"
+Homepage = "https://github.com/mohammadraziei/ctoon"
+Repository = "https://github.com/mohammadraziei/ctoon"
+Documentation = "https://mohammadraziei.github.io/ctoon"
 "Bug Tracker" = "https://github.com/mohammadraziei/ctoon/issues"
-"Document" = "https://mohammadraziei.github.io/ctoon/latest"
+
+
+[tool.scikit-build.cmake]
+args = ["-DCMAKE_BUILD_TYPE=Release", "--no-warn-unused-cli"]
+build-type = "Release"
+define.CMAKE_BUILD_PARALLEL_LEVEL = "8"
+define.CTOON_BUILD_PYTHON = "ON"
+define.CTOON_BUILD_TESTS = "OFF"
+define.CTOON_BUILD_DOCS = "OFF"
+define.CTOON_BUILD_EXAMPLES = "OFF"
+
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "includes/ctoon.h"
+regex = '''(?sx)
+\#define \s+ CTOON_VERSION_MAJOR \s+ (?P<major>\d+) .*?
+\#define \s+ CTOON_VERSION_MINOR \s+ (?P<minor>\d+) .*?
+\#define \s+ CTOON_VERSION_PATCH \s+ (?P<patch>\d+) .*?
+'''
+result = "{major}.{minor}.{patch}"
+
+
+[tool.scikit-build]
+cmake.verbose = true
 
 
 [tool.cibuildwheel]
 test-command = "pytest {project}"
 test-extras = ["test"]
 test-skip = ["*universal2:arm64"]
-#build-verbosity = 1
-
-
-#[tool.scikit-build.cmake.define]
-#SOME_DEFINE = "ON"
-#
-#[tool.scikit-build]
-#cmake.args = ["-DSOME_DEFINE=ON", "-DOTHER=OFF"]
-
-
-
-[tool.scikit-build]
-#wheel.expand-macos-universal-tags = true
-cmake.verbose = true
 
 
 [tool.pytest.ini_options]
@@ -69,12 +88,13 @@ filterwarnings = [
 ]
 testpaths = ["tests/python"]
 
+
 [tool.ruff]
 target-version = "py38"
 src = ["src"]
 
 
-# [tool.ruff.lint]
+[tool.ruff.lint]
 select = [
    "E", "F", "W", # flake8
    "B",           # flake8-bugbear
@@ -110,6 +130,7 @@ unfixable = [
 flake8-unused-arguments.ignore-variadic-names = true
 isort.required-imports = ["from __future__ import annotations"]
 exclude = ["third_party"]
+
 
 [tool.ruff.per-file-ignores]
 "tests/**" = ["F841", "ARG001", "PT004"]

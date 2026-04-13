@@ -18,6 +18,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Include optimization flags
+include(Optimize)
+
 # Project options
 option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
@@ -51,10 +54,16 @@ target_compile_options(ctoon PRIVATE
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic>
 )
 
+# Apply optimization flags
+apply_optimization_flags(ctoon)
+
 # Add CLI executable
 add_executable(ctoon_cli src/sources/cli.cpp)
 target_link_libraries(ctoon_cli PRIVATE ctoon::ctoon)
 set_target_properties(ctoon_cli PROPERTIES OUTPUT_NAME ctoon)
+
+# Apply optimization flags to CLI
+apply_optimization_flags(ctoon_cli)
 
 if(CTOON_BUILD_PYTHON OR DEFINED SKBUILD)
     add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/python)
@@ -80,3 +89,6 @@ endif()
 
 # Installation
 install(DIRECTORY includes DESTINATION include)
+
+# Print optimization summary
+print_optimization_summary()
