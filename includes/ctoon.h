@@ -1,5 +1,16 @@
 #pragma once
 
+#define CTOON_VERSION_MAJOR 0
+#define CTOON_VERSION_MINOR 1
+#define CTOON_VERSION_PATCH 0
+
+#define CTOON_VERSION_ENCODE(major, minor, patch) (((major) * 10000) + ((minor) * 100) + ((patch) * 1))
+#define CTOON_VERSION CTOON_VERSION_ENCODE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
+
+#define CTOON_VERSION_XSTRINGIZE(major, minor, patch) #major"."#minor"."#patch
+#define CTOON_VERSION_STRINGIZE(major, minor, patch) CTOON_VERSION_XSTRINGIZE(major, minor, patch)
+#define CTOON_VERSION_STRING CTOON_VERSION_STRINGIZE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
+
 #include <string>
 #include <variant>
 #include <vector>
@@ -9,6 +20,20 @@
 #include "ordered_map.h"
 
 namespace ctoon {
+
+// Version information
+constexpr int versionMajor = CTOON_VERSION_MAJOR;
+constexpr int versionMinor = CTOON_VERSION_MINOR;
+constexpr int versionPatch = CTOON_VERSION_PATCH;
+constexpr int version = CTOON_VERSION;
+constexpr const char* versionString = CTOON_VERSION_STRING;
+
+// Version helper functions
+inline int getVersionMajor() { return versionMajor; }
+inline int getVersionMinor() { return versionMinor; }
+inline int getVersionPatch() { return versionPatch; }
+inline int getVersion() { return version; }
+inline const char* getVersionString() { return versionString; }
 
 // Format types enum
 enum class Type {
