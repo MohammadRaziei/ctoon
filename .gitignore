@@ -153,3 +153,5 @@ htmlcov/
 # Distribution / packaging
 dist/
 *.egg-info/
+
+.qwen/
