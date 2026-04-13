@@ -1,0 +1,98 @@
+/* Custom CSS for genhtml coverage reports */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.header p {
+    opacity: 0.9;
+}
+
+table.coverage {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 2rem;
+}
+
+table.coverage th,
+table.coverage td {
+    padding: 0.75rem;
+    border: 1px solid #e1e4e8;
+}
+
+table.coverage th {
+    background: #f6f8fa;
+    font-weight: 600;
+}
+
+table.coverage tr:hover {
+    background: #f6f8fa;
+}
+
+.coverage-header {
+    background: #f6f8fa !important;
+}
+
+.coverage-yes {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.coverage-no {
+    color: #d73a49;
+    font-weight: 600;
+}
+
+.legend {
+    display: flex;
+    gap: 2rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f6f8fa;
+    border-radius: 6px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.legend-color.covered {
+    background: #28a745;
+}
+
+.legend-color.uncovered {
+    background: #d73a49;
+}
+
+.legend-color.partial {
+    background: linear-gradient(90deg, #28a745 50%, #d73a49 50%);
+}
+
+.footer {
+    margin-top: 2rem;
+    padding: 1rem;
+    border-top: 1px solid #e1e4e8;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
