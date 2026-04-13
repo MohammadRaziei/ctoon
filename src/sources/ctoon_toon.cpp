@@ -279,12 +279,12 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
     trimmed.erase(0, trimmed.find_first_not_of(" \t"));
     
     // Find the bracket segment
-    int bracketStart = -1;
+    int64_t bracketStart = -1l;
     
     // For quoted keys, find bracket after closing quote
     if (trimmed[0] == DOUBLE_QUOTE) {
-        int closingQuoteIndex = findClosingQuote(trimmed, 0);
-        if (closingQuoteIndex == -1) {
+        int64_t closingQuoteIndex = findClosingQuote(trimmed, 0);
+        if (closingQuoteIndex == -1l) {
             return std::nullopt;
         }
         
@@ -301,31 +301,31 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
         bracketStart = content.find(OPEN_BRACKET);
     }
     
-    if (bracketStart == -1) {
+    if (bracketStart == -1l) {
         return std::nullopt;
     }
     
-    int bracketEnd = content.find(CLOSE_BRACKET, bracketStart);
-    if (bracketEnd == -1) {
+    size_t bracketEnd = content.find(CLOSE_BRACKET, bracketStart);
+    if (bracketEnd == -1l) {
         return std::nullopt;
     }
     
     // Find colon after brackets and braces
-    int colonIndex = bracketEnd + 1;
-    int braceEnd = colonIndex;
-    
+    size_t colonIndex = bracketEnd + 1;
+    size_t braceEnd = colonIndex;
+
     // Check for fields segment
-    int braceStart = content.find(OPEN_BRACE, bracketEnd);
-    if (braceStart != -1 && braceStart < content.find(COLON, bracketEnd)) {
-        int foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
-        if (foundBraceEnd != -1) {
+    size_t braceStart = content.find(OPEN_BRACE, bracketEnd);
+    if (braceStart != std::string::npos && braceStart < content.find(COLON, bracketEnd)) {
+        size_t foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
+        if (foundBraceEnd != std::string::npos) {
             braceEnd = foundBraceEnd + 1;
         }
     }
-    
+
     // Find colon after brackets and braces
-    colonIndex = content.find(COLON, std::max(bracketEnd, braceEnd));
-    if (colonIndex == -1) {
+    colonIndex = content.find(COLON, (bracketEnd < braceEnd ? bracketEnd : braceEnd));
+    if (colonIndex == -1l) {
         return std::nullopt;
     }
     
@@ -384,9 +384,9 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
     
     // Check for fields segment
     std::optional<std::vector<std::string>> fields;
-    if (braceStart != -1 && braceStart < colonIndex) {
-        int foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
-        if (foundBraceEnd != -1 && foundBraceEnd < colonIndex) {
+    if (braceStart != std::string::npos && braceStart < colonIndex) {
+        int64_t foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
+        if (foundBraceEnd != -1l && foundBraceEnd < colonIndex) {
             std::string fieldsContent = content.substr(braceStart + 1, foundBraceEnd - braceStart - 1);
             // Parse delimited fields
             std::vector<std::string> fieldList;
@@ -447,7 +447,7 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
     return ArrayHeaderInfo{key, length, delimiter, fields, hasLengthMarker, afterColon};
 }
 
-std::vector<std::string> parseDelimitedValues(const std::string& input, Delimiter delimiter) {
+[[maybe_unused]] std::vector<std::string> parseDelimitedValues(const std::string& input, Delimiter delimiter) {
     std::vector<std::string> values;
     std::string current;
     bool inQuotes = false;
@@ -507,7 +507,7 @@ Primitive parsePrimitiveToken(const std::string& token) {
         if (closingQuote == -1) {
             throw std::runtime_error("Unterminated string: missing closing quote");
         }
-        if (closingQuote != trimmed.length() - 1) {
+        if (closingQuote != (int)trimmed.length() - 1) {
             throw std::runtime_error("Unexpected characters after closing quote");
         }
         return unescapeString(trimmed.substr(1, closingQuote - 1));
@@ -541,36 +541,36 @@ Primitive parsePrimitiveToken(const std::string& token) {
 }
 
 std::pair<std::string, int> parseKeyToken(const std::string& content, int start) {
-    if (start >= content.length()) {
+    if (start >= (int)content.length()) {
         throw std::runtime_error("Unexpected end of content while parsing key");
     }
-    
+
     if (content[start] == DOUBLE_QUOTE) {
         // Quoted key
         int closingQuote = findClosingQuote(content, start);
         if (closingQuote == -1) {
             throw std::runtime_error("Unterminated quoted key");
         }
-        
+
         std::string keyContent = content.substr(start + 1, closingQuote - start - 1);
         std::string key = unescapeString(keyContent);
         int end = closingQuote + 1;
-        
+
         // Validate and skip colon
-        if (end >= content.length() || content[end] != COLON) {
+        if (end >= (int)content.length() || content[end] != COLON) {
             throw std::runtime_error("Missing colon after key");
         }
         end++;
-        
+
         return {key, end};
     } else {
         // Unquoted key
         int end = start;
-        while (end < content.length() && content[end] != COLON) {
+        while (end < (int)content.length() && content[end] != COLON) {
             end++;
         }
-        
-        if (end >= content.length() || content[end] != COLON) {
+
+        if (end >= (int)content.length() || content[end] != COLON) {
             throw std::runtime_error("Missing colon after key");
         }
         
@@ -600,7 +600,7 @@ bool isArrayHeaderWithoutKey(const std::string& content) {
     return trimmed[0] == OPEN_BRACKET && findUnquotedChar(content, COLON) != -1;
 }
 
-bool isObjectFirstFieldAfterHyphen(const std::string& content) {
+[[maybe_unused]] bool isObjectFirstFieldAfterHyphen(const std::string& content) {
     return findUnquotedChar(content, COLON) != -1;
 }
 
@@ -623,7 +623,7 @@ bool isKeyValueLine(const ParsedLine& line) {
 }
 
 // Validation functions
-void assertExpectedCount(int actual, int expected, const std::string& itemType, const DecodeOptions& options) {
+[[maybe_unused]] void assertExpectedCount(int actual, int expected, const std::string& itemType, const DecodeOptions& options) {
     if (options.strict && actual != expected) {
         throw std::runtime_error("Expected " + std::to_string(expected) + " " + itemType + ", but got " + std::to_string(actual));
     }
@@ -1338,10 +1338,12 @@ std::string encode(const Value& value, const EncodeOptions& options) {
 
 // TOON functions implementation (legacy API)
 Value loadToon(const std::string& filename, bool strict) {
+    (void)strict; // Unused for now
     return Value(readStringFromFile(filename));
 }
 
 Value loadsToon(const std::string& toonString, bool strict) {
+    (void)strict; // Unused for now
     return Value(toonString);
 }
 
