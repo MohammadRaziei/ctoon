@@ -92,3 +92,8 @@ install(DIRECTORY includes DESTINATION include)
 
 # Print optimization summary
 print_optimization_summary()
+
+# Documentation (Doxygen + Sphinx)
+if(CTOON_BUILD_DOCS)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/docs)
+endif()

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CToon Documentation</title>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-secondary: #f8f9fb;
+            --color-fg: #1e2129;
+            --color-fg-secondary: #5a5e6b;
+            --color-border: #e0e3eb;
+            --color-accent: #7c3aed;
+            --color-accent-hover: #6d28d9;
+            --color-card: #ffffff;
+            --color-card-hover: #f5f3ff;
+            --color-card-border: #e0e3eb;
+            --color-code-bg: #f5f5f5;
+            --color-icon-bg: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+            --transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] {
+            --color-bg: #181820;
+            --color-bg-secondary: #1e1e28;
+            --color-fg: #e8e6f0;
+            --color-fg-secondary: #9b97b0;
+            --color-border: #2e2e3a;
+            --color-accent: #a78bfa;
+            --color-accent-hover: #c4b5fd;
+            --color-card: #1e1e28;
+            --color-card-hover: #252532;
+            --color-card-border: #2e2e3a;
+            --color-code-bg: #252532;
+            --color-icon-bg: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+            background: var(--color-bg);
+            color: var(--color-fg);
+            min-height: 100vh;
+            transition: var(--transition);
+            line-height: 1.6;
+        }
+
+        /* ── Top bar ──────────────────────────────────────── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-bg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: var(--color-fg);
+        }
+
+        .topbar-logo {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: var(--color-icon-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+
+        .topbar-name {
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .topbar-version {
+            font-size: 0.75rem;
+            color: var(--color-fg-secondary);
+            background: var(--color-bg-secondary);
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            font-family: ui-monospace, 'Cascadia Code', monospace;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ── Theme toggle ─────────────────────────────────── */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg);
+            color: var(--color-fg);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--color-bg-secondary);
+            border-color: var(--color-accent);
+        }
+
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+            transition: var(--transition);
+        }
+
+        .theme-toggle .icon-moon { display: none; }
+        .theme-toggle .icon-sun  { display: block; }
+        [data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+        [data-theme="dark"] .theme-toggle .icon-sun  { display: none; }
+
+        /* ── Hero ─────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 4rem 1.5rem 3rem;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(135deg, var(--color-accent) 0%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--color-fg-secondary);
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        /* ── Cards grid ───────────────────────────────────── */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            max-width: 720px;
+            margin: 0 auto 4rem;
+            padding: 0 1.5rem;
+        }
+
+        .card {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: var(--color-card);
+            border: 1px solid var(--color-card-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            text-decoration: none;
+            color: var(--color-fg);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            background: var(--color-card-hover);
+            border-color: var(--color-accent);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            border-radius: 10px;
+            background: var(--color-icon-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.01em;
+        }
+
+        .card p {
+            font-size: 0.85rem;
+            color: var(--color-fg-secondary);
+            line-height: 1.5;
+        }
+
+        .card-arrow {
+            margin-left: auto;
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: var(--transition);
+            color: var(--color-accent);
+            font-size: 1.1rem;
+        }
+
+        .card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ── Quick commands ───────────────────────────────── */
+        .quick {
+            max-width: 720px;
+            margin: 0 auto 4rem;
+            padding: 0 1.5rem;
+        }
+
+        .quick h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.01em;
+        }
+
+        .quick code {
+            display: block;
+            background: var(--color-code-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--color-accent);
+            overflow-x: auto;
+        }
+
+        /* ── Footer ───────────────────────────────────────── */
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            border-top: 1px solid var(--color-border);
+            font-size: 0.8rem;
+            color: var(--color-fg-secondary);
+        }
+
+        .footer a {
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Responsive ───────────────────────────────────── */
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 2rem; }
+            .cards { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<header class="topbar">
+    <a class="topbar-brand" href="#">
+        <span class="topbar-logo">C</span>
+        <span class="topbar-name">CToon</span>
+    </a>
+    <div class="topbar-actions">
+        <span class="topbar-version">@PROJECT_VERSION@</span>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" /></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" /></svg>
+        </button>
+    </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+    <h1>CToon Documentation</h1>
+    <p>A high-performance C++ serialization library for JSON and TOON formats with Python bindings.</p>
+</section>
+
+<!-- Cards -->
+<section class="cards">
+    <a href="cpp/html/index.html" class="card">
+        <span class="card-icon">⚙️</span>
+        <div>
+            <h3>C++ API</h3>
+            <p>Full reference for the C++ library: Value, EncodeOptions, DecodeOptions, and more.</p>
+        </div>
+        <span class="card-arrow">→</span>
+    </a>
+    <a href="python/html/index.html" class="card">
+        <span class="card-icon">🐍</span>
+        <div>
+            <h3>Python API</h3>
+            <p>Python bindings via nanobind: loads_json, encode, decode, and CLI usage.</p>
+        </div>
+        <span class="card-arrow">→</span>
+    </a>
+</section>
+
+<!-- Quick start -->
+<section class="quick">
+    <h2>Quick Start</h2>
+    <code>$ pip install ctoon</code>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    &copy; 2024 Mohammad Raziei · <a href="https://github.com/MohammadRaziei/ctoon">GitHub</a> · MIT License
+</footer>
+
+<script>
+    // Theme toggle with localStorage persistence
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('ctoon-docs-theme');
+
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    } else if (prefersDark) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('ctoon-docs-theme', next);
+    }
+</script>
+
+</body>
+</html>

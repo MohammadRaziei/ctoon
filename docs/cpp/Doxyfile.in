@@ -1,0 +1,57 @@
+# Doxyfile - C++ API Documentation for CToon
+
+DOXYFILE_ENCODING      = UTF-8
+PROJECT_NAME           = "CToon C++"
+PROJECT_NUMBER         = @PROJECT_VERSION@
+PROJECT_BRIEF          = "A C++ TOON/JSON serialization library"
+OUTPUT_DIRECTORY       = @CTOON_DOCS_CPP_OUT@
+OUTPUT_LANGUAGE        = English
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+INPUT                  = @PROJECT_SOURCE_DIR@/includes
+INPUT_ENCODING         = UTF-8
+FILE_PATTERNS          = *.h *.hpp *.hxx
+RECURSIVE              = NO
+EXAMPLE_PATH           = @PROJECT_SOURCE_DIR@/examples
+EXAMPLE_PATTERNS       = *.cpp
+EXAMPLE_RECURSIVE      = NO
+
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = NO
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+ALPHABETICAL_INDEX     = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+HTML_FILE_EXTENSION    = .html
+HTML_STYLESHEET        = @AWESOME_CSS_DIR@/doxygen-awesome.css
+HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css
+HTML_TIMESTAMP         = YES
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+HTML_FOOTER            = @CTOON_DOCS_CPP_OUT@/footer.html
+
+GENERATE_LATEX         = NO
+
+HAVE_DOT               = YES
+CLASS_GRAPH            = YES
+COLLABORATION_GRAPH    = YES
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+DOT_IMAGE_FORMAT       = png
+DOT_TRANSPARENT        = YES
+DOT_CLEANUP            = YES
+
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = NO
+PREDEFINED             = CTOON_API=
+SKIP_FUNCTION_MACROS   = YES

@@ -1,7 +1,7 @@
 <div class="footer">
   <div class="footer-content">
     <p>
-      <strong>@PROJECT_NAME@ v@PROJECT_VERSION@</strong> - A C++ TOON/JSON serialization library
+      <strong>@PROJECT_NAME@ v@PROJECT_NUMBER@</strong> - A C++ TOON/JSON serialization library
     </p>
     <p>
       &copy; 2024-present Mohammad Raziei -
@@ -20,22 +20,8 @@
   font-size: 0.9rem;
   color: #666;
 }
-
-.footer-content {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.footer p {
-  margin: 0.5rem 0;
-}
-
-.footer a {
-  color: #0366d6;
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
+.footer-content { max-width: 800px; margin: 0 auto; }
+.footer p { margin: 0.5rem 0; }
+.footer a { color: #0366d6; text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
 </style>

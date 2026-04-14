@@ -41,6 +41,7 @@ ctoon = "ctoon.__main__:main"
 
 [project.optional-dependencies]
 test = ["pytest-xdist"]
+docs = ["sphinx", "furo", "breathe", "exhale"]
 
 
 [project.urls]
