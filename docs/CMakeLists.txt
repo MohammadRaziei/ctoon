@@ -31,6 +31,7 @@ if(DOXYGEN_FOUND)
 
     add_custom_target(ctoon_docs_cpp
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_CPP_OUT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon.png ${CTOON_DOCS_CPP_OUT}/html/ctoon.png
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "-- C++ docs generated at: ${CTOON_DOCS_CPP_OUT}/html/index.html"
         WORKING_DIRECTORY ${CTOON_DOCS_CPP_OUT}
@@ -79,11 +80,17 @@ endif()
 set(CTOON_INDEX_IN  ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in)
 set(CTOON_INDEX_OUT ${CMAKE_CURRENT_BINARY_DIR}/index.html)
 
-configure_file(${CTOON_INDEX_IN} ${CTOON_INDEX_OUT} @ONLY)
+# Copy logo to build root for index.html
+add_custom_command(
+    OUTPUT ${CTOON_INDEX_OUT}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon.png ${CMAKE_CURRENT_BINARY_DIR}/ctoon.png
+    COMMAND sed "s/@PROJECT_VERSION@/${PROJECT_VERSION}/g" ${CTOON_INDEX_IN} > ${CTOON_INDEX_OUT}
+    COMMENT "Creating documentation route index"
+)
 
 add_custom_target(ctoon_docs_index
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Route index created at: ${CTOON_INDEX_OUT}"
-    COMMENT "Creating documentation route index"
+    DEPENDS ${CTOON_INDEX_OUT}
 )
 
 

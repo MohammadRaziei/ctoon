@@ -82,13 +82,7 @@
             width: 28px;
             height: 28px;
             border-radius: 6px;
-            background: var(--color-icon-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 0.85rem;
-            color: #fff;
+            object-fit: contain;
         }
 
         .topbar-name {
@@ -295,7 +289,7 @@
 <!-- Top bar -->
 <header class="topbar">
     <a class="topbar-brand" href="#">
-        <span class="topbar-logo">C</span>
+        <img class="topbar-logo" src="ctoon.png" alt="CToon">
         <span class="topbar-name">CToon</span>
     </a>
     <div class="topbar-actions">
