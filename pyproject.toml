@@ -32,8 +32,11 @@ classifiers = [
 ]
 dependencies = [
 ]
-scripts.ctoon = "ctoon.__main__:main"
-scripts.ctoon-cli = "ctoon.native_cli:run"
+
+
+[project.scripts]
+ctoon = "ctoon.__main__:main"
+"ctoon.manager" = "ctoon.manager:main"
 
 
 [project.optional-dependencies]
