@@ -32,6 +32,7 @@ if(TARGET ctoon_build_python)
 
         # Ensure tests are run after the custom build is complete
         add_dependencies(ctoon_test_python ctoon_build_python)
+        add_dependencies(ctoon_test_python ctoon_cli)
         add_dependencies(ctoon_test ctoon_test_python)
     endif()
 
