@@ -81,6 +81,14 @@ endif()
 # to avoid conflicts with the main build.
 
 set(CTOON_PYTHON_INSTALL_DIR ${CMAKE_BINARY_DIR}/python/install)
+
+# Get nanobind cmake dir for the external project
+execute_process(
+    COMMAND ${Python_EXECUTABLE} -c "import nanobind; print(nanobind.cmake_dir())"
+    OUTPUT_VARIABLE NANOBIND_CMAKE_DIR_EXTERNAL
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 ExternalProject_Add(ctoon_build_python
     SOURCE_DIR ${CMAKE_SOURCE_DIR}
     BINARY_DIR ${CMAKE_BINARY_DIR}/python/build
@@ -92,7 +100,11 @@ ExternalProject_Add(ctoon_build_python
         -DCTOON_BUILD_PYTHON="ON"
         -DSKBUILD=2
         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/python/install
-        -Dnanobind_DIR=${NANOBIND_CMAKE_DIR}
+        -Dnanobind_DIR=${NANOBIND_CMAKE_DIR_EXTERNAL}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_AR=${CMAKE_AR}
+        -DCMAKE_RANLIB=${CMAKE_RANLIB}
 
     # Ensure the build step runs the install command
     INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install --parallel 8
