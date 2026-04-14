@@ -1,0 +1,16 @@
+# build dependencies
+scikit-build-core
+nanobind
+
+# development dependencies
+build
+twine
+
+# testing dependencies
+pytest
+pytest-cov
+
+# documentation dependencies
+sphinx
+furo
+
