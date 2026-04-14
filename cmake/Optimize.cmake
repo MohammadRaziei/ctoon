@@ -72,30 +72,30 @@ function(apply_optimization_flags target)
         endif()
     endif()
 
-    # Platform-specific definitions
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_compile_definitions(${target} PRIVATE
-            CTOON_PLATFORM_LINUX=1
-        )
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        target_compile_definitions(${target} PRIVATE
-            CTOON_PLATFORM_WINDOWS=1
-        )
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        target_compile_definitions(${target} PRIVATE
-            CTOON_PLATFORM_MACOS=1
-        )
-    endif()
+    # # Platform-specific definitions
+    # if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    #     target_compile_definitions(${target} PRIVATE
+    #         CTOON_PLATFORM_LINUX=1
+    #     )
+    # elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    #     target_compile_definitions(${target} PRIVATE
+    #         CTOON_PLATFORM_WINDOWS=1
+    #     )
+    # elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    #     target_compile_definitions(${target} PRIVATE
+    #         CTOON_PLATFORM_MACOS=1
+    #     )
+    # endif()
 
-    # Cross-platform thread optimization
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        target_compile_options(${target} PRIVATE
-            -pthread
-        )
-        target_link_options(${target} PRIVATE
-            -pthread
-        )
-    endif()
+    # # Cross-platform thread optimization
+    # if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    #     target_compile_options(${target} PRIVATE
+    #         -pthread
+    #     )
+    #     target_link_options(${target} PRIVATE
+    #         -pthread
+    #     )
+    # endif()
 
 endfunction()
 
