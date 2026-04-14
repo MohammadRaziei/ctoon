@@ -306,7 +306,7 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
     }
     
     size_t bracketEnd = content.find(CLOSE_BRACKET, bracketStart);
-    if (bracketEnd == -1l) {
+    if (bracketEnd == std::string::npos) {
         return std::nullopt;
     }
     
@@ -325,7 +325,7 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
 
     // Find colon after brackets and braces
     colonIndex = content.find(COLON, (bracketEnd < braceEnd ? bracketEnd : braceEnd));
-    if (colonIndex == -1l) {
+    if (colonIndex == std::string::npos) {
         return std::nullopt;
     }
     
@@ -385,8 +385,8 @@ std::optional<ArrayHeaderInfo> parseArrayHeaderLine(const std::string& content, 
     // Check for fields segment
     std::optional<std::vector<std::string>> fields;
     if (braceStart != std::string::npos && braceStart < colonIndex) {
-        int64_t foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
-        if (foundBraceEnd != -1l && foundBraceEnd < colonIndex) {
+        size_t foundBraceEnd = content.find(CLOSE_BRACE, braceStart);
+        if (foundBraceEnd != std::string::npos && foundBraceEnd < colonIndex) {
             std::string fieldsContent = content.substr(braceStart + 1, foundBraceEnd - braceStart - 1);
             // Parse delimited fields
             std::vector<std::string> fieldList;
@@ -530,6 +530,8 @@ Primitive parsePrimitiveToken(const std::string& token) {
                 return static_cast<int64_t>(std::stod(trimmed));
             case NumericLiteralType::Float:
                 return std::stod(trimmed);
+            case NumericLiteralType::Invalid:
+                break;
             }
         } catch (...) {
             // Fall through to string
@@ -888,6 +890,8 @@ Value decodeInternal(const std::string& input, const DecodeOptions& options) {
                 return Value(static_cast<int64_t>(num));
             case NumericLiteralType::Float:
                 return Value(num);
+            case NumericLiteralType::Invalid:
+                break;
             }
         }
     } catch (...) {
@@ -1043,6 +1047,7 @@ bool collectUniformObjectFields(const Array& array, std::vector<std::string>& fi
 }
 
 std::string encodeKey(const std::optional<std::string>& key, const EncodeOptions& options) {
+    (void)options;
     if (!key.has_value()) {
         return "";
     }
@@ -1051,7 +1056,7 @@ std::string encodeKey(const std::optional<std::string>& key, const EncodeOptions
     const std::string& keyStr = key.value();
 
     // Check if first character is valid (must be letter or underscore)
-    bool needsQuoting = keyStr.empty() || !std::isalpha(static_cast<unsigned char>(keyStr[0])) && keyStr[0] != '_';
+    bool needsQuoting = keyStr.empty() || (!std::isalpha(static_cast<unsigned char>(keyStr[0])) && keyStr[0] != '_');
 
     if (!needsQuoting) {
         // Check if key contains any disallowed characters

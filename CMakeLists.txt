@@ -81,11 +81,8 @@ install(TARGETS ctoon_cli
 # Tests
 if(CTOON_BUILD_TESTS)
     enable_testing()
-    add_executable(ctoon_tests tests/cpp/test_ctoon.cpp)
-    target_include_directories(ctoon_tests PRIVATE ${PROJECT_SOURCE_DIR}/tests/cpp)
-    target_link_libraries(ctoon_tests PRIVATE ctoon)
-    add_test(NAME ctoon_tests COMMAND ctoon_tests)
-    set_tests_properties(ctoon_tests PROPERTIES WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+    set(CMAKE_CTEST_ARGUMENTS "--output-on-failure" "-V")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
 # Installation
