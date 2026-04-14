@@ -38,6 +38,8 @@ set(CTOON_SOURCES ${CTOON_SOURCES_CPP} ${CTOON_SOURCES_C})
 add_library(ctoon ${CTOON_SOURCES})
 add_library(ctoon::ctoon ALIAS ctoon)
 
+set_target_properties(ctoon PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Include directories
 target_include_directories(ctoon 
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includes
