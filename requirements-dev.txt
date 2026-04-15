@@ -13,4 +13,5 @@ pytest-cov
 # documentation dependencies
 sphinx
 furo
+doxygen-awesome-css
 

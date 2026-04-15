@@ -19,6 +19,13 @@ find_package(Doxygen)
 if(DOXYGEN_FOUND)
     set(CTOON_DOCS_CPP_HTML ${CTOON_DOCS_CPP_OUT}/html/index.html)
 
+    # Get doxygen-awesome-css path from pip package
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -m doxygen_awesome_css --path
+        OUTPUT_VARIABLE DOXYGEN_AWESOME_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
     add_custom_command(
         OUTPUT ${CTOON_DOCS_CPP_HTML}
         COMMAND ${CMAKE_COMMAND}
@@ -28,7 +35,7 @@ if(DOXYGEN_FOUND)
             -DDOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
             -DFOOTER_IN=${CTOON_DOCS_CPP_DIR}/footer.html.in
             -DDOXYFILE_IN=${CTOON_DOCS_CPP_DIR}/Doxyfile.in
-            -DAWESOME_CSS_DIR=${AWESOME_CSS_DIR}
+            -DAWESOME_CSS_DIR=${DOXYGEN_AWESOME_PATH}
             -DLOGO_SRC=${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg
             -P ${CTOON_DOCS_CPP_DIR}/CreateDocs.cmake
         DEPENDS
