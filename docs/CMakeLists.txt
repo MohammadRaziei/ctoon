@@ -4,14 +4,26 @@
 
 cmake_minimum_required(VERSION 3.19)
 
-# ── C++ Documentation (Doxygen) ─────────────────────────────────
+set(CTOON_DOCS_OUT ${CMAKE_CURRENT_BINARY_DIR})
+
 set(CTOON_DOCS_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
-set(CTOON_DOCS_CPP_OUT ${CMAKE_CURRENT_BINARY_DIR}/cpp)
+set(CTOON_DOCS_CPP_OUT ${CTOON_DOCS_OUT}/cpp)
+
+set(CTOON_DOCS_PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/python)
+set(CTOON_DOCS_PYTHON_OUT ${CTOON_DOCS_OUT}/python)
+
+file(REMOVE_RECURSE ${CTOON_DOCS_OUT})
+file(MAKE_DIRECTORY ${CTOON_DOCS_OUT})
+
+# ── C++ Documentation (Doxygen) ─────────────────────────────────
 
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
     message(STATUS "Doxygen found: ${DOXYGEN_EXECUTABLE}")
+
+    file(REMOVE_RECURSE ${CTOON_DOCS_OUT})
+
 
     include(FetchContent)
     FetchContent_Declare(
@@ -31,12 +43,13 @@ if(DOXYGEN_FOUND)
 
     add_custom_target(ctoon_docs_cpp
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_CPP_OUT}
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon.png ${CTOON_DOCS_CPP_OUT}/html/ctoon.png
+        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg ${CTOON_DOCS_CPP_OUT}/html/ctoon.svg
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "-- C++ docs generated at: ${CTOON_DOCS_CPP_OUT}/html/index.html"
         WORKING_DIRECTORY ${CTOON_DOCS_CPP_OUT}
         COMMENT "Generating C++ API documentation with Doxygen"
         VERBATIM
+        DEPENDS ${DOXYGEN_OUT} ${DOXYGEN_FOOTER_OUT}
     )
 else()
     message(WARNING "Doxygen not found - C++ documentation will not be generated")
@@ -44,8 +57,6 @@ endif()
 
 
 # ── Python Documentation (Sphinx) ───────────────────────────────
-set(CTOON_DOCS_PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/python)
-set(CTOON_DOCS_PYTHON_OUT ${CMAKE_CURRENT_BINARY_DIR}/python)
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -84,7 +95,7 @@ set(CTOON_INDEX_OUT ${CMAKE_CURRENT_BINARY_DIR}/index.html)
 add_custom_command(
     OUTPUT ${CTOON_INDEX_OUT}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon.png ${CMAKE_CURRENT_BINARY_DIR}/ctoon.png
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg ${CMAKE_CURRENT_BINARY_DIR}/ctoon.svg
     COMMAND sed "s/@PROJECT_VERSION@/${PROJECT_VERSION}/g" ${CTOON_INDEX_IN} > ${CTOON_INDEX_OUT}
     COMMENT "Creating documentation route index"
 )

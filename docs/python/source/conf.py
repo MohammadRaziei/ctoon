@@ -27,8 +27,8 @@ language = 'en'
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
-html_logo = str(IMAGES_DIR / 'ctoon.png')
-html_favicon = str(IMAGES_DIR / 'ctoon.png')
+html_logo = str(IMAGES_DIR / 'ctoon.svg')
+# html_favicon = str(IMAGES_DIR / 'ctoon.svg')
 
 html_theme_options = {
     "navigation_with_keys": True,
