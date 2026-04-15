@@ -37,7 +37,7 @@ GENERATE_TREEVIEW      = YES
 SEARCHENGINE           = YES
 DISABLE_INDEX          = NO
 FULL_SIDEBAR           = NO
-HTML_FOOTER            = @CTOON_DOCS_CPP_OUT@/footer.html
+HTML_FOOTER            = @OUTPUT_DIR@/footer.html
 
 GENERATE_LATEX         = NO
 

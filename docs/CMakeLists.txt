@@ -1,6 +1,5 @@
 # CToon Documentation Build
-# Builds C++ docs (Doxygen) and Python docs (Sphinx) separately,
-# then creates a route index.html that links to both.
+# Builds C++ docs (Doxygen) and Python docs (Sphinx) via CreateDocs.cmake scripts
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -12,51 +11,44 @@ set(CTOON_DOCS_CPP_OUT ${CTOON_DOCS_OUT}/cpp)
 set(CTOON_DOCS_PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/python)
 set(CTOON_DOCS_PYTHON_OUT ${CTOON_DOCS_OUT}/python)
 
-file(REMOVE_RECURSE ${CTOON_DOCS_OUT})
-file(MAKE_DIRECTORY ${CTOON_DOCS_OUT})
 
-# ── C++ Documentation (Doxygen) ─────────────────────────────────
+# ── C++ Documentation (Doxygen) ───────────────────────────────
 
 find_package(Doxygen)
 
 if(DOXYGEN_FOUND)
-    message(STATUS "Doxygen found: ${DOXYGEN_EXECUTABLE}")
+    set(CTOON_DOCS_CPP_HTML ${CTOON_DOCS_CPP_OUT}/html/index.html)
 
-    file(REMOVE_RECURSE ${CTOON_DOCS_OUT})
-
-
-    include(FetchContent)
-    FetchContent_Declare(
-        doxygen-awesome-css
-        URL https://github.com/jothepro/doxygen-awesome-css/archive/main.zip
-    )
-    FetchContent_MakeAvailable(doxygen-awesome-css)
-    FetchContent_GetProperties(doxygen-awesome-css SOURCE_DIR AWESOME_CSS_DIR)
-
-    set(DOXYGEN_FOOTER_IN ${CTOON_DOCS_CPP_DIR}/footer.html.in)
-    set(DOXYGEN_FOOTER_OUT ${CTOON_DOCS_CPP_OUT}/footer.html)
-    configure_file(${DOXYGEN_FOOTER_IN} ${DOXYGEN_FOOTER_OUT} @ONLY)
-
-    set(DOXYGEN_IN ${CTOON_DOCS_CPP_DIR}/Doxyfile.in)
-    set(DOXYGEN_OUT ${CTOON_DOCS_CPP_OUT}/Doxyfile)
-    configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
-
-    add_custom_target(ctoon_docs_cpp
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_CPP_OUT}
-        COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg ${CTOON_DOCS_CPP_OUT}/html/ctoon.svg
-        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-        COMMAND ${CMAKE_COMMAND} -E echo "-- C++ docs generated at: ${CTOON_DOCS_CPP_OUT}/html/index.html"
-        WORKING_DIRECTORY ${CTOON_DOCS_CPP_OUT}
+    add_custom_command(
+        OUTPUT ${CTOON_DOCS_CPP_HTML}
+        COMMAND ${CMAKE_COMMAND}
+            -DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+            -DPROJECT_VERSION=${PROJECT_VERSION}
+            -DOUTPUT_DIR=${CTOON_DOCS_CPP_OUT}
+            -DDOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
+            -DFOOTER_IN=${CTOON_DOCS_CPP_DIR}/footer.html.in
+            -DDOXYFILE_IN=${CTOON_DOCS_CPP_DIR}/Doxyfile.in
+            -DAWESOME_CSS_DIR=${AWESOME_CSS_DIR}
+            -DLOGO_SRC=${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg
+            -P ${CTOON_DOCS_CPP_DIR}/CreateDocs.cmake
+        DEPENDS
+            ${CTOON_DOCS_CPP_DIR}/CreateDocs.cmake
+            ${CTOON_DOCS_CPP_DIR}/footer.html.in
+            ${CTOON_DOCS_CPP_DIR}/Doxyfile.in
         COMMENT "Generating C++ API documentation with Doxygen"
         VERBATIM
-        DEPENDS ${DOXYGEN_OUT} ${DOXYGEN_FOOTER_OUT}
     )
+
+    add_custom_target(ctoon_docs_cpp DEPENDS ${CTOON_DOCS_CPP_HTML})
 else()
     message(WARNING "Doxygen not found - C++ documentation will not be generated")
+    add_custom_target(ctoon_docs_cpp
+        COMMAND ${CMAKE_COMMAND} -E echo "Skipping C++ docs: Doxygen not found"
+    )
 endif()
 
 
-# ── Python Documentation (Sphinx) ───────────────────────────────
+# ── Python Documentation (Sphinx) ─────────────────────────────
 
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
@@ -68,53 +60,62 @@ execute_process(
 )
 
 if(SPHINX_CHECK EQUAL 0)
-    add_custom_target(ctoon_docs_python
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_PYTHON_OUT}/html
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_PYTHON_OUT}/doctrees
-        COMMAND ${Python3_EXECUTABLE} -m sphinx
-            -b html
-            -d ${CTOON_DOCS_PYTHON_OUT}/doctrees
-            ${CTOON_DOCS_PYTHON_DIR}/source
-            ${CTOON_DOCS_PYTHON_OUT}/html
-        COMMAND ${CMAKE_COMMAND} -E echo "-- Python docs generated at: ${CTOON_DOCS_PYTHON_OUT}/html/index.html"
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    set(CTOON_DOCS_PYTHON_HTML ${CTOON_DOCS_PYTHON_OUT}/html/index.html)
+
+    add_custom_command(
+        OUTPUT ${CTOON_DOCS_PYTHON_HTML}
+        COMMAND ${CMAKE_COMMAND}
+            -DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}
+            -DSOURCE_DIR=${CTOON_DOCS_PYTHON_DIR}/source
+            -DOUTPUT_DIR=${CTOON_DOCS_PYTHON_OUT}
+            -P ${CTOON_DOCS_PYTHON_DIR}/CreateDocs.cmake
+        DEPENDS
+            ${CTOON_DOCS_PYTHON_DIR}/CreateDocs.cmake
+            ${CTOON_DOCS_PYTHON_DIR}/source/conf.py
+            ${CTOON_DOCS_PYTHON_DIR}/source/index.rst
         COMMENT "Building Python API documentation with Sphinx"
         VERBATIM
     )
+
+    add_custom_target(ctoon_docs_python DEPENDS ${CTOON_DOCS_PYTHON_HTML})
 else()
     message(WARNING "Sphinx not found - Python documentation will not be generated")
-    message(WARNING "Install with: pip install sphinx furo")
+    add_custom_target(ctoon_docs_python
+        COMMAND ${CMAKE_COMMAND} -E echo "Skipping Python docs: Sphinx not found"
+    )
 endif()
 
 
-# ── Route Index Page ────────────────────────────────────────────
-set(CTOON_INDEX_IN  ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in)
-set(CTOON_INDEX_OUT ${CMAKE_CURRENT_BINARY_DIR}/index.html)
+# ── Route Index Page ──────────────────────────────────────────
 
-# Copy logo to build root for index.html
+set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
+
 add_custom_command(
     OUTPUT ${CTOON_INDEX_OUT}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg ${CMAKE_CURRENT_BINARY_DIR}/ctoon.svg
-    COMMAND sed "s/@PROJECT_VERSION@/${PROJECT_VERSION}/g" ${CTOON_INDEX_IN} > ${CTOON_INDEX_OUT}
+    COMMAND ${CMAKE_COMMAND}
+        -DOUTPUT_DIR=${CTOON_DOCS_OUT}
+        -DINDEX_IN=${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
+        -DPROJECT_VERSION=${PROJECT_VERSION}
+        -DLOGO_SQ=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
+        -DLOGO_SQ_CTOON=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq-ctoon.svg
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
+    DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
+        ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
+        ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq-ctoon.svg
     COMMENT "Creating documentation route index"
+    VERBATIM
 )
 
-add_custom_target(ctoon_docs_index
-    DEPENDS ${CTOON_INDEX_OUT}
-)
+add_custom_target(ctoon_docs_index DEPENDS ${CTOON_INDEX_OUT})
 
 
-# ── Master target ──────────────────────────────────────────────
+# ── Master target ─────────────────────────────────────────────
+
 add_custom_target(ctoon_docs
     COMMAND ${CMAKE_COMMAND} -E echo "-- All documentation generated"
     COMMENT "Building all documentation"
 )
 
-if(DOXYGEN_FOUND)
-    add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_index)
-endif()
-
-if(SPHINX_CHECK EQUAL 0)
-    add_dependencies(ctoon_docs ctoon_docs_python)
-endif()
+add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index)
