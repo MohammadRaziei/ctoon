@@ -69,6 +69,54 @@
             flex-direction: column;
         }
 
+        /* --- Navbar --- */
+        .navbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-logo {
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+
+        .navbar-logo > * {
+            width: 100%;
+            height: auto;
+        }
+
+        .navbar-logo svg path,
+        .navbar-logo svg polygon,
+        .navbar-logo svg rect,
+        .navbar-logo svg circle,
+        .navbar-logo svg g {
+            fill: var(--accent-primary) !important;
+            stroke: var(--accent-primary) !important;
+        }
+
+        .navbar-brand {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+        }
+
+        .navbar-title {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+            padding-left: 0.75rem;
+            border-left: 1px solid var(--border-color);
+        }
+
         /* --- Main Layout --- */
         main {
             flex: 1;
@@ -279,7 +327,14 @@
     </style>
 </head>
 <body>
-    <!-- Navbar removed as requested -->
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-logo">
+            @LOGO_CONTENT@
+        </div>
+        <span class="navbar-brand">@PROJECT_NAME@</span>
+        <span class="navbar-title">Coverage Dashboard</span>
+    </nav>
 
     <main>
         <div class="intro-section">
