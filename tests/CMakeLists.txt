@@ -41,6 +41,10 @@ if(TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
             COMMAND ${CMAKE_COMMAND} -E echo "-- Total coverage info created at: ${CTOON_COVERAGE_TOTAL_BINARY_DIR}/coverage.lcov"
 
             # Generate HTML report
+            COMMAND ${CMAKE_COMMAND}
+                -DCOV_FILE=${CTOON_COVERAGE_TOTAL_BINARY_DIR}/coverage.lcov
+                -DPREFIX_PATH=${PROJECT_SOURCE_DIR}/
+                -P ${PROJECT_SOURCE_DIR}/cmake/FixLCovPaths.cmake
             COMMAND ${CMAKE_COMMAND} -E echo "-- Generating HTML report..."
             COMMAND ${GENHTML_EXECUTABLE} --quiet
                     ${CTOON_COVERAGE_TOTAL_BINARY_DIR}/coverage.lcov
@@ -49,6 +53,10 @@ if(TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
                     --title "CToon Total Coverage"
                     --css-file ${CTOON_TEST_SOURCE_DIR}/genhtml.css
                     --dark-mode
+            COMMAND ${CMAKE_COMMAND}
+                -DCOV_FILE=${CTOON_COVERAGE_TOTAL_BINARY_DIR}/coverage.lcov
+                -DSOURCE_PATH=${PROJECT_SOURCE_DIR}/
+                -P ${PROJECT_SOURCE_DIR}/cmake/FixLCovPaths.cmake
             COMMAND ${CMAKE_COMMAND} -E echo "-- HTML entry point created here: ${CTOON_COVERAGE_TOTAL_BINARY_DIR}/html/index.html"
 
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
