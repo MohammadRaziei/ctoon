@@ -96,7 +96,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     add_custom_command(TARGET ctoon_coverage_cpp POST_BUILD
         COMMAND ${CMAKE_COMMAND}
             -DIFRAME_SRC="html/index.html"
-            -DSECTION_TITLE="C++ Core"
+            -DSECTION_TITLE="C++%20Core"
             -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
             -DPROJECT_NAME="${PROJECT_NAME}"
             -DOUTPUT_DIR="${CTOON_COVERAGE_CPP_BINARY_DIR}"

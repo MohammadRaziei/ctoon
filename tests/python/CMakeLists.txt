@@ -110,7 +110,7 @@ if(TARGET ctoon_build_python)
         add_custom_command(TARGET ctoon_coverage_python POST_BUILD
             COMMAND ${CMAKE_COMMAND}
                 -DIFRAME_SRC="html/index.html"
-                -DSECTION_TITLE="Python Bindings"
+                -DSECTION_TITLE="Python-Bindings"
                 -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
                 -DPROJECT_NAME="${PROJECT_NAME}"
                 -DOUTPUT_DIR="${CTOON_COVERAGE_PYTHON_BINARY_DIR}"

@@ -13,6 +13,7 @@ endif()
 
 # ── Ensure output dir exists ──────────────────────────────────
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
+string(REPLACE "%20" " " SECTION_TITLE "${SECTION_TITLE}")
 
 # ── Generate iframe wrapper ──────────────────────────────────
 configure_file(

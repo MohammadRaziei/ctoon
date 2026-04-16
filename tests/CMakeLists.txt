@@ -73,7 +73,7 @@ if(TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
         add_custom_command(TARGET ctoon_coverage_total POST_BUILD
             COMMAND ${CMAKE_COMMAND}
                 -DIFRAME_SRC="html/index.html"
-                -DSECTION_TITLE="Total Coverage"
+                -DSECTION_TITLE="Total%20Coverage"
                 -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
                 -DPROJECT_NAME="${PROJECT_NAME}"
                 -DOUTPUT_DIR="${CTOON_COVERAGE_TOTAL_BINARY_DIR}"
