@@ -1,4 +1,4 @@
-#include "ctoon/ctoon.h"
+#include "../../include/ctoon.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -805,8 +805,7 @@ ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg
 
 ctoon_doc* ctoon_read_toon_opts(const char* dat, size_t len, ctoon_toon_read_flag flg,
                                 ctoon_alc* alc, ctoon_err* err) {
-    (void)alc;
-    (void)err;
+    // alc and err parameters are kept for API compatibility but not used in this implementation
     return ctoon_read_toon(dat, len, flg);
 }
 
@@ -842,7 +841,7 @@ ctoon_doc* ctoon_read_toon_file(const char* path, ctoon_toon_read_flag flg,
 }
 
 char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
-    (void)flg; // Flags not used in simple implementation
+    // flg parameter is kept for API compatibility but not used in this implementation
     
     if (!doc || !doc->root) {
         if (len) *len = 0;
@@ -859,7 +858,7 @@ char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
         return NULL;
     }
     
-    // Second pass: write
+    //
     size_t written = value_to_string(doc->root, buffer, needed + 1, 0);
     buffer[written] = '\0';
     
@@ -869,8 +868,7 @@ char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
 
 char* ctoon_write_toon_opts(ctoon_doc* doc, ctoon_toon_write_flag flg,
                             ctoon_alc* alc, size_t* len, ctoon_err* err) {
-    (void)alc;
-    (void)err;
+    // alc and err parameters are kept for API compatibility
     return ctoon_write_toon(doc, flg, len);
 }
 
