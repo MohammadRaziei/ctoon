@@ -185,6 +185,22 @@ char *ctoon_write_toon(ctoon_doc *doc, size_t *len);
 bool ctoon_write_toon_file(const char *path, ctoon_doc *doc);
 
 
+/*==============================================================================
+ * MARK: - Value Creation
+ *============================================================================*/
+
+ctoon_val *ctoon_new_null(ctoon_doc *doc);
+ctoon_val *ctoon_new_bool(ctoon_doc *doc, bool value);
+ctoon_val *ctoon_new_number(ctoon_doc *doc, double value);
+ctoon_val *ctoon_new_string(ctoon_doc *doc, const char *value);
+ctoon_val *ctoon_new_array(ctoon_doc *doc);
+ctoon_val *ctoon_new_object(ctoon_doc *doc);
+
+void ctoon_array_append(ctoon_val *array, ctoon_val *value);
+void ctoon_object_set(ctoon_val *object, const char *key, ctoon_val *value);
+void ctoon_set_root(ctoon_doc *doc, ctoon_val *root);
+
+
 
 /*==============================================================================
  * MARK: - C++ Wrapper
