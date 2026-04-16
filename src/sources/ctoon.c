@@ -62,6 +62,7 @@ static ctoon_node* ctoon_new_node(ctoon_doc* doc, ctoon_type type) {
 }
 
 ctoon_doc* ctoon_doc_new(const char* data, size_t len, size_t max_memory) {
+    (void)data; // Unused parameter
     ctoon_doc* doc = malloc(sizeof(ctoon_doc));
     if (!doc) return NULL;
     
@@ -96,6 +97,7 @@ size_t ctoon_doc_get_read_size(ctoon_doc* doc) {
 }
 
 size_t ctoon_doc_get_val_count(ctoon_doc* doc) {
+    (void)doc; // Unused parameter
     return 0; // Simplified
 }
 
@@ -108,6 +110,7 @@ ctoon_type ctoon_get_type(ctoon_val* val) {
 }
 
 ctoon_subtype ctoon_get_subtype(ctoon_val* val) {
+    (void)val; // Unused parameter
     return CTOON_SUBTYPE_NONE;
 }
 
@@ -225,6 +228,7 @@ bool ctoon_equals_strn(ctoon_val* val, const char* str, size_t len) {
 }
 
 const char* ctoon_get_raw(ctoon_val* val) {
+    (void)val; // Unused parameter
     return NULL;
 }
 
@@ -247,6 +251,7 @@ ctoon_val* ctoon_arr_get_first(ctoon_val* val) {
 }
 
 ctoon_val* ctoon_arr_get_next(ctoon_val* val) {
+    (void)val; // Unused parameter
     return NULL;
 }
 
@@ -281,6 +286,8 @@ ctoon_val* ctoon_obj_iter_get(ctoon_val* val, ctoon_val** key) {
 }
 
 ctoon_val* ctoon_obj_iter_next(ctoon_val* val, ctoon_val** key) {
+    (void)val; // Unused parameter
+    (void)key; // Unused parameter
     return NULL;
 }
 
@@ -554,10 +561,153 @@ static int parse_toon(ctoon_doc* doc, const char* data, size_t len) {
 }
 
 /*==============================================================================
+ * MARK: - TOON Writer Implementation
+ *============================================================================*/
+
+static size_t value_to_string(ctoon_node* node, char* buffer, size_t buffer_size, int indent) {
+    if (!node) return 0;
+    
+    size_t written = 0;
+    
+    switch (node->type) {
+        case CTOON_TYPE_NULL:
+            if (buffer && written < buffer_size) {
+                written += snprintf(buffer + written, buffer_size - written, "null");
+            } else {
+                written += 4;
+            }
+            break;
+            
+        case CTOON_TYPE_TRUE:
+            if (buffer && written < buffer_size) {
+                written += snprintf(buffer + written, buffer_size - written, "true");
+            } else {
+                written += 4;
+            }
+            break;
+            
+        case CTOON_TYPE_FALSE:
+            if (buffer && written < buffer_size) {
+                written += snprintf(buffer + written, buffer_size - written, "false");
+            } else {
+                written += 5;
+            }
+            break;
+            
+        case CTOON_TYPE_NUMBER: {
+            char num_buf[64];
+            snprintf(num_buf, sizeof(num_buf), "%.15g", node->u.num);
+            size_t num_len = strlen(num_buf);
+            if (buffer && written + num_len < buffer_size) {
+                memcpy(buffer + written, num_buf, num_len);
+            }
+            written += num_len;
+            break;
+        }
+            
+        case CTOON_TYPE_STRING:
+            if (node->u.str) {
+                size_t str_len = strlen(node->u.str);
+                // Check if string needs quoting
+                int needs_quote = 0;
+                for (size_t i = 0; i < str_len; i++) {
+                    if (isspace((unsigned char)node->u.str[i]) || 
+                        node->u.str[i] == ',' || 
+                        node->u.str[i] == ':' ||
+                        node->u.str[i] == '[' ||
+                        node->u.str[i] == ']') {
+                        needs_quote = 1;
+                        break;
+                    }
+                }
+                
+                if (needs_quote) {
+                    if (buffer && written + str_len + 2 < buffer_size) {
+                        buffer[written++] = '"';
+                        memcpy(buffer + written, node->u.str, str_len);
+                        written += str_len;
+                        buffer[written++] = '"';
+                    } else {
+                        written += str_len + 2;
+                    }
+                } else {
+                    if (buffer && written + str_len < buffer_size) {
+                        memcpy(buffer + written, node->u.str, str_len);
+                    }
+                    written += str_len;
+                }
+            }
+            break;
+            
+        case CTOON_TYPE_ARRAY:
+            if (buffer && written < buffer_size) {
+                written += snprintf(buffer + written, buffer_size - written, "[%zu]: ", node->u.arr.count);
+            } else {
+                written += 10; // Approximate
+            }
+            
+            for (size_t i = 0; i < node->u.arr.count; i++) {
+                if (i > 0) {
+                    if (buffer && written < buffer_size) buffer[written] = ',';
+                    written++;
+                }
+                written += value_to_string(node->u.arr.items[i], 
+                                          buffer ? buffer + written : NULL,
+                                          buffer ? buffer_size - written : 0,
+                                          0);
+            }
+            break;
+            
+        case CTOON_TYPE_OBJECT:
+            for (size_t i = 0; i < node->u.obj.count; i++) {
+                if (i > 0) {
+                    if (buffer && written < buffer_size) buffer[written] = '\n';
+                    written++;
+                }
+                
+                // Add indentation
+                for (int j = 0; j < indent; j++) {
+                    if (buffer && written < buffer_size) buffer[written] = ' ';
+                    written++;
+                }
+                
+                // Key
+                char* key = node->u.obj.keys[i];
+                size_t key_len = strlen(key);
+                if (buffer && written + key_len < buffer_size) {
+                    memcpy(buffer + written, key, key_len);
+                }
+                written += key_len;
+                
+                // Colon
+                if (buffer && written < buffer_size) buffer[written] = ':';
+                written++;
+                
+                // Space
+                if (buffer && written < buffer_size) buffer[written] = ' ';
+                written++;
+                
+                // Value
+                written += value_to_string(node->u.obj.values[i],
+                                          buffer ? buffer + written : NULL,
+                                          buffer ? buffer_size - written : 0,
+                                          indent + 2);
+            }
+            break;
+            
+        default:
+            break;
+    }
+    
+    return written;
+}
+
+/*==============================================================================
  * MARK: - TOON Read/Write Implementation
  *============================================================================*/
 
 ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg) {
+    (void)flg; // Flags not used in simple implementation
     ctoon_doc* doc = ctoon_doc_new(dat, len, 0);
     if (!doc) return NULL;
     
@@ -578,37 +728,106 @@ ctoon_doc* ctoon_read_toon_opts(const char* dat, size_t len, ctoon_toon_read_fla
 
 ctoon_doc* ctoon_read_toon_file(const char* path, ctoon_toon_read_flag flg,
                                 ctoon_alc* alc, ctoon_err* err) {
-    (void)path;
-    (void)flg;
-    (void)alc;
-    (void)err;
-    return NULL;
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        if (err) {
+            err->msg = "Failed to open file";
+            err->pos = 0;
+            err->code = 1;
+        }
+        return NULL;
+    }
+    
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    char* buffer = malloc(file_size + 1);
+    if (!buffer) {
+        fclose(f);
+        return NULL;
+    }
+    
+    size_t read_bytes = fread(buffer, 1, file_size, f);
+    buffer[read_bytes] = '\0';
+    fclose(f);
+    
+    ctoon_doc* doc = ctoon_read_toon(buffer, read_bytes, flg);
+    free(buffer);
+    return doc;
 }
 
 char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
-    (void)doc;
-    (void)flg;
-    (void)len;
-    return NULL;
+    (void)flg; // Flags not used in simple implementation
+    
+    if (!doc || !doc->root) {
+        if (len) *len = 0;
+        return NULL;
+    }
+    
+    // First pass: calculate size
+    size_t needed = value_to_string(doc->root, NULL, 0, 0);
+    
+    // Allocate buffer
+    char* buffer = malloc(needed + 1);
+    if (!buffer) {
+        if (len) *len = 0;
+        return NULL;
+    }
+    
+    // Second pass: write
+    size_t written = value_to_string(doc->root, buffer, needed + 1, 0);
+    buffer[written] = '\0';
+    
+    if (len) *len = written;
+    return buffer;
 }
 
 char* ctoon_write_toon_opts(ctoon_doc* doc, ctoon_toon_write_flag flg,
                             ctoon_alc* alc, size_t* len, ctoon_err* err) {
-    (void)doc;
-    (void)flg;
     (void)alc;
-    (void)len;
     (void)err;
-    return NULL;
+    return ctoon_write_toon(doc, flg, len);
 }
 
 bool ctoon_write_toon_file(const char* path, ctoon_doc* doc,
                            ctoon_toon_write_flag flg, ctoon_err* err) {
-    (void)path;
-    (void)doc;
-    (void)flg;
-    (void)err;
-    return false;
+    size_t len;
+    char* data = ctoon_write_toon(doc, flg, &len);
+    if (!data) {
+        if (err) {
+            err->msg = "Failed to serialize TOON";
+            err->pos = 0;
+            err->code = 2;
+        }
+        return false;
+    }
+    
+    FILE* f = fopen(path, "wb");
+    if (!f) {
+        free(data);
+        if (err) {
+            err->msg = "Failed to open file for writing";
+            err->pos = 0;
+            err->code = 3;
+        }
+        return false;
+    }
+    
+    size_t written = fwrite(data, 1, len, f);
+    fclose(f);
+    free(data);
+    
+    if (written != len) {
+        if (err) {
+            err->msg = "Failed to write all data";
+            err->pos = 0;
+            err->code = 4;
+        }
+        return false;
+    }
+    
+    return true;
 }
 
 ctoon_val* ctoon_doc_root(ctoon_doc* doc) {
@@ -618,4 +837,3 @@ ctoon_val* ctoon_doc_root(ctoon_doc* doc) {
 double ctoon_get_double(ctoon_val* val) {
     return ctoon_get_real(val);
 }
-   
