@@ -1382,7 +1382,7 @@ class ordered_hash : private Hash, private KeyEqual {
               bucket_entry::truncate_hash(hash) &&
           compare_keys(key,
                        KeySelect()(m_values[m_buckets[ibucket].index()]))) {
-        return std::make_pair(begin() + m_buckets[ibucket].index(), false);
+        return std::make_pair(iterator(m_values.begin() + m_buckets[ibucket].index()), false);
       }
 
       ibucket = next_bucket(ibucket);
@@ -1404,7 +1404,7 @@ class ordered_hash : private Hash, private KeyEqual {
                  index_type(m_values.size() - 1),
                  bucket_entry::truncate_hash(hash));
 
-    return std::make_pair(std::prev(end()), true);
+    return std::make_pair(iterator(m_values.end() - 1), true);
   }
 
   /**
