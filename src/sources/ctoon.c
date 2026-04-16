@@ -62,7 +62,7 @@ static ctoon_node* ctoon_new_node(ctoon_doc* doc, ctoon_type type) {
 }
 
 ctoon_doc* ctoon_doc_new(const char* data, size_t len, size_t max_memory) {
-    (void)data; // Unused parameter
+    // data parameter is kept for API compatibility but not used in this implementation
     ctoon_doc* doc = malloc(sizeof(ctoon_doc));
     if (!doc) return NULL;
     
@@ -96,9 +96,27 @@ size_t ctoon_doc_get_read_size(ctoon_doc* doc) {
     return doc ? doc->alloc_size : 0;
 }
 
+static size_t count_nodes(ctoon_node* node) {
+    if (!node) return 0;
+    
+    size_t count = 1; // Count this node
+    
+    if (node->type == CTOON_TYPE_ARRAY) {
+        for (size_t i = 0; i < node->u.arr.count; i++) {
+            count += count_nodes(node->u.arr.items[i]);
+        }
+    } else if (node->type == CTOON_TYPE_OBJECT) {
+        for (size_t i = 0; i < node->u.obj.count; i++) {
+            count += count_nodes(node->u.obj.values[i]);
+        }
+    }
+    
+    return count;
+}
+
 size_t ctoon_doc_get_val_count(ctoon_doc* doc) {
-    (void)doc; // Unused parameter
-    return 0; // Simplified
+    if (!doc || !doc->root) return 0;
+    return count_nodes(doc->root);
 }
 
 /*==============================================================================
@@ -110,7 +128,19 @@ ctoon_type ctoon_get_type(ctoon_val* val) {
 }
 
 ctoon_subtype ctoon_get_subtype(ctoon_val* val) {
-    (void)val; // Unused parameter
+    if (!val || !val->node) return CTOON_SUBTYPE_NONE;
+    
+    if (val->node->type == CTOON_TYPE_NUMBER) {
+        double num = val->node->u.num;
+        if (num >= 0 && num == (uint64_t)num) {
+            return CTOON_SUBTYPE_UINT;
+        } else if (num == (int64_t)num) {
+            return CTOON_SUBTYPE_SINT;
+        } else {
+            return CTOON_SUBTYPE_REAL;
+        }
+    }
+    
     return CTOON_SUBTYPE_NONE;
 }
 
@@ -228,7 +258,11 @@ bool ctoon_equals_strn(ctoon_val* val, const char* str, size_t len) {
 }
 
 const char* ctoon_get_raw(ctoon_val* val) {
-    (void)val; // Unused parameter
+    // RAW type not implemented in this version
+    if (!val || !val->node || val->node->type != CTOON_TYPE_RAW) {
+        return NULL;
+    }
+    // In a full implementation, this would return raw data
     return NULL;
 }
 
@@ -250,8 +284,31 @@ ctoon_val* ctoon_arr_get_first(ctoon_val* val) {
     return ctoon_arr_get(val, 0);
 }
 
+// Simple iterator state (not thread-safe)
+static struct {
+    ctoon_node* current_array;
+    size_t current_index;
+} arr_iter_state = {NULL, 0};
+
 ctoon_val* ctoon_arr_get_next(ctoon_val* val) {
-    (void)val; // Unused parameter
+    if (!val || !val->node || val->node->type != CTOON_TYPE_ARRAY) {
+        return NULL;
+    }
+    
+    // If this is a different array than before, reset iterator
+    if (arr_iter_state.current_array != val->node) {
+        arr_iter_state.current_array = val->node;
+        arr_iter_state.current_index = 0;
+    }
+    
+    // Return current element and advance
+    if (arr_iter_state.current_index < val->node->u.arr.count) {
+        return (ctoon_val*)&val->node->u.arr.items[arr_iter_state.current_index++];
+    }
+    
+    // End of array
+    arr_iter_state.current_array = NULL;
+    arr_iter_state.current_index = 0;
     return NULL;
 }
 
@@ -285,9 +342,36 @@ ctoon_val* ctoon_obj_iter_get(ctoon_val* val, ctoon_val** key) {
     return (ctoon_val*)&val->node->u.obj.values[0];
 }
 
+// Object iterator state (not thread-safe)
+static struct {
+    ctoon_node* current_object;
+    size_t current_index;
+} obj_iter_state = {NULL, 0};
+
 ctoon_val* ctoon_obj_iter_next(ctoon_val* val, ctoon_val** key) {
-    (void)val; // Unused parameter
-    (void)key; // Unused parameter
+    if (!val || !val->node || val->node->type != CTOON_TYPE_OBJECT) {
+        return NULL;
+    }
+    
+    // If this is a different object than before, reset iterator
+    if (obj_iter_state.current_object != val->node) {
+        obj_iter_state.current_object = val->node;
+        obj_iter_state.current_index = 0;
+    }
+    
+    // Return current key-value pair and advance
+    if (obj_iter_state.current_index < val->node->u.obj.count) {
+        if (key) {
+            *key = (ctoon_val*)&val->node->u.obj.keys[obj_iter_state.current_index];
+        }
+        ctoon_val* result = (ctoon_val*)&val->node->u.obj.values[obj_iter_state.current_index];
+        obj_iter_state.current_index++;
+        return result;
+    }
+    
+    // End of object
+    obj_iter_state.current_object = NULL;
+    obj_iter_state.current_index = 0;
     return NULL;
 }
 
