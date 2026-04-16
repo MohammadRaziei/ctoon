@@ -6,7 +6,7 @@
 #include <map>
 #include <memory>
 #include <stdexcept>
-#include "../../include/ctoon/ctoon.h"
+#include "ctoon.h"
 
 namespace ctoon {
 
@@ -19,25 +19,25 @@ private:
 public:
     Document() : doc_(nullptr) {}
     
-    Document(const std::string& data, ctoon_toon_read_flag flags = 0) {
-        doc_.reset(::ctoon_read_toon(data.c_str(), data.size(), flags),
+    Document(const std::string& data) {
+        doc_.reset(::ctoon_read_toon(data.c_str(), data.size()),
                    ::ctoon_doc_free);
         if (!doc_) {
             throw std::runtime_error("Failed to parse TOON data");
         }
     }
     
-    Document(const char* data, size_t len, ctoon_toon_read_flag flags = 0) {
-        doc_.reset(::ctoon_read_toon(data, len, flags),
+    Document(const char* data, size_t len) {
+        doc_.reset(::ctoon_read_toon(data, len),
                    ::ctoon_doc_free);
         if (!doc_) {
             throw std::runtime_error("Failed to parse TOON data");
         }
     }
     
-    static Document fromFile(const std::string& path, ctoon_toon_read_flag flags = 0) {
+    static Document fromFile(const std::string& path) {
         Document doc;
-        doc.doc_.reset(::ctoon_read_toon_file(path.c_str(), flags, nullptr, nullptr),
+        doc.doc_.reset(::ctoon_read_toon_file(path.c_str()),
                        ::ctoon_doc_free);
         if (!doc.doc_) {
             throw std::runtime_error("Failed to parse TOON file: " + path);
@@ -158,7 +158,7 @@ public:
 };
 
 inline Value Document::root() const {
-    return Value(::ctoon_doc_root(doc_.get()));
+    return Value(::ctoon_doc_get_root(doc_.get()));
 }
 
 // Helper functions
