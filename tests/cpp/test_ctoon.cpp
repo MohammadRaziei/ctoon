@@ -72,7 +72,7 @@ UTEST(ctoon_cpp_tests, test_parse_boolean) {
 }
 
 UTEST(ctoon_cpp_tests, test_parse_array) {
-    std::string toon_data = "[1, 2, 3, 4, 5]";
+    std::string toon_data = "[5]: 1,2,3,4,5";
     
     ctoon::Document doc(toon_data);
     ASSERT_TRUE(doc);
@@ -91,7 +91,7 @@ UTEST(ctoon_cpp_tests, test_parse_array) {
 }
 
 UTEST(ctoon_cpp_tests, test_parse_nested_object) {
-    std::string toon_data = "person: {name: Bob, age: 25, active: false}";
+    std::string toon_data = "person:\n  name: Bob\n  age: 25\n  active: false";
     
     ctoon::Document doc(toon_data);
     ASSERT_TRUE(doc);

@@ -82,7 +82,7 @@ UTEST(ctoon_tests, test_parse_boolean) {
 }
 
 UTEST(ctoon_tests, test_parse_array) {
-    const char* toon_data = "[1, 2, 3, 4, 5]";
+    const char* toon_data = "[5]: 1,2,3,4,5";
     
     ctoon_doc* doc = ctoon_read_toon(toon_data, strlen(toon_data), 0);
     ASSERT_TRUE(doc != NULL);
@@ -103,7 +103,7 @@ UTEST(ctoon_tests, test_parse_array) {
 }
 
 UTEST(ctoon_tests, test_parse_nested_object) {
-    const char* toon_data = "person: {name: Bob, age: 25, active: false}";
+    const char* toon_data = "person:\n  name: Bob\n  age: 25\n  active: false";
     
     ctoon_doc* doc = ctoon_read_toon(toon_data, strlen(toon_data), 0);
     ASSERT_TRUE(doc != NULL);

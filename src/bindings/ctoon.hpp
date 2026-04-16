@@ -19,25 +19,25 @@ private:
 public:
     Document() : doc_(nullptr) {}
     
-    Document(const std::string& data, size_t max_memory = 0) {
-        doc_.reset(::ctoon_read_toon(data.c_str(), data.size(), max_memory),
+    Document(const std::string& data, ctoon_toon_read_flag flags = 0) {
+        doc_.reset(::ctoon_read_toon(data.c_str(), data.size(), flags),
                    ::ctoon_doc_free);
         if (!doc_) {
             throw std::runtime_error("Failed to parse TOON data");
         }
     }
     
-    Document(const char* data, size_t len, size_t max_memory = 0) {
-        doc_.reset(::ctoon_read_toon(data, len, max_memory),
+    Document(const char* data, size_t len, ctoon_toon_read_flag flags = 0) {
+        doc_.reset(::ctoon_read_toon(data, len, flags),
                    ::ctoon_doc_free);
         if (!doc_) {
             throw std::runtime_error("Failed to parse TOON data");
         }
     }
     
-    static Document fromFile(const std::string& path, size_t max_memory = 0) {
+    static Document fromFile(const std::string& path, ctoon_toon_read_flag flags = 0) {
         Document doc;
-        doc.doc_.reset(::ctoon_read_toon_file(path.c_str(), max_memory),
+        doc.doc_.reset(::ctoon_read_toon_file(path.c_str(), flags, nullptr, nullptr),
                        ::ctoon_doc_free);
         if (!doc.doc_) {
             throw std::runtime_error("Failed to parse TOON file: " + path);
@@ -48,16 +48,18 @@ public:
     Value root() const;
     
     bool hasError() const {
-        return ::ctoon_get_error(doc_.get()) != nullptr;
+        // Error handling not implemented in simple version
+        return false;
     }
     
     std::string error() const {
-        const char* err = ::ctoon_get_error(doc_.get());
-        return err ? std::string(err) : "";
+        // Error handling not implemented in simple version
+        return "";
     }
     
     size_t errorPos() const {
-        return ::ctoon_get_error_pos(doc_.get());
+        // Error handling not implemented in simple version
+        return 0;
     }
     
     operator bool() const {
@@ -77,10 +79,10 @@ public:
     bool isBool() const { return val_ && ::ctoon_is_bool(val_); }
     bool isTrue() const { return val_ && ::ctoon_is_true(val_); }
     bool isFalse() const { return val_ && ::ctoon_is_false(val_); }
-    bool isNumber() const { return val_ && ::ctoon_is_number(val_); }
-    bool isString() const { return val_ && ::ctoon_is_string(val_); }
-    bool isArray() const { return val_ && ::ctoon_is_array(val_); }
-    bool isObject() const { return val_ && ::ctoon_is_object(val_); }
+    bool isNumber() const { return val_ && ::ctoon_is_num(val_); }
+    bool isString() const { return val_ && ::ctoon_is_str(val_); }
+    bool isArray() const { return val_ && ::ctoon_is_arr(val_); }
+    bool isObject() const { return val_ && ::ctoon_is_obj(val_); }
     
     bool asBool() const {
         if (!isBool()) throw std::runtime_error("Value is not a boolean");
@@ -94,7 +96,7 @@ public:
     
     double asDouble() const {
         if (!isNumber()) throw std::runtime_error("Value is not a number");
-        return ::ctoon_get_double(val_);
+        return ::ctoon_get_real(val_);
     }
     
     std::string asString() const {
