@@ -23,7 +23,7 @@ import argparse
 import subprocess
 from pathlib import Path
 
-HEADER_PATH = "includes/ctoon/ctoon.h"
+HEADER_PATH = "includes/ctoon.h"
 PREFIX = "CTOON_"
 HEADER_ABS_PATH = Path(__file__).parent / HEADER_PATH
 VERSION_PATTERN = f"#define {PREFIX}VERSION_(MAJOR|MINOR|PATCH) (\\d+)"
