@@ -45,7 +45,7 @@ struct ctoon_val {
  *============================================================================*/
 
 static void* ctoon_alloc(ctoon_doc* doc, size_t size) {
-    if (doc->alloc_ptr + size > doc->alloc_ptr + doc->alloc_size) {
+    if (doc->alloc_ptr + size > (char*)doc->alloc_ptr + doc->alloc_size) {
         return NULL;
     }
     void* ptr = doc->alloc_ptr;
@@ -67,12 +67,15 @@ ctoon_doc* ctoon_doc_new(const char* data, size_t len, size_t max_memory) {
     doc->root = NULL;
     doc->error = NULL;
     doc->error_pos = 0;
-    doc->alloc_size = max_memory ? max_memory : len * 2;
+    doc->alloc_size = max_memory ? max_memory : len * 2 + 1024;
     doc->alloc_ptr = malloc(doc->alloc_size);
     if (!doc->alloc_ptr) {
         free(doc);
         return NULL;
     }
+    
+    // Reset alloc_ptr to start
+    doc->alloc_ptr = (char*)doc->alloc_ptr;
     
     return doc;
 }
@@ -93,12 +96,11 @@ size_t ctoon_doc_get_read_size(ctoon_doc* doc) {
 }
 
 size_t ctoon_doc_get_val_count(ctoon_doc* doc) {
-    // Simple implementation - count nodes
-    return 0;
+    return 0; // Simplified
 }
 
 /*==============================================================================
- * MARK: - Value Type
+ * MARK: - Value Type Checking
  *============================================================================*/
 
 ctoon_type ctoon_get_type(ctoon_val* val) {
@@ -171,7 +173,7 @@ bool ctoon_is_raw(ctoon_val* val) {
 }
 
 /*==============================================================================
- * MARK: - Value Content
+ * MARK: - Value Access
  *============================================================================*/
 
 bool ctoon_get_bool(ctoon_val* val) {
@@ -292,122 +294,14 @@ size_t ctoon_obj_iter_key_len(ctoon_val* key) {
 }
 
 /*==============================================================================
- * MARK: - TOON Parsing Implementation
+ * MARK: - Simple TOON Parser
  *============================================================================*/
 
 static void skip_whitespace(const char** p) {
     while (**p && isspace((unsigned char)**p)) (*p)++;
 }
 
-static int parse_string(ctoon_doc* doc, const char** p, char** out) {
-    const char* start = *p;
-    while (**p && **p != ':' && **p != '\n' && **p != '\r') (*p)++;
-    
-    size_t len = *p - start;
-    char* str = ctoon_alloc(doc, len + 1);
-    if (!str) return 0;
-    
-    memcpy(str, start, len);
-    str[len] = '\0';
-    
-    // Trim trailing whitespace
-    while (len > 0 && isspace((unsigned char)str[len - 1])) {
-        str[--len] = '\0';
-    }
-    
-    *out = str;
-    return 1;
-}
-
-static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node);
-
-static int parse_array(ctoon_doc* doc, const char** p, ctoon_node** node) {
-    *node = ctoon_new_node(doc, CTOON_TYPE_ARRAY);
-    if (!*node) return 0;
-    
-    (*node)->u.arr.count = 0;
-    (*node)->u.arr.capacity = 4;
-    (*node)->u.arr.items = ctoon_alloc(doc, sizeof(ctoon_node*) * 4);
-    if (!(*node)->u.arr.items) return 0;
-    
-    const char* start = *p;
-    while (**p && **p != ']') {
-        if (**p == ',') (*p)++;
-        
-        ctoon_node* item;
-        if (!parse_value(doc, p, &item)) return 0;
-        
-        if ((*node)->u.arr.count >= (*node)->u.arr.capacity) {
-            size_t new_cap = (*node)->u.arr.capacity * 2;
-            ctoon_node** new_items = ctoon_alloc(doc, sizeof(ctoon_node*) * new_cap);
-            if (!new_items) return 0;
-            memcpy(new_items, (*node)->u.arr.items, sizeof(ctoon_node*) * (*node)->u.arr.count);
-            (*node)->u.arr.items = new_items;
-            (*node)->u.arr.capacity = new_cap;
-        }
-        
-        (*node)->u.arr.items[(*node)->u.arr.count++] = item;
-    }
-    
-    if (**p == ']') (*p)++;
-    return 1;
-}
-
-static int parse_object(ctoon_doc* doc, const char** p, ctoon_node** node) {
-    *node = ctoon_new_node(doc, CTOON_TYPE_OBJECT);
-    if (!*node) return 0;
-    
-    (*node)->u.obj.count = 0;
-    (*node)->u.obj.capacity = 4;
-    (*node)->u.obj.keys = ctoon_alloc(doc, sizeof(char*) * 4);
-    (*node)->u.obj.values = ctoon_alloc(doc, sizeof(ctoon_node*) * 4);
-    if (!(*node)->u.obj.keys || !(*node)->u.obj.values) return 0;
-    
-    while (**p && **p != '}') {
-        skip_whitespace(p);
-        if (**p == ',') (*p)++;
-        skip_whitespace(p);
-        
-        char* key;
-        if (!parse_string(doc, p, &key)) return 0;
-        
-        skip_whitespace(p);
-        if (**p != ':') {
-            doc->error = "Expected ':' after key";
-            return 0;
-        }
-        (*p)++;
-        skip_whitespace(p);
-        
-        ctoon_node* value;
-        if (!parse_value(doc, p, &value)) return 0;
-        
-        if ((*node)->u.obj.count >= (*node)->u.obj.capacity) {
-            size_t new_cap = (*node)->u.obj.capacity * 2;
-            char** new_keys = ctoon_alloc(doc, sizeof(char*) * new_cap);
-            ctoon_node** new_values = ctoon_alloc(doc, sizeof(ctoon_node*) * new_cap);
-            if (!new_keys || !new_values) return 0;
-            
-            memcpy(new_keys, (*node)->u.obj.keys, sizeof(char*) * (*node)->u.obj.count);
-            memcpy(new_values, (*node)->u.obj.values, sizeof(ctoon_node*) * (*node)->u.obj.count);
-            
-            (*node)->u.obj.keys = new_keys;
-            (*node)->u.obj.values = new_values;
-            (*node)->u.obj.capacity = new_cap;
-        }
-        
-        (*node)->u.obj.keys[(*node)->u.obj.count] = key;
-        (*node)->u.obj.values[(*node)->u.obj.count] = value;
-        (*node)->u.obj.count++;
-        
-        skip_whitespace(p);
-    }
-    
-    if (**p == '}') (*p)++;
-    return 1;
-}
-
-static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node) {
+static int parse_primitive(ctoon_doc* doc, const char** p, ctoon_node** node) {
     skip_whitespace(p);
     
     if (!**p) {
@@ -415,18 +309,8 @@ static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node) {
         return 0;
     }
     
-    if (**p == '{') {
-        (*p)++;
-        return parse_object(doc, p, node);
-    }
-    
-    if (**p == '[') {
-        (*p)++;
-        return parse_array(doc, p, node);
-    }
-    
+    // Check for quoted string
     if (**p == '"') {
-        // String
         (*p)++;
         const char* start = *p;
         while (**p && **p != '"') (*p)++;
@@ -448,8 +332,8 @@ static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node) {
         return 1;
     }
     
+    // Check for number
     if (isdigit((unsigned char)**p) || **p == '-' || **p == '+') {
-        // Number
         char* end;
         double num = strtod(*p, &end);
         if (end == *p) {
@@ -465,6 +349,7 @@ static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node) {
         return 1;
     }
     
+    // Check for true/false/null
     if (strncmp(*p, "true", 4) == 0) {
         *node = ctoon_new_node(doc, CTOON_TYPE_TRUE);
         if (!*node) return 0;
@@ -486,4 +371,251 @@ static int parse_value(ctoon_doc* doc, const char** p, ctoon_node** node) {
         return 1;
     }
     
-    // Simple
+    // Unquoted string
+    const char* start = *p;
+    while (**p && **p != ',' && **p != '\n' && **p != '\r' && **p != ':' && !isspace((unsigned char)**p)) {
+        (*p)++;
+    }
+    
+    size_t len = *p - start;
+    if (len == 0) {
+        doc->error = "Expected value";
+        return 0;
+    }
+    
+    *node = ctoon_new_node(doc, CTOON_TYPE_STRING);
+    if (!*node) return 0;
+    
+    (*node)->u.str = ctoon_alloc(doc, len + 1);
+    if (!(*node)->u.str) return 0;
+    
+    memcpy((*node)->u.str, start, len);
+    (*node)->u.str[len] = '\0';
+    return 1;
+}
+
+static int parse_toon(ctoon_doc* doc, const char* data, size_t len) {
+    const char* p = data;
+    const char* end = data + len;
+    
+    skip_whitespace(&p);
+    if (p >= end) {
+        // Empty input
+        return 0;
+    }
+    
+    // Check if it's an array
+    if (*p == '[') {
+        // Parse array: [N]: value1,value2,...
+        doc->root = ctoon_new_node(doc, CTOON_TYPE_ARRAY);
+        if (!doc->root) return 0;
+        
+        doc->root->u.arr.count = 0;
+        doc->root->u.arr.capacity = 4;
+        doc->root->u.arr.items = ctoon_alloc(doc, sizeof(ctoon_node*) * 4);
+        if (!doc->root->u.arr.items) return 0;
+        
+        p++; // Skip '['
+        
+        // Skip number
+        while (p < end && *p != ']') p++;
+        if (p >= end || *p != ']') {
+            doc->error = "Unterminated array bracket";
+            return 0;
+        }
+        p++; // Skip ']'
+        
+        skip_whitespace(&p);
+        if (p >= end || *p != ':') {
+            doc->error = "Expected ':' after array";
+            return 0;
+        }
+        p++; // Skip ':'
+        
+        skip_whitespace(&p);
+        
+        // Parse values
+        while (p < end && *p != '\n' && *p != '\r') {
+            if (*p == ',') {
+                p++;
+                skip_whitespace(&p);
+            }
+            
+            if (p >= end || *p == '\n' || *p == '\r') break;
+            
+            ctoon_node* item;
+            if (!parse_primitive(doc, &p, &item)) return 0;
+            
+            // Resize if needed
+            if (doc->root->u.arr.count >= doc->root->u.arr.capacity) {
+                size_t new_cap = doc->root->u.arr.capacity * 2;
+                ctoon_node** new_items = ctoon_alloc(doc, sizeof(ctoon_node*) * new_cap);
+                if (!new_items) return 0;
+                memcpy(new_items, doc->root->u.arr.items, sizeof(ctoon_node*) * doc->root->u.arr.count);
+                doc->root->u.arr.items = new_items;
+                doc->root->u.arr.capacity = new_cap;
+            }
+            
+            doc->root->u.arr.items[doc->root->u.arr.count++] = item;
+            skip_whitespace(&p);
+        }
+        
+        return 1;
+    }
+    
+    // Check if it's a single primitive (no colon)
+    const char* line_end = p;
+    while (line_end < end && *line_end != '\n' && *line_end != '\r') line_end++;
+    
+    int has_colon = 0;
+    const char* tmp = p;
+    while (tmp < line_end) {
+        if (*tmp == ':') {
+            has_colon = 1;
+            break;
+        }
+        tmp++;
+    }
+    
+    if (!has_colon) {
+        // Single primitive
+        return parse_primitive(doc, &p, &doc->root);
+    }
+    
+    // Object with key-value pairs
+    doc->root = ctoon_new_node(doc, CTOON_TYPE_OBJECT);
+    if (!doc->root) return 0;
+    
+    doc->root->u.obj.count = 0;
+    doc->root->u.obj.capacity = 4;
+    doc->root->u.obj.keys = ctoon_alloc(doc, sizeof(char*) * 4);
+    doc->root->u.obj.values = ctoon_alloc(doc, sizeof(ctoon_node*) * 4);
+    if (!doc->root->u.obj.keys || !doc->root->u.obj.values) return 0;
+    
+    // Parse lines
+    while (p < end) {
+        skip_whitespace(&p);
+        if (p >= end) break;
+        
+        // Parse key
+        const char* key_start = p;
+        while (p < end && *p != ':' && *p != '\n' && *p != '\r') p++;
+        
+        if (p >= end || *p != ':') {
+            doc->error = "Expected ':' after key";
+            return 0;
+        }
+        
+        size_t key_len = p - key_start;
+        char* key = ctoon_alloc(doc, key_len + 1);
+        if (!key) return 0;
+        
+        memcpy(key, key_start, key_len);
+        key[key_len] = '\0';
+        
+        // Trim trailing whitespace
+        while (key_len > 0 && isspace((unsigned char)key[key_len - 1])) {
+            key[--key_len] = '\0';
+        }
+        
+        p++; // Skip ':'
+        
+        skip_whitespace(&p);
+        
+        // Parse value
+        ctoon_node* value;
+        if (!parse_primitive(doc, &p, &value)) return 0;
+        
+        // Add to object
+        if (doc->root->u.obj.count >= doc->root->u.obj.capacity) {
+            size_t new_cap = doc->root->u.obj.capacity * 2;
+            char** new_keys = ctoon_alloc(doc, sizeof(char*) * new_cap);
+            ctoon_node** new_values = ctoon_alloc(doc, sizeof(ctoon_node*) * new_cap);
+            if (!new_keys || !new_values) return 0;
+            
+            memcpy(new_keys, doc->root->u.obj.keys, sizeof(char*) * doc->root->u.obj.count);
+            memcpy(new_values, doc->root->u.obj.values, sizeof(ctoon_node*) * doc->root->u.obj.count);
+            
+            doc->root->u.obj.keys = new_keys;
+            doc->root->u.obj.values = new_values;
+            doc->root->u.obj.capacity = new_cap;
+        }
+        
+        doc->root->u.obj.keys[doc->root->u.obj.count] = key;
+        doc->root->u.obj.values[doc->root->u.obj.count] = value;
+        doc->root->u.obj.count++;
+        
+        // Skip to next line
+        while (p < end && *p != '\n' && *p != '\r') p++;
+        while (p < end && (*p == '\n' || *p == '\r')) p++;
+    }
+    
+    return 1;
+}
+
+/*==============================================================================
+ * MARK: - TOON Read/Write Implementation
+ *============================================================================*/
+
+ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg) {
+    ctoon_doc* doc = ctoon_doc_new(dat, len, 0);
+    if (!doc) return NULL;
+    
+    if (!parse_toon(doc, dat, len)) {
+        ctoon_doc_free(doc);
+        return NULL;
+    }
+    
+    return doc;
+}
+
+ctoon_doc* ctoon_read_toon_opts(const char* dat, size_t len, ctoon_toon_read_flag flg,
+                                ctoon_alc* alc, ctoon_err* err) {
+    (void)alc;
+    (void)err;
+    return ctoon_read_toon(dat, len, flg);
+}
+
+ctoon_doc* ctoon_read_toon_file(const char* path, ctoon_toon_read_flag flg,
+                                ctoon_alc* alc, ctoon_err* err) {
+    (void)path;
+    (void)flg;
+    (void)alc;
+    (void)err;
+    return NULL;
+}
+
+char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
+    (void)doc;
+    (void)flg;
+    (void)len;
+    return NULL;
+}
+
+char* ctoon_write_toon_opts(ctoon_doc* doc, ctoon_toon_write_flag flg,
+                            ctoon_alc* alc, size_t* len, ctoon_err* err) {
+    (void)doc;
+    (void)flg;
+    (void)alc;
+    (void)len;
+    (void)err;
+    return NULL;
+}
+
+bool ctoon_write_toon_file(const char* path, ctoon_doc* doc,
+                           ctoon_toon_write_flag flg, ctoon_err* err) {
+    (void)path;
+    (void)doc;
+    (void)flg;
+    (void)err;
+    return false;
+}
+
+ctoon_val* ctoon_doc_root(ctoon_doc* doc) {
+    return ctoon_doc_get_root(doc);
+}
+
+double ctoon_get_double(ctoon_val* val) {
+    return ctoon_get_real(val);
+}
+   
