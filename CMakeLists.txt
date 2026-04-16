@@ -4,7 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(DynamicVersion)
 
 extract_version_string(
-    HEADER_FILE "${CMAKE_CURRENT_SOURCE_DIR}/includes/ctoon.h"
+    HEADER_FILE "${CMAKE_CURRENT_SOURCE_DIR}/include/ctoon/ctoon.h"
     VERSION_PREFIX "CTOON_"
     OUTPUT_VAR PROJECT_VERSION
 )
@@ -26,6 +26,7 @@ option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_PYTHON "Build Python" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
+option(CTOON_WITHOUT_JSON "Build without JSON support" OFF)
 
 
 set(CTOON_SOURCE_DIR ${PROJECT_SOURCE_DIR})
@@ -42,7 +43,7 @@ set_target_properties(ctoon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Include directories
 target_include_directories(ctoon 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includes
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/sources
 )
 
@@ -50,6 +51,10 @@ target_compile_definitions(ctoon PUBLIC
     # CTOON_VERSION is defined in header, use CTOON_VERSION_NUMBER for CMake
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
 )
+
+if(CTOON_WITHOUT_JSON)
+    target_compile_definitions(ctoon PUBLIC CTOON_WITHOUT_JSON)
+endif()
 
 # Compiler options
 target_compile_options(ctoon PRIVATE
@@ -61,7 +66,7 @@ target_compile_options(ctoon PRIVATE
 apply_optimization_flags(ctoon)
 
 # Add CLI executable
-add_executable(ctoon_cli src/sources/cli.cpp)
+add_executable(ctoon_cli src/cli/cli.cpp)
 target_link_libraries(ctoon_cli PRIVATE ctoon::ctoon)
 set_target_properties(ctoon_cli PROPERTIES OUTPUT_NAME ctoon)
 
@@ -88,7 +93,7 @@ if(CTOON_BUILD_TESTS)
 endif()
 
 # Installation
-install(DIRECTORY includes DESTINATION include)
+install(DIRECTORY include DESTINATION .)
 
 # Print optimization summary
 print_optimization_summary()
