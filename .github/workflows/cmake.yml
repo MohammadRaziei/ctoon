@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.28.x'
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install python deps
+      run: pip install -r requirements-dev.txt
+    
+    - name: Use cmake
+      run: cmake --version
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCTOON_BUILD_EXAMPLES=ON \
+          -DCTOON_BUILD_PYTHON=ON \
+          -DCTOON_BUILD_TESTS=ON \
+          -DCTOON_BUILD_DOCS=OFF
+
+    - name: Build
+      run: cmake --build build -j4
+
+    - name: Run tests
+      run: ctest --test-dir build --output-on-failure --extra-verbose
+      
+
+  build-docs:
+    needs: build-and-test
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.28.x'
+    
+    - name: Install apt dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCTOON_BUILD_EXAMPLES=OFF \
+          -DCTOON_BUILD_PYTHON=OFF \
+          -DCTOON_BUILD_TESTS=OFF \
+          -DCTOON_BUILD_DOCS=ON
+
+    - name: Build documentation
+      run: cmake --build build --target ctoon_docs
+
+    - name: Upload documentation artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: build/docs/
+        retention-days: 5
+
+  build-coverage:
+    # needs: build-and-test
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.28.x'
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install python dependencies
+      run: pip install -r requirements-dev.txt
+    
+    - name: Install coverage tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+
+    - name: Configure CMake with coverage
+      run: |
+        cmake -B build \
+          -DCTOON_BUILD_EXAMPLES=OFF \
+          -DCTOON_BUILD_PYTHON=ON \
+          -DCTOON_BUILD_TESTS=ON \
+          -DCTOON_BUILD_DOCS=OFF
+
+    - name: Generate coverage report
+      run: cmake --build build --target ctoon_coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        files: build/coverage/total/coverage.lcov
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: build/coverage/
+        retention-days: 5
+
+  deploy-pages:
+    needs: [build-docs, build-coverage]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Download documentation artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: documentation
+        path: ./pages
+
+    - name: Download coverage artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-report
+        path: ./pages/coverage     
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./pages
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
