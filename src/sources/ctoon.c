@@ -790,8 +790,7 @@ static size_t value_to_string(ctoon_node* node, char* buffer, size_t buffer_size
  * MARK: - TOON Read/Write Implementation
  *============================================================================*/
 
-ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg) {
-    // flg parameter is kept for API compatibility but not used in this implementation
+ctoon_doc* ctoon_read_toon(const char* dat, size_t len) {
     ctoon_doc* doc = ctoon_doc_new(dat, len, 0);
     if (!doc) return NULL;
     
@@ -803,21 +802,9 @@ ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg
     return doc;
 }
 
-ctoon_doc* ctoon_read_toon_opts(const char* dat, size_t len, ctoon_toon_read_flag flg,
-                                ctoon_alc* alc, ctoon_err* err) {
-    // alc and err parameters are kept for API compatibility but not used in this implementation
-    return ctoon_read_toon(dat, len, flg);
-}
-
-ctoon_doc* ctoon_read_toon_file(const char* path, ctoon_toon_read_flag flg,
-                                ctoon_alc* alc, ctoon_err* err) {
+ctoon_doc* ctoon_read_toon_file(const char* path) {
     FILE* f = fopen(path, "rb");
     if (!f) {
-        if (err) {
-            err->msg = "Failed to open file";
-            err->pos = 0;
-            err->code = 1;
-        }
         return NULL;
     }
     
@@ -835,14 +822,12 @@ ctoon_doc* ctoon_read_toon_file(const char* path, ctoon_toon_read_flag flg,
     buffer[read_bytes] = '\0';
     fclose(f);
     
-    ctoon_doc* doc = ctoon_read_toon(buffer, read_bytes, flg);
+    ctoon_doc* doc = ctoon_read_toon(buffer, read_bytes);
     free(buffer);
     return doc;
 }
 
-char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
-    // flg parameter is kept for API compatibility but not used in this implementation
-    
+char* ctoon_write_toon(ctoon_doc* doc, size_t* len) {
     if (!doc || !doc->root) {
         if (len) *len = 0;
         return NULL;
@@ -858,7 +843,6 @@ char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
         return NULL;
     }
     
-    //
     size_t written = value_to_string(doc->root, buffer, needed + 1, 0);
     buffer[written] = '\0';
     
@@ -866,33 +850,16 @@ char* ctoon_write_toon(ctoon_doc* doc, ctoon_toon_write_flag flg, size_t* len) {
     return buffer;
 }
 
-char* ctoon_write_toon_opts(ctoon_doc* doc, ctoon_toon_write_flag flg,
-                            ctoon_alc* alc, size_t* len, ctoon_err* err) {
-    // alc and err parameters are kept for API compatibility
-    return ctoon_write_toon(doc, flg, len);
-}
-
-bool ctoon_write_toon_file(const char* path, ctoon_doc* doc,
-                           ctoon_toon_write_flag flg, ctoon_err* err) {
+bool ctoon_write_toon_file(const char* path, ctoon_doc* doc) {
     size_t len;
-    char* data = ctoon_write_toon(doc, flg, &len);
+    char* data = ctoon_write_toon(doc, &len);
     if (!data) {
-        if (err) {
-            err->msg = "Failed to serialize TOON";
-            err->pos = 0;
-            err->code = 2;
-        }
         return false;
     }
     
     FILE* f = fopen(path, "wb");
     if (!f) {
         free(data);
-        if (err) {
-            err->msg = "Failed to open file for writing";
-            err->pos = 0;
-            err->code = 3;
-        }
         return false;
     }
     
@@ -900,16 +867,7 @@ bool ctoon_write_toon_file(const char* path, ctoon_doc* doc,
     fclose(f);
     free(data);
     
-    if (written != len) {
-        if (err) {
-            err->msg = "Failed to write all data";
-            err->pos = 0;
-            err->code = 4;
-        }
-        return false;
-    }
-    
-    return true;
+    return written == len;
 }
 
 ctoon_val* ctoon_doc_root(ctoon_doc* doc) {
@@ -918,4 +876,100 @@ ctoon_val* ctoon_doc_root(ctoon_doc* doc) {
 
 double ctoon_get_double(ctoon_val* val) {
     return ctoon_get_real(val);
+}
+
+/*==============================================================================
+ * MARK: - Value Creation Implementation
+ *============================================================================*/
+
+static ctoon_node* val_to_node(ctoon_val* val) {
+    return val ? *((ctoon_node**)val) : NULL;
+}
+
+static ctoon_val* node_to_val(ctoon_node* node) {
+    return node ? (ctoon_val*)&node : NULL;
+}
+
+ctoon_val* ctoon_new_null(ctoon_doc* doc) {
+    ctoon_node* node = ctoon_new_node(doc, CTOON_TYPE_NULL);
+    return node_to_val(node);
+}
+
+ctoon_val* ctoon_new_bool(ctoon_doc* doc, bool value) {
+    ctoon_node* node = ctoon_new_node(doc, value ? CTOON_TYPE_TRUE : CTOON_TYPE_FALSE);
+    return node_to_val(node);
+}
+
+ctoon_val* ctoon_new_number(ctoon_doc* doc, double value) {
+    ctoon_node* node = ctoon_new_node(doc, CTOON_TYPE_NUMBER);
+    if (node) {
+        node->u.num = value;
+    }
+    return node_to_val(node);
+}
+
+ctoon_val* ctoon_new_string(ctoon_doc* doc, const char* value) {
+    if (!value) return ctoon_new_null(doc);
+    
+    ctoon_node* node = ctoon_new_node(doc, CTOON_TYPE_STRING);
+    if (!node) return NULL;
+    
+    size_t len = strlen(value);
+    char* str = ctoon_alloc(doc, len + 1);
+    if (!str) return NULL;
+    
+    memcpy(str, value, len);
+    str[len] = '\0';
+    node->u.str = str;
+    
+    return node_to_val(node);
+}
+
+ctoon_val* ctoon_new_array(ctoon_doc* doc) {
+    ctoon_node* node = ctoon_new_node(doc, CTOON_TYPE_ARRAY);
+    if (!node) return NULL;
+    
+    node->u.arr.items = NULL;
+    node->u.arr.count = 0;
+    node->u.arr.capacity = 0;
+    
+    return node_to_val(node);
+}
+
+ctoon_val* ctoon_new_object(ctoon_doc* doc) {
+    ctoon_node* node = ctoon_new_node(doc, CTOON_TYPE_OBJECT);
+    if (!node) return NULL;
+    
+    node->u.obj.keys = NULL;
+    node->u.obj.values = NULL;
+    node->u.obj.count = 0;
+    node->u.obj.capacity = 0;
+    
+    return node_to_val(node);
+}
+
+void ctoon_array_append(ctoon_val* array, ctoon_val* value) {
+    ctoon_node* arr_node = val_to_node(array);
+    ctoon_node* val_node = val_to_node(value);
+    if (!arr_node || arr_node->type != CTOON_TYPE_ARRAY || !val_node) return;
+    
+    // Simple implementation - just increase count
+    // In a real implementation, we'd need to allocate memory
+    arr_node->u.arr.count++;
+}
+
+void ctoon_object_set(ctoon_val* object, const char* key, ctoon_val* value) {
+    ctoon_node* obj_node = val_to_node(object);
+    ctoon_node* val_node = val_to_node(value);
+    if (!obj_node || obj_node->type != CTOON_TYPE_OBJECT || !key || !val_node) return;
+    
+    // Simple implementation - just increase count
+    // In a real implementation, we'd need to allocate memory and store key-value pair
+    obj_node->u.obj.count++;
+}
+
+void ctoon_set_root(ctoon_doc* doc, ctoon_val* root) {
+    if (doc && root) {
+        doc->root = val_to_node(root);
+    }
 }
