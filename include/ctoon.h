@@ -62,6 +62,12 @@ extern "C" {
 #define CTOON_VERSION \
     CTOON_VERSION_ENCODE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
 
+#define CTOON_VERSION_STRING \
+    CTOON_VERSION_STRING_HELPER(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
+
+#define CTOON_VERSION_STRING_HELPER(major, minor, patch) \
+    #major "." #minor "." #patch
+
 
 
 /*==============================================================================

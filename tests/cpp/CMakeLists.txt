@@ -6,12 +6,16 @@ file(GLOB CTOON_TEST_SOURCES CONFIGURE_DEPENDS
 add_executable(test_ctoon_cpp ${CTOON_TEST_SOURCES})
 
 # Default: test against normal headers (source tree)
-set(CTOON_TEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/includes")
+set(CTOON_TEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
+set(CTOON_TEST_BINDINGS_DIR "${PROJECT_SOURCE_DIR}/src/bindings")
 
-target_include_directories(test_ctoon_cpp PRIVATE "${CTOON_TEST_INCLUDE_DIR}")
+target_include_directories(test_ctoon_cpp PRIVATE 
+    "${CTOON_TEST_INCLUDE_DIR}"
+    "${CTOON_TEST_BINDINGS_DIR}"
+)
 
-# Link against ctoon library
-target_link_libraries(test_ctoon_cpp PRIVATE ctoon)
+# Link against ctoon C++ wrapper library
+target_link_libraries(test_ctoon_cpp PRIVATE ctoon::ctoonpp)
 
 add_test(NAME test_ctoon_cpp COMMAND $<TARGET_FILE:test_ctoon_cpp>)
 
