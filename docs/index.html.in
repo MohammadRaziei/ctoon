@@ -82,8 +82,16 @@
 
         .topbar-logo {
             width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .topbar-logo svg {
+            width: 100%;
+            height: 100%;
             border-radius: 6px;
-            object-fit: contain;
         }
 
         .topbar-name {
@@ -290,7 +298,9 @@
 <!-- Top bar -->
 <header class="topbar">
     <a class="topbar-brand" href="#">
-        <img class="topbar-logo" src="ctoon.svg" alt="CToon">
+        <div class="topbar-logo">
+            @LOGO_CONTENT@
+        </div>
         <span class="topbar-name">CToon</span>
     </a>
     <div class="topbar-actions">
