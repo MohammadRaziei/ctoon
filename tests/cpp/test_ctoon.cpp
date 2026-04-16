@@ -1,5 +1,5 @@
 #include "utest/utest.h"
-#include "../../src/bindings/ctoon.hpp"
+#include "ctoon.hpp"
 
 #include <string>
 #include <vector>
