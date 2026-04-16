@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@PROJECT_NAME@ — @CTOON_SECTION_TITLE@ Coverage</title>
+    <title>@PROJECT_NAME@ — @SECTION_TITLE@ Coverage</title>
     <style>
         :root {
             --bg-body: #121212;

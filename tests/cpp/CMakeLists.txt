@@ -95,7 +95,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     # Add custom command to run GenerateIframe.cmake after coverage target
     add_custom_command(TARGET ctoon_coverage_cpp POST_BUILD
         COMMAND ${CMAKE_COMMAND}
-            -IFRAME_SRC="html/index.html"
+            -DIFRAME_SRC="html/index.html"
             -DSECTION_TITLE="C++ Core"
             -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
             -DPROJECT_NAME="${PROJECT_NAME}"
