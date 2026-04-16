@@ -89,14 +89,20 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     add_dependencies(ctoon_coverage_cpp ctoon_test_cpp)
     add_dependencies(ctoon_coverage ctoon_coverage_cpp)
 
-    # Generate iframe wrapper
-    set(CTOON_IFRAME_SRC "html/index.html")
-    set(CTOON_SECTION_TITLE "C++ Core")
+    # Generate iframe wrapper using GenerateIframe.cmake
     file(MAKE_DIRECTORY ${CTOON_COVERAGE_CPP_BINARY_DIR})
-    configure_file(
-        ${CTOON_TEST_SOURCE_DIR}/coverage_iframe.html.in
-        ${CTOON_COVERAGE_CPP_BINARY_DIR}/index.html
-        @ONLY
+    
+    # Add custom command to run GenerateIframe.cmake after coverage target
+    add_custom_command(TARGET ctoon_coverage_cpp POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -IFRAME_SRC="html/index.html"
+            -DSECTION_TITLE="C++ Core"
+            -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+            -DPROJECT_NAME="${PROJECT_NAME}"
+            -DOUTPUT_DIR="${CTOON_COVERAGE_CPP_BINARY_DIR}"
+            -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+        COMMENT "Generating iframe wrapper for C++ coverage report"
+        WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
     )
 else()
     message(WARNING "LCOV or GENHTML executables not found.")

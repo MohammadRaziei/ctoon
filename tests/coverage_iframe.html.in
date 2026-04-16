@@ -122,12 +122,12 @@
         <span class="navbar-breadcrumb">
             <a href="../index.html">Coverage Dashboard</a>
             <span class="sep">&rsaquo;</span>
-            @CTOON_SECTION_TITLE@
+            @SECTION_TITLE@
         </span>
     </nav>
 
     <div class="iframe-wrap">
-        <iframe src="@CTOON_IFRAME_SRC@" title="@CTOON_SECTION_TITLE@ Coverage Report" loading="lazy"></iframe>
+        <iframe src="@IFRAME_SRC@" title="@SECTION_TITLE@ Coverage Report" loading="lazy"></iframe>
     </div>
 </body>
 </html>

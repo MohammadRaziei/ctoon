@@ -103,14 +103,20 @@ if(TARGET ctoon_build_python)
         # Add this python coverage target to the main 'ctoon_coverage' target
         add_dependencies(ctoon_coverage ctoon_coverage_python)
 
-        # Generate iframe wrapper
-        set(CTOON_IFRAME_SRC "html/index.html")
-        set(CTOON_SECTION_TITLE "Python Bindings")
+        # Generate iframe wrapper using GenerateIframe.cmake
         file(MAKE_DIRECTORY ${CTOON_COVERAGE_PYTHON_BINARY_DIR})
-        configure_file(
-            ${CTOON_TEST_SOURCE_DIR}/coverage_iframe.html.in
-            ${CTOON_COVERAGE_PYTHON_BINARY_DIR}/index.html
-            @ONLY
+        
+        # Add custom command to run GenerateIframe.cmake after coverage target
+        add_custom_command(TARGET ctoon_coverage_python POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DIFRAME_SRC="html/index.html"
+                -DSECTION_TITLE="Python Bindings"
+                -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+                -DPROJECT_NAME="${PROJECT_NAME}"
+                -DOUTPUT_DIR="${CTOON_COVERAGE_PYTHON_BINARY_DIR}"
+                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+            COMMENT "Generating iframe wrapper for Python coverage report"
+            WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
         )
     else()
         message(WARNING "coverage module is not installed. Python coverage target will be skipped.")

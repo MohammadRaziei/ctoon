@@ -68,6 +68,19 @@ if(TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
         add_dependencies(ctoon_coverage_total ctoon_coverage_python)
 
         add_dependencies(ctoon_coverage ctoon_coverage_total)
+        
+        # Add custom command to run GenerateIframe.cmake for total coverage
+        add_custom_command(TARGET ctoon_coverage_total POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DIFRAME_SRC="html/index.html"
+                -DSECTION_TITLE="Total Coverage"
+                -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+                -DPROJECT_NAME="${PROJECT_NAME}"
+                -DOUTPUT_DIR="${CTOON_COVERAGE_TOTAL_BINARY_DIR}"
+                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+            COMMENT "Generating iframe wrapper for total coverage report"
+            WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
+        )
     endif()
 endif()
 
@@ -85,7 +98,7 @@ if(TARGET ctoon_coverage_total)
             \"badgeClass\": \"total\",
             \"color\": \"#a371f7\",
             \"desc\": \"Combined coverage report for both C++ and Python codebases. Useful for SonarQube analysis.\",
-            \"htmlLink\": \"total/html/index.html\",
+            \"htmlLink\": \"total/index.html\",
             \"lcovLink\": \"total/coverage.lcov\"
         },")
 endif()
@@ -116,12 +129,6 @@ if(TARGET ctoon_coverage_python)
             \"htmlLink\": \"python/index.html\",
             \"lcovLink\": \"python/coverage.lcov\"
         },")
-endif()
-
-# Remove the trailing comma if the list is not empty, then close the array
-string(LENGTH "${COVERAGE_DATA_JSON}" JSON_LEN)
-if(JSON_LEN GREATER 1)
-    string(REGEX REPLACE ",$" "" COVERAGE_DATA_JSON "${COVERAGE_DATA_JSON}")
 endif()
 
 set(COVERAGE_DATA_JSON "${COVERAGE_DATA_JSON}]")
