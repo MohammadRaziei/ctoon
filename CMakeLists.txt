@@ -49,6 +49,25 @@ if(CTOON_WITHOUT_JSON)
     target_compile_definitions(ctoon PUBLIC CTOON_WITHOUT_JSON)
 endif()
 
+# C++ wrapper library (header-only interface)
+add_library(ctoonpp INTERFACE)
+add_library(ctoon::ctoonpp ALIAS ctoonpp)
+
+target_include_directories(ctoonpp INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/bindings
+)
+
+target_link_libraries(ctoonpp INTERFACE ctoon::ctoon)
+
+target_compile_definitions(ctoonpp INTERFACE
+    CTOON_VERSION_NUMBER=${PROJECT_VERSION}
+)
+
+if(CTOON_WITHOUT_JSON)
+    target_compile_definitions(ctoonpp INTERFACE CTOON_WITHOUT_JSON)
+endif()
+
 # Compiler options
 target_compile_options(ctoon PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /EHsc>
