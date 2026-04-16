@@ -2,7 +2,7 @@
 # Called via: cmake -P CreateDocs.cmake
 # Required CMake variables (passed via -D):
 #   PROJECT_SOURCE_DIR, PROJECT_VERSION, OUTPUT_DIR, DOXYGEN_EXECUTABLE,
-#   FOOTER_IN, DOXYFILE_IN, LOGO_SRC, AWESOME_CSS_DIR
+#   FOOTER_IN, DOXYFILE_IN, LOGO_SRC
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -10,6 +10,19 @@ cmake_minimum_required(VERSION 3.19)
 if(NOT DEFINED DOXYGEN_EXECUTABLE OR DOXYGEN_EXECUTABLE STREQUAL "DOXYGEN_EXECUTABLE-NOTFOUND")
     message(WARNING "Doxygen not found - C++ documentation skipped")
     return()
+endif()
+
+# ── Find doxygen-awesome-css from pip package ─────────────────
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -m doxygen_awesome_css --path
+    OUTPUT_VARIABLE AWESOME_CSS_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if(NOT AWESOME_CSS_DIR OR NOT EXISTS "${AWESOME_CSS_DIR}/doxygen-awesome.css")
+    message(WARNING "doxygen-awesome-css not found - C++ docs will use default theme")
+    set(AWESOME_CSS_DIR "")
 endif()
 
 # ── Variables ─────────────────────────────────────────────────

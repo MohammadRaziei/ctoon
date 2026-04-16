@@ -30,8 +30,8 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     target_link_options(test_ctoon_cpp PRIVATE --coverage)
 
     add_custom_target(ctoon_coverage_cpp
-        # Clean previous coverage data
-        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_CPP_BINARY_DIR}
+        # Clean previous coverage data (only html, keep index.html wrapper)
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_CPP_BINARY_DIR}/html
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_COVERAGE_CPP_BINARY_DIR}/html
 
         # Capture coverage data

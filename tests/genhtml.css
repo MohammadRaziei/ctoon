@@ -1,98 +1,314 @@
-/* Custom CSS for genhtml coverage reports */
+/*
+ * Theme Name: Furo Dark Theme for LCOV
+ * Description: A modern, dark-themed stylesheet for LCOV code coverage reports,
+ *              inspired by the 'Furo' Sphinx documentation theme. It features
+ *              a clean color palette, improved typography, and enhanced readability
+ *              for both summary tables and source code views.
+ * 
+ * Author: Mohammad Raziei
+ * Email: mohammadraziei1375@gmail.com
+ * GitHub: https://github.com/mohammadraziei
+ * 
+ * License: MIT License
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+:root {
+    /* Furo-inspired Dark Theme Palette */
+    --bg-body: #121212;
+    --bg-card: #1e1e1e;
+    --bg-header: #2d2d2d;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0a0;
+    --accent-color: #4dabf7; /* Furo Blue */
+    --accent-hover: #339af0;
+    --border-color: #3e3e42;
+    
+    /* Coverage Colors */
+    --cov-high: #40c057;
+    --cov-med: #fcc419;
+    --cov-low: #ff6b6b;
+    
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+
+/* --- Global Reset & Body --- */
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: var(--font-family);
+    margin: 0;
+    padding: 20px 20px 0 20px;
+    line-height: 1.6;
 }
 
-.header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 2rem;
-    border-radius: 8px;
-    margin-bottom: 2rem;
-}
+a:link { color: var(--accent-color); text-decoration: none; }
+a:visited { color: var(--accent-color); text-decoration: none; }
+a:hover { text-decoration: underline; }
 
-.header h1 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-}
-
-.header p {
-    opacity: 0.9;
-}
-
-table.coverage {
-    border-collapse: collapse;
-    width: 100%;
-    margin-bottom: 2rem;
-}
-
-table.coverage th,
-table.coverage td {
-    padding: 0.75rem;
-    border: 1px solid #e1e4e8;
-}
-
-table.coverage th {
-    background: #f6f8fa;
-    font-weight: 600;
-}
-
-table.coverage tr:hover {
-    background: #f6f8fa;
-}
-
-.coverage-header {
-    background: #f6f8fa !important;
-}
-
-.coverage-yes {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.coverage-no {
-    color: #d73a49;
-    font-weight: 600;
-}
-
-.legend {
-    display: flex;
-    gap: 2rem;
-    margin: 1rem 0;
-    padding: 1rem;
-    background: #f6f8fa;
-    border-radius: 6px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.legend-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-}
-
-.legend-color.covered {
-    background: #28a745;
-}
-
-.legend-color.uncovered {
-    background: #d73a49;
-}
-
-.legend-color.partial {
-    background: linear-gradient(90deg, #28a745 50%, #d73a49 50%);
-}
-
-.footer {
-    margin-top: 2rem;
-    padding: 1rem;
-    border-top: 1px solid #e1e4e8;
+/* --- Header Section --- */
+.title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 10px;
     text-align: center;
-    color: #666;
-    font-size: 0.9rem;
+}
+
+body > table {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.headerItem {
+    color: var(--text-muted);
+    font-size: 16px;
+    text-align: right;
+    min-width: 85px!important;
+    width: 5%!important;
+}
+
+.headerValue {
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 16px;
+    text-align: left;
+    width: 40%!important;
+}
+
+.headerCovTableHead {
+    color: var(--text-main);
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* --- Coverage Summary Boxes --- */
+.headerCovTableEntryLo, .headerCovTableEntryMed, .headerCovTableEntryHi {
+    background-color: var(--bg-card);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-align: right;
+    border: 1px solid var(--border-color);
+}
+
+.headerCovTableEntryLo { color: var(--cov-low); }
+.headerCovTableEntryMed { color: var(--cov-med); }
+.headerCovTableEntryHi { color: var(--cov-high); }
+
+.headerCovTableEntry {
+    color: var(--text-main);
+    background-color: var(--bg-card);
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: right;
+    border: 1px solid var(--border-color);
+}
+
+/* --- Main Directory Table (Index Page) --- */
+center > table {
+    width: 90%;
+    max-width: 1200px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background-color: var(--bg-card);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    margin: 20px auto;
+}
+
+.tableHead {
+    background-color: var(--bg-header);
+    color: var(--text-main);
+    font-weight: 600;
+    padding: 12px 15px;
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tableHead a { color: var(--accent-color); text-decoration: none; }
+
+/* --- Table Rows --- */
+tr .coverFile, tr:has(td.coverFile) { transition: background-color 0.2s ease; }
+.coverFile:hover, tr:has(td.coverFile):hover, .coverFn:hover, tr:has(td.coverFn):hover { background-color: #303031; }
+.coverFile, .coverFn { padding: 10px 15px; border-bottom: 0px solid var(--border-color); }
+.coverFile a, .coverFn a { color: var(--accent-color); text-decoration: none; font-weight: 500; }
+
+/* --- Coverage Percentages --- */
+.coverPerLo, .coverPerMed, .coverPerHi { font-weight: bold; text-align: center; }
+.coverPerLo { color: var(--cov-low); }
+.coverPerMed { color: var(--cov-med); }
+.coverPerHi { color: var(--cov-high); }
+.coverNumDflt { color: var(--text-muted); text-align: center; }
+
+/* --- Progress Bars (Restored to original gcov.css style) --- */
+td.coverBarOutline {
+    background-color: #e4e4e4;
+}
+
+/* --- Footer --- */
+.versionInfo {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.versionInfo a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+/* Add "Theme By Mohammad Raziei" after the LCOV link */
+.versionInfo::after {
+    content: "| Theme By Mohammad Raziei";
+    color: var(--text-muted);
+    font-weight: normal;
+    margin-left: 5px;
+}
+
+/* ============================================================ */
+/*  SOURCE CODE VIEW STYLES (Furo Style + Original Colors)     */
+/* ============================================================ */
+
+/* Source code view: source code format */
+pre.source {
+    font-family: var(--font-mono);
+    white-space: pre;
+    margin-top: 2px;
+    color: #e4e4e4;
+    background-color: #1e1e1e; /* Furo-like code background */
+    padding: 10px 0;
+    /* border-radius: 4px; */
+    border-top: 1px solid var(--border-color);
+}
+
+/* Source code view: line number format */
+span.lineNum {
+    background-color: #202020;
+    color: #888;
+    padding-right: 10px;
+    user-select: none;
+}
+
+/* Source code view: format for the source code heading line */
+pre.sourceHeading {
+    white-space: pre;
+    font-family: var(--font-mono);
+    font-weight: bold;
+    margin: 0px;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+
+td:has(pre.source) {
+    overflow: auto;
+    width: calc(100dvw - 40px);
+    display: block;
+    color: #e4e4e4;
+    background-color: #1e1e1e;
+    height: calc(100vh - 268px);
+    min-height: 60vh;
+}
+
+pre > span:hover {
+    /* Adds a semi-transparent white layer to lighten any background color */
+    background-color: rgba(255, 255, 255, 0.15); 
+    cursor: default;
+    width: 100%;
+}
+
+/* --- TLA (Trend Line Analysis) Colors --- */
+
+/* Uncovered New Code (+ => 0): Reddish Brown */
+td.tlaUNC { text-align: right; background-color: #772D16; }
+td.tlaBgUNC { background-color: #772D16; }
+span.tlaUNC { text-align: left; background-color: #772D16; }
+span.tlaBgUNC { background-color: #772D16; }
+a.tlaBgUNC { background-color: #772D16; color: #e4e4e4; }
+
+/* Lost Baseline Coverage (1 => 0): Reddish Brown */
+td.tlaLBC { text-align: right; background-color: #772D16; }
+td.tlaBgLBC { background-color: #772D16; }
+span.tlaLBC { text-align: left; background-color: #772D16; }
+span.tlaBgLBC { background-color: #772D16; }
+a.tlaBgLBC { background-color: #772D16; color: #e4e4e4; }
+
+/* Uncovered Included Code (# => 0): Reddish Brown */
+td.tlaUIC { text-align: right; background-color: #772D16; }
+td.tlaBgUIC { background-color: #772D16; }
+span.tlaUIC { text-align: left; background-color: #772D16; }
+span.tlaBgUIC { background-color: #772D16; }
+a.tlaBgUIC { background-color: #772D16; color: #e4e4e4; }
+
+/* Uncovered Baseline Code (0 => 0): Reddish Brown */
+td.tlaUBC { text-align: right; background-color: #772D16; }
+td.tlaBgUBC { background-color: #772D16; }
+span.tlaUBC { text-align: left; background-color: #772D16; }
+span.tlaBgUBC { background-color: #772D16; }
+a.tlaBgUBC { background-color: #772D16; color: #e4e4e4; }
+
+/* Gained Baseline Coverage (0 => 1): Dark Blue */
+td.tlaGBC { text-align: right; background-color: #143E4F; }
+td.tlaBgGBC { background-color: #143E4F; }
+span.tlaGBC { text-align: left; background-color: #143E4F; }
+span.tlaBgGBC { background-color: #143E4F; }
+a.tlaBgGBC { background-color: #143E4F; color: #e4e4e4; }
+
+/* Gained Included Coverage (# => 1): Dark Blue */
+td.tlaGIC { text-align: right; background-color: #143E4F; }
+td.tlaBgGIC { background-color: #143E4F; }
+span.tlaGIC { text-align: left; background-color: #143E4F; }
+span.tlaBgGIC { background-color: #143E4F; }
+a.tlaBgGIC { background-color: #143E4F; color: #e4e4e4; }
+
+/* Gained New Coverage (+ => 1): Dark Blue */
+td.tlaGNC { text-align: right; background-color: #143E4F; }
+td.tlaBgGNC { background-color: #143E4F; }
+span.tlaGNC { text-align: left; background-color: #143E4F; }
+span.tlaBgGNC { background-color: #143E4F; }
+a.tlaBgGNC { background-color: #143E4F; color: #e4e4e4; }
+
+/* Covered Baseline Code (1 => 1): Dark Blue */
+td.tlaCBC { text-align: right; background-color: #143E4F; }
+td.tlaBgCBC { background-color: #143E4F; }
+span.tlaCBC { text-align: left; background-color: #143E4F; }
+span.tlaBgCBC { background-color: #143E4F; }
+a.tlaBgCBC { background-color: #143E4F; color: #e4e4e4; }
+
+/* Excluded/Deleted Codes: Light Grey */
+td.tlaEUB, td.tlaBgEUB, span.tlaEUB, span.tlaBgEUB, a.tlaBgEUB,
+td.tlaECB, td.tlaBgECB, span.tlaECB, span.tlaBgECB, a.tlaBgECB,
+td.tlaDUB, td.tlaBgDUB, span.tlaDUB, span.tlaBgDUB, a.tlaBgDUB,
+td.tlaDCB, td.tlaBgDCB, span.tlaDCB, span.tlaBgDCB, a.tlaBgDCB {
+    background-color: #EEEEEE;
+    color: #333; /* Ensure text is readable on light grey */
+}
+
+/* Helper for missed bins */
+span.missBins {
+    background-color: #801b18;
 }

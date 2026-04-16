@@ -48,8 +48,8 @@ if(TARGET ctoon_build_python)
         # Enable coverage for the python test target
         # We define a custom target to generate the coverage report.
         add_custom_target(ctoon_coverage_python
-            # Clean previous coverage data
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_PYTHON_BINARY_DIR}
+            # Clean previous coverage data (only html, keep index.html wrapper)
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_PYTHON_BINARY_DIR}/html
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_COVERAGE_PYTHON_BINARY_DIR}/html
 
             # Run tests with coverage enabled
