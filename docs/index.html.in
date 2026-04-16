@@ -1,44 +1,46 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CToon Documentation</title>
     <style>
         :root {
+            /* Blue Light Theme */
             --color-bg: #ffffff;
-            --color-bg-secondary: #f8f9fb;
-            --color-fg: #1e2129;
-            --color-fg-secondary: #5a5e6b;
-            --color-border: #e0e3eb;
-            --color-accent: #7c3aed;
-            --color-accent-hover: #6d28d9;
+            --color-bg-secondary: #f8f9fa;
+            --color-fg: #000000;
+            --color-fg-secondary: #6c757d;
+            --color-border: #dee2e6;
+            --color-accent: #4dabf7;
+            --color-accent-hover: #339af0;
             --color-card: #ffffff;
-            --color-card-hover: #f5f3ff;
-            --color-card-border: #e0e3eb;
+            --color-card-hover: #f1f3f5;
+            --color-card-border: #dee2e6;
             --color-code-bg: #f5f5f5;
-            --color-icon-bg: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --color-icon-bg: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.15);
             --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
             --transition: all 0.2s ease;
         }
 
         [data-theme="dark"] {
-            --color-bg: #181820;
-            --color-bg-secondary: #1e1e28;
-            --color-fg: #e8e6f0;
-            --color-fg-secondary: #9b97b0;
-            --color-border: #2e2e3a;
-            --color-accent: #a78bfa;
-            --color-accent-hover: #c4b5fd;
-            --color-card: #1e1e28;
-            --color-card-hover: #252532;
-            --color-card-border: #2e2e3a;
+            /* Blue Dark Theme */
+            --color-bg: #121212;
+            --color-bg-secondary: #1e1e1e;
+            --color-fg: #e0e0e0;
+            --color-fg-secondary: #a0a0a0;
+            --color-border: #333333;
+            --color-accent: #4dabf7;
+            --color-accent-hover: #74c0fc;
+            --color-card: #1e1e1e;
+            --color-card-hover: #2d2d2d;
+            --color-card-border: #333333;
             --color-code-bg: #252532;
-            --color-icon-bg: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            --color-icon-bg: linear-gradient(135deg, #4dabf7 0%, #74c0fc 100%);
             --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
             --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
         }
 
@@ -149,7 +151,7 @@
             font-weight: 800;
             letter-spacing: -0.03em;
             margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, var(--color-accent) 0%, #ec4899 100%);
+            background: linear-gradient(135deg, var(--color-accent) 0%, #22b8cf 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -339,13 +341,10 @@
 
 <script>
     // Theme toggle with localStorage persistence
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedTheme = localStorage.getItem('ctoon-docs-theme');
 
     if (savedTheme) {
         document.documentElement.setAttribute('data-theme', savedTheme);
-    } else if (prefersDark) {
-        document.documentElement.setAttribute('data-theme', 'dark');
     }
 
     function toggleTheme() {
