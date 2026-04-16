@@ -791,7 +791,7 @@ static size_t value_to_string(ctoon_node* node, char* buffer, size_t buffer_size
  *============================================================================*/
 
 ctoon_doc* ctoon_read_toon(const char* dat, size_t len, ctoon_toon_read_flag flg) {
-    (void)flg; // Flags not used in simple implementation
+    // flg parameter is kept for API compatibility but not used in this implementation
     ctoon_doc* doc = ctoon_doc_new(dat, len, 0);
     if (!doc) return NULL;
     
