@@ -1,4 +1,4 @@
-#include "../../include/ctoon/ctoon.h"
+#include "ctoon/ctoon.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,7 +32,8 @@ struct ctoon_doc {
     ctoon_node* root;
     char* error;
     size_t error_pos;
-    char* alloc_ptr;
+    char* alloc_base;  // Base of allocated memory
+    char* alloc_ptr;   // Current allocation pointer
     size_t alloc_size;
 };
 
@@ -45,7 +46,7 @@ struct ctoon_val {
  *============================================================================*/
 
 static void* ctoon_alloc(ctoon_doc* doc, size_t size) {
-    if (doc->alloc_ptr + size > (char*)doc->alloc_ptr + doc->alloc_size) {
+    if (doc->alloc_ptr + size > doc->alloc_base + doc->alloc_size) {
         return NULL;
     }
     void* ptr = doc->alloc_ptr;
@@ -68,21 +69,20 @@ ctoon_doc* ctoon_doc_new(const char* data, size_t len, size_t max_memory) {
     doc->error = NULL;
     doc->error_pos = 0;
     doc->alloc_size = max_memory ? max_memory : len * 2 + 1024;
-    doc->alloc_ptr = malloc(doc->alloc_size);
-    if (!doc->alloc_ptr) {
+    doc->alloc_base = malloc(doc->alloc_size);
+    if (!doc->alloc_base) {
         free(doc);
         return NULL;
     }
     
-    // Reset alloc_ptr to start
-    doc->alloc_ptr = (char*)doc->alloc_ptr;
+    doc->alloc_ptr = doc->alloc_base;
     
     return doc;
 }
 
 void ctoon_doc_free(ctoon_doc* doc) {
     if (doc) {
-        free(doc->alloc_ptr);
+        free(doc->alloc_base);
         free(doc);
     }
 }
