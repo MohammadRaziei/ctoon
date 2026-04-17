@@ -56,18 +56,12 @@ extern "C" {
 #define CTOON_VERSION_MINOR 1
 #define CTOON_VERSION_PATCH 0
 
-#define CTOON_VERSION_ENCODE(major, minor, patch) \
-    (((major) * 10000) + ((minor) * 100) + (patch))
+#define CTOON_VERSION_ENCODE(major, minor, patch) (((major) * 10000) + ((minor) * 100) + ((patch) * 1))
+#define CTOON_VERSION CTOON_VERSION_ENCODE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
 
-#define CTOON_VERSION \
-    CTOON_VERSION_ENCODE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
-
-#define CTOON_VERSION_STRING \
-    CTOON_VERSION_STRING_HELPER(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
-
-#define CTOON_VERSION_STRING_HELPER(major, minor, patch) \
-    #major "." #minor "." #patch
-
+#define CTOON_VERSION_XSTRINGIZE(major, minor, patch) #major"."#minor"."#patch
+#define CTOON_VERSION_STRINGIZE(major, minor, patch) CTOON_VERSION_XSTRINGIZE(major, minor, patch)
+#define CTOON_VERSION_STRING CTOON_VERSION_STRINGIZE(CTOON_VERSION_MAJOR, CTOON_VERSION_MINOR, CTOON_VERSION_PATCH)
 
 
 /*==============================================================================
