@@ -26,10 +26,8 @@ set(CTOON_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 
 # Create library
 file(GLOB CTOON_SOURCES_C ${PROJECT_SOURCE_DIR}/src/sources/*.c)
-file(GLOB CTOON_SOURCES_CPP ${PROJECT_SOURCE_DIR}/src/sources/*.cpp)
-set(CTOON_SOURCES ${CTOON_SOURCES_CPP} ${CTOON_SOURCES_C})
 
-add_library(ctoon ${CTOON_SOURCES})
+add_library(ctoon ${CTOON_SOURCES_C})
 add_library(ctoon::ctoon ALIAS ctoon)
 
 set_target_properties(ctoon PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -54,8 +52,7 @@ add_library(ctoonpp INTERFACE)
 add_library(ctoon::ctoonpp ALIAS ctoonpp)
 
 target_include_directories(ctoonpp INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/bindings
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/bindings/cpp
 )
 
 target_link_libraries(ctoonpp INTERFACE ctoon::ctoon)
@@ -78,7 +75,10 @@ target_compile_options(ctoon PRIVATE
 apply_optimization_flags(ctoon)
 
 # Add CLI executable
-add_executable(ctoon_cli src/cli/cli.cpp)
+add_executable(ctoon_cli 
+    ${PROJECT_SOURCE_DIR}/src/cli/cli.cpp
+    ${PROJECT_SOURCE_DIR}/src/cli/json/yyjson.c
+)
 target_link_libraries(ctoon_cli PRIVATE ctoon::ctoon)
 set_target_properties(ctoon_cli PROPERTIES OUTPUT_NAME ctoon)
 
