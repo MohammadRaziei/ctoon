@@ -1,277 +1,314 @@
+/*==============================================================================
+ |  CToon CLI – Convert between TOON and JSON formats
+ |  Copyright (c) 2026 CToon Project, MIT License
+ *============================================================================*/
+
 #include "ctoon.h"
 #include "CLI11.hpp"
+#include "json/yyjson.h"
 
 #include <filesystem>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <sstream>
-#include <string>
 #include <stdexcept>
-#include <cstring>
+#include <string>
 
 namespace fs = std::filesystem;
 
 namespace {
-const std::string ctoonVersion = CTOON_VERSION_STRING;
 
-// Helper to read entire file
-std::string readFile(const std::string& path) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("Cannot open file: " + path);
-    }
-    
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
+/* ============================================================
+ * File I/O
+ * ============================================================ */
+
+std::string readFile(const std::string &path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("Cannot open file: " + path);
+    std::ostringstream buf;
+    buf << f.rdbuf();
+    return buf.str();
 }
 
-// Helper to write file
-void writeFile(const std::string& path, const std::string& content) {
-    std::ofstream file(path, std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("Cannot write to file: " + path);
-    }
-    file << content;
+void writeFile(const std::string &path, const std::string &content) {
+    std::ofstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("Cannot write file: " + path);
+    f << content;
 }
 
-// TODO: Implement proper JSON to TOON conversion
-// Currently, the ctoon library only has functions to READ TOON, not CREATE TOON from JSON
-// For now, we'll implement a minimal CLI that can only decode TOON to JSON
-// To add JSON→TOON support, we need to:
-// 1. Add creation functions to ctoon library (ctoon_new_*, ctoon_array_append, ctoon_object_set)
-// 2. Or implement JSON→TOON conversion directly
+/* ============================================================
+ * TOON → JSON  (ctoon_val* → yyjson_mut_val*)
+ * ============================================================ */
 
-// TODO: Fix object iteration in ctoon library
-// The ctoon_obj_iter_* functions have bugs:
-// - ctoon_obj_iter_key returns (const char*)key which is wrong (should return string)
-// - Object keys are not properly accessible
-// This prevents proper JSON output for objects
+static yyjson_mut_val *toon_val_to_json(yyjson_mut_doc *jdoc, ctoon_val *val) {
+    if (!val)                   return yyjson_mut_null(jdoc);
+    if (ctoon_is_null(val))     return yyjson_mut_null(jdoc);
+    if (ctoon_is_true(val))     return yyjson_mut_true(jdoc);
+    if (ctoon_is_false(val))    return yyjson_mut_false(jdoc);
 
-// Simple TOON to JSON conversion (basic implementation)
-std::string ctoon_to_json_string(ctoon_val* val, int indent = 0) {
-    if (!val) return "null";
-    
-    if (ctoon_is_null(val)) {
-        return "null";
-    } else if (ctoon_is_true(val)) {
-        return "true";
-    } else if (ctoon_is_false(val)) {
-        return "false";
-    } else if (ctoon_is_num(val)) {
-        double num = ctoon_get_real(val);
-        char buf[64];
-        snprintf(buf, sizeof(buf), "%.15g", num);
-        return buf;
-    } else if (ctoon_is_str(val)) {
-        const char* str = ctoon_get_str(val);
-        // Simple JSON string escaping
-        std::string result = "\"";
-        if (str) {
-            for (const char* p = str; *p; p++) {
-                if (*p == '"' || *p == '\\') {
-                    result += '\\';
-                }
-                result += *p;
+    if (ctoon_is_num(val)) {
+        switch (ctoon_get_subtype(val)) {
+            case CTOON_SUBTYPE_UINT: return yyjson_mut_uint(jdoc, ctoon_get_uint(val));
+            case CTOON_SUBTYPE_SINT: return yyjson_mut_sint(jdoc, ctoon_get_sint(val));
+            default:                 return yyjson_mut_real(jdoc, ctoon_get_real(val));
+        }
+    }
+
+    if (ctoon_is_str(val)) {
+        const char *s = ctoon_get_str(val);
+        return yyjson_mut_strncpy(jdoc, s ? s : "", ctoon_get_len(val));
+    }
+
+    if (ctoon_is_arr(val)) {
+        yyjson_mut_val *jarr = yyjson_mut_arr(jdoc);
+        size_t sz = ctoon_arr_size(val);
+        for (size_t i = 0; i < sz; i++)
+            yyjson_mut_arr_append(jarr, toon_val_to_json(jdoc, ctoon_arr_get(val, i)));
+        return jarr;
+    }
+
+    if (ctoon_is_obj(val)) {
+        yyjson_mut_val *jobj = yyjson_mut_obj(jdoc);
+        size_t sz = ctoon_obj_size(val);
+        for (size_t i = 0; i < sz; i++) {
+            ctoon_val *kv = ctoon_obj_get_key_at(val, i);
+            ctoon_val *vv = ctoon_obj_get_val_at(val, i);
+            const char *ks = ctoon_get_str(kv);
+            yyjson_mut_val *jk = yyjson_mut_strncpy(jdoc, ks ? ks : "", ctoon_get_len(kv));
+            yyjson_mut_val *jv = toon_val_to_json(jdoc, vv);
+            yyjson_mut_obj_add(jobj, jk, jv);
+        }
+        return jobj;
+    }
+
+    return yyjson_mut_null(jdoc);
+}
+
+std::string toonToJson(const std::string &input, int indent) {
+    ctoon_doc *doc = ctoon_read_toon(input.c_str(), input.size());
+    if (!doc) throw std::runtime_error("Failed to parse TOON input");
+
+    yyjson_mut_doc *jdoc = yyjson_mut_doc_new(nullptr);
+    if (!jdoc) { ctoon_doc_free(doc); throw std::runtime_error("yyjson alloc failed"); }
+
+    yyjson_mut_doc_set_root(jdoc, toon_val_to_json(jdoc, ctoon_doc_get_root(doc)));
+    ctoon_doc_free(doc);
+
+    yyjson_write_flag flags = (indent > 0) ? YYJSON_WRITE_PRETTY : YYJSON_WRITE_NOFLAG;
+    yyjson_write_err err;
+    char *raw = yyjson_mut_write_opts(jdoc, flags, nullptr, nullptr, &err);
+    yyjson_mut_doc_free(jdoc);
+
+    if (!raw)
+        throw std::runtime_error(std::string("JSON write error: ") + err.msg);
+
+    std::string result(raw);
+    free(raw);
+    return result;
+}
+
+/* ============================================================
+ * JSON → TOON  (yyjson_val* → ctoon_val*)
+ * ============================================================ */
+
+static ctoon_val *json_val_to_toon(ctoon_doc *doc, yyjson_val *val);
+
+static ctoon_val *json_arr_to_toon(ctoon_doc *doc, yyjson_val *arr) {
+    ctoon_val *out = ctoon_new_array(doc);
+    if (!out) throw std::runtime_error("alloc failed");
+    yyjson_arr_iter it;
+    yyjson_arr_iter_init(arr, &it);
+    yyjson_val *item;
+    while ((item = yyjson_arr_iter_next(&it))) {
+        if (!ctoon_array_append(doc, out, json_val_to_toon(doc, item)))
+            throw std::runtime_error("array append failed");
+    }
+    return out;
+}
+
+static ctoon_val *json_obj_to_toon(ctoon_doc *doc, yyjson_val *obj) {
+    ctoon_val *out = ctoon_new_object(doc);
+    if (!out) throw std::runtime_error("alloc failed");
+    yyjson_obj_iter it;
+    yyjson_obj_iter_init(obj, &it);
+    yyjson_val *key;
+    while ((key = yyjson_obj_iter_next(&it))) {
+        yyjson_val *val = yyjson_obj_iter_get_val(key);
+        ctoon_val  *cv  = json_val_to_toon(doc, val);
+        if (!ctoon_object_set(doc, out, yyjson_get_str(key), cv))
+            throw std::runtime_error("object set failed");
+    }
+    return out;
+}
+
+static ctoon_val *json_val_to_toon(ctoon_doc *doc, yyjson_val *val) {
+    if (!val) return ctoon_new_null(doc);
+    switch (yyjson_get_type(val)) {
+        case YYJSON_TYPE_NULL: return ctoon_new_null(doc);
+        case YYJSON_TYPE_BOOL: return ctoon_new_bool(doc, yyjson_get_bool(val));
+        case YYJSON_TYPE_NUM: {
+            switch (yyjson_get_subtype(val)) {
+                case YYJSON_SUBTYPE_UINT: return ctoon_new_uint(doc, yyjson_get_uint(val));
+                case YYJSON_SUBTYPE_SINT: return ctoon_new_sint(doc, yyjson_get_sint(val));
+                default:                  return ctoon_new_real(doc, yyjson_get_real(val));
             }
         }
-        result += "\"";
-        return result;
-    } else if (ctoon_is_arr(val)) {
-        std::string result = "[";
-        size_t size = ctoon_arr_size(val);
-        for (size_t i = 0; i < size; i++) {
-            if (i > 0) result += ",";
-            ctoon_val* item = ctoon_arr_get(val, i);
-            result += ctoon_to_json_string(item, indent + 2);
+        case YYJSON_TYPE_STR: {
+            const char *s = yyjson_get_str(val);
+            return ctoon_new_strn(doc, s ? s : "", yyjson_get_len(val));
         }
-        result += "]";
-        return result;
-    } else if (ctoon_is_obj(val)) {
-        // NOTE: Object iteration is broken in ctoon library
-        // The ctoon_obj_iter_* functions don't work properly
-        // For now, return empty object
-        return "{}";
+        case YYJSON_TYPE_ARR: return json_arr_to_toon(doc, val);
+        case YYJSON_TYPE_OBJ: return json_obj_to_toon(doc, val);
+        default:              return ctoon_new_null(doc);
     }
-    
-    return "null";
 }
 
-// Detect operation based on file extension
-enum class Operation { ENCODE, DECODE, AUTO };
+std::string jsonToToon(const std::string &input) {
+    yyjson_read_err err;
+    yyjson_doc *jdoc = yyjson_read_opts(
+        const_cast<char *>(input.data()), input.size(),
+        YYJSON_READ_NOFLAG, nullptr, &err);
+    if (!jdoc)
+        throw std::runtime_error(std::string("JSON parse error: ") + err.msg
+                                  + " at pos " + std::to_string(err.pos));
 
-Operation detectOperation(const std::string& inputPath, bool encodeFlag, bool decodeFlag) {
-    if (encodeFlag) return Operation::ENCODE;
-    if (decodeFlag) return Operation::DECODE;
-    
-    if (inputPath.empty() || inputPath == "-") {
-        // Default to decode for stdin (since encode is not implemented)
-        return Operation::DECODE;
-    }
-    
-    fs::path path(inputPath);
-    std::string ext = path.extension().string();
-    
-    if (ext == ".json") {
-        return Operation::ENCODE;
-    } else if (ext == ".toon") {
-        return Operation::DECODE;
-    }
-    
-    // Default to decode (since encode is not implemented)
-    return Operation::DECODE;
+    ctoon_doc *doc = ctoon_doc_new(0);
+    if (!doc) { yyjson_doc_free(jdoc); throw std::bad_alloc(); }
+
+    ctoon_val *root = json_val_to_toon(doc, yyjson_doc_get_root(jdoc));
+    yyjson_doc_free(jdoc);
+    ctoon_doc_set_root(doc, root);
+
+    size_t len = 0;
+    char *raw = ctoon_write_toon(doc, &len);
+    ctoon_doc_free(doc);
+    if (!raw) throw std::runtime_error("TOON write failed");
+
+    std::string result(raw, len);
+    free(raw);
+    return result;
 }
 
-void printHelpMessage(const CLI::App &app) {
-    std::cout << app.help() << std::endl;
-    std::cout << "\nExamples:\n";
-    std::cout << "  ctoon input.toon -o output.json          # Convert TOON to JSON (DECODE)\n";
-    std::cout << "  ctoon input.toon                         # Convert TOON to JSON (stdout)\n";
-    std::cout << "  cat data.toon | ctoon                    # Convert TOON from stdin\n";
-    std::cout << "  ctoon --version                          # Show version\n";
-    std::cout << "\nNOTE: JSON to TOON conversion (ENCODE) is not yet implemented.\n";
-    std::cout << "      The ctoon library needs creation functions added first.\n";
+/* ============================================================
+ * Operation detection
+ * ============================================================ */
+
+enum class Op { ENCODE, DECODE };
+
+Op detectOp(const std::string &path, bool encode, bool decode) {
+    if (encode) return Op::ENCODE;
+    if (decode) return Op::DECODE;
+    if (path.empty() || path == "-") return Op::DECODE;
+    std::string ext = fs::path(path).extension().string();
+    if (ext == ".json") return Op::ENCODE;
+    return Op::DECODE;
 }
 
 } // namespace
 
+/* ============================================================
+ * main
+ * ============================================================ */
+
 int main(int argc, char **argv) {
-    CLI::App app{"Ctoon - Command Line Interface for TOON format\n"
-                 "Version: " + ctoonVersion + "\n"
-                 "\n"
-                 "Convert TOON to JSON format. TOON is a compact format\n"
-                 "designed for efficient token usage with LLMs.\n"
-                 "\n"
-                 "NOTE: Currently only supports TOON → JSON (decode).\n"
-                 "      JSON → TOON (encode) is not yet implemented."};
-    
-    std::string inputPath;
-    std::string outputPath;
-    int indent = 2;
+    const std::string version = CTOON_VERSION_STRING;
+
+    CLI::App app{
+        "CToon - TOON \xe2\x86\x94 JSON converter\nVersion: " + version + "\n\n"
+        "TOON is a compact format optimised for LLM token usage.\n"
+        "Auto-detects direction from file extension (.toon=decode, .json=encode)."
+    };
+    app.set_help_flag("-h,--help", "Print this help message and exit");
+
+    std::string inputPath, outputPath;
+    int  indent      = 2;
+    bool encodeFlag  = false;
+    bool decodeFlag  = false;
+    bool statsFlag   = false;
     bool showVersion = false;
-    bool encodeFlag = false;
-    bool decodeFlag = false;
-    bool statsFlag = false;
-    
-    app.set_help_flag("-h,--help", "Show this help message and exit");
-    app.add_option("input", inputPath, "Input file path (use - or omit for stdin)")
-        ->expected(0, 1);
-    app.add_option("-o,--output", outputPath, "Output file path (omit for stdout)");
-    app.add_option("-i,--indent", indent, "Indentation for JSON output (default: 2)")
-        ->check(CLI::NonNegativeNumber);
-    app.add_flag("-e,--encode", encodeFlag, "Force encode mode (JSON to TOON) - NOT IMPLEMENTED");
-    app.add_flag("-d,--decode", decodeFlag, "Force decode mode (TOON to JSON)");
-    app.add_flag("--stats", statsFlag, "Show token statistics (encode only) - NOT IMPLEMENTED");
-    app.add_flag("--version", showVersion, "Show version information and exit");
-    
+
+    app.add_option("input",      inputPath,  "Input file (omit or - for stdin)")->expected(0, 1);
+    app.add_option("-o,--output",outputPath, "Output file (omit for stdout)");
+    app.add_option("-i,--indent",indent,     "JSON indent spaces (default 2, 0=compact)")
+       ->check(CLI::NonNegativeNumber);
+    app.add_flag("-e,--encode",  encodeFlag, "Force encode (JSON → TOON)");
+    app.add_flag("-d,--decode",  decodeFlag, "Force decode (TOON → JSON)");
+    app.add_flag("--stats",      statsFlag,  "Print size statistics to stderr");
+    app.add_flag("--version",    showVersion,"Show version and exit");
+
     if (argc == 1) {
-        printHelpMessage(app);
+        std::cout << app.help()
+                  << "\nExamples:\n"
+                  << "  ctoon in.toon              # TOON → JSON (stdout)\n"
+                  << "  ctoon in.toon -o out.json  # TOON → JSON (file)\n"
+                  << "  ctoon in.json -o out.toon  # JSON → TOON\n"
+                  << "  cat data.toon | ctoon -d - # from stdin\n";
         return 0;
     }
-    
-    try {
-        app.parse(argc, argv);
-    } catch (const CLI::CallForHelp &help) {
-        printHelpMessage(app);
-        return 0;
-    } catch (const CLI::ParseError &error) {
-        std::cerr << "Error: " << error.what() << std::endl;
-        std::cerr << "Use --help or -h for more information" << std::endl;
+
+    try { app.parse(argc, argv); }
+    catch (const CLI::CallForHelp &)   { std::cout << app.help(); return 0; }
+    catch (const CLI::ParseError &e)   {
+        std::cerr << "Error: " << e.what() << "\nUse --help for usage.\n";
         return 1;
     }
-    
-    if (showVersion) {
-        std::cout << "ctoon " << ctoonVersion << std::endl;
-        return 0;
-    }
-    
-    if (encodeFlag) {
-        std::cerr << "Error: JSON to TOON conversion (encode) is not yet implemented.\n";
-        std::cerr << "       The ctoon library needs creation functions added first.\n";
-        return 1;
-    }
-    
+
+    if (showVersion) { std::cout << "ctoon " << version << "\n"; return 0; }
+
     if (encodeFlag && decodeFlag) {
-        std::cerr << "Error: Cannot specify both --encode and --decode" << std::endl;
+        std::cerr << "Error: --encode and --decode are mutually exclusive.\n";
         return 1;
     }
-    
-    if (indent < 0) {
-        std::cerr << "Error: Indent level must be non-negative" << std::endl;
-        return 1;
-    }
-    
-    if (statsFlag) {
-        std::cerr << "Warning: --stats flag is not yet implemented\n";
-    }
-    
-    // Read input
-    std::string inputData;
-    if (inputPath.empty() || inputPath == "-") {
-        // Read from stdin
-        std::stringstream buffer;
-        buffer << std::cin.rdbuf();
-        inputData = buffer.str();
-    } else {
-        // Read from file
-        if (!fs::exists(inputPath)) {
-            std::cerr << "Error: Input file not found: " << inputPath << std::endl;
-            return 1;
-        }
-        inputData = readFile(inputPath);
-    }
-    
-    if (inputData.empty()) {
-        std::cerr << "Error: Input is empty" << std::endl;
-        return 1;
-    }
-    
-    // Detect operation
-    Operation op = detectOperation(inputPath, encodeFlag, decodeFlag);
-    
+
+    /* Read input */
+    std::string input;
+    bool fromStdin = inputPath.empty() || inputPath == "-";
     try {
-        if (op == Operation::ENCODE) {
-            // JSON to TOON - NOT IMPLEMENTED
-            std::cerr << "Error: JSON to TOON conversion (encode) is not yet implemented.\n";
-            std::cerr << "       The ctoon library needs creation functions added first.\n";
-            return 1;
-            
+        if (fromStdin) {
+            std::ostringstream buf;
+            buf << std::cin.rdbuf();
+            input = buf.str();
         } else {
-            // TOON to JSON
-            ctoon_doc* toon_doc = ctoon_read_toon(inputData.c_str(), inputData.size());
-            if (!toon_doc) {
-                std::cerr << "Error: Failed to parse TOON input" << std::endl;
+            if (!fs::exists(inputPath)) {
+                std::cerr << "Error: File not found: " << inputPath << "\n";
                 return 1;
             }
-            
-            ctoon_val* toon_root = ctoon_doc_get_root(toon_doc);
-            if (!toon_root) {
-                ctoon_doc_free(toon_doc);
-                std::cerr << "Error: TOON document is empty" << std::endl;
-                return 1;
-            }
-            
-            // Convert TOON to JSON string
-            std::string json_output = ctoon_to_json_string(toon_root, indent);
-            ctoon_doc_free(toon_doc);
-            
-            // Output result
-            if (!outputPath.empty()) {
-                writeFile(outputPath, json_output);
-                std::cout << "Decoded " << (inputPath.empty() || inputPath == "-" ? "stdin" : inputPath)
-                          << " → " << outputPath << std::endl;
-            } else {
-                std::cout << json_output;
-                if (json_output.back() != '\n') {
-                    std::cout << std::endl;
-                }
-            }
+            input = readFile(inputPath);
         }
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "Error reading input: " << e.what() << "\n";
         return 1;
     }
-    
+
+    if (input.empty()) { std::cerr << "Error: Input is empty.\n"; return 1; }
+
+    /* Convert */
+    Op op = detectOp(inputPath, encodeFlag, decodeFlag);
+    try {
+        std::string output = (op == Op::ENCODE) ? jsonToToon(input)
+                                                 : toonToJson(input, indent);
+        if (!outputPath.empty()) {
+            writeFile(outputPath, output);
+            std::string src = fromStdin ? "<stdin>" : inputPath;
+            std::cout << (op == Op::ENCODE ? "JSON\xe2\x86\x92TOON" : "TOON\xe2\x86\x92JSON")
+                      << ": " << src << " \xe2\x86\x92 " << outputPath << "\n";
+        } else {
+            std::cout << output;
+            if (output.empty() || output.back() != '\n') std::cout << '\n';
+        }
+
+        if (statsFlag) {
+            size_t in_sz  = input.size();
+            size_t out_sz = output.size();
+            int    ratio  = in_sz ? static_cast<int>(100.0 * out_sz / in_sz) : 0;
+            std::cerr << "[stats] input=" << in_sz << "B  output=" << out_sz
+                      << "B  ratio=" << ratio << "%\n";
+        }
+
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+
     return 0;
 }
