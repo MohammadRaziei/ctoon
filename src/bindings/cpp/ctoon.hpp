@@ -318,7 +318,7 @@ public:
     /** Parse from file; throws ParseError on failure. */
     static Document fromFile(const std::string &path) {
         Document d;
-        ::ctoon_doc *raw = ::ctoon_read_toon_file(path.c_str());
+        ::ctoon_doc *raw = ::ctoon_read_file(path.c_str());
         if (!raw) throw ParseError("Failed to read TOON file: " + path);
         d.doc_.reset(raw, ::ctoon_doc_free);
         return d;
@@ -367,15 +367,15 @@ public:
     Value newString(std::string_view s)     {
         return Value(::ctoon_new_strn(doc_.get(), s.data(), s.size()));
     }
-    Value newArray ()                       { return Value(::ctoon_new_array (doc_.get())); }
-    Value newObject()                       { return Value(::ctoon_new_object(doc_.get())); }
+    Value newArray ()                       { return Value(::ctoon_new_arr (doc_.get())); }
+    Value newObject()                       { return Value(::ctoon_new_obj(doc_.get())); }
 
     bool arrayAppend(Value &arr, Value &val) {
-        return ::ctoon_array_append(doc_.get(), arr.raw(), val.raw());
+        return ::ctoon_arr_append(doc_.get(), arr.raw(), val.raw());
     }
 
     bool objectSet(Value &obj, std::string_view key, Value &val) {
-        return ::ctoon_object_setn(doc_.get(), obj.raw(),
+        return ::ctoon_obj_setn(doc_.get(), obj.raw(),
                                     key.data(), key.size(), val.raw());
     }
 
@@ -389,7 +389,7 @@ public:
     std::string toToon() const {
         if (!doc_) return {};
         std::size_t len = 0;
-        char *raw = ::ctoon_write_toon(doc_.get(), &len);
+        char *raw = ::ctoon_write(doc_.get(), &len);
         if (!raw) return {};
         std::string result(raw, len);
         free(raw);
@@ -399,7 +399,7 @@ public:
     /** Write TOON to file; returns true on success. */
     bool toFile(const std::string &path) const {
         if (!doc_) return false;
-        return ::ctoon_write_toon_file(path.c_str(), doc_.get());
+        return ::ctoon_write_file(doc_.get(), path.c_str());
     }
 
     /** Expose raw handle for interop with C code. */
@@ -409,7 +409,7 @@ private:
     std::shared_ptr<::ctoon_doc> doc_;
 
     void load(const char *data, std::size_t len) {
-        ::ctoon_doc *raw = ::ctoon_read_toon(data, len);
+        ::ctoon_doc *raw = ::ctoon_read(data, len);
         if (!raw)
             throw ParseError("Failed to parse TOON data");
         doc_.reset(raw, ::ctoon_doc_free);
