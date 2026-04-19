@@ -6,7 +6,7 @@
 /* Enable POSIX extensions for strdup */
 #define _POSIX_C_SOURCE 200809L
 
-#include "ctoon.h"
+#include "../../include/ctoon.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -96,12 +96,16 @@ typedef struct ctoon_kv {
 struct ctoon_val {
     ctoon_type type;
     union {
-        /* CTOON_TYPE_NUMBER */
+        /* CTOON_TYPE_NUMBER
+         * num/u64/s64 share the same 8 bytes; subtype selects which is active.
+         * f64 naming (IEEE 754 double) preferred over 'num' for clarity. */
         struct {
-            double   num;
-            uint64_t u64;
-            int64_t  s64;
-            uint8_t  subtype; /* ctoon_subtype */
+            union {
+                double   f64; /**< CTOON_SUBTYPE_REAL  */
+                uint64_t u64; /**< CTOON_SUBTYPE_UINT  */
+                int64_t  s64; /**< CTOON_SUBTYPE_SINT  */
+            };
+            uint8_t subtype; /**< ctoon_subtype tag */
         } number;
         /* CTOON_TYPE_STRING / CTOON_TYPE_RAW */
         struct {
@@ -227,10 +231,31 @@ bool ctoon_is_real(ctoon_val *v) { return ctoon_is_num(v) && ctoon_get_subtype(v
  * ============================================================ */
 
 bool        ctoon_get_bool(ctoon_val *v) { return ctoon_is_true(v); }
-uint64_t    ctoon_get_uint(ctoon_val *v) { return (!ctoon_is_num(v)) ? 0 : v->u.number.u64; }
-int64_t     ctoon_get_sint(ctoon_val *v) { return (!ctoon_is_num(v)) ? 0 : v->u.number.s64; }
+uint64_t    ctoon_get_uint(ctoon_val *v) {
+    if (!ctoon_is_num(v)) return 0;
+    switch ((ctoon_subtype)v->u.number.subtype) {
+        case CTOON_SUBTYPE_SINT: return (uint64_t)v->u.number.s64;
+        case CTOON_SUBTYPE_REAL: return (uint64_t)v->u.number.f64;
+        default:                 return v->u.number.u64;
+    }
+}
+int64_t     ctoon_get_sint(ctoon_val *v) {
+    if (!ctoon_is_num(v)) return 0;
+    switch ((ctoon_subtype)v->u.number.subtype) {
+        case CTOON_SUBTYPE_UINT: return (int64_t)v->u.number.u64;
+        case CTOON_SUBTYPE_REAL: return (int64_t)v->u.number.f64;
+        default:                 return v->u.number.s64;
+    }
+}
 int         ctoon_get_int (ctoon_val *v) { return (!ctoon_is_num(v)) ? 0 : (int)v->u.number.s64; }
-double      ctoon_get_real(ctoon_val *v) { return (!ctoon_is_num(v)) ? 0.0 : v->u.number.num; }
+double      ctoon_get_real(ctoon_val *v) {
+    if (!ctoon_is_num(v)) return 0.0;
+    switch ((ctoon_subtype)v->u.number.subtype) {
+        case CTOON_SUBTYPE_UINT: return (double)v->u.number.u64;
+        case CTOON_SUBTYPE_SINT: return (double)v->u.number.s64;
+        default:                 return v->u.number.f64;
+    }
+}
 double      ctoon_get_num (ctoon_val *v) { return ctoon_get_real(v); }
 
 const char *ctoon_get_str(ctoon_val *v) { return ctoon_is_str(v) ? v->u.str.ptr : NULL; }
@@ -314,12 +339,14 @@ ctoon_val *ctoon_obj_iter_next(ctoon_val *v, ctoon_val **key) {
 ctoon_val *ctoon_new_null  (ctoon_doc *d) { return node_new(d, CTOON_TYPE_NULL); }
 ctoon_val *ctoon_new_bool  (ctoon_doc *d, bool v) { return node_new(d, v ? CTOON_TYPE_TRUE : CTOON_TYPE_FALSE); }
 
-static ctoon_val *new_num(ctoon_doc *d, double num, int64_t s64, uint64_t u64, ctoon_subtype st) {
+static ctoon_val *new_num(ctoon_doc *d, double f64, int64_t s64, uint64_t u64, ctoon_subtype st) {
     ctoon_val *n = node_new(d, CTOON_TYPE_NUMBER);
     if (!n) return NULL;
-    n->u.number.num     = num;
-    n->u.number.s64     = s64;
-    n->u.number.u64     = u64;
+    switch (st) {
+        case CTOON_SUBTYPE_UINT: n->u.number.u64 = u64; break;
+        case CTOON_SUBTYPE_SINT: n->u.number.s64 = s64; break;
+        default:                 n->u.number.f64 = f64; break;
+    }
     n->u.number.subtype = (uint8_t)st;
     return n;
 }
@@ -538,9 +565,8 @@ static ctoon_val *tp_parse_primitive(tp *p, const char *stop_chars) {
             if (end == tmp + tok_len && errno == 0) {
                 ctoon_val *n = node_new(p->doc, CTOON_TYPE_NUMBER);
                 if (!n) return NULL;
-                n->u.number.num     = (double)iv;
-                n->u.number.s64     = (int64_t)iv;
-                n->u.number.u64     = (uint64_t)(iv >= 0 ? iv : 0);
+                if (iv >= 0) n->u.number.u64 = (uint64_t)iv;
+                else        n->u.number.s64 = (int64_t)iv;
                 n->u.number.subtype = (uint8_t)(iv >= 0 ? CTOON_SUBTYPE_UINT : CTOON_SUBTYPE_SINT);
                 return n;
             }
@@ -551,9 +577,7 @@ static ctoon_val *tp_parse_primitive(tp *p, const char *stop_chars) {
         if (end == tmp + tok_len) {
             ctoon_val *n = node_new(p->doc, CTOON_TYPE_NUMBER);
             if (!n) return NULL;
-            n->u.number.num     = dv;
-            n->u.number.s64     = (int64_t)dv;
-            n->u.number.u64     = (uint64_t)(dv >= 0 ? dv : 0);
+            n->u.number.f64     = dv;
             n->u.number.subtype = (uint8_t)CTOON_SUBTYPE_REAL;
             return n;
         }
@@ -950,277 +974,6 @@ ctoon_doc *ctoon_read_file(const char *path) {
 }
 
 /* ============================================================
- * TOON Serialiser
- * ============================================================ */
-
-typedef struct { char *buf; size_t len; size_t cap; } tw;
-
-static bool tw_grow(tw *w, size_t n) {
-    if (w->len + n <= w->cap) return true;
-    size_t nc = w->cap ? w->cap * 2u : 256u;
-    while (nc < w->len + n) nc *= 2u;
-    char *nb = (char *)realloc(w->buf, nc);
-    if (!nb) return false;
-    w->buf = nb; w->cap = nc; return true;
-}
-static bool tw_write(tw *w, const char *s, size_t n) {
-    if (!tw_grow(w, n)) return false;
-    memcpy(w->buf + w->len, s, n); w->len += n; return true;
-}
-static bool tw_writec(tw *w, char c) { return tw_write(w, &c, 1u); }
-static bool tw_writes(tw *w, const char *s) { return tw_write(w, s, strlen(s)); }
-static bool tw_indent(tw *w, int d) {
-    for (int i = 0; i < d * TOON_INDENT; i++) if (!tw_writec(w, ' ')) return false;
-    return true;
-}
-
-static bool tw_write_str(tw *w, const char *s, size_t len, bool is_key) {
-    bool needs_quote = (len == 0);
-
-    /* Leading/trailing whitespace must be quoted */
-    if (!needs_quote && len > 0 && (s[0] == ' ' || s[len-1] == ' ')) needs_quote = true;
-
-    /* "- " list marker at start must be quoted */
-    if (!needs_quote && len >= 2 && s[0] == '-' && s[1] == ' ') needs_quote = true;
-
-    for (size_t i = 0; i < len && !needs_quote; i++) {
-        char c = s[i];
-        /* Always escape these */
-        if (c == '"' || c == '\\' || c == '\n' || c == '\r' || c == '\t') needs_quote = true;
-        /* Structural chars that break key syntax */
-        if (is_key && (c == ':' || c == '[' || c == '{')) needs_quote = true;
-        /* Structural chars that break value syntax in any context */
-        /* Note: space is OK in the middle of a value (end-of-line terminates it) */
-        if (!is_key && (c == ',' || c == ':' || c == '[' || c == '{' || c == '}')) needs_quote = true;
-    }
-    if (!is_key) {
-        /* Must quote literals that would be misread */
-        if ((len==4 && memcmp(s,"null",4)==0) || (len==4 && memcmp(s,"true",4)==0) ||
-            (len==5 && memcmp(s,"false",5)==0)) needs_quote = true;
-        /* Must quote strings that look like numbers */
-        if (!needs_quote && len > 0 && len < 64) {
-            char tmp[64]; memcpy(tmp, s, len); tmp[len]='\0';
-            char *end = NULL; strtod(tmp, &end);
-            if (end == tmp + len) needs_quote = true;
-        }
-    }
-    if (needs_quote) {
-        if (!tw_writec(w, '"')) return false;
-        for (size_t i = 0; i < len; i++) {
-            char c = s[i];
-            switch (c) {
-                case '"':  if (!tw_writes(w,"\\\"")) return false; break;
-                case '\\': if (!tw_writes(w,"\\\\")) return false; break;
-                case '\n': if (!tw_writes(w,"\\n"))  return false; break;
-                case '\r': if (!tw_writes(w,"\\r"))  return false; break;
-                case '\t': if (!tw_writes(w,"\\t"))  return false; break;
-                default:   if (!tw_writec(w, c))     return false; break;
-            }
-        }
-        return tw_writec(w, '"');
-    }
-    return tw_write(w, s, len);
-}
-
-static bool tw_write_node(tw *w, ctoon_val *n, int depth);
-
-static bool tw_write_num(tw *w, ctoon_val *n) {
-    char buf[64];
-    ctoon_subtype st = (ctoon_subtype)n->u.number.subtype;
-    if      (st == CTOON_SUBTYPE_UINT) snprintf(buf, sizeof(buf), "%" PRIu64, n->u.number.u64);
-    else if (st == CTOON_SUBTYPE_SINT) snprintf(buf, sizeof(buf), "%" PRId64, n->u.number.s64);
-    else {
-        double d = n->u.number.num;
-        if (!isinf(d) && !isnan(d) && d == (double)(long long)d)
-            snprintf(buf, sizeof(buf), "%lld", (long long)d);
-        else
-            snprintf(buf, sizeof(buf), "%.15g", d);
-    }
-    return tw_writes(w, buf);
-}
-
-/* Forward declarations for mutually-recursive serialiser functions */
-static bool tw_write_obj(tw *w, ctoon_val *n, int depth);
-static bool tw_write_arr_content(tw *w, ctoon_val *arr, int depth);
-static bool tw_write_node(tw *w, ctoon_val *n, int depth);
-
-/* Write an object that follows a "- " list-item marker.
- * The first key-value pair is written WITHOUT leading indent (marker provides it).
- * Subsequent pairs are indented at depth+2 to align with the first key. */
-static bool tw_write_obj_as_list_item(tw *w, ctoon_val *obj, int depth) {
-    for (size_t i = 0; i < obj->u.obj.count; i++) {
-        ctoon_val *kn = obj->u.obj.pairs[i].key;
-        ctoon_val *vn = obj->u.obj.pairs[i].value;
-        if (i > 0) {
-            if (!tw_writec(w, '\n')) return false;
-            if (!tw_indent(w, depth + 2)) return false;  /* align past "- " */
-        }
-        if (!tw_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
-        if (vn->type == CTOON_TYPE_OBJECT) {
-            if (!tw_writec(w, ':')) return false;
-            if (!tw_writec(w, '\n')) return false;
-            if (!tw_write_obj(w, vn, depth + 3)) return false;
-        } else if (vn->type == CTOON_TYPE_ARRAY) {
-            char hdr[32]; snprintf(hdr, sizeof(hdr), "[%zu]: ", vn->u.arr.count);
-            if (!tw_writes(w, hdr)) return false;
-            if (!tw_write_arr_content(w, vn, depth + 2)) return false;
-        } else {
-            if (!tw_writes(w, ": ")) return false;
-            if (!tw_write_node(w, vn, depth + 2)) return false;
-        }
-    }
-    return true;
-}
-
-/* Check if all objects in array share the same keys (tabular format eligible) */
-static bool tw_is_tabular(ctoon_val *arr) {
-    if (arr->u.arr.count == 0) return false;
-    ctoon_val *first = arr->u.arr.items[0];
-    if (first->type != CTOON_TYPE_OBJECT || first->u.obj.count == 0) return false;
-    /* all items must be plain objects (no nested objects/arrays as values) */
-    for (size_t r = 0; r < arr->u.arr.count; r++) {
-        ctoon_val *row = arr->u.arr.items[r];
-        if (row->type != CTOON_TYPE_OBJECT) return false;
-        if (row->u.obj.count != first->u.obj.count) return false;
-        for (size_t c = 0; c < row->u.obj.count; c++) {
-            /* keys must match */
-            ctoon_val *k0 = first->u.obj.pairs[c].key;
-            ctoon_val *kc = row->u.obj.pairs[c].key;
-            if (k0->u.str.len != kc->u.str.len ||
-                memcmp(k0->u.str.ptr, kc->u.str.ptr, k0->u.str.len) != 0) return false;
-            /* values must be primitives */
-            ctoon_type vt = row->u.obj.pairs[c].value->type;
-            if (vt == CTOON_TYPE_ARRAY || vt == CTOON_TYPE_OBJECT) return false;
-        }
-    }
-    return true;
-}
-
-static bool tw_write_arr_content(tw *w, ctoon_val *arr, int depth) {
-    if (arr->u.arr.count == 0) return true;
-
-    /* Primitive inline array */
-    bool all_prim = true;
-    for (size_t i = 0; i < arr->u.arr.count && all_prim; i++) {
-        ctoon_type t = arr->u.arr.items[i]->type;
-        if (t == CTOON_TYPE_ARRAY || t == CTOON_TYPE_OBJECT) all_prim = false;
-    }
-    if (all_prim) {
-        for (size_t i = 0; i < arr->u.arr.count; i++) {
-            if (i > 0 && !tw_writec(w, ',')) return false;
-            if (!tw_write_node(w, arr->u.arr.items[i], 0)) return false;
-        }
-        return true;
-    }
-
-    /* Tabular array: objects with identical primitive fields */
-    if (tw_is_tabular(arr)) {
-        ctoon_val *first = arr->u.arr.items[0];
-        size_t ncols = first->u.obj.count;
-        if (!tw_writec(w, '\n')) return false;
-        for (size_t r = 0; r < arr->u.arr.count; r++) {
-            if (!tw_indent(w, depth + 1)) return false;
-            ctoon_val *row = arr->u.arr.items[r];
-            for (size_t c = 0; c < ncols; c++) {
-                if (c > 0 && !tw_writec(w, ',')) return false;
-                if (!tw_write_node(w, row->u.obj.pairs[c].value, 0)) return false;
-            }
-            if (r + 1 < arr->u.arr.count && !tw_writec(w, '\n')) return false;
-        }
-        return true;
-    }
-
-    /* List array: mixed or nested objects */
-    if (!tw_writec(w, '\n')) return false;
-    for (size_t i = 0; i < arr->u.arr.count; i++) {
-        if (!tw_indent(w, depth + 1)) return false;
-        if (!tw_writes(w, "- ")) return false;
-        ctoon_val *item = arr->u.arr.items[i];
-        if (item->type == CTOON_TYPE_OBJECT) {
-            if (!tw_write_obj_as_list_item(w, item, depth)) return false;
-        } else {
-            if (!tw_write_node(w, item, depth + 1)) return false;
-        }
-        if (i + 1 < arr->u.arr.count && !tw_writec(w, '\n')) return false;
-    }
-    return true;
-}
-
-static bool tw_write_obj(tw *w, ctoon_val *n, int depth) {
-    for (size_t i = 0; i < n->u.obj.count; i++) {
-        if (i > 0 && !tw_writec(w, '\n')) return false;
-        if (!tw_indent(w, depth)) return false;
-        ctoon_val *kn = n->u.obj.pairs[i].key;
-        ctoon_val *vn = n->u.obj.pairs[i].value;
-        if (!tw_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
-
-        if (vn->type == CTOON_TYPE_ARRAY) {
-            /* Write array header: key[N]{f1,f2,...}: for tabular, key[N]: otherwise */
-            if (tw_is_tabular(vn) && vn->u.arr.count > 0) {
-                ctoon_val *first = vn->u.arr.items[0];
-                size_t ncols = first->u.obj.count;
-                char hdr[32]; snprintf(hdr, sizeof(hdr), "[%zu]{", vn->u.arr.count);
-                if (!tw_writes(w, hdr)) return false;
-                for (size_t c = 0; c < ncols; c++) {
-                    if (c > 0 && !tw_writec(w, ',')) return false;
-                    ctoon_val *kn2 = first->u.obj.pairs[c].key;
-                    if (!tw_write_str(w, kn2->u.str.ptr, kn2->u.str.len, true)) return false;
-                }
-                if (!tw_writes(w, "}:")) return false;
-            } else {
-                char hdr[32]; snprintf(hdr, sizeof(hdr), "[%zu]: ", vn->u.arr.count);
-                if (!tw_writes(w, hdr)) return false;
-            }
-            if (!tw_write_arr_content(w, vn, depth)) return false;
-        } else if (vn->type == CTOON_TYPE_OBJECT) {
-            if (!tw_writec(w, ':')) return false;
-            if (!tw_writec(w, '\n')) return false;
-            if (!tw_write_obj(w, vn, depth + 1)) return false;
-        } else {
-            if (!tw_writes(w, ": ")) return false;
-            if (!tw_write_node(w, vn, depth)) return false;
-        }
-    }
-    return true;
-}
-
-static bool tw_write_node(tw *w, ctoon_val *n, int depth) {
-    if (!n) return tw_writes(w, "null");
-    switch (n->type) {
-        case CTOON_TYPE_NULL:   return tw_writes(w, "null");
-        case CTOON_TYPE_TRUE:   return tw_writes(w, "true");
-        case CTOON_TYPE_FALSE:  return tw_writes(w, "false");
-        case CTOON_TYPE_NUMBER: return tw_write_num(w, n);
-        case CTOON_TYPE_STRING: return tw_write_str(w, n->u.str.ptr, n->u.str.len, false);
-        case CTOON_TYPE_ARRAY: {
-            char hdr[32]; snprintf(hdr, sizeof(hdr), "[%zu]: ", n->u.arr.count);
-            if (!tw_writes(w, hdr)) return false;
-            return tw_write_arr_content(w, n, depth);
-        }
-        case CTOON_TYPE_OBJECT: return tw_write_obj(w, n, depth);
-        default: return tw_writes(w, "null");
-    }
-}
-
-/* ctoon_write defined below with tw2 */
-
-/* ctoon_write_file defined below */
-
-/* ============================================================
- * Index-based object pair access
- * ============================================================ */
-
-ctoon_val *ctoon_obj_get_key_at(ctoon_val *obj, size_t idx) {
-    if (!ctoon_is_obj(obj) || idx >= obj->u.obj.count) return NULL;
-    return obj->u.obj.pairs[idx].key;
-}
-
-ctoon_val *ctoon_obj_get_val_at(ctoon_val *obj, size_t idx) {
-    if (!ctoon_is_obj(obj) || idx >= obj->u.obj.count) return NULL;
-    return obj->u.obj.pairs[idx].value;
-}
-
-/* ============================================================
  * Serialiser with delimiter / indent / length-marker options
  * ============================================================ */
 
@@ -1233,9 +986,9 @@ typedef struct {
     char   delim;    /* ',' '\t' or '|'          */
     int    indent;   /* spaces per level          */
     bool   lmarker;  /* prepend '#' to lengths    */
-} tw2;
+} tw;
 
-static bool tw2_grow(tw2 *w, size_t n) {
+static bool tw_grow(tw *w, size_t n) {
     if (w->len + n <= w->cap) return true;
     size_t nc = w->cap ? w->cap * 2u : 256u;
     while (nc < w->len + n) nc *= 2u;
@@ -1243,18 +996,18 @@ static bool tw2_grow(tw2 *w, size_t n) {
     if (!nb) return false;
     w->buf = nb; w->cap = nc; return true;
 }
-static bool tw2_put(tw2 *w, const char *s, size_t n) {
-    if (!tw2_grow(w, n)) return false;
+static bool tw_put(tw *w, const char *s, size_t n) {
+    if (!tw_grow(w, n)) return false;
     memcpy(w->buf + w->len, s, n); w->len += n; return true;
 }
-static bool tw2_putc(tw2 *w, char c) { return tw2_put(w, &c, 1); }
-static bool tw2_puts(tw2 *w, const char *s) { return tw2_put(w, s, strlen(s)); }
-static bool tw2_indent(tw2 *w, int d) {
-    for (int i = 0; i < d * w->indent; i++) if (!tw2_putc(w, ' ')) return false;
+static bool tw_putc(tw *w, char c) { return tw_put(w, &c, 1); }
+static bool tw_puts(tw *w, const char *s) { return tw_put(w, s, strlen(s)); }
+static bool tw_indent(tw *w, int d) {
+    for (int i = 0; i < d * w->indent; i++) if (!tw_putc(w, ' ')) return false;
     return true;
 }
 
-static bool tw2_write_str(tw2 *w, const char *s, size_t len, bool is_key) {
+static bool tw_write_str(tw *w, const char *s, size_t len, bool is_key) {
     bool q = (len == 0);
     if (!q && len > 0 && (s[0] == ' ' || s[len-1] == ' ')) q = true;
     if (!q && len >= 2 && s[0] == '-' && s[1] == ' ') q = true;
@@ -1274,40 +1027,52 @@ static bool tw2_write_str(tw2 *w, const char *s, size_t len, bool is_key) {
         }
     }
     if (q) {
-        if (!tw2_putc(w, '"')) return false;
+        if (!tw_putc(w, '"')) return false;
         for (size_t i = 0; i < len; i++) {
             char c = s[i];
-            if      (c=='"')  { if (!tw2_puts(w,"\\\"")) return false; }
-            else if (c=='\\') { if (!tw2_puts(w,"\\\\")) return false; }
-            else if (c=='\n') { if (!tw2_puts(w,"\\n"))  return false; }
-            else if (c=='\r') { if (!tw2_puts(w,"\\r"))  return false; }
-            else if (c=='\t') { if (!tw2_puts(w,"\\t"))  return false; }
-            else { if (!tw2_putc(w, c)) return false; }
+            if      (c=='"')  { if (!tw_puts(w,"\\\"")) return false; }
+            else if (c=='\\') { if (!tw_puts(w,"\\\\")) return false; }
+            else if (c=='\n') { if (!tw_puts(w,"\\n"))  return false; }
+            else if (c=='\r') { if (!tw_puts(w,"\\r"))  return false; }
+            else if (c=='\t') { if (!tw_puts(w,"\\t"))  return false; }
+            else { if (!tw_putc(w, c)) return false; }
         }
-        return tw2_putc(w, '"');
+        return tw_putc(w, '"');
     }
-    return tw2_put(w, s, len);
+    return tw_put(w, s, len);
 }
 
-static bool tw2_write_node(tw2 *w, ctoon_val *n, int depth);
+static bool tw_write_node(tw *w, ctoon_val *n, int depth);
 
-static bool tw2_write_num(tw2 *w, ctoon_val *n) {
+
+/* Format array bracket: [N], [#N], [N|], [#N	] etc.
+ * Per spec: delimiter marker inside bracket only when delimiter != comma. */
+static void tw_fmt_bracket(tw *w, size_t count, bool close, char *out, size_t outsz) {
+    char dmark[3] = {'\0', '\0', '\0'};
+    if (w->delim != ',') { dmark[0] = w->delim; }  /* e.g. '|' or '\t' */
+    if (close) {
+        snprintf(out, outsz, w->lmarker ? "[#%zu%s]: " : "[%zu%s]: ", count, dmark);
+    } else {
+        snprintf(out, outsz, w->lmarker ? "[#%zu%s]{" : "[%zu%s]{", count, dmark);
+    }
+}
+static bool tw_write_num(tw *w, ctoon_val *n) {
     char buf[64];
     ctoon_subtype st = (ctoon_subtype)n->u.number.subtype;
     if      (st == CTOON_SUBTYPE_UINT) snprintf(buf,sizeof(buf),"%" PRIu64, n->u.number.u64);
     else if (st == CTOON_SUBTYPE_SINT) snprintf(buf,sizeof(buf),"%" PRId64, n->u.number.s64);
     else {
-        double d = n->u.number.num;
+        double d = n->u.number.f64;
         if (!isinf(d) && !isnan(d) && d == (double)(long long)d)
             snprintf(buf,sizeof(buf),"%lld",(long long)d);
         else
             snprintf(buf,sizeof(buf),"%.15g",d);
     }
-    return tw2_puts(w, buf);
+    return tw_puts(w, buf);
 }
 
 /* Check whether array qualifies for tabular encoding */
-static bool tw2_is_tabular(ctoon_val *arr) {
+static bool tw_is_tabular(ctoon_val *arr) {
     if (arr->u.arr.count == 0) return false;
     ctoon_val *first = arr->u.arr.items[0];
     if (first->type != CTOON_TYPE_OBJECT || first->u.obj.count == 0) return false;
@@ -1327,37 +1092,37 @@ static bool tw2_is_tabular(ctoon_val *arr) {
     return true;
 }
 
-static bool tw2_write_arr_content(tw2 *w, ctoon_val *arr, int depth);
-static bool tw2_write_obj(tw2 *w, ctoon_val *n, int depth);
+static bool tw_write_arr_content(tw *w, ctoon_val *arr, int depth);
+static bool tw_write_obj(tw *w, ctoon_val *n, int depth);
 
 /* Object item following a "- " marker */
-static bool tw2_write_obj_as_list_item(tw2 *w, ctoon_val *obj, int depth) {
+static bool tw_write_obj_as_list_item(tw *w, ctoon_val *obj, int depth) {
     for (size_t i = 0; i < obj->u.obj.count; i++) {
         ctoon_val *kn = obj->u.obj.pairs[i].key;
         ctoon_val *vn = obj->u.obj.pairs[i].value;
         if (i > 0) {
-            if (!tw2_putc(w, '\n')) return false;
-            if (!tw2_indent(w, depth + 2)) return false;
+            if (!tw_putc(w, '\n')) return false;
+            if (!tw_indent(w, depth + 2)) return false;
         }
-        if (!tw2_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
+        if (!tw_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
         if (vn->type == CTOON_TYPE_OBJECT) {
-            if (!tw2_putc(w, ':')) return false;
-            if (!tw2_putc(w, '\n')) return false;
-            if (!tw2_write_obj(w, vn, depth + 3)) return false;
+            if (!tw_putc(w, ':')) return false;
+            if (!tw_putc(w, '\n')) return false;
+            if (!tw_write_obj(w, vn, depth + 3)) return false;
         } else if (vn->type == CTOON_TYPE_ARRAY) {
             char hdr[48];
             snprintf(hdr, sizeof(hdr), w->lmarker ? "[#%zu]: " : "[%zu]: ", vn->u.arr.count);
-            if (!tw2_puts(w, hdr)) return false;
-            if (!tw2_write_arr_content(w, vn, depth + 2)) return false;
+            if (!tw_puts(w, hdr)) return false;
+            if (!tw_write_arr_content(w, vn, depth + 2)) return false;
         } else {
-            if (!tw2_puts(w, ": ")) return false;
-            if (!tw2_write_node(w, vn, depth + 2)) return false;
+            if (!tw_puts(w, ": ")) return false;
+            if (!tw_write_node(w, vn, depth + 2)) return false;
         }
     }
     return true;
 }
 
-static bool tw2_write_arr_content(tw2 *w, ctoon_val *arr, int depth) {
+static bool tw_write_arr_content(tw *w, ctoon_val *arr, int depth) {
     if (arr->u.arr.count == 0) return true;
 
     /* Primitive inline */
@@ -1368,99 +1133,96 @@ static bool tw2_write_arr_content(tw2 *w, ctoon_val *arr, int depth) {
     }
     if (all_prim) {
         for (size_t i = 0; i < arr->u.arr.count; i++) {
-            if (i > 0 && !tw2_putc(w, w->delim)) return false;
-            if (!tw2_write_node(w, arr->u.arr.items[i], 0)) return false;
+            if (i > 0 && !tw_putc(w, w->delim)) return false;
+            if (!tw_write_node(w, arr->u.arr.items[i], 0)) return false;
         }
         return true;
     }
 
     /* Tabular */
-    if (tw2_is_tabular(arr)) {
+    if (tw_is_tabular(arr)) {
         ctoon_val *first = arr->u.arr.items[0];
         size_t ncols = first->u.obj.count;
-        if (!tw2_putc(w, '\n')) return false;
+        if (!tw_putc(w, '\n')) return false;
         for (size_t r = 0; r < arr->u.arr.count; r++) {
-            if (!tw2_indent(w, depth + 1)) return false;
+            if (!tw_indent(w, depth + 1)) return false;
             for (size_t c = 0; c < ncols; c++) {
-                if (c > 0 && !tw2_putc(w, w->delim)) return false;
-                if (!tw2_write_node(w, arr->u.arr.items[r]->u.obj.pairs[c].value, 0)) return false;
+                if (c > 0 && !tw_putc(w, w->delim)) return false;
+                if (!tw_write_node(w, arr->u.arr.items[r]->u.obj.pairs[c].value, 0)) return false;
             }
-            if (r + 1 < arr->u.arr.count && !tw2_putc(w, '\n')) return false;
+            if (r + 1 < arr->u.arr.count && !tw_putc(w, '\n')) return false;
         }
         return true;
     }
 
     /* List items */
-    if (!tw2_putc(w, '\n')) return false;
+    if (!tw_putc(w, '\n')) return false;
     for (size_t i = 0; i < arr->u.arr.count; i++) {
-        if (!tw2_indent(w, depth + 1)) return false;
-        if (!tw2_puts(w, "- ")) return false;
+        if (!tw_indent(w, depth + 1)) return false;
+        if (!tw_puts(w, "- ")) return false;
         ctoon_val *item = arr->u.arr.items[i];
         if (item->type == CTOON_TYPE_OBJECT)
-            { if (!tw2_write_obj_as_list_item(w, item, depth)) return false; }
+            { if (!tw_write_obj_as_list_item(w, item, depth)) return false; }
         else
-            { if (!tw2_write_node(w, item, depth + 1)) return false; }
-        if (i + 1 < arr->u.arr.count && !tw2_putc(w, '\n')) return false;
+            { if (!tw_write_node(w, item, depth + 1)) return false; }
+        if (i + 1 < arr->u.arr.count && !tw_putc(w, '\n')) return false;
     }
     return true;
 }
 
-static bool tw2_write_obj(tw2 *w, ctoon_val *n, int depth) {
+static bool tw_write_obj(tw *w, ctoon_val *n, int depth) {
     for (size_t i = 0; i < n->u.obj.count; i++) {
-        if (i > 0 && !tw2_putc(w, '\n')) return false;
-        if (!tw2_indent(w, depth)) return false;
+        if (i > 0 && !tw_putc(w, '\n')) return false;
+        if (!tw_indent(w, depth)) return false;
         ctoon_val *kn = n->u.obj.pairs[i].key;
         ctoon_val *vn = n->u.obj.pairs[i].value;
-        if (!tw2_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
+        if (!tw_write_str(w, kn->u.str.ptr, kn->u.str.len, true)) return false;
 
         if (vn->type == CTOON_TYPE_ARRAY) {
             /* Write array header: key[N]{f1,f2}: or key[N]: */
-            if (tw2_is_tabular(vn) && vn->u.arr.count > 0) {
+            if (tw_is_tabular(vn) && vn->u.arr.count > 0) {
                 ctoon_val *first = vn->u.arr.items[0];
                 size_t nc = first->u.obj.count;
-                char hdr[32];
-                snprintf(hdr, sizeof(hdr), w->lmarker ? "[#%zu]{" : "[%zu]{", vn->u.arr.count);
-                if (!tw2_puts(w, hdr)) return false;
+                char hdr[64]; tw_fmt_bracket(w, vn->u.arr.count, false, hdr, sizeof(hdr));
+                if (!tw_puts(w, hdr)) return false;
                 for (size_t c = 0; c < nc; c++) {
-                    if (c > 0 && !tw2_putc(w, w->delim)) return false;
+                    if (c > 0 && !tw_putc(w, w->delim)) return false;
                     ctoon_val *fk = first->u.obj.pairs[c].key;
-                    if (!tw2_write_str(w, fk->u.str.ptr, fk->u.str.len, true)) return false;
+                    if (!tw_write_str(w, fk->u.str.ptr, fk->u.str.len, true)) return false;
                 }
-                if (!tw2_puts(w, "}:")) return false;
+                if (!tw_puts(w, "}:")) return false;
             } else {
-                char hdr[32];
-                snprintf(hdr, sizeof(hdr), w->lmarker ? "[#%zu]: " : "[%zu]: ", vn->u.arr.count);
-                if (!tw2_puts(w, hdr)) return false;
+                char hdr[64]; tw_fmt_bracket(w, vn->u.arr.count, true, hdr, sizeof(hdr));
+                if (!tw_puts(w, hdr)) return false;
             }
-            if (!tw2_write_arr_content(w, vn, depth)) return false;
+            if (!tw_write_arr_content(w, vn, depth)) return false;
         } else if (vn->type == CTOON_TYPE_OBJECT) {
-            if (!tw2_putc(w, ':')) return false;
-            if (!tw2_putc(w, '\n')) return false;
-            if (!tw2_write_obj(w, vn, depth + 1)) return false;
+            if (!tw_putc(w, ':')) return false;
+            if (!tw_putc(w, '\n')) return false;
+            if (!tw_write_obj(w, vn, depth + 1)) return false;
         } else {
-            if (!tw2_puts(w, ": ")) return false;
-            if (!tw2_write_node(w, vn, depth)) return false;
+            if (!tw_puts(w, ": ")) return false;
+            if (!tw_write_node(w, vn, depth)) return false;
         }
     }
     return true;
 }
 
-static bool tw2_write_node(tw2 *w, ctoon_val *n, int depth) {
-    if (!n) return tw2_puts(w, "null");
+static bool tw_write_node(tw *w, ctoon_val *n, int depth) {
+    if (!n) return tw_puts(w, "null");
     switch (n->type) {
-        case CTOON_TYPE_NULL:   return tw2_puts(w, "null");
-        case CTOON_TYPE_TRUE:   return tw2_puts(w, "true");
-        case CTOON_TYPE_FALSE:  return tw2_puts(w, "false");
-        case CTOON_TYPE_NUMBER: return tw2_write_num(w, n);
-        case CTOON_TYPE_STRING: return tw2_write_str(w, n->u.str.ptr, n->u.str.len, false);
+        case CTOON_TYPE_NULL:   return tw_puts(w, "null");
+        case CTOON_TYPE_TRUE:   return tw_puts(w, "true");
+        case CTOON_TYPE_FALSE:  return tw_puts(w, "false");
+        case CTOON_TYPE_NUMBER: return tw_write_num(w, n);
+        case CTOON_TYPE_STRING: return tw_write_str(w, n->u.str.ptr, n->u.str.len, false);
         case CTOON_TYPE_ARRAY: {
-            char hdr[32];
-            snprintf(hdr, sizeof(hdr), w->lmarker ? "[#%zu]: " : "[%zu]: ", n->u.arr.count);
-            if (!tw2_puts(w, hdr)) return false;
-            return tw2_write_arr_content(w, n, depth);
+            char hdr[64]; tw_fmt_bracket(w, n->u.arr.count, true, hdr, sizeof(hdr));
+            if (!tw_puts(w, hdr)) return false;
+            return tw_write_arr_content(w, n, depth);
         }
-        case CTOON_TYPE_OBJECT: return tw2_write_obj(w, n, depth);
-        default: return tw2_puts(w, "null");
+        case CTOON_TYPE_OBJECT: return tw_write_obj(w, n, depth);
+        default: return tw_puts(w, "null");
     }
 }
 
@@ -1493,18 +1255,18 @@ char *ctoon_write_opts(ctoon_doc *doc, const ctoon_write_options *opts,
         if (err) { err->msg = "empty document"; err->pos = 0; }
         return NULL;
     }
-    tw2 w = {0};
+    tw w = {0};
     w.delim   = opts ? delim_char(opts->delimiter) : ',';
     w.indent  = (opts && opts->indent > 0) ? opts->indent : 2;
     w.lmarker = opts ? !!(opts->flag & CTOON_WRITE_LENGTH_MARKER) : false;
 
-    if (!tw2_write_node(&w, doc->root, 0)) {
+    if (!tw_write_node(&w, doc->root, 0)) {
         free(w.buf);
         if (len) *len = 0;
         if (err) { err->msg = "serialise failed"; err->pos = 0; }
         return NULL;
     }
-    if (!tw2_grow(&w, 1)) { free(w.buf); if (len) *len = 0; return NULL; }
+    if (!tw_grow(&w, 1)) { free(w.buf); if (len) *len = 0; return NULL; }
     w.buf[w.len] = '\0';
     if (len) *len = w.len;
     if (err) { err->msg = NULL; err->pos = 0; }
@@ -1600,4 +1362,13 @@ ctoon_doc *ctoon_read_file_opts(const char *p,const ctoon_read_options *o,ctoon_
     if(!doc&&e){e->msg="read failed";e->pos=0;}
     else if(e){e->msg=NULL;e->pos=0;}
     (void)o; return doc;
+}
+
+ctoon_val *ctoon_obj_get_key_at(ctoon_val *obj, size_t idx) {
+    if (!ctoon_is_obj(obj) || idx >= obj->u.obj.count) return NULL;
+    return obj->u.obj.pairs[idx].key;
+}
+ctoon_val *ctoon_obj_get_val_at(ctoon_val *obj, size_t idx) {
+    if (!ctoon_is_obj(obj) || idx >= obj->u.obj.count) return NULL;
+    return obj->u.obj.pairs[idx].value;
 }

@@ -1,13 +1,16 @@
 /*==============================================================================
- |  CToon C++ Binding
+ |  ctoon.hpp  –  CToon C++ Binding
  |  Copyright (c) 2026 CToon Project, MIT License
  |
- |  Provides a modern C++17 RAII wrapper around the C ctoon API.
+ |  Shadows ctoon.h completely. After including this header you never need
+ |  to call any ctoon_* C function directly; everything is exposed through
+ |  the ctoon:: namespace.
  *============================================================================*/
 
 #ifndef CTOON_HPP
 #define CTOON_HPP
 
+/* Include the C API internally – callers of this header do NOT need to */
 #include "ctoon.h"
 
 #include <cstddef>
@@ -25,187 +28,188 @@
 namespace ctoon {
 
 /* ============================================================
+ * Exceptions
+ * ============================================================ */
+
+/** Thrown when a TOON string cannot be parsed. */
+class ParseError : public std::runtime_error {
+public:
+    explicit ParseError(std::string_view msg, std::size_t pos = 0)
+        : std::runtime_error(std::string(msg)), pos_(pos) {}
+    std::size_t position() const noexcept { return pos_; }
+private:
+    std::size_t pos_;
+};
+
+/** Thrown when a Value is accessed as the wrong type. */
+class TypeError : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
+
+/* ============================================================
+ * Read / write flags  (mirrors ctoon_read_flag / ctoon_write_flag)
+ * ============================================================ */
+
+enum class ReadFlag : ctoon_read_flag {
+    None     = CTOON_READ_NOFLAG,
+    NoStrict = CTOON_READ_NO_STRICT,
+};
+
+enum class WriteFlag : ctoon_write_flag {
+    None         = CTOON_WRITE_NOFLAG,
+    LengthMarker = CTOON_WRITE_LENGTH_MARKER,
+};
+
+enum class Delimiter {
+    Comma = CTOON_DELIMITER_COMMA,
+    Tab   = CTOON_DELIMITER_TAB,
+    Pipe  = CTOON_DELIMITER_PIPE,
+};
+
+/** Options for encoding – mirrors ctoon_write_options. */
+struct EncodeOptions {
+    WriteFlag flag      = WriteFlag::None;
+    Delimiter delimiter = Delimiter::Comma;
+    int       indent    = 2;
+
+    ctoon_write_options to_c() const noexcept {
+        return { static_cast<ctoon_write_flag>(flag),
+                 static_cast<ctoon_delimiter>(delimiter),
+                 indent };
+    }
+};
+
+/** Options for decoding – mirrors ctoon_read_options. */
+struct DecodeOptions {
+    ReadFlag flag   = ReadFlag::None;
+    int      indent = 2;
+
+    ctoon_read_options to_c() const noexcept {
+        return { static_cast<ctoon_read_flag>(flag), indent };
+    }
+};
+
+
+/* ============================================================
  * Forward declarations
  * ============================================================ */
 
 class Document;
 class Value;
 class ArrayIterator;
-class ObjectIterator;
+
 
 /* ============================================================
- * Error type
+ * Value  –  non-owning view into a Document's arena
  * ============================================================ */
 
-/** Exception thrown on parse failures. */
-class ParseError : public std::runtime_error {
-public:
-    explicit ParseError(const std::string &msg, std::size_t pos = 0)
-        : std::runtime_error(msg), pos_(pos) {}
-
-    /** Byte offset in the source where the error occurred. */
-    std::size_t position() const noexcept { return pos_; }
-
-private:
-    std::size_t pos_;
-};
-
-/** Exception thrown when a value is accessed as the wrong type. */
-class TypeError : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
-
-/* ============================================================
- * Value – a non-owning view into a Document's arena
- * ============================================================ */
-
-/**
- * @brief A non-owning, cheaply-copyable reference to a TOON value.
- *
- * Value objects are invalidated when the parent Document is destroyed.
- * They must NOT be stored beyond the Document's lifetime.
- */
 class Value {
 public:
-    Value() noexcept : val_(nullptr) {}
+    Value() noexcept : v_(nullptr) {}
+    explicit Value(ctoon_val *raw) noexcept : v_(raw) {}
 
-    explicit Value(::ctoon_val *raw) noexcept : val_(raw) {}
-
-    /** @return true if this Value is non-null (i.e. points to a real node). */
-    explicit operator bool() const noexcept { return val_ != nullptr; }
-
-    /** @return The underlying C handle (may be nullptr). */
-    ::ctoon_val *raw() const noexcept { return val_; }
+    explicit operator bool() const noexcept { return v_ != nullptr; }
+    ctoon_val *raw() const noexcept { return v_; }
 
     /* --- type queries --------------------------------------------------- */
+    bool isNull  () const noexcept { return v_ && ctoon_is_null  (v_); }
+    bool isTrue  () const noexcept { return v_ && ctoon_is_true  (v_); }
+    bool isFalse () const noexcept { return v_ && ctoon_is_false (v_); }
+    bool isBool  () const noexcept { return v_ && ctoon_is_bool  (v_); }
+    bool isNumber() const noexcept { return v_ && ctoon_is_num   (v_); }
+    bool isUint  () const noexcept { return v_ && ctoon_is_uint  (v_); }
+    bool isSint  () const noexcept { return v_ && ctoon_is_sint  (v_); }
+    bool isInt   () const noexcept { return v_ && ctoon_is_int   (v_); }
+    bool isReal  () const noexcept { return v_ && ctoon_is_real  (v_); }
+    bool isString() const noexcept { return v_ && ctoon_is_str   (v_); }
+    bool isArray () const noexcept { return v_ && ctoon_is_arr   (v_); }
+    bool isObject() const noexcept { return v_ && ctoon_is_obj   (v_); }
 
-    bool isNull  () const noexcept { return val_ && ::ctoon_is_null  (val_); }
-    bool isTrue  () const noexcept { return val_ && ::ctoon_is_true  (val_); }
-    bool isFalse () const noexcept { return val_ && ::ctoon_is_false (val_); }
-    bool isBool  () const noexcept { return val_ && ::ctoon_is_bool  (val_); }
-    bool isNumber() const noexcept { return val_ && ::ctoon_is_num   (val_); }
-    bool isUint  () const noexcept { return val_ && ::ctoon_is_uint  (val_); }
-    bool isSint  () const noexcept { return val_ && ::ctoon_is_sint  (val_); }
-    bool isInt   () const noexcept { return val_ && ::ctoon_is_int   (val_); }
-    bool isReal  () const noexcept { return val_ && ::ctoon_is_real  (val_); }
-    bool isString() const noexcept { return val_ && ::ctoon_is_str   (val_); }
-    bool isArray () const noexcept { return val_ && ::ctoon_is_arr   (val_); }
-    bool isObject() const noexcept { return val_ && ::ctoon_is_obj   (val_); }
-
-    /* --- value getters -------------------------------------------------- */
-
-    bool asBool() const {
-        if (!isBool()) throw TypeError("Value is not a boolean");
-        return ::ctoon_get_bool(val_);
-    }
-
-    std::uint64_t asUint() const {
-        if (!isNumber()) throw TypeError("Value is not a number");
-        return ::ctoon_get_uint(val_);
-    }
-
-    std::int64_t asSint() const {
-        if (!isNumber()) throw TypeError("Value is not a number");
-        return ::ctoon_get_sint(val_);
-    }
-
-    int asInt() const {
-        if (!isNumber()) throw TypeError("Value is not a number");
-        return ::ctoon_get_int(val_);
-    }
-
-    double asDouble() const {
-        if (!isNumber()) throw TypeError("Value is not a number");
-        return ::ctoon_get_real(val_);
-    }
+    /* --- scalar getters ------------------------------------------------- */
+    bool           asBool  () const { check(isBool(),   "boolean"); return ctoon_get_bool(v_); }
+    std::uint64_t  asUint  () const { check(isNumber(), "number");  return ctoon_get_uint(v_); }
+    std::int64_t   asSint  () const { check(isNumber(), "number");  return ctoon_get_sint(v_); }
+    int            asInt   () const { check(isNumber(), "number");  return ctoon_get_int (v_); }
+    double         asDouble() const { check(isNumber(), "number");  return ctoon_get_real(v_); }
 
     std::string asString() const {
-        if (!isString()) throw TypeError("Value is not a string");
-        const char *p = ::ctoon_get_str(val_);
-        std::size_t n = ::ctoon_get_len(val_);
-        return std::string(p ? p : "", n);
+        check(isString(), "string");
+        const char *p = ctoon_get_str(v_);
+        return { p ? p : "", ctoon_get_len(v_) };
+    }
+    std::string_view asStringView() const noexcept {
+        if (!isString()) return {};
+        const char *p = ctoon_get_str(v_);
+        return { p ? p : "", ctoon_get_len(v_) };
     }
 
-    std::string_view asStringView() const {
-        if (!isString()) throw TypeError("Value is not a string");
-        const char *p = ::ctoon_get_str(val_);
-        std::size_t n = ::ctoon_get_len(val_);
-        return std::string_view(p ? p : "", n);
-    }
-
-    /* --- array access --------------------------------------------------- */
-
+    /* --- size (array or object) ---------------------------------------- */
     std::size_t size() const noexcept {
-        if (!val_) return 0;
-        if (isArray ()) return ::ctoon_arr_size(val_);
-        if (isObject()) return ::ctoon_obj_size(val_);
+        if (isArray ()) return ctoon_arr_size(v_);
+        if (isObject()) return ctoon_obj_size(v_);
         return 0;
     }
 
-    /** Element access by index.  Returns empty Value on out-of-range. */
+    /* --- array access --------------------------------------------------- */
     Value operator[](std::size_t idx) const noexcept {
-        if (!isArray()) return {};
-        return Value(::ctoon_arr_get(val_, idx));
+        return isArray() ? Value(ctoon_arr_get(v_, idx)) : Value{};
     }
-
-    /** Element access by index; throws std::out_of_range if invalid. */
     Value at(std::size_t idx) const {
-        if (!isArray()) throw TypeError("Value is not an array");
-        if (idx >= size()) throw std::out_of_range("Array index out of range");
-        return Value(::ctoon_arr_get(val_, idx));
+        check(isArray(), "array");
+        if (idx >= size()) throw std::out_of_range("ctoon: array index out of range");
+        return Value(ctoon_arr_get(v_, idx));
     }
-
-    /** Collect all array elements into a vector. */
     std::vector<Value> items() const {
-        std::vector<Value> result;
-        if (!isArray()) return result;
-        std::size_t n = size();
-        result.reserve(n);
-        for (std::size_t i = 0; i < n; i++)
-            result.emplace_back(::ctoon_arr_get(val_, i));
-        return result;
+        std::vector<Value> r;
+        if (!isArray()) return r;
+        r.reserve(size());
+        for (std::size_t i = 0; i < size(); i++) r.emplace_back(ctoon_arr_get(v_, i));
+        return r;
     }
 
     /* --- object access -------------------------------------------------- */
-
-    /** Lookup by key string (any char-convertible type). */
     Value operator[](const std::string &key) const noexcept {
-        if (!isObject()) return {};
-        return Value(::ctoon_obj_get(val_, key.c_str()));
+        return isObject() ? Value(ctoon_obj_get(v_, key.c_str())) : Value{};
     }
-
-    /** @return false if not an object or key absent; does NOT throw. */
     bool has(const std::string &key) const noexcept {
-        if (!isObject()) return false;
-        return ::ctoon_obj_get(val_, key.c_str()) != nullptr;
+        return isObject() && ctoon_obj_get(v_, key.c_str()) != nullptr;
     }
-
-    /** Lookup by key; throws TypeError if not an object, returns nullopt if missing. */
     std::optional<Value> get(const std::string &key) const {
-        if (!isObject()) throw TypeError("Value is not an object");
-        ::ctoon_val *v = ::ctoon_obj_get(val_, key.c_str());
-        if (!v) return std::nullopt;
-        return Value(v);
+        check(isObject(), "object");
+        ctoon_val *r = ctoon_obj_get(v_, key.c_str());
+        return r ? std::optional<Value>(Value(r)) : std::nullopt;
+    }
+    std::vector<std::string> keys() const {
+        std::vector<std::string> r;
+        if (!isObject()) return r;
+        std::size_t n = size();
+        r.reserve(n);
+        for (std::size_t i = 0; i < n; i++) {
+            ctoon_val *k = ctoon_obj_get_key_at(v_, i);
+            if (k) r.emplace_back(ctoon_get_str(k), ctoon_get_len(k));
+        }
+        return r;
     }
 
-    /** Collect all object keys as strings. */
-    std::vector<std::string> keys() const;
-
-    /** Range-based for support for arrays. */
+    /* --- range-for (array) --------------------------------------------- */
     ArrayIterator begin() const noexcept;
     ArrayIterator end  () const noexcept;
 
     /* --- equality ------------------------------------------------------- */
-
     bool operator==(std::string_view s) const noexcept {
         return isString() && asStringView() == s;
     }
     bool operator!=(std::string_view s) const noexcept { return !(*this == s); }
 
 private:
-    ::ctoon_val *val_;
+    ctoon_val *v_;
+
+    void check(bool ok, const char *expected) const {
+        if (!ok) throw TypeError(std::string("ctoon: value is not ") + expected);
+    }
 };
+
 
 /* ============================================================
  * ArrayIterator
@@ -216,218 +220,170 @@ public:
     using iterator_category = std::forward_iterator_tag;
     using value_type        = Value;
     using difference_type   = std::ptrdiff_t;
-    using pointer           = Value *;
+    using pointer           = void;
     using reference         = Value;
 
-    ArrayIterator(::ctoon_val *arr, std::size_t idx) noexcept
-        : arr_(arr), idx_(idx) {}
+    ArrayIterator(ctoon_val *arr, std::size_t idx) noexcept : arr_(arr), idx_(idx) {}
 
-    Value operator*() const noexcept {
-        return Value(::ctoon_arr_get(arr_, idx_));
-    }
-
+    Value operator* () const noexcept { return Value(ctoon_arr_get(arr_, idx_)); }
     ArrayIterator &operator++() noexcept { ++idx_; return *this; }
-    ArrayIterator  operator++(int) noexcept {
-        ArrayIterator tmp = *this; ++*this; return tmp;
-    }
-
+    ArrayIterator  operator++(int) noexcept { auto t = *this; ++*this; return t; }
     bool operator==(const ArrayIterator &o) const noexcept {
         return arr_ == o.arr_ && idx_ == o.idx_;
     }
-    bool operator!=(const ArrayIterator &o) const noexcept {
-        return !(*this == o);
-    }
+    bool operator!=(const ArrayIterator &o) const noexcept { return !(*this == o); }
 
 private:
-    ::ctoon_val *arr_;
-    std::size_t  idx_;
+    ctoon_val  *arr_;
+    std::size_t idx_;
 };
 
 inline ArrayIterator Value::begin() const noexcept {
-    return ArrayIterator(isArray() ? val_ : nullptr, 0);
+    return { isArray() ? v_ : nullptr, 0 };
 }
 inline ArrayIterator Value::end() const noexcept {
-    return ArrayIterator(isArray() ? val_ : nullptr, size());
+    return { isArray() ? v_ : nullptr, size() };
 }
 
-/* ============================================================
- * ObjectIterator
- * ============================================================ */
-
-class ObjectEntry {
-public:
-    ObjectEntry(std::string_view key, Value value) noexcept
-        : key_(key), value_(std::move(value)) {}
-
-    std::string_view key()   const noexcept { return key_;   }
-    const Value     &value() const noexcept { return value_; }
-
-private:
-    std::string_view key_;
-    Value            value_;
-};
-
-inline std::vector<std::string> Value::keys() const {
-    std::vector<std::string> result;
-    if (!isObject()) return result;
-    std::size_t n = ::ctoon_obj_size(val_);
-    result.reserve(n);
-    for (std::size_t i = 0; i < n; i++) {
-        ::ctoon_val *kv = ::ctoon_obj_get_key_at(val_, i);
-        if (kv) {
-            const char *ks = ::ctoon_get_str(kv);
-            if (ks) result.emplace_back(ks, ::ctoon_get_len(kv));
-        }
-    }
-    return result;
-}
 
 /* ============================================================
- * Document – owns all TOON values
+ * Document  –  owns all TOON values (RAII)
  * ============================================================ */
 
-/**
- * @brief Owns a parsed TOON document and all values within it.
- *
- * Values returned by this document are valid only as long as the Document
- * object itself is alive.
- */
 class Document {
 public:
     Document() noexcept = default;
 
-    /** Parse TOON from a string.  Throws ParseError on failure. */
-    explicit Document(std::string_view data) {
-        load(data.data(), data.size());
+    /* --- parse from string --------------------------------------------- */
+    explicit Document(std::string_view data) { load(data.data(), data.size()); }
+    Document(const char *data, std::size_t len) { load(data, len); }
+
+    /* --- parse from string with options --------------------------------- */
+    Document(std::string_view data, const DecodeOptions &opts) {
+        ctoon_read_options c = opts.to_c();
+        ctoon_err err = {};
+        ctoon_doc *doc = ctoon_read_opts(data.data(), data.size(), &c, &err);
+        if (!doc) throw ParseError(err.msg ? err.msg : "parse failed", err.pos);
+        doc_.reset(doc, ctoon_doc_free);
     }
 
-    /** Parse TOON from raw bytes.  Throws ParseError on failure. */
-    Document(const char *data, std::size_t len) {
-        load(data, len);
-    }
+    Document(const Document &)            = delete;
+    Document &operator=(const Document &) = delete;
+    Document(Document &&)                 = default;
+    Document &operator=(Document &&)      = default;
+    ~Document()                           = default;
 
-    Document(const Document &)             = delete;
-    Document &operator=(const Document &)  = delete;
-    Document(Document &&)                  = default;
-    Document &operator=(Document &&)       = default;
-
-    ~Document() = default;
-
-    /* --- factory methods ----------------------------------------------- */
-
-    /** Parse from file; throws ParseError on failure. */
+    /* --- factories ------------------------------------------------------ */
     static Document fromFile(const std::string &path) {
         Document d;
-        ::ctoon_doc *raw = ::ctoon_read_file(path.c_str());
-        if (!raw) throw ParseError("Failed to read TOON file: " + path);
-        d.doc_.reset(raw, ::ctoon_doc_free);
+        ctoon_doc *doc = ctoon_read_file(path.c_str());
+        if (!doc) throw ParseError("cannot read file: " + path);
+        d.doc_.reset(doc, ctoon_doc_free);
         return d;
     }
-
-    /** Create an empty document for building values programmatically. */
+    static Document fromFile(const std::string &path, const DecodeOptions &opts) {
+        Document d;
+        ctoon_read_options c = opts.to_c();
+        ctoon_err err = {};
+        ctoon_doc *doc = ctoon_read_file_opts(path.c_str(), &c, &err);
+        if (!doc) throw ParseError(err.msg ? err.msg : "cannot read file", err.pos);
+        d.doc_.reset(doc, ctoon_doc_free);
+        return d;
+    }
+    /** Create an empty document for programmatic construction. */
     static Document create(std::size_t maxMemory = 0) {
         Document d;
-        d.doc_.reset(::ctoon_doc_new(maxMemory), ::ctoon_doc_free);
-        if (!d.doc_) throw std::bad_alloc();
+        ctoon_doc *doc = ctoon_doc_new(maxMemory);
+        if (!doc) throw std::bad_alloc();
+        d.doc_.reset(doc, ctoon_doc_free);
         return d;
     }
 
-    /* --- state queries -------------------------------------------------- */
-
+    /* --- state ---------------------------------------------------------- */
     explicit operator bool() const noexcept { return doc_ != nullptr; }
-
-    /** @return Root value; invalid Value if document is empty. */
     Value root() const noexcept {
-        if (!doc_) return {};
-        return Value(::ctoon_doc_get_root(doc_.get()));
+        return doc_ ? Value(ctoon_doc_get_root(doc_.get())) : Value{};
     }
-
     std::size_t valueCount() const noexcept {
-        return doc_ ? ::ctoon_doc_get_val_count(doc_.get()) : 0;
+        return doc_ ? ctoon_doc_get_val_count(doc_.get()) : 0;
     }
 
-    /** @return Last parse error message, or empty string. */
-    std::string lastError() const {
+    /* --- serialise ------------------------------------------------------ */
+    /** Encode to TOON string. */
+    std::string encode(const EncodeOptions &opts = {}) const {
         if (!doc_) return {};
-        const char *e = ::ctoon_doc_get_error(doc_.get());
-        return e ? std::string(e) : std::string{};
+        ctoon_write_options c = opts.to_c();
+        ctoon_err err = {};
+        std::size_t len = 0;
+        char *raw = ctoon_encode_opts(doc_.get(), &c, &len, &err);
+        if (!raw) throw std::runtime_error(err.msg ? err.msg : "encode failed");
+        std::string r(raw, len);
+        free(raw);
+        return r;
     }
 
-    std::size_t lastErrorPos() const noexcept {
-        return doc_ ? ::ctoon_doc_get_error_pos(doc_.get()) : 0;
+    bool writeFile(const std::string &path, const EncodeOptions &opts = {}) const {
+        if (!doc_) return false;
+        ctoon_write_options c = opts.to_c();
+        ctoon_err err = {};
+        return ctoon_encode_file_opts(doc_.get(), path.c_str(), &c, &err);
     }
 
     /* --- value construction -------------------------------------------- */
-
-    Value newNull()                         { return Value(::ctoon_new_null  (doc_.get())); }
-    Value newBool  (bool v)                 { return Value(::ctoon_new_bool  (doc_.get(), v)); }
-    Value newUint  (std::uint64_t v)        { return Value(::ctoon_new_uint  (doc_.get(), v)); }
-    Value newSint  (std::int64_t  v)        { return Value(::ctoon_new_sint  (doc_.get(), v)); }
-    Value newDouble(double v)               { return Value(::ctoon_new_real  (doc_.get(), v)); }
-    Value newString(std::string_view s)     {
-        return Value(::ctoon_new_strn(doc_.get(), s.data(), s.size()));
-    }
-    Value newArray ()                       { return Value(::ctoon_new_arr (doc_.get())); }
-    Value newObject()                       { return Value(::ctoon_new_obj(doc_.get())); }
+    Value newNull  ()                      { return Value(ctoon_new_null (doc_.get())); }
+    Value newBool  (bool v)                { return Value(ctoon_new_bool (doc_.get(), v)); }
+    Value newUint  (std::uint64_t v)       { return Value(ctoon_new_uint (doc_.get(), v)); }
+    Value newSint  (std::int64_t  v)       { return Value(ctoon_new_sint (doc_.get(), v)); }
+    Value newDouble(double v)              { return Value(ctoon_new_real (doc_.get(), v)); }
+    Value newString(std::string_view s)    { return Value(ctoon_new_strn(doc_.get(), s.data(), s.size())); }
+    Value newArray ()                      { return Value(ctoon_new_arr  (doc_.get())); }
+    Value newObject()                      { return Value(ctoon_new_obj  (doc_.get())); }
 
     bool arrayAppend(Value &arr, Value &val) {
-        return ::ctoon_arr_append(doc_.get(), arr.raw(), val.raw());
+        return ctoon_arr_append(doc_.get(), arr.raw(), val.raw());
     }
-
     bool objectSet(Value &obj, std::string_view key, Value &val) {
-        return ::ctoon_obj_setn(doc_.get(), obj.raw(),
-                                    key.data(), key.size(), val.raw());
+        return ctoon_obj_setn(doc_.get(), obj.raw(), key.data(), key.size(), val.raw());
     }
-
     void setRoot(Value &root) {
-        if (doc_) ::ctoon_doc_set_root(doc_.get(), root.raw());
+        if (doc_) ctoon_doc_set_root(doc_.get(), root.raw());
     }
 
-    /* --- serialisation -------------------------------------------------- */
-
-    /** Serialise to TOON string.  Returns empty string on error. */
-    std::string toToon() const {
-        if (!doc_) return {};
-        std::size_t len = 0;
-        char *raw = ::ctoon_write(doc_.get(), &len);
-        if (!raw) return {};
-        std::string result(raw, len);
-        free(raw);
-        return result;
-    }
-
-    /** Write TOON to file; returns true on success. */
-    bool toFile(const std::string &path) const {
-        if (!doc_) return false;
-        return ::ctoon_write_file(doc_.get(), path.c_str());
-    }
-
-    /** Expose raw handle for interop with C code. */
-    ::ctoon_doc *handle() const noexcept { return doc_.get(); }
+    /* --- raw C handle --------------------------------------------------- */
+    ctoon_doc *handle() const noexcept { return doc_.get(); }
 
 private:
-    std::shared_ptr<::ctoon_doc> doc_;
+    std::shared_ptr<ctoon_doc> doc_;
 
     void load(const char *data, std::size_t len) {
-        ::ctoon_doc *raw = ::ctoon_read(data, len);
-        if (!raw)
-            throw ParseError("Failed to parse TOON data");
-        doc_.reset(raw, ::ctoon_doc_free);
+        ctoon_doc *doc = ctoon_decode(data, len);
+        if (!doc) throw ParseError("TOON parse failed");
+        doc_.reset(doc, ctoon_doc_free);
     }
 };
 
+
 /* ============================================================
- * Convenience free functions
+ * Free functions  (shadow ctoon_decode / ctoon_encode)
  * ============================================================ */
 
-/** Parse TOON from string; throws ParseError on failure. */
-inline Document parse(std::string_view data) {
+/** Parse a TOON string. Throws ParseError on failure. */
+inline Document decode(std::string_view data) {
     return Document(data);
 }
-
-/** Parse TOON from file; throws ParseError on failure. */
-inline Document parseFile(const std::string &path) {
+inline Document decode(std::string_view data, const DecodeOptions &opts) {
+    return Document(data, opts);
+}
+inline Document decodeFile(const std::string &path) {
     return Document::fromFile(path);
+}
+inline Document decodeFile(const std::string &path, const DecodeOptions &opts) {
+    return Document::fromFile(path, opts);
+}
+
+/** Encode a document to TOON. Equivalent to doc.encode(opts). */
+inline std::string encode(const Document &doc, const EncodeOptions &opts = {}) {
+    return doc.encode(opts);
 }
 
 } // namespace ctoon

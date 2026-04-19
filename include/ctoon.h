@@ -1,30 +1,19 @@
 /*==============================================================================
- |  Copyright (c) 2026 CToon Project
- |
- |  Permission is hereby granted, free of charge, to any person obtaining a copy
- |  of this software and associated documentation files (the "Software"), to deal
- |  in the Software without restriction, including without limitation the rights
- |  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- |  copies of the Software, and to permit persons to whom the Software is
- |  furnished to do so, subject to the following conditions:
- |
- |  The above copyright notice and this permission notice shall be included in all
- |  copies or substantial portions of the Software.
- |
- |  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- |  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- |  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- |  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- |  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- |  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- |  SOFTWARE.
- |  *============================================================================*/
+ |  ctoon.h  –  CToon C API
+ |  Copyright (c) 2026 CToon Project, MIT License
+ *============================================================================*/
 
 /**
- @file    ctoon.h
- @brief   CToon C API – parse and generate TOON-format data.
- @date 2025-11-04
- @author Mohammad Raziei
+ * @file  ctoon.h
+ * @brief CToon: parse and generate TOON-format data.
+ * @date 2025-11-04
+ * @author Mohammad Raziei
+ *
+ * Naming follows yyjson conventions where possible:
+ *   ctoon_read_*   – parse TOON text  → ctoon_doc
+ *   ctoon_write_*  – serialise doc    → text
+ *   ctoon_decode*  – high-level: TOON text → doc  (options-aware)
+ *   ctoon_encode*  – high-level: doc  → TOON text (options-aware)
  */
 
 #ifndef CTOON_H
@@ -48,13 +37,12 @@ extern "C" {
 #define CTOON_VERSION_MINOR 1
 #define CTOON_VERSION_PATCH 0
 
-#define CTOON_VERSION_ENCODE(maj,min,pat) \
-    (((maj)*10000) + ((min)*100) + (pat))
+#define CTOON_VERSION_ENCODE(maj,min,pat) (((maj)*10000)+((min)*100)+(pat))
 #define CTOON_VERSION \
     CTOON_VERSION_ENCODE(CTOON_VERSION_MAJOR,CTOON_VERSION_MINOR,CTOON_VERSION_PATCH)
 
-#define CTOON_VERSION_XSTR(maj,min,pat) #maj"."#min"."#pat
-#define CTOON_VERSION_STR(maj,min,pat)  CTOON_VERSION_XSTR(maj,min,pat)
+#define CTOON_VERSION_XSTR(a,b,c) #a"."#b"."#c
+#define CTOON_VERSION_STR(a,b,c)  CTOON_VERSION_XSTR(a,b,c)
 #define CTOON_VERSION_STRING \
     CTOON_VERSION_STR(CTOON_VERSION_MAJOR,CTOON_VERSION_MINOR,CTOON_VERSION_PATCH)
 
