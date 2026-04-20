@@ -34,7 +34,7 @@ extern "C" {
  * ============================================================ */
 
 #define CTOON_VERSION_MAJOR 0
-#define CTOON_VERSION_MINOR 1
+#define CTOON_VERSION_MINOR 2
 #define CTOON_VERSION_PATCH 0
 
 #define CTOON_VERSION_ENCODE(maj,min,pat) (((maj)*10000)+((min)*100)+(pat))
@@ -171,11 +171,6 @@ ctoon_doc *ctoon_read_file_opts(const char *path,
  * @return Heap-allocated NUL-terminated string; caller must free(). NULL on error.
  */
 char *ctoon_write     (ctoon_doc *doc, size_t *len);
-
-/**
- * Serialise with flags.
- */
-char *ctoon_write_flg (ctoon_doc *doc, ctoon_write_flag flg, size_t *len);
 
 /**
  * Serialise with full options and error output.
