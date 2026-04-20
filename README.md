@@ -13,203 +13,212 @@
 
 </div>
 
-CToon is a high-performance C++ serialization library that provides fast, bidirectional conversion between JSON and TOON formats. It features a modern API, configurable output formatting, and Python bindings through nanobind.
+A C implementation of the [TOON format](https://github.com/toon-format/spec) — a compact, human-readable serialization format optimised for LLM token usage. Achieves 30–60% token reduction versus JSON while maintaining full readability and structure.
 
-## ✨ Features
+## Quick Start
 
-### Core Library
-- **JSON & TOON support** – Full bidirectional serialization for both formats
-- **Modern C++17 API** – Type-safe interface with RAII semantics
-- **Flexible formatting** – Configurable indentation, delimiters, and encoding options
-- **CLI tool** – Command-line utility for batch conversion and processing
-- **Cross-platform** – Works on Windows, Linux, and macOS
-- **Python bindings** – Full Python API via nanobind integration
+```bash
+cmake -B build && cmake --build build
+./build/ctoon data.json          # JSON → TOON
+./build/ctoon data.toon          # TOON → JSON
+cat data.json | ./build/ctoon    # stdin → TOON
+```
 
-### Command-Line Interface
-- **Format conversion** – Convert between JSON and TOON
-- **Batch processing** – Process multiple files at once
-- **Configurable output** – Control indentation and delimiter choices
+## Format Overview
 
-## 🚀 Quick Start
+TOON encodes structured data efficiently:
 
-### C++ Usage
+```
+# JSON (352 bytes)                 # TOON (165 bytes, -53%)
+{                                  order:
+  "order": {                         id: ORD-12345
+    "id": "ORD-12345",               status: completed
+    "items": [                       customer:
+      {"product":"Book","qty":2},      name: John Doe
+      {"product":"Pen","qty":5}        email: john@example.com
+    ]                                items[2]{product,qty}:
+  }                                    Book,2
+}                                      Pen,5
+```
 
-```cpp
+## CLI
+
+```bash
+# Encode (JSON → TOON)
+ctoon input.json
+ctoon input.json -o output.toon
+ctoon input.json --delimiter ","    # comma (default)
+ctoon input.json --delimiter "|"    # pipe
+ctoon input.json --delimiter "tab"  # tab
+ctoon input.json --length-marker    # items[#3]: ...
+ctoon input.json --stats            # show byte savings
+
+# Decode (TOON → JSON)
+ctoon input.toon
+ctoon input.toon -o output.json
+ctoon input.toon --no-strict        # lenient parsing
+ctoon input.toon -i 4               # 4-space JSON indent
+
+# Auto-detection from extension; force with flags
+ctoon -e input.json   # force encode
+ctoon -d input.toon   # force decode
+
+# Stdin
+cat data.json | ctoon -e -
+cat data.toon | ctoon -d -
+```
+
+## C API
+
+```c
 #include "ctoon.h"
 
-int main() {
-    // Create data
-    ctoon::Object user;
-    user["name"] = ctoon::Value("Ali");
-    user["age"] = ctoon::Value(30);
-    user["active"] = ctoon::Value(true);
+// --- Parse ---
+ctoon_doc *doc = ctoon_decode("name: Alice\nage: 30", 20);
+ctoon_val *root = ctoon_doc_get_root(doc);
 
-    ctoon::Array tags;
-    tags.push_back(ctoon::Value("developer"));
-    tags.push_back(ctoon::Value("C++"));
-    user["tags"] = ctoon::Value(tags);
+// --- Access ---
+ctoon_val *name = ctoon_obj_get(root, "name");   // O(k)
+ctoon_val *v0   = ctoon_arr_get(arr, 0);          // O(1)
+ctoon_val *key  = ctoon_obj_get_key_at(obj, i);   // O(1), thread-safe
+ctoon_val *val  = ctoon_obj_get_val_at(obj, i);   // O(1), thread-safe
 
-    // Encode to JSON
-    std::string json = ctoon::dumpsJson(ctoon::Value(user), 2);
-    std::cout << json << std::endl;
-
-    // Encode to TOON
-    ctoon::EncodeOptions options;
-    options.indent = 2;
-    std::string toon = ctoon::encode(ctoon::Value(user), options);
-    std::cout << toon << std::endl;
-
-    // Decode from JSON
-    std::string input = R"({"name": "Ali", "age": 30})";
-    ctoon::Value parsed = ctoon::loadsJson(input);
-    
-    return 0;
+// --- Iterate (full tree: O(n)) ---
+for (size_t i = 0; i < ctoon_obj_size(root); i++) {
+    ctoon_val *k = ctoon_obj_get_key_at(root, i);
+    ctoon_val *v = ctoon_obj_get_val_at(root, i);
+    // use ctoon_get_str(k), ctoon_get_type(v), etc.
 }
+
+// --- Type queries ---
+ctoon_is_null(v)    ctoon_is_bool(v)    ctoon_is_num(v)
+ctoon_is_str(v)     ctoon_is_arr(v)     ctoon_is_obj(v)
+ctoon_get_subtype(v)  // UINT / SINT / REAL
+
+// --- Getters ---
+ctoon_get_str(v)    ctoon_get_uint(v)   ctoon_get_sint(v)
+ctoon_get_real(v)   ctoon_get_int(v)    ctoon_get_len(v)
+
+// --- Encode ---
+size_t len;
+char *toon = ctoon_encode(doc, &len);   // caller must free()
+free(toon);
+
+// --- With options ---
+ctoon_write_options opts = {
+    .flag      = CTOON_WRITE_LENGTH_MARKER,
+    .delimiter = CTOON_DELIMITER_PIPE,
+    .indent    = 2,
+};
+ctoon_err err = {};
+char *out = ctoon_encode_opts(doc, &opts, &len, &err);
+
+// --- Build values ---
+ctoon_doc *doc2 = ctoon_doc_new(0);
+ctoon_val *obj  = ctoon_new_obj(doc2);
+ctoon_val *name = ctoon_new_str(doc2, "Alice");
+ctoon_val *age  = ctoon_new_uint(doc2, 30);
+ctoon_obj_set(doc2, obj, "name", name);
+ctoon_obj_set(doc2, obj, "age",  age);
+ctoon_doc_set_root(doc2, obj);
+
+// --- Cleanup ---
+ctoon_doc_free(doc);
 ```
 
-### Command-Line Usage
+## C++ API
+
+```cpp
+#include "ctoon.hpp"
+
+// Decode
+ctoon::Document doc = ctoon::decode("name: Alice\nage: 30");
+ctoon::Value root = doc.root();
+
+// Access
+std::string name = root["name"].asString();
+int age          = root["age"].asInt();
+bool active      = root["active"].asBool();
+
+// Iterate array
+for (ctoon::Value item : root["tags"]) {
+    std::cout << item.asString() << "\n";
+}
+
+// Iterate object keys
+for (const std::string &key : root.keys()) {
+    ctoon::Value v = root[key];
+}
+
+// Optional get
+if (auto v = root.get("optional_field")) {
+    std::cout << v->asString();
+}
+
+// Encode
+std::string toon = doc.encode();
+
+// With options
+ctoon::EncodeOptions opts;
+opts.delimiter = ctoon::Delimiter::Pipe;
+opts.flag      = ctoon::WriteFlag::LengthMarker;
+std::string toon2 = doc.encode(opts);
+
+// Build
+ctoon::Document doc2 = ctoon::Document::create();
+ctoon::Value obj  = doc2.newObject();
+ctoon::Value name = doc2.newString("Alice");
+doc2.objectSet(obj, "name", name);
+doc2.setRoot(obj);
+
+// File I/O
+ctoon::Document doc3 = ctoon::Document::fromFile("data.toon");
+doc3.writeFile("out.toon");
+```
+
+## Complexity
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| `ctoon_decode` / `ctoon_read` | O(n) | n = input bytes |
+| `ctoon_encode` / `ctoon_write` | O(n) | n = total nodes |
+| `ctoon_arr_get(arr, i)` | **O(1)** | direct index |
+| `ctoon_obj_get_key_at(obj, i)` | **O(1)** | direct index, thread-safe |
+| `ctoon_obj_get_val_at(obj, i)` | **O(1)** | direct index, thread-safe |
+| `ctoon_obj_get(obj, key)` | O(k) | linear scan; k = key count |
+| Full tree traversal from root | **O(n)** | optimal; n = total nodes |
+| `ctoon_doc_free` | O(chunks) ≈ O(1) | frees arena in one pass |
+
+**Full tree traversal is O(n)** — each of the n nodes is visited exactly once. This is optimal since you must read every node. Stack depth is O(d) where d = nesting depth.
+
+`ctoon_obj_get(key)` is O(k) linear scan (no hash map). For deeply nested objects with many keys, prefer `ctoon_obj_get_key_at` / `ctoon_obj_get_val_at` in indexed loops.
+
+## Thread Safety
+
+| | Safe? |
+|-|-------|
+| Multiple threads reading different documents | ✅ Yes |
+| Multiple threads reading the same document | ✅ Yes |
+| `ctoon_obj_get_key_at` / `ctoon_obj_get_val_at` | ✅ Yes |
+| `ctoon_arr_get` | ✅ Yes |
+| `ctoon_obj_iter_get/next` | ⚠️ Thread-local (one iterator per thread) |
+| Writing/building a document from multiple threads | ❌ No (arena not thread-safe) |
+
+## Build
 
 ```bash
-# Convert JSON to TOON
-ctoon input.json -o output.toon
-
-# Convert TOON to JSON
-ctoon input.toon -t json -o output.json
-
-# Convert with 4-space indentation
-ctoon input.toon -t json -i 4
-
-# Convert with pipe delimiter
-ctoon input.json --delimiter "|" -o output.toon
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+ctest --test-dir build       # run tests
 ```
 
-### Python Usage
+### CMake options
 
-```python
-from ctoon import loads_json, dumps_json
+| Option | Default | Description |
+|--------|---------|-------------|
+| `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
+| `CTOON_BUILD_PYTHON` | OFF | Build Python bindings |
 
-# Load JSON
-data = loads_json('{"name": "Ali", "age": 30}')
+## License
 
-# Dump to JSON
-json_str = dumps_json(data, indent=2)
-```
-
-## 📦 Installation
-
-### Building from Source
-
-```bash
-git clone https://github.com/mohammadraziei/ctoon.git
-cd ctoon
-mkdir build && cd build
-cmake .. -DCTOON_BUILD_EXAMPLES=ON -DCTOON_BUILD_TESTS=ON
-make -j4
-```
-
-### With Python Bindings
-
-```bash
-pip install .
-```
-
-Or with scikit-build:
-
-```bash
-pip install scikit-build-core nanobind
-pip install . -v
-```
-
-## 🔧 Build Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `CTOON_BUILD_EXAMPLES` | Build example programs | `ON` |
-| `CTOON_BUILD_TESTS` | Build unit tests | `ON` |
-| `CTOON_BUILD_PYTHON` | Build Python bindings | `ON` |
-| `CTOON_BUILD_DOCS` | Build documentation with Doxygen | `OFF` |
-
-## 📚 API Overview
-
-### Core Types
-
-#### `Value`
-- `isPrimitive()` / `isObject()` / `isArray()` – Type checking
-- `asPrimitive()` / `asObject()` / `asArray()` – Type-specific access
-
-#### `Primitive`
-- `isString()` / `isInt()` / `isDouble()` / `isBool()` / `isNull()` – Type checking
-- `getString()` / `getInt()` / `getDouble()` / `getBool()` – Type-safe getters
-- `asString()` – Convert to string representation
-
-### JSON Functions
-- `loadsJson()` – Parse JSON from string
-- `dumpsJson()` – Serialize to JSON string
-- `loadJson()` – Load JSON from file
-- `dumpJson()` – Save to JSON file
-
-### TOON Functions
-- `encode()` – Encode value to TOON string
-- `decode()` – Decode TOON string to value
-- `encodeToFile()` – Encode and save to file
-- `decodeFromFile()` – Load and decode from file
-
-### Version Information
-- `ctoon::Version::major()` – Major version number
-- `ctoon::Version::minor()` – Minor version number
-- `ctoon::Version::patch()` – Patch version number
-- `ctoon::Version::string()` – Version string (e.g., "0.1.0")
-- `ctoon::Version::isAtLeast(major, minor, patch)` – Version comparison
-
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-cd build && ctest --output-on-failure
-```
-
-Or run tests directly:
-
-```bash
-cd build && ./tests/cpp/test_ctoon_cpp
-```
-
-## 🎯 Use Cases
-
-1. **Configuration files** – Store app settings in TOON format
-2. **Data exchange** – Fast JSON/TOON serialization for APIs
-3. **Data processing** – Efficient parsing of structured data
-4. **CLI tools** – Quick format conversion for data pipelines
-5. **Python integration** – Use C++ performance from Python code
-
-## 📖 Documentation
-
-- **API Reference**: Built with Doxygen (enable with `-DCTOON_BUILD_DOCS=ON`)
-- **Examples**: See `examples/` directory
-- **Test coverage**: `cmake --build build --target ctoon_coverage`
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-CToon is distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
-
-## 📞 Support
-
-- **GitHub Issues**: https://github.com/mohammadraziei/ctoon/issues
-- **Documentation**: https://mohammadraziei.github.io/ctoon
-
----
-
-<div align="center">
-<em>CToon – Fast, flexible serialization for JSON and TOON formats</em>
-</div>
+MIT
