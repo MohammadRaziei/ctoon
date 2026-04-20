@@ -284,7 +284,7 @@ ctoon_val *ctoon_arr_get(ctoon_val *v, size_t idx) {
 
 ctoon_val *ctoon_arr_get_first(ctoon_val *v) { return ctoon_arr_get(v, 0); }
 
-static struct { ctoon_val *arr; size_t idx; } s_arr_iter;
+static _Thread_local struct { ctoon_val *arr; size_t idx; } s_arr_iter;
 
 ctoon_val *ctoon_arr_get_next(ctoon_val *v) {
     if (!ctoon_is_arr(v)) return NULL;
@@ -313,7 +313,7 @@ ctoon_val *ctoon_obj_getn(ctoon_val *v, const char *key, size_t len) {
     return NULL;
 }
 
-static struct { ctoon_val *obj; size_t idx; } s_obj_iter;
+static _Thread_local struct { ctoon_val *obj; size_t idx; } s_obj_iter;
 
 ctoon_val *ctoon_obj_iter_get(ctoon_val *v, ctoon_val **key) {
     if (!ctoon_is_obj(v) || v->u.obj.count == 0) return NULL;
@@ -434,6 +434,8 @@ typedef struct {
     size_t      len;
     size_t      pos;
     ctoon_doc  *doc;
+    int         indent;       /* spaces per indentation level (default 2) */
+    char        active_delim; /* current array delimiter: ',', '|', or '\t' */
 } tp;
 
 static bool   tp_eof  (const tp *p) { return p->pos >= p->len; }
@@ -456,10 +458,10 @@ static bool tp_is_eol(const tp *p) {
 static int tp_measure_indent(const tp *p) {
     size_t i = p->pos;
     while (i < p->len && p->src[i] == ' ') i++;
-    return (int)((i - p->pos) / TOON_INDENT);
+    return (int)((i - p->pos) / p->indent);
 }
 static bool tp_consume_indent(tp *p, int depth) {
-    int sp = depth * TOON_INDENT;
+    int sp = depth * p->indent;
     for (int i = 0; i < sp; i++) {
         if (tp_eof(p) || p->src[p->pos] != ' ') return false;
         p->pos++;
@@ -607,11 +609,12 @@ static ctoon_val *tp_parse_inline_array(tp *p) {
     while (!tp_is_eol(p)) {
         tp_skip_spaces(p);
         if (tp_is_eol(p)) break;
-        ctoon_val *item = tp_parse_primitive(p, ",");
+        char stop_d[2] = { p->active_delim, '\0' };
+        ctoon_val *item = tp_parse_primitive(p, stop_d);
         if (!item) return NULL;
         if (!ctoon_arr_append(p->doc, arr, item)) return NULL;
         tp_skip_spaces(p);
-        if (tp_peek(p) == ',') { p->pos++; tp_skip_spaces(p); }
+        if (tp_peek(p) == p->active_delim) { p->pos++; tp_skip_spaces(p); }
         else break;
     }
     return arr;
@@ -631,12 +634,15 @@ static bool tp_parse_tabular_rows(tp *p, int depth, long expected,
         ctoon_val *obj = node_new(p->doc, CTOON_TYPE_OBJECT);
         if (!obj) return false;
 
+        char tab_delim[2] = { p->active_delim, '\0' };
         for (int fi = 0; fi < nfields; fi++) {
             tp_skip_spaces(p);
-            ctoon_val *item = tp_parse_primitive(p, ",");
+            ctoon_val *item = tp_parse_primitive(p, tab_delim);
             if (!item) return false;
             if (fi < nfields - 1) {
-                if (tp_peek(p) != ',') { tp_set_error(p, "Expected ','"); return false; }
+                if (tp_peek(p) != p->active_delim) {
+                    tp_set_error(p, "Expected delimiter"); return false;
+                }
                 p->pos++;
             }
             if (!ctoon_obj_setn(p->doc, obj, fields[fi], strlen(fields[fi]), item)) return false;
@@ -793,8 +799,16 @@ static ctoon_val *tp_parse_array_body(tp *p, int arr_depth) {
     memcpy(nbuf, p->src + ns, nl); nbuf[nl] = '\0';
     long expected = atol(nbuf);
 
-    /* optional delimiter specifier inside brackets – skip single non-']' char */
-    if (!tp_eof(p) && p->src[p->pos] != ']') p->pos++;
+    /* Read optional delimiter from bracket: [N|], [N\t] etc.
+     * Default is comma; only update active_delim if explicitly specified. */
+    if (!tp_eof(p) && p->src[p->pos] != ']') {
+        char d = p->src[p->pos];
+        if (d == '|' || d == '\t') p->active_delim = d;
+        p->pos++;
+    } else {
+        /* No delimiter marker → reset to comma for this array */
+        p->active_delim = ',';
+    }
 
     if (tp_peek(p) != ']') { tp_set_error(p, "Expected ']'"); return NULL; }
     p->pos++;
@@ -808,13 +822,14 @@ static ctoon_val *tp_parse_array_body(tp *p, int arr_depth) {
         while (tp_peek(p) != '}' && !tp_is_eol(p)) {
             tp_skip_spaces(p);
             size_t fs = p->pos;
-            while (!tp_eof(p) && p->src[p->pos] != ',' && p->src[p->pos] != '}') p->pos++;
+            /* field names delimited by the same delimiter as values */
+            while (!tp_eof(p) && p->src[p->pos] != p->active_delim && p->src[p->pos] != '}') p->pos++;
             size_t fl = p->pos - fs;
             while (fl > 0 && p->src[fs + fl - 1] == ' ') fl--;
             char *fname = arena_strdup(p->doc, p->src + fs, fl);
             if (!fname) return NULL;
             if (nfields < 32) field_buf[nfields++] = fname;
-            if (tp_peek(p) == ',') p->pos++;
+            if (tp_peek(p) == p->active_delim) p->pos++;
         }
         if (tp_peek(p) == '}') p->pos++;
         fields = (const char **)arena_alloc(&p->doc->arena, sizeof(const char *) * (size_t)nfields);
@@ -917,7 +932,7 @@ ctoon_doc *ctoon_read(const char *dat, size_t len) {
     ctoon_doc *doc = ctoon_doc_new(0);
     if (!doc) return NULL;
 
-    tp p = {NULL, 0, 0, NULL};
+    tp p = {NULL, 0, 0, NULL, 2, ','};
     p.src = dat; p.len = len; p.doc = doc;
 
     /* skip leading blank lines */
@@ -1243,11 +1258,6 @@ char *ctoon_write(ctoon_doc *doc, size_t *len) {
     return ctoon_write_opts(doc, &opts, len, NULL);
 }
 
-char *ctoon_write_flg(ctoon_doc *doc, ctoon_write_flag flg, size_t *len) {
-    ctoon_write_options opts = { flg, CTOON_DELIMITER_COMMA, 2 };
-    return ctoon_write_opts(doc, &opts, len, NULL);
-}
-
 char *ctoon_write_opts(ctoon_doc *doc, const ctoon_write_options *opts,
                         size_t *len, ctoon_err *err) {
     if (!doc || !doc->root) {
@@ -1351,11 +1361,56 @@ bool ctoon_object_setn(ctoon_doc *d,ctoon_val *o,const char *k,size_t kl,ctoon_v
 
 /* Missing stubs */
 ctoon_doc *ctoon_read_flg(const char *d,size_t n,ctoon_read_flag f){(void)f;return ctoon_read(d,n);}
-ctoon_doc *ctoon_read_opts(const char *d,size_t n,const ctoon_read_options *o,ctoon_err *e){
-    ctoon_doc *doc=ctoon_read(d,n);
-    if(!doc&&e){e->msg="parse failed";e->pos=0;}
-    else if(e){e->msg=NULL;e->pos=0;}
-    (void)o; return doc;
+ctoon_doc *ctoon_read_opts(const char *dat, size_t len,
+                             const ctoon_read_options *opts, ctoon_err *err) {
+    if (!dat) { if (err) { err->msg = "NULL input"; err->pos = 0; } return NULL; }
+
+    ctoon_doc *doc = ctoon_doc_new(0);
+    if (!doc) { if (err) { err->msg = "alloc failed"; err->pos = 0; } return NULL; }
+
+    tp p = {NULL, 0, 0, NULL, 2, ','};
+    p.src = dat; p.len = len; p.doc = doc;
+    if (opts && opts->indent > 0) p.indent = opts->indent;
+
+    /* skip leading blank lines */
+    while (p.pos < len) {
+        bool blank = true;
+        for (size_t i = p.pos; i < len && dat[i] != '\n' && dat[i] != '\r'; i++)
+            if (dat[i] != ' ') { blank = false; break; }
+        if (!blank) break;
+        while (p.pos < len && dat[p.pos] != '\n') p.pos++;
+        if (p.pos < len) p.pos++;
+    }
+
+    if (p.pos >= len) {
+        doc->root = node_new(doc, CTOON_TYPE_OBJECT);
+        if (err) { err->msg = NULL; err->pos = 0; }
+        return doc;
+    }
+
+    const char *cur = dat + p.pos;
+    size_t rem = len - p.pos;
+
+    if (*cur == '[') {
+        p.pos++;
+        doc->root = tp_parse_array_body(&p, 0);
+    } else {
+        bool has_colon = false;
+        bool iq = false;
+        for (size_t i = 0; i < rem && cur[i] != '\n' && cur[i] != '\r'; i++) {
+            if (cur[i] == '"') iq = !iq;
+            if (!iq && cur[i] == ':') { has_colon = true; break; }
+        }
+        doc->root = has_colon ? tp_parse_object(&p, 0) : tp_parse_primitive(&p, NULL);
+    }
+
+    if (!doc->root) {
+        if (err) { err->msg = "parse failed"; err->pos = p.pos; }
+        ctoon_doc_free(doc);
+        return NULL;
+    }
+    if (err) { err->msg = NULL; err->pos = 0; }
+    return doc;
 }
 ctoon_doc *ctoon_read_file_opts(const char *p,const ctoon_read_options *o,ctoon_err *e){
     ctoon_doc *doc=ctoon_read_file(p);
