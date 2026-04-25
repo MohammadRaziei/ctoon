@@ -25,7 +25,7 @@ option(CTOON_WITHOUT_JSON "Build without JSON support" OFF)
 set(CTOON_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 
 # Create library
-file(GLOB CTOON_SOURCES_C ${PROJECT_SOURCE_DIR}/src/sources/*.c)
+file(GLOB CTOON_SOURCES_C ${PROJECT_SOURCE_DIR}/src/*.c)
 
 add_library(ctoon ${CTOON_SOURCES_C})
 add_library(ctoon::ctoon ALIAS ctoon)
