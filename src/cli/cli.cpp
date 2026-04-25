@@ -37,45 +37,47 @@ void writeFile(const std::string &path, const std::string &content) {
 }
 
 /* ============================================================
- * TOON → JSON  (ctoon_val* → yyjson_mut_val*, recursive)
+ * TOON → JSON  (ctoon_mut_val* → yyjson_mut_val*)
  * ============================================================ */
 
-static yyjson_mut_val *toon_val_to_json(yyjson_mut_doc *jdoc, ctoon_val *val) {
-    if (!val)                return yyjson_mut_null(jdoc);
-    if (ctoon_is_null(val))  return yyjson_mut_null(jdoc);
-    if (ctoon_is_true(val))  return yyjson_mut_true(jdoc);
-    if (ctoon_is_false(val)) return yyjson_mut_false(jdoc);
+static yyjson_mut_val *toon_val_to_json(yyjson_mut_doc *jdoc,
+                                         ctoon_mut_val  *val) {
+    if (!val || ctoon_mut_is_null(val))  return yyjson_mut_null(jdoc);
+    if (ctoon_mut_is_true(val))          return yyjson_mut_true(jdoc);
+    if (ctoon_mut_is_false(val))         return yyjson_mut_false(jdoc);
 
-    if (ctoon_is_num(val)) {
-        switch (ctoon_get_subtype(val)) {
-            case CTOON_SUBTYPE_UINT: return yyjson_mut_uint(jdoc, ctoon_get_uint(val));
-            case CTOON_SUBTYPE_SINT: return yyjson_mut_sint(jdoc, ctoon_get_sint(val));
-            default:                 return yyjson_mut_real(jdoc, ctoon_get_real(val));
-        }
+    if (ctoon_mut_is_num(val)) {
+        ctoon_subtype sub = ctoon_mut_get_subtype(val);
+        if (sub == CTOON_SUBTYPE_UINT) return yyjson_mut_uint(jdoc, ctoon_mut_get_uint(val));
+        if (sub == CTOON_SUBTYPE_SINT) return yyjson_mut_sint(jdoc, ctoon_mut_get_sint(val));
+        return yyjson_mut_real(jdoc, ctoon_mut_get_real(val));
     }
 
-    if (ctoon_is_str(val)) {
-        const char *s = ctoon_get_str(val);
-        return yyjson_mut_strncpy(jdoc, s ? s : "", ctoon_get_len(val));
-    }
+    if (ctoon_mut_is_str(val))
+        return yyjson_mut_strncpy(jdoc, ctoon_mut_get_str(val),
+                                   ctoon_mut_get_len(val));
 
-    if (ctoon_is_arr(val)) {
+    if (ctoon_mut_is_arr(val)) {
         yyjson_mut_val *jarr = yyjson_mut_arr(jdoc);
-        size_t sz = ctoon_arr_size(val);
-        for (size_t i = 0; i < sz; i++)
-            yyjson_mut_arr_append(jarr, toon_val_to_json(jdoc, ctoon_arr_get(val, i)));
+        ctoon_mut_arr_iter it;
+        ctoon_mut_arr_iter_init(val, &it);
+        ctoon_mut_val *item;
+        while ((item = ctoon_mut_arr_iter_next(&it)))
+            yyjson_mut_arr_append(jarr, toon_val_to_json(jdoc, item));
         return jarr;
     }
 
-    if (ctoon_is_obj(val)) {
+    if (ctoon_mut_is_obj(val)) {
         yyjson_mut_val *jobj = yyjson_mut_obj(jdoc);
-        size_t sz = ctoon_obj_size(val);
-        for (size_t i = 0; i < sz; i++) {
-            ctoon_val *kv = ctoon_obj_get_key_at(val, i);
-            ctoon_val *vv = ctoon_obj_get_val_at(val, i);
-            const char *ks = ctoon_get_str(kv);
-            yyjson_mut_val *jk = yyjson_mut_strncpy(jdoc, ks ? ks : "", ctoon_get_len(kv));
-            yyjson_mut_obj_add(jobj, jk, toon_val_to_json(jdoc, vv));
+        ctoon_mut_obj_iter it;
+        ctoon_mut_obj_iter_init(val, &it);
+        ctoon_mut_val *key;
+        while ((key = ctoon_mut_obj_iter_next(&it))) {
+            ctoon_mut_val  *v  = ctoon_mut_obj_iter_get_val(key);
+            yyjson_mut_val *jk = yyjson_mut_strncpy(jdoc,
+                                                      ctoon_mut_get_str(key),
+                                                      ctoon_mut_get_len(key));
+            yyjson_mut_obj_add(jobj, jk, toon_val_to_json(jdoc, v));
         }
         return jobj;
     }
@@ -84,29 +86,32 @@ static yyjson_mut_val *toon_val_to_json(yyjson_mut_doc *jdoc, ctoon_val *val) {
 }
 
 std::string toonToJson(const std::string &input, int indent, bool strict) {
-    ctoon_read_options opts = {};
-    opts.flag   = strict ? CTOON_READ_NOFLAG : CTOON_READ_NO_STRICT;
-    opts.indent = indent;
+    ctoon_read_flag flg  = strict ? CTOON_READ_NOFLAG : CTOON_READ_ALLOW_INF_AND_NAN;
+    ctoon_read_err  rerr = {};
+    ctoon_doc *idoc = ctoon_read_opts(const_cast<char *>(input.data()),
+                                       input.size(), flg, nullptr, &rerr);
+    if (!idoc)
+        throw std::runtime_error(std::string("TOON parse error at pos ")
+                                  + std::to_string(rerr.pos) + ": "
+                                  + (rerr.msg ? rerr.msg : "unknown"));
 
-    ctoon_err err = {};
-    ctoon_doc *doc = ctoon_decode_opts(input.c_str(), input.size(), &opts, &err);
-    if (!doc)
-        throw std::runtime_error(std::string("TOON parse error: ") +
-                                  (err.msg ? err.msg : "unknown"));
+    /* Convert immutable doc to mutable so both sides use the same *_mut_ API */
+    ctoon_mut_doc *tdoc = ctoon_doc_mut_copy(idoc, nullptr);
+    ctoon_doc_free(idoc);
+    if (!tdoc) throw std::runtime_error("ctoon_doc_mut_copy failed");
 
     yyjson_mut_doc *jdoc = yyjson_mut_doc_new(nullptr);
-    if (!jdoc) { ctoon_doc_free(doc); throw std::runtime_error("yyjson alloc failed"); }
+    if (!jdoc) { ctoon_mut_doc_free(tdoc); throw std::runtime_error("yyjson alloc failed"); }
 
-    yyjson_mut_doc_set_root(jdoc, toon_val_to_json(jdoc, ctoon_doc_get_root(doc)));
-    ctoon_doc_free(doc);
+    yyjson_mut_doc_set_root(jdoc, toon_val_to_json(jdoc,
+                                       ctoon_mut_doc_get_root(tdoc)));
+    ctoon_mut_doc_free(tdoc);
 
-    yyjson_write_flag flags = (indent > 0) ? YYJSON_WRITE_PRETTY : YYJSON_WRITE_NOFLAG;
-    yyjson_write_err werr;
-    char *raw = yyjson_mut_write_opts(jdoc, flags, nullptr, nullptr, &werr);
+    yyjson_write_flag wflg = (indent > 0) ? YYJSON_WRITE_PRETTY : YYJSON_WRITE_NOFLAG;
+    yyjson_write_err  werr  = {};
+    char *raw = yyjson_mut_write_opts(jdoc, wflg, nullptr, nullptr, &werr);
     yyjson_mut_doc_free(jdoc);
-
-    if (!raw)
-        throw std::runtime_error(std::string("JSON write error: ") + werr.msg);
+    if (!raw) throw std::runtime_error(std::string("JSON write error: ") + werr.msg);
 
     std::string result(raw);
     free(raw);
@@ -114,82 +119,83 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
 }
 
 /* ============================================================
- * JSON → TOON  (yyjson_val* → ctoon_val*, recursive)
+ * JSON → TOON  (yyjson_mut_val* → ctoon_mut_val*)
  * ============================================================ */
 
-static ctoon_val *json_val_to_toon(ctoon_doc *doc, yyjson_val *val);
+static ctoon_mut_val *json_val_to_toon(ctoon_mut_doc  *tdoc,
+                                        yyjson_mut_val *val) {
+    if (!val || yyjson_mut_is_null(val))  return ctoon_mut_null(tdoc);
+    if (yyjson_mut_is_true(val))          return ctoon_mut_true(tdoc);
+    if (yyjson_mut_is_false(val))         return ctoon_mut_false(tdoc);
 
-static ctoon_val *json_arr_to_toon(ctoon_doc *doc, yyjson_val *arr) {
-    ctoon_val *out = ctoon_new_arr(doc);
-    if (!out) throw std::runtime_error("alloc failed");
-    yyjson_arr_iter it;
-    yyjson_arr_iter_init(arr, &it);
-    yyjson_val *item;
-    while ((item = yyjson_arr_iter_next(&it))) {
-        if (!ctoon_arr_append(doc, out, json_val_to_toon(doc, item)))
-            throw std::runtime_error("array append failed");
+    if (yyjson_mut_is_num(val)) {
+        yyjson_subtype sub = yyjson_mut_get_subtype(val);
+        if (sub == YYJSON_SUBTYPE_UINT) return ctoon_mut_uint(tdoc, yyjson_mut_get_uint(val));
+        if (sub == YYJSON_SUBTYPE_SINT) return ctoon_mut_sint(tdoc, yyjson_mut_get_sint(val));
+        return ctoon_mut_real(tdoc, yyjson_mut_get_real(val));
     }
-    return out;
-}
 
-static ctoon_val *json_obj_to_toon(ctoon_doc *doc, yyjson_val *obj) {
-    ctoon_val *out = ctoon_new_obj(doc);
-    if (!out) throw std::runtime_error("alloc failed");
-    yyjson_obj_iter it;
-    yyjson_obj_iter_init(obj, &it);
-    yyjson_val *key;
-    while ((key = yyjson_obj_iter_next(&it))) {
-        yyjson_val *val = yyjson_obj_iter_get_val(key);
-        if (!ctoon_obj_set(doc, out, yyjson_get_str(key), json_val_to_toon(doc, val)))
-            throw std::runtime_error("object set failed");
+    if (yyjson_mut_is_str(val))
+        return ctoon_mut_strncpy(tdoc, yyjson_mut_get_str(val),
+                                  yyjson_mut_get_len(val));
+
+    if (yyjson_mut_is_arr(val)) {
+        ctoon_mut_val *arr = ctoon_mut_arr(tdoc);
+        yyjson_mut_arr_iter it;
+        yyjson_mut_arr_iter_init(val, &it);
+        yyjson_mut_val *item;
+        while ((item = yyjson_mut_arr_iter_next(&it)))
+            ctoon_mut_arr_append(arr, json_val_to_toon(tdoc, item));
+        return arr;
     }
-    return out;
-}
 
-static ctoon_val *json_val_to_toon(ctoon_doc *doc, yyjson_val *val) {
-    if (!val) return ctoon_new_null(doc);
-    switch (yyjson_get_type(val)) {
-        case YYJSON_TYPE_NULL: return ctoon_new_null(doc);
-        case YYJSON_TYPE_BOOL: return ctoon_new_bool(doc, yyjson_get_bool(val));
-        case YYJSON_TYPE_NUM:
-            switch (yyjson_get_subtype(val)) {
-                case YYJSON_SUBTYPE_UINT: return ctoon_new_uint(doc, yyjson_get_uint(val));
-                case YYJSON_SUBTYPE_SINT: return ctoon_new_sint(doc, yyjson_get_sint(val));
-                default:                  return ctoon_new_real(doc, yyjson_get_real(val));
-            }
-        case YYJSON_TYPE_STR: {
-            const char *s = yyjson_get_str(val);
-            return ctoon_new_strn(doc, s ? s : "", yyjson_get_len(val));
+    if (yyjson_mut_is_obj(val)) {
+        ctoon_mut_val *obj = ctoon_mut_obj(tdoc);
+        yyjson_mut_obj_iter it;
+        yyjson_mut_obj_iter_init(val, &it);
+        yyjson_mut_val *key;
+        while ((key = yyjson_mut_obj_iter_next(&it))) {
+            yyjson_mut_val *v  = yyjson_mut_obj_iter_get_val(key);
+            ctoon_mut_val  *ck = ctoon_mut_strncpy(tdoc,
+                                                     yyjson_mut_get_str(key),
+                                                     yyjson_mut_get_len(key));
+            ctoon_mut_obj_add(obj, ck, json_val_to_toon(tdoc, v));
         }
-        case YYJSON_TYPE_ARR: return json_arr_to_toon(doc, val);
-        case YYJSON_TYPE_OBJ: return json_obj_to_toon(doc, val);
-        default:              return ctoon_new_null(doc);
+        return obj;
     }
+
+    return ctoon_mut_null(tdoc);
 }
 
-std::string jsonToToon(const std::string &input, ctoon_write_options enc_opts) {
-    yyjson_read_err rerr;
-    yyjson_doc *jdoc = yyjson_read_opts(
+std::string jsonToToon(const std::string &input,
+                       const ctoon_write_options &enc_opts) {
+    yyjson_read_err rerr = {};
+    yyjson_doc *idoc = yyjson_read_opts(
         const_cast<char *>(input.data()), input.size(),
         YYJSON_READ_NOFLAG, nullptr, &rerr);
-    if (!jdoc)
-        throw std::runtime_error(std::string("JSON parse error: ") + rerr.msg
-                                  + " at pos " + std::to_string(rerr.pos));
+    if (!idoc)
+        throw std::runtime_error(std::string("JSON parse error at pos ")
+                                  + std::to_string(rerr.pos) + ": " + rerr.msg);
 
-    ctoon_doc *doc = ctoon_doc_new(0);
-    if (!doc) { yyjson_doc_free(jdoc); throw std::bad_alloc(); }
+    /* Convert immutable yyjson doc to mutable so both sides use *_mut_ API */
+    yyjson_mut_doc *jdoc = yyjson_doc_mut_copy(idoc, nullptr);
+    yyjson_doc_free(idoc);
+    if (!jdoc) throw std::runtime_error("yyjson_doc_mut_copy failed");
 
-    ctoon_doc_set_root(doc, json_val_to_toon(doc, yyjson_doc_get_root(jdoc)));
-    yyjson_doc_free(jdoc);
+    ctoon_mut_doc *tdoc = ctoon_mut_doc_new(nullptr);
+    if (!tdoc) { yyjson_mut_doc_free(jdoc); throw std::bad_alloc(); }
 
-    ctoon_err eerr = {};
+    ctoon_mut_doc_set_root(tdoc, json_val_to_toon(tdoc,
+                                       yyjson_mut_doc_get_root(jdoc)));
+    yyjson_mut_doc_free(jdoc);
+
+    ctoon_write_err werr = {};
     size_t len = 0;
-    char *raw = ctoon_encode_opts(doc, &enc_opts, &len, &eerr);
-    ctoon_doc_free(doc);
-
+    char  *raw = ctoon_mut_write_opts(tdoc, &enc_opts, nullptr, &len, &werr);
+    ctoon_mut_doc_free(tdoc);
     if (!raw)
-        throw std::runtime_error(std::string("TOON encode error: ") +
-                                  (eerr.msg ? eerr.msg : "unknown"));
+        throw std::runtime_error(std::string("TOON write error: ")
+                                  + (werr.msg ? werr.msg : "unknown"));
 
     std::string result(raw, len);
     free(raw);
@@ -209,12 +215,11 @@ Op detectOp(const std::string &path, const std::string &content,
 
     if (!path.empty() && path != "-") {
         std::string ext = fs::path(path).extension().string();
-        if (ext == ".json")  return Op::ENCODE;
-        if (ext == ".toon")  return Op::DECODE;
-        /* unknown extension: try content sniffing */
+        if (ext == ".json") return Op::ENCODE;
+        if (ext == ".toon") return Op::DECODE;
     }
 
-    /* Content sniffing: valid JSON starts with { or [ or digit or " */
+    /* Content sniffing: JSON starts with { [ " digit or - */
     for (char c : content) {
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
         if (c == '{' || c == '[' || c == '"' ||
@@ -226,7 +231,7 @@ Op detectOp(const std::string &path, const std::string &content,
 }
 
 /* ============================================================
- * Stats output  (char-based; no tiktoken dependency)
+ * Stats
  * ============================================================ */
 
 void printStats(const std::string &input, const std::string &output, Op op) {
@@ -236,7 +241,7 @@ void printStats(const std::string &input, const std::string &output, Op op) {
     double saving = 100.0 - ratio;
 
     if (op == Op::ENCODE) {
-        std::cerr << "\nBytes: " << in_sz << " (JSON) \xe2\x86\x92 "
+        std::cerr << "\nBytes: " << in_sz  << " (JSON) \xe2\x86\x92 "
                   << out_sz << " (TOON)\n";
         if (saving > 0)
             std::cerr << "Saved " << (in_sz - out_sz) << " bytes ("
@@ -245,14 +250,13 @@ void printStats(const std::string &input, const std::string &output, Op op) {
             std::cerr << "TOON is " << static_cast<int>(-saving)
                       << "% larger than JSON\n";
     } else {
-        std::cerr << "\nBytes: " << in_sz << " (TOON) \xe2\x86\x92 "
+        std::cerr << "\nBytes: " << in_sz  << " (TOON) \xe2\x86\x92 "
                   << out_sz << " (JSON)\n";
     }
 }
 
-/* Resolve "--delimiter" CLI string to ctoon_delimiter enum */
 ctoon_delimiter parseDelimiter(const std::string &s) {
-    if (s == "\t" || s == "tab") return CTOON_DELIMITER_TAB;
+    if (s == "\t" || s == "tab")  return CTOON_DELIMITER_TAB;
     if (s == "|"  || s == "pipe") return CTOON_DELIMITER_PIPE;
     return CTOON_DELIMITER_COMMA;
 }
@@ -276,34 +280,34 @@ int main(int argc, char **argv) {
     app.set_help_flag("-h,--help", "Print this help message and exit");
 
     std::string inputPath, outputPath, delimStr = ",";
-    int  indent      = 2;
-    bool forceEncode = false;
-    bool forceDecode = false;
-    bool noStrict    = false;
-    bool lengthMarker= false;
-    bool statsFlag   = false;
-    bool showVersion = false;
+    int  indent       = 2;
+    bool forceEncode  = false;
+    bool forceDecode  = false;
+    bool noStrict     = false;
+    bool lengthMarker = false;
+    bool statsFlag    = false;
+    bool showVersion  = false;
 
-    app.add_option ("input",         inputPath,  "Input file path (omit or - for stdin)")
+    app.add_option("input",           inputPath,   "Input file path (omit or - for stdin)")
        ->expected(0, 1);
-    app.add_option ("-o,--output",   outputPath, "Output file path (omit for stdout)");
-    app.add_flag   ("-e,--encode",   forceEncode,"Force encode mode (JSON \xe2\x86\x92 TOON)");
-    app.add_flag   ("-d,--decode",   forceDecode,"Force decode mode (TOON \xe2\x86\x92 JSON)");
-    app.add_option ("--delimiter",   delimStr,
-                    "Array delimiter: , (comma, default), \\t (tab), | (pipe)")
+    app.add_option("-o,--output",     outputPath,  "Output file path (omit for stdout)");
+    app.add_flag  ("-e,--encode",     forceEncode, "Force encode mode (JSON \xe2\x86\x92 TOON)");
+    app.add_flag  ("-d,--decode",     forceDecode, "Force decode mode (TOON \xe2\x86\x92 JSON)");
+    app.add_option("--delimiter",     delimStr,
+                   "Array delimiter: , (comma, default), \\t (tab), | (pipe)")
        ->check([](const std::string &s) -> std::string {
            if (s == "," || s == "\t" || s == "tab" || s == "|" || s == "pipe")
                return {};
-           return "Delimiter must be one of: , \\t tab | pipe";
+           return "Delimiter must be one of: ,  \\t  tab  |  pipe";
        });
-    app.add_option ("-i,--indent",   indent,
-                    "Indentation size in spaces (default: 2, 0 = compact)")
+    app.add_option("-i,--indent",     indent,
+                   "Indentation in spaces (default: 2, 0 = compact)")
        ->check(CLI::NonNegativeNumber);
-    app.add_flag   ("--length-marker", lengthMarker,
-                    "Prefix array lengths with '#': items[#3]: ...");
-    app.add_flag   ("--no-strict",   noStrict,   "Disable strict validation when decoding");
-    app.add_flag   ("--stats",       statsFlag,  "Print byte statistics to stderr");
-    app.add_flag   ("--version",     showVersion,"Show version and exit");
+    app.add_flag  ("--length-marker", lengthMarker,
+                   "Prefix array lengths with '#': items[#3]: ...");
+    app.add_flag  ("--no-strict",     noStrict,    "Disable strict validation when decoding");
+    app.add_flag  ("--stats",         statsFlag,   "Print byte statistics to stderr");
+    app.add_flag  ("--version",       showVersion, "Show version and exit");
 
     if (argc == 1) {
         std::cout << app.help()
@@ -319,8 +323,8 @@ int main(int argc, char **argv) {
     }
 
     try { app.parse(argc, argv); }
-    catch (const CLI::CallForHelp &)  { std::cout << app.help(); return 0; }
-    catch (const CLI::ParseError &e)  {
+    catch (const CLI::CallForHelp &) { std::cout << app.help(); return 0; }
+    catch (const CLI::ParseError  &e) {
         std::cerr << "Error: " << e.what() << "\nUse --help for usage.\n";
         return 1;
     }
@@ -332,7 +336,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    /* Read input */
+    /* ---- Read input ---- */
     std::string input;
     bool fromStdin = inputPath.empty() || inputPath == "-";
     try {
@@ -354,16 +358,14 @@ int main(int argc, char **argv) {
 
     if (input.empty()) { std::cerr << "Error: Input is empty.\n"; return 1; }
 
-    /* Resolve operation */
     Op op = detectOp(inputPath, input, forceEncode, forceDecode);
 
-    /* Build encode options */
     ctoon_write_options enc_opts = {};
     enc_opts.flag      = lengthMarker ? CTOON_WRITE_LENGTH_MARKER : CTOON_WRITE_NOFLAG;
     enc_opts.delimiter = parseDelimiter(delimStr);
     enc_opts.indent    = indent > 0 ? indent : 2;
 
-    /* Convert */
+    /* ---- Convert ---- */
     try {
         std::string output;
         if (op == Op::ENCODE)
