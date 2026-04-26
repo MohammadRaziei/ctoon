@@ -1308,6 +1308,40 @@ ctoon_api_inline char *ctoon_mut_val_write(const ctoon_mut_val *val,
 /** Write a TOON number value to a buffer (at least 40 bytes). */
 ctoon_api char *ctoon_write_number(const ctoon_val *val, char *buf);
 
+/**
+ * Serialize a document to a JSON string.
+ *
+ * The flags parameter accepts the same \c CTOON_WRITE_* flags used by
+ * the TOON writer (e.g. \c CTOON_WRITE_ESCAPE_UNICODE,
+ * \c CTOON_WRITE_ALLOW_INF_AND_NAN, \c CTOON_WRITE_INF_AND_NAN_AS_NULL).
+ * Note: flags that are TOON-specific (e.g. \c CTOON_WRITE_LENGTH_MARKER)
+ * are silently ignored.
+ *
+ * @param doc    The document to serialize. Must not be NULL.
+ * @param indent Spaces per indent level. 0 = compact (no whitespace).
+ * @param flags  \c CTOON_WRITE_* flags (subset shared with JSON).
+ * @param alc    Custom allocator, or NULL for the default.
+ * @param len    If not NULL, receives the byte length of the result
+ *               (not counting the null terminator).
+ * @param err    If not NULL, receives error details on failure.
+ * @return       Heap-allocated null-terminated JSON string, or NULL on
+ *               failure. The caller must free() the returned pointer.
+ */
+ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
+                                   int indent,
+                                   ctoon_write_flag flags,
+                                   const ctoon_alc *alc,
+                                   size_t *len,
+                                   ctoon_write_err *err);
+
+/** Same as ctoon_doc_to_json() but operates on a mutable document. */
+ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
+                                       int indent,
+                                       ctoon_write_flag flags,
+                                       const ctoon_alc *alc,
+                                       size_t *len,
+                                       ctoon_write_err *err);
+
 #endif /* CTOON_DISABLE_WRITER */
 
 
