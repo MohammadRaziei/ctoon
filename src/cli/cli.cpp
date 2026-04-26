@@ -37,53 +37,8 @@ void writeFile(const std::string &path, const std::string &content) {
 }
 
 /* ============================================================
- * TOON → JSON  (ctoon_mut_val* → yyjson_mut_val*)
+ * TOON → JSON  (ctoon_mut_doc_to_json)
  * ============================================================ */
-
-static yyjson_mut_val *toon_val_to_json(yyjson_mut_doc *jdoc,
-                                         ctoon_mut_val  *val) {
-    if (!val || ctoon_mut_is_null(val))  return yyjson_mut_null(jdoc);
-    if (ctoon_mut_is_true(val))          return yyjson_mut_true(jdoc);
-    if (ctoon_mut_is_false(val))         return yyjson_mut_false(jdoc);
-
-    if (ctoon_mut_is_num(val)) {
-        ctoon_subtype sub = ctoon_mut_get_subtype(val);
-        if (sub == CTOON_SUBTYPE_UINT) return yyjson_mut_uint(jdoc, ctoon_mut_get_uint(val));
-        if (sub == CTOON_SUBTYPE_SINT) return yyjson_mut_sint(jdoc, ctoon_mut_get_sint(val));
-        return yyjson_mut_real(jdoc, ctoon_mut_get_real(val));
-    }
-
-    if (ctoon_mut_is_str(val))
-        return yyjson_mut_strncpy(jdoc, ctoon_mut_get_str(val),
-                                   ctoon_mut_get_len(val));
-
-    if (ctoon_mut_is_arr(val)) {
-        yyjson_mut_val *jarr = yyjson_mut_arr(jdoc);
-        ctoon_mut_arr_iter it;
-        ctoon_mut_arr_iter_init(val, &it);
-        ctoon_mut_val *item;
-        while ((item = ctoon_mut_arr_iter_next(&it)))
-            yyjson_mut_arr_append(jarr, toon_val_to_json(jdoc, item));
-        return jarr;
-    }
-
-    if (ctoon_mut_is_obj(val)) {
-        yyjson_mut_val *jobj = yyjson_mut_obj(jdoc);
-        ctoon_mut_obj_iter it;
-        ctoon_mut_obj_iter_init(val, &it);
-        ctoon_mut_val *key;
-        while ((key = ctoon_mut_obj_iter_next(&it))) {
-            ctoon_mut_val  *v  = ctoon_mut_obj_iter_get_val(key);
-            yyjson_mut_val *jk = yyjson_mut_strncpy(jdoc,
-                                                      ctoon_mut_get_str(key),
-                                                      ctoon_mut_get_len(key));
-            yyjson_mut_obj_add(jobj, jk, toon_val_to_json(jdoc, v));
-        }
-        return jobj;
-    }
-
-    return yyjson_mut_null(jdoc);
-}
 
 std::string toonToJson(const std::string &input, int indent, bool strict) {
     ctoon_read_flag flg  = strict ? CTOON_READ_NOFLAG : CTOON_READ_ALLOW_INF_AND_NAN;
@@ -95,25 +50,23 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
                                   + std::to_string(rerr.pos) + ": "
                                   + (rerr.msg ? rerr.msg : "unknown"));
 
-    /* Convert immutable doc to mutable so both sides use the same *_mut_ API */
+    /* Convert immutable doc to mutable */
     ctoon_mut_doc *tdoc = ctoon_doc_mut_copy(idoc, nullptr);
     ctoon_doc_free(idoc);
     if (!tdoc) throw std::runtime_error("ctoon_doc_mut_copy failed");
 
-    yyjson_mut_doc *jdoc = yyjson_mut_doc_new(nullptr);
-    if (!jdoc) { ctoon_mut_doc_free(tdoc); throw std::runtime_error("yyjson alloc failed"); }
-
-    yyjson_mut_doc_set_root(jdoc, toon_val_to_json(jdoc,
-                                       ctoon_mut_doc_get_root(tdoc)));
+    /* Use ctoon_mut_doc_to_json directly — no yyjson needed */
+    ctoon_write_flag jflag = CTOON_WRITE_NOFLAG;
+    ctoon_write_err werr = {};
+    std::size_t len = 0;
+    char *raw = ctoon_mut_doc_to_json(tdoc, indent > 0 ? indent : 0,
+                                      jflag, nullptr, &len, &werr);
     ctoon_mut_doc_free(tdoc);
+    if (!raw)
+        throw std::runtime_error(std::string("JSON write error: ")
+                                  + (werr.msg ? werr.msg : "unknown"));
 
-    yyjson_write_flag wflg = (indent > 0) ? YYJSON_WRITE_PRETTY : YYJSON_WRITE_NOFLAG;
-    yyjson_write_err  werr  = {};
-    char *raw = yyjson_mut_write_opts(jdoc, wflg, nullptr, nullptr, &werr);
-    yyjson_mut_doc_free(jdoc);
-    if (!raw) throw std::runtime_error(std::string("JSON write error: ") + werr.msg);
-
-    std::string result(raw);
+    std::string result(raw, len);
     free(raw);
     return result;
 }
