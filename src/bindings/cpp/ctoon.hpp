@@ -96,13 +96,27 @@ namespace ctoon {
  * Version
  * -------------------------------------------------------------------- */
 
-/// @name Version constants
-/// @{
-static const unsigned int    VERSION_MAJOR  = CTOON_VERSION_MAJOR; ///< Major version number.
-static const unsigned int    VERSION_MINOR  = CTOON_VERSION_MINOR; ///< Minor version number.
-static const unsigned int    VERSION_PATCH  = CTOON_VERSION_PATCH; ///< Patch version number.
-static const char * const    VERSION_STRING = CTOON_VERSION_STRING; ///< @c "major.minor.patch".
-/// @}
+/**
+ * @brief Library version helpers.
+ *
+ * Exposes version info via static methods instead of namespace constants.
+ */
+class version {
+public:
+    /// Major version number.
+    static unsigned int major() CTOON_NOEXCEPT { return CTOON_VERSION_MAJOR; }
+    /// Minor version number.
+    static unsigned int minor() CTOON_NOEXCEPT { return CTOON_VERSION_MINOR; }
+    /// Patch version number.
+    static unsigned int patch() CTOON_NOEXCEPT { return CTOON_VERSION_PATCH; }
+    /// Packed hexadecimal version: @c 0xMMmmpp.
+    static unsigned int hex() CTOON_NOEXCEPT { return CTOON_VERSION_HEX; }
+    /// Version string in @c "major.minor.patch" format.
+    static const char *string() CTOON_NOEXCEPT { return CTOON_VERSION_STRING; }
+
+private:
+    version();
+};
 
 /* -----------------------------------------------------------------------
  * Exception hierarchy
