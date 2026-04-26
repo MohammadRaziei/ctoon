@@ -4592,6 +4592,241 @@ ctoon_api char *ctoon_write_number(const ctoon_val *val, char *buf) {
     return buf;
 }
 
+
+/*==============================================================================
+ * MARK: - JSON Serializer (Public)
+ *
+ * Traverses the flat ctoon_val pool and emits RFC 8259 JSON.
+ * Shares the ctoon_write_ctx buffer infrastructure from the TOON writer.
+ *============================================================================*/
+
+/* JSON string writer – always quotes, handles all escape sequences */
+static bool cj_write_str(ctoon_write_ctx *w, const char *s, usize len) {
+    if (!ctoon_write_char(w, '"')) return false;
+    const u8 *p   = (const u8 *)s;
+    const u8 *end = p + len;
+    while (p < end) {
+        u8 c = *p;
+        if (likely(c >= 0x20 && c != '"' && c != '\\'
+                   && !(c >= 0x80 && w->esc_uni))) {
+            const u8 *run = p;
+            while (p < end && *p >= 0x20 && *p != '"' && *p != '\\'
+                   && !(*p >= 0x80 && w->esc_uni)) p++;
+            if (!ctoon_write_bytes(w, run, (usize)(p - run))) return false;
+            continue;
+        }
+        p++;
+        switch (c) {
+            case '"':  if (!ctoon_write_str_lit(w, "\\\"")) return false; break;
+            case '\\': if (!ctoon_write_str_lit(w, "\\\\")) return false; break;
+            case '\n': if (!ctoon_write_str_lit(w, "\\n"))  return false; break;
+            case '\r': if (!ctoon_write_str_lit(w, "\\r"))  return false; break;
+            case '\t': if (!ctoon_write_str_lit(w, "\\t"))  return false; break;
+            case '\b': if (!ctoon_write_str_lit(w, "\\b"))  return false; break;
+            case '\f': if (!ctoon_write_str_lit(w, "\\f"))  return false; break;
+            default:
+                if (c < 0x20) {
+                    if (!ctoon_write_buf_reserve(w, 7)) return false;
+                    w->buf[w->len++] = '\\'; w->buf[w->len++] = 'u';
+                    w->buf[w->len++] = '0';  w->buf[w->len++] = '0';
+                    w->buf[w->len++] = "0123456789abcdef"[(c >> 4) & 0xF];
+                    w->buf[w->len++] = "0123456789abcdef"[c & 0xF];
+                } else if (c >= 0x80 && w->esc_uni) {
+                    /* Encode as \uXXXX (BMP) or surrogate pair */
+                    u32 cp;
+                    int extra;
+                    if      ((c & 0xE0) == 0xC0) { cp = c & 0x1F; extra = 1; }
+                    else if ((c & 0xF0) == 0xE0) { cp = c & 0x0F; extra = 2; }
+                    else if ((c & 0xF8) == 0xF0) { cp = c & 0x07; extra = 3; }
+                    else                          { cp = '?';      extra = 0; }
+                    for (int k = 0; k < extra && p < end; k++)
+                        cp = (cp << 6) | (*p++ & 0x3F);
+                    if (!ctoon_write_buf_reserve(w, 13)) return false;
+                    if (cp <= 0xFFFF) {
+                        w->len += (usize)snprintf(
+                            (char *)w->buf + w->len, 8, "\\u%04X", (unsigned)cp);
+                    } else {
+                        cp -= 0x10000;
+                        u32 hi = 0xD800 + (cp >> 10);
+                        u32 lo = 0xDC00 + (cp & 0x3FF);
+                        w->len += (usize)snprintf(
+                            (char *)w->buf + w->len, 14, "\\u%04X\\u%04X",
+                            (unsigned)hi, (unsigned)lo);
+                    }
+                } else {
+                    if (!ctoon_write_char(w, c)) return false;
+                }
+                break;
+        }
+    }
+    return ctoon_write_char(w, '"');
+}
+
+/* Forward declaration */
+static bool cj_write_val(ctoon_write_ctx *w, const ctoon_val *val, int depth);
+
+static bool cj_write_nl_indent(ctoon_write_ctx *w, int depth) {
+    if (w->indent == 0) return true;
+    if (!ctoon_write_char(w, '\n')) return false;
+    return ctoon_write_indent(w, depth);
+}
+
+static bool cj_write_arr(ctoon_write_ctx *w, const ctoon_val *arr, int depth) {
+    usize count = ctoon_ctn_child_count(arr);
+    if (!ctoon_write_char(w, '[')) return false;
+    if (count == 0) return ctoon_write_char(w, ']');
+    const ctoon_val *it = ctoon_ctn_first_child(arr);
+    for (usize i = 0; i < count; i++) {
+        if (!cj_write_nl_indent(w, depth + 1)) return false;
+        if (!cj_write_val(w, it, depth + 1)) return false;
+        if (i + 1 < count && !ctoon_write_char(w, ',')) return false;
+        it = ctoon_val_next_sibling(it);
+    }
+    if (!cj_write_nl_indent(w, depth)) return false;
+    return ctoon_write_char(w, ']');
+}
+
+static bool cj_write_obj(ctoon_write_ctx *w, const ctoon_val *obj, int depth) {
+    usize nfields = ctoon_ctn_child_count(obj);
+    if (!ctoon_write_char(w, '{')) return false;
+    if (nfields == 0) return ctoon_write_char(w, '}');
+    const ctoon_val *kv = ctoon_ctn_first_child(obj);
+    for (usize i = 0; i < nfields; i++) {
+        if (!cj_write_nl_indent(w, depth + 1)) return false;
+        /* key */
+        usize klen = unsafe_ctoon_get_len((void *)kv);
+        if (!cj_write_str(w, kv->uni.str, klen)) return false;
+        if (w->indent > 0) {
+            if (!ctoon_write_str_lit(w, ": ")) return false;
+        } else {
+            if (!ctoon_write_char(w, ':')) return false;
+        }
+        /* value */
+        const ctoon_val *vv = ctoon_val_next_sibling(kv);
+        if (!cj_write_val(w, vv, depth + 1)) return false;
+        if (i + 1 < nfields && !ctoon_write_char(w, ',')) return false;
+        kv = ctoon_val_next_sibling(vv);
+    }
+    if (!cj_write_nl_indent(w, depth)) return false;
+    return ctoon_write_char(w, '}');
+}
+
+static bool cj_write_val(ctoon_write_ctx *w, const ctoon_val *val, int depth) {
+    u8 type = unsafe_ctoon_get_type((void *)val);
+    switch (type) {
+        case CTOON_TYPE_NULL:
+            return ctoon_write_str_lit(w, "null");
+        case CTOON_TYPE_BOOL:
+            return ctoon_write_str_lit(w,
+                ((val->tag & CTOON_SUBTYPE_MASK) == CTOON_SUBTYPE_TRUE)
+                ? "true" : "false");
+        case CTOON_TYPE_NUM:
+            return ctoon_write_num(w, val);
+        case CTOON_TYPE_STR: {
+            usize len = unsafe_ctoon_get_len((void *)val);
+            return cj_write_str(w, val->uni.str ? val->uni.str : "", len);
+        }
+        case CTOON_TYPE_ARR: return cj_write_arr(w, val, depth);
+        case CTOON_TYPE_OBJ: return cj_write_obj(w, val, depth);
+        default:
+            return ctoon_write_str_lit(w, "null");
+    }
+}
+
+static char *cj_doc_write(const ctoon_val *root,
+                            int indent,
+                            ctoon_write_flag flags,
+                            const ctoon_alc *alc_ptr,
+                            usize *len_out,
+                            ctoon_write_err *err) {
+    ctoon_write_err tmp_err;
+    if (!err) err = &tmp_err;
+
+    ctoon_write_ctx w;
+    memset(&w, 0, sizeof(w));
+    w.alc       = alc_ptr ? *alc_ptr : CTOON_DEFAULT_ALC;
+    w.indent    = (indent > 0) ? indent : 0;
+    w.delim     = ',';
+    w.flg       = flags;
+    w.esc_uni   = (flags & CTOON_WRITE_ESCAPE_UNICODE)      != 0;
+    w.inf_null  = (flags & CTOON_WRITE_INF_AND_NAN_AS_NULL) != 0;
+    w.inf_lit   = (!w.inf_null) &&
+                  (flags & CTOON_WRITE_ALLOW_INF_AND_NAN)   != 0;
+
+    bool ok = cj_write_val(&w, root, 0);
+
+    if (ok && (flags & CTOON_WRITE_NEWLINE_AT_END))
+        ok = ctoon_write_char(&w, '\n');
+
+    if (unlikely(!ok)) {
+        if (w.buf) w.alc.free(w.alc.ctx, w.buf);
+        if (len_out) *len_out = 0;
+        err->code = CTOON_WRITE_ERROR_MEMORY_ALLOCATION;
+        err->msg  = "JSON write failed";
+        return NULL;
+    }
+
+    if (!ctoon_write_char(&w, '\0')) {
+        w.alc.free(w.alc.ctx, w.buf);
+        if (len_out) *len_out = 0;
+        err->code = CTOON_WRITE_ERROR_MEMORY_ALLOCATION;
+        err->msg  = MSG_MALLOC;
+        return NULL;
+    }
+    w.len--;  /* exclude NUL from reported length */
+
+    if (len_out) *len_out = w.len;
+    err->code = CTOON_WRITE_SUCCESS;
+    err->msg  = NULL;
+    return (char *)w.buf;
+}
+
+ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
+                                   int indent,
+                                   ctoon_write_flag flags,
+                                   const ctoon_alc *alc,
+                                   size_t *len,
+                                   ctoon_write_err *err) {
+    ctoon_write_err tmp_err;
+    if (!err) err = &tmp_err;
+    if (unlikely(!doc || !doc->root)) {
+        err->code = CTOON_WRITE_ERROR_INVALID_PARAMETER;
+        err->msg  = "doc is NULL";
+        if (len) *len = 0;
+        return NULL;
+    }
+    return cj_doc_write(doc->root, indent, flags, alc, (usize *)len, err);
+}
+
+ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
+                                       int indent,
+                                       ctoon_write_flag flags,
+                                       const ctoon_alc *alc,
+                                       size_t *len,
+                                       ctoon_write_err *err) {
+    ctoon_write_err tmp_err;
+    if (!err) err = &tmp_err;
+    if (unlikely(!doc || !doc->root)) {
+        err->code = CTOON_WRITE_ERROR_INVALID_PARAMETER;
+        err->msg  = "doc is NULL";
+        if (len) *len = 0;
+        return NULL;
+    }
+    ctoon_alc a = alc ? *alc : CTOON_DEFAULT_ALC;
+    ctoon_doc *imut = ctoon_mut_doc_imut_copy(
+        (ctoon_mut_doc *)(uintptr_t)doc, &a);
+    if (unlikely(!imut)) {
+        err->code = CTOON_WRITE_ERROR_MEMORY_ALLOCATION;
+        err->msg  = MSG_MALLOC;
+        if (len) *len = 0;
+        return NULL;
+    }
+    char *result = cj_doc_write(imut->root, indent, flags, alc,
+                                 (usize *)len, err);
+    ctoon_doc_free(imut);
+    return result;
+}
+
 #endif /* CTOON_DISABLE_WRITER */
 
 
