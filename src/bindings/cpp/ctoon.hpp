@@ -242,6 +242,20 @@ public:
 };
 
 /* -----------------------------------------------------------------------
+ * delimiter  –  enum class
+ * -------------------------------------------------------------------- */
+
+/**
+ * @brief Array value delimiter type.
+ */
+enum class delimiter : uint32_t {
+    COMMA = CTOON_DELIMITER_COMMA,
+    TAB   = CTOON_DELIMITER_TAB,
+    PIPE  = CTOON_DELIMITER_PIPE,
+};
+
+
+/* -----------------------------------------------------------------------
  * write_flag  –  enum class with bitwise operators
  * -------------------------------------------------------------------- */
 
@@ -320,43 +334,66 @@ inline read_flag &operator|=(read_flag &l, read_flag r) CTOON_NOEXCEPT {
 
 
 /* -----------------------------------------------------------------------
- * write_options
+ * write_options  –  RAII options with builder pattern
  * -------------------------------------------------------------------- */
 
 /**
  * @brief Options controlling TOON serialisation.
  *
- * Wraps @c ctoon_write_options. Default values match the library defaults:
- * 2-space indent, comma delimiter, no special flags.
+ * Uses builder-style fluent API:
+ * @code
+ * auto opts = write_options()
+ *     .with_indent(4)
+ *     .with_delimiter(delimiter::TAB)
+ *     .with_flag(write_flag::ESCAPE_UNICODE);
+ * @endcode
  */
-struct write_options {
-    write_flag flag;        ///< @c write_flag bits.
-    ctoon_delimiter  delimiter; ///< Array value delimiter.
-    int              indent;    ///< Spaces per indent level (0 = compact).
-
-    /// Construct with library defaults.
+class write_options {
+public:
+    /// Default constructor (2-space indent, comma delimiter, no flags)
     write_options() CTOON_NOEXCEPT
-        : flag(write_flag::NOFLAG)
-        , delimiter(CTOON_DELIMITER_COMMA)
-        , indent(2)
+        : flag_(write_flag::NOFLAG)
+        , delimiter_(delimiter::COMMA)
+        , indent_(2)
     {}
 
-    /// Construct with explicit values.
-    write_options(write_flag f, ctoon_delimiter d, int i) CTOON_NOEXCEPT
-        : flag(f), delimiter(d), indent(i) {}
+    /// Set flag (returns *this for chaining)
+    write_options &with_flag(write_flag f) CTOON_NOEXCEPT {
+        flag_ = f; return *this;
+    }
 
-    /// Construct from raw flag value (for compatibility).
-    explicit write_options(ctoon_write_flag f, ctoon_delimiter d = CTOON_DELIMITER_COMMA, int i = 2) CTOON_NOEXCEPT
-        : flag(static_cast<write_flag>(f)), delimiter(d), indent(i) {}
+    /// Set delimiter (returns *this for chaining)
+    write_options &with_delimiter(delimiter d) CTOON_NOEXCEPT {
+        delimiter_ = d; return *this;
+    }
+
+    /// Set indent (returns *this for chaining)
+    write_options &with_indent(int i) CTOON_NOEXCEPT {
+        indent_ = i; return *this;
+    }
+
+    /// Get flag
+    write_flag flag() const CTOON_NOEXCEPT { return flag_; }
+
+    /// Get delimiter
+    delimiter get_delimiter() const CTOON_NOEXCEPT { return delimiter_; }
+
+    /// Get indent
+    int indent() const CTOON_NOEXCEPT { return indent_; }
 
     /// Convert to the underlying C struct.
     ctoon_write_options to_c() const CTOON_NOEXCEPT {
         ctoon_write_options o;
-        o.flag      = static_cast<uint32_t>(flag);
-        o.delimiter = delimiter;
-        o.indent    = indent;
+        o.flag      = static_cast<uint32_t>(flag_);
+        o.delimiter = static_cast<ctoon_delimiter>(delimiter_);
+        o.indent    = indent_;
         return o;
     }
+
+private:
+    write_flag    flag_;
+    delimiter     delimiter_;
+    int           indent_;
 };
 
 /* -----------------------------------------------------------------------

@@ -122,10 +122,10 @@ static nb::object val_to_py(ctoon::value val) {
  * Enum: Delimiter
  * -------------------------------------------------------------------- */
 void bind_enums(nb::module_& m) {
-    nb::enum_<ctoon_delimiter>(m, "Delimiter")
-        .value("COMMA", CTOON_DELIMITER_COMMA)
-        .value("TAB", CTOON_DELIMITER_TAB)
-        .value("PIPE", CTOON_DELIMITER_PIPE)
+    nb::enum_<ctoon::delimiter>(m, "Delimiter")
+        .value("COMMA", ctoon::delimiter::COMMA)
+        .value("TAB", ctoon::delimiter::TAB)
+        .value("PIPE", ctoon::delimiter::PIPE)
         .export_values();
 }
 
@@ -134,12 +134,12 @@ void bind_enums(nb::module_& m) {
  * -------------------------------------------------------------------- */
 struct Options {
     /* Read options (used by decode/load) */
-    ctoon_read_flag read_flag = CTOON_READ_NOFLAG;
+    ctoon::read_flag read_flag = ctoon::read_flag::NOFLAG;
 
     /* Write options (used by encode/dump) */
     int indent = 2;
-    ctoon_delimiter delimiter = CTOON_DELIMITER_COMMA;
-    ctoon_write_flag write_flag = CTOON_WRITE_NOFLAG;
+    ctoon::delimiter delimiter = ctoon::delimiter::COMMA;
+    ctoon::write_flag write_flag = ctoon::write_flag::NOFLAG;
 };
 
 void bind_options(nb::module_& m) {
@@ -150,8 +150,8 @@ void bind_options(nb::module_& m) {
         .def_rw("delimiter", &Options::delimiter, "Array value delimiter (use Delimiter values)")
         .def_rw("write_flag", &Options::write_flag, "CTOON_WRITE_* flags (use WriteFlag values)")
         .def("__repr__", [](const Options& o) {
-            std::string s = "<Options read_flag=0x" + std::to_string(o.read_flag) +
-                            " write_flag=0x" + std::to_string(o.write_flag) +
+            std::string s = "<Options read_flag=0x" + std::to_string(static_cast<uint32_t>(o.read_flag)) +
+                            " write_flag=0x" + std::to_string(static_cast<uint32_t>(o.write_flag)) +
                             " indent=" + std::to_string(o.indent) + ">";
             return s;
         });
@@ -164,7 +164,7 @@ NB_MODULE(ctoon_py, m) {
     m.doc() = "CToon - Compact TOON format for Python (C++ backend with nanobind)";
 
     // Version
-    m.attr("__version__") = nb::str(ctoon::version::string());
+    m.attr("__version__") = ctoon::version::string();
 
     // Enums
     bind_enums(m);
@@ -175,7 +175,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- decode: TOON string -> Python object ---- */
     m.def("decode",
         [](std::string_view input, const Options& opts) {
-            auto doc = ctoon::document::parse(input.data(), input.size(), opts.read_flag);
+            auto doc = ctoon::document::parse(input.data(), input.size(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
             return val_to_py(doc.root());
         },
         nb::arg("input"),
@@ -184,7 +184,7 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("decode",
         [](nb::bytes input, const Options& opts) {
-            auto doc = ctoon::document::parse(input.c_str(), nb::len(input), opts.read_flag);
+            auto doc = ctoon::document::parse(input.c_str(), nb::len(input), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
             return val_to_py(doc.root());
         },
         nb::arg("input"),
@@ -199,12 +199,9 @@ NB_MODULE(ctoon_py, m) {
             doc.set_root(root);
 
             ctoon::write_options wo;
-            wo.indent = opts.indent;
-            wo.delimiter = opts.delimiter;
-            ctoon::write_options wo;
-            wo.indent = opts.indent;
-            wo.delimiter = opts.delimiter;
-            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
+            wo.with_flag(opts.write_flag)
+              .with_delimiter(opts.delimiter)
+              .with_indent(opts.indent);
 
             auto result = doc.write(wo);
             return std::string(result.c_str(), result.size());
@@ -216,7 +213,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- loads / dumps aliases ---- */
     m.def("loads",
         [](std::string_view s, const Options& opts) {
-            auto doc = ctoon::document::parse(s.data(), s.size(), opts.read_flag);
+            auto doc = ctoon::document::parse(s.data(), s.size(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
             return val_to_py(doc.root());
         },
         nb::arg("s"),
@@ -230,9 +227,9 @@ NB_MODULE(ctoon_py, m) {
             doc.set_root(root);
 
             ctoon::write_options wo;
-            wo.indent = opts.indent;
-            wo.delimiter = opts.delimiter;
-            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
+            wo.with_flag(opts.write_flag)
+              .with_delimiter(opts.delimiter)
+              .with_indent(opts.indent);
 
             auto result = doc.write(wo);
             return std::string(result.c_str(), result.size());
@@ -244,7 +241,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- load / dump (file I/O) ---- */
     m.def("load",
         [](const std::string& filename, const Options& opts) {
-            auto doc = ctoon::document::parse_file(filename.c_str(), opts.read_flag);
+            auto doc = ctoon::document::parse_file(filename.c_str(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
             return val_to_py(doc.root());
         },
         nb::arg("filename"),
@@ -258,9 +255,9 @@ NB_MODULE(ctoon_py, m) {
             doc.set_root(root);
 
             ctoon::write_options wo;
-            wo.indent = opts.indent;
-            wo.delimiter = opts.delimiter;
-            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
+            wo.with_flag(opts.write_flag)
+              .with_delimiter(opts.delimiter)
+              .with_indent(opts.indent);
 
             doc.write_file(filename.c_str(), wo);
         },
