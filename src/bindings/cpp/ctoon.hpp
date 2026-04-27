@@ -112,7 +112,7 @@ public:
     /// Packed hexadecimal version: @c 0xMMmmpp.
     static unsigned int hex() CTOON_NOEXCEPT { return CTOON_VERSION_HEX; }
     /// Version string in @c "major.minor.patch" format.
-    static const char *string() CTOON_NOEXCEPT { return CTOON_VERSION_STRING; }
+    static string_view string() CTOON_NOEXCEPT { return CTOON_VERSION_STRING; }
 
 private:
     version();
