@@ -201,7 +201,10 @@ NB_MODULE(ctoon_py, m) {
             ctoon::write_options wo;
             wo.indent = opts.indent;
             wo.delimiter = opts.delimiter;
-            wo.flag = opts.write_flag;
+            ctoon::write_options wo;
+            wo.indent = opts.indent;
+            wo.delimiter = opts.delimiter;
+            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
 
             auto result = doc.write(wo);
             return std::string(result.c_str(), result.size());
@@ -229,7 +232,7 @@ NB_MODULE(ctoon_py, m) {
             ctoon::write_options wo;
             wo.indent = opts.indent;
             wo.delimiter = opts.delimiter;
-            wo.flag = opts.write_flag;
+            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
 
             auto result = doc.write(wo);
             return std::string(result.c_str(), result.size());
@@ -257,7 +260,7 @@ NB_MODULE(ctoon_py, m) {
             ctoon::write_options wo;
             wo.indent = opts.indent;
             wo.delimiter = opts.delimiter;
-            wo.flag = opts.write_flag;
+            wo.flag = static_cast<ctoon::write_flag>(opts.write_flag);
 
             doc.write_file(filename.c_str(), wo);
         },

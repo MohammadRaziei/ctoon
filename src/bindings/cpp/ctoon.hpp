@@ -242,6 +242,84 @@ public:
 };
 
 /* -----------------------------------------------------------------------
+ * write_flag  –  enum class with bitwise operators
+ * -------------------------------------------------------------------- */
+
+/**
+ * @brief Flag bits for TOON serialisation.
+ *
+ * Supports bitwise |, &, ^, ~, |=, &=, ^= operators.
+ *
+ * @code
+ * using namespace ctoon::write_flag;
+ * auto opts = ESCAPE_UNICODE | ALLOW_INF_AND_NAN;
+ * @endcode
+ */
+enum class write_flag : uint32_t {
+    NOFLAG          = static_cast<uint32_t>(CTOON_WRITE_NOFLAG),
+    ESCAPE_UNICODE  = static_cast<uint32_t>(CTOON_WRITE_ESCAPE_UNICODE),
+    ESCAPE_SLASHES  = static_cast<uint32_t>(CTOON_WRITE_ESCAPE_SLASHES),
+    ALLOW_INF_AND_NAN = static_cast<uint32_t>(CTOON_WRITE_ALLOW_INF_AND_NAN),
+    INF_AND_NAN_AS_NULL = static_cast<uint32_t>(CTOON_WRITE_INF_AND_NAN_AS_NULL),
+    ALLOW_INVALID_UNICODE = static_cast<uint32_t>(CTOON_WRITE_ALLOW_INVALID_UNICODE),
+    LENGTH_MARKER   = static_cast<uint32_t>(CTOON_WRITE_LENGTH_MARKER),
+    NEWLINE_AT_END  = static_cast<uint32_t>(CTOON_WRITE_NEWLINE_AT_END),
+};
+
+/** Bitwise OR */
+inline write_flag operator|(write_flag l, write_flag r) CTOON_NOEXCEPT {
+    return static_cast<write_flag>(
+        static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+}
+
+/** OR-assign */
+inline write_flag &operator|=(write_flag &l, write_flag r) CTOON_NOEXCEPT {
+    l = l | r;
+    return l;
+}
+
+
+/* -----------------------------------------------------------------------
+ * read_flag  –  enum class with bitwise operators
+ * -------------------------------------------------------------------- */
+
+/**
+ * @brief Flag bits for TOON parsing.
+ *
+ * Supports bitwise |, &, ^, ~ operators.
+ */
+enum class read_flag : uint32_t {
+    NOFLAG              = static_cast<uint32_t>(CTOON_READ_NOFLAG),
+    INSITU              = static_cast<uint32_t>(CTOON_READ_INSITU),
+    STOP_WHEN_DONE      = static_cast<uint32_t>(CTOON_READ_STOP_WHEN_DONE),
+    ALLOW_TRAILING_COMMAS = static_cast<uint32_t>(CTOON_READ_ALLOW_TRAILING_COMMAS),
+    ALLOW_COMMENTS      = static_cast<uint32_t>(CTOON_READ_ALLOW_COMMENTS),
+    ALLOW_INF_AND_NAN   = static_cast<uint32_t>(CTOON_READ_ALLOW_INF_AND_NAN),
+    NUMBER_AS_RAW       = static_cast<uint32_t>(CTOON_READ_NUMBER_AS_RAW),
+    ALLOW_INVALID_UNICODE = static_cast<uint32_t>(CTOON_READ_ALLOW_INVALID_UNICODE),
+    BIGNUM_AS_RAW       = static_cast<uint32_t>(CTOON_READ_BIGNUM_AS_RAW),
+    ALLOW_BOM           = static_cast<uint32_t>(CTOON_READ_ALLOW_BOM),
+    ALLOW_EXT_NUMBER    = static_cast<uint32_t>(CTOON_READ_ALLOW_EXT_NUMBER),
+    ALLOW_EXT_ESCAPE    = static_cast<uint32_t>(CTOON_READ_ALLOW_EXT_ESCAPE),
+    ALLOW_EXT_WHITESPACE = static_cast<uint32_t>(CTOON_READ_ALLOW_EXT_WHITESPACE),
+    ALLOW_SINGLE_QUOTED_STR = static_cast<uint32_t>(CTOON_READ_ALLOW_SINGLE_QUOTED_STR),
+    ALLOW_UNQUOTED_KEY  = static_cast<uint32_t>(CTOON_READ_ALLOW_UNQUOTED_KEY),
+};
+
+/** Bitwise OR */
+inline read_flag operator|(read_flag l, read_flag r) CTOON_NOEXCEPT {
+    return static_cast<read_flag>(
+        static_cast<uint32_t>(l) | static_cast<uint32_t>(r));
+}
+
+/** OR-assign */
+inline read_flag &operator|=(read_flag &l, read_flag r) CTOON_NOEXCEPT {
+    l = l | r;
+    return l;
+}
+
+
+/* -----------------------------------------------------------------------
  * write_options
  * -------------------------------------------------------------------- */
 
@@ -252,25 +330,29 @@ public:
  * 2-space indent, comma delimiter, no special flags.
  */
 struct write_options {
-    ctoon_write_flag flag;      ///< @c CTOON_WRITE_* flags.
+    write_flag flag;        ///< @c write_flag bits.
     ctoon_delimiter  delimiter; ///< Array value delimiter.
     int              indent;    ///< Spaces per indent level (0 = compact).
 
     /// Construct with library defaults.
     write_options() CTOON_NOEXCEPT
-        : flag(CTOON_WRITE_NOFLAG)
+        : flag(write_flag::NOFLAG)
         , delimiter(CTOON_DELIMITER_COMMA)
         , indent(2)
     {}
 
     /// Construct with explicit values.
-    write_options(ctoon_write_flag f, ctoon_delimiter d, int i) CTOON_NOEXCEPT
+    write_options(write_flag f, ctoon_delimiter d, int i) CTOON_NOEXCEPT
         : flag(f), delimiter(d), indent(i) {}
+
+    /// Construct from raw flag value (for compatibility).
+    explicit write_options(ctoon_write_flag f, ctoon_delimiter d = CTOON_DELIMITER_COMMA, int i = 2) CTOON_NOEXCEPT
+        : flag(static_cast<write_flag>(f)), delimiter(d), indent(i) {}
 
     /// Convert to the underlying C struct.
     ctoon_write_options to_c() const CTOON_NOEXCEPT {
         ctoon_write_options o;
-        o.flag      = flag;
+        o.flag      = static_cast<uint32_t>(flag);
         o.delimiter = delimiter;
         o.indent    = indent;
         return o;
