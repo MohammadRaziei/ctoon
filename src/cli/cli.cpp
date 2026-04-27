@@ -7,16 +7,47 @@
 #include "CLI11.hpp"
 #include "json/yyjson.h"
 
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-
-namespace fs = std::filesystem;
+#include <vector>
+#include <algorithm>
+#include <cstring>
 
 namespace {
+
+/* ============================================================
+ * Portable filesystem helpers (C++11 compatible)
+ * ============================================================ */
+
+/**
+ * @brief Get file extension (C++11 compatible).
+ * @param path File path.
+ * @return Extension in lowercase (e.g., ".json", ".toon"), or empty string.
+ */
+std::string getFileExtension(const std::string &path) {
+    std::string::size_type dot = path.rfind('.');
+    if (dot == std::string::npos || dot == 0 || dot == path.size() - 1) {
+        return std::string();
+    }
+    std::string ext = path.substr(dot + 1);
+    /* Convert to lowercase */
+    std::transform(ext.begin(), ext.end(), ext.begin(),
+                   static_cast<int (*)(int)>(std::tolower));
+    return "." + ext;
+}
+
+/**
+ * @brief Check if file exists (C++11 compatible).
+ * @param path File path.
+ * @return true if file exists.
+ */
+bool fileExists(const std::string &path) {
+    std::ifstream f(path);
+    return f.good();
+}
 
 /* ============================================================
  * File I/O
@@ -42,25 +73,27 @@ void writeFile(const std::string &path, const std::string &content) {
 
 std::string toonToJson(const std::string &input, int indent, bool strict) {
     ctoon_read_flag flg  = strict ? CTOON_READ_NOFLAG : CTOON_READ_ALLOW_INF_AND_NAN;
-    ctoon_read_err  rerr = {};
+    ctoon_read_err  rerr;
+    memset(&rerr, 0, sizeof(rerr));
     ctoon_doc *idoc = ctoon_read_opts(const_cast<char *>(input.data()),
-                                       input.size(), flg, nullptr, &rerr);
+                                       input.size(), flg, NULL, &rerr);
     if (!idoc)
         throw std::runtime_error(std::string("TOON parse error at pos ")
                                   + std::to_string(rerr.pos) + ": "
                                   + (rerr.msg ? rerr.msg : "unknown"));
 
     /* Convert immutable doc to mutable */
-    ctoon_mut_doc *tdoc = ctoon_doc_mut_copy(idoc, nullptr);
+    ctoon_mut_doc *tdoc = ctoon_doc_mut_copy(idoc, NULL);
     ctoon_doc_free(idoc);
     if (!tdoc) throw std::runtime_error("ctoon_doc_mut_copy failed");
 
     /* Use ctoon_mut_doc_to_json directly — no yyjson needed */
     ctoon_write_flag jflag = CTOON_WRITE_NOFLAG;
-    ctoon_write_err werr = {};
-    std::size_t len = 0;
+    ctoon_write_err werr;
+    memset(&werr, 0, sizeof(werr));
+    size_t len = 0;
     char *raw = ctoon_mut_doc_to_json(tdoc, indent > 0 ? indent : 0,
-                                      jflag, nullptr, &len, &werr);
+                                      jflag, NULL, &len, &werr);
     ctoon_mut_doc_free(tdoc);
     if (!raw)
         throw std::runtime_error(std::string("JSON write error: ")
@@ -75,8 +108,8 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
  * JSON → TOON  (yyjson_mut_val* → ctoon_mut_val*)
  * ============================================================ */
 
-static ctoon_mut_val *json_val_to_toon(ctoon_mut_doc  *tdoc,
-                                        yyjson_mut_val *val) {
+static ctoon_mut_val *json_val_to_toon(ctoon_mut_doc *tdoc,
+                                       yyjson_mut_val *val) {
     if (!val || yyjson_mut_is_null(val))  return ctoon_mut_null(tdoc);
     if (yyjson_mut_is_true(val))          return ctoon_mut_true(tdoc);
     if (yyjson_mut_is_false(val))         return ctoon_mut_false(tdoc);
@@ -122,29 +155,31 @@ static ctoon_mut_val *json_val_to_toon(ctoon_mut_doc  *tdoc,
 
 std::string jsonToToon(const std::string &input,
                        const ctoon_write_options &enc_opts) {
-    yyjson_read_err rerr = {};
+    yyjson_read_err rerr;
+    memset(&rerr, 0, sizeof(rerr));
     yyjson_doc *idoc = yyjson_read_opts(
         const_cast<char *>(input.data()), input.size(),
-        YYJSON_READ_NOFLAG, nullptr, &rerr);
+        YYJSON_READ_NOFLAG, NULL, &rerr);
     if (!idoc)
         throw std::runtime_error(std::string("JSON parse error at pos ")
                                   + std::to_string(rerr.pos) + ": " + rerr.msg);
 
     /* Convert immutable yyjson doc to mutable so both sides use *_mut_ API */
-    yyjson_mut_doc *jdoc = yyjson_doc_mut_copy(idoc, nullptr);
+    yyjson_mut_doc *jdoc = yyjson_doc_mut_copy(idoc, NULL);
     yyjson_doc_free(idoc);
     if (!jdoc) throw std::runtime_error("yyjson_doc_mut_copy failed");
 
-    ctoon_mut_doc *tdoc = ctoon_mut_doc_new(nullptr);
+    ctoon_mut_doc *tdoc = ctoon_mut_doc_new(NULL);
     if (!tdoc) { yyjson_mut_doc_free(jdoc); throw std::bad_alloc(); }
 
     ctoon_mut_doc_set_root(tdoc, json_val_to_toon(tdoc,
                                        yyjson_mut_doc_get_root(jdoc)));
     yyjson_mut_doc_free(jdoc);
 
-    ctoon_write_err werr = {};
+    ctoon_write_err werr;
+    memset(&werr, 0, sizeof(werr));
     size_t len = 0;
-    char  *raw = ctoon_mut_write_opts(tdoc, &enc_opts, nullptr, &len, &werr);
+    char  *raw = ctoon_mut_write_opts(tdoc, &enc_opts, NULL, &len, &werr);
     ctoon_mut_doc_free(tdoc);
     if (!raw)
         throw std::runtime_error(std::string("TOON write error: ")
@@ -159,42 +194,51 @@ std::string jsonToToon(const std::string &input,
  * Auto-detect operation from extension or content
  * ============================================================ */
 
-enum class Op { ENCODE, DECODE };
+enum Operation {
+    OP_ENCODE,   /* JSON → TOON */
+    OP_DECODE    /* TOON → JSON */
+};
 
-Op detectOp(const std::string &path, const std::string &content,
-             bool forceEncode, bool forceDecode) {
-    if (forceEncode) return Op::ENCODE;
-    if (forceDecode) return Op::DECODE;
+Operation detectOp(const std::string &path, const std::string &content,
+                   bool forceEncode, bool forceDecode) {
+    if (forceEncode) return OP_ENCODE;
+    if (forceDecode) return OP_DECODE;
 
     if (!path.empty() && path != "-") {
-        std::string ext = fs::path(path).extension().string();
-        if (ext == ".json") return Op::ENCODE;
-        if (ext == ".toon") return Op::DECODE;
+        std::string ext = getFileExtension(path);
+        if (ext == ".json") return OP_ENCODE;
+        if (ext == ".toon") return OP_DECODE;
     }
 
     /* Content sniffing: JSON starts with { [ " digit or - */
-    for (char c : content) {
-        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
+    std::string::const_iterator it = content.begin();
+    while (it != content.end()) {
+        char c = *it;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            ++it;
+            continue;
+        }
         if (c == '{' || c == '[' || c == '"' ||
             (c >= '0' && c <= '9') || c == '-')
-            return Op::ENCODE;
+            return OP_ENCODE;
         break;
     }
-    return Op::DECODE;
+    return OP_DECODE;
 }
 
 /* ============================================================
  * Stats
  * ============================================================ */
 
-void printStats(const std::string &input, const std::string &output, Op op) {
+void printStats(const std::string &input, const std::string &output,
+                Operation op) {
     size_t in_sz  = input.size();
     size_t out_sz = output.size();
     double ratio  = in_sz ? (100.0 * out_sz / in_sz) : 0.0;
     double saving = 100.0 - ratio;
 
-    if (op == Op::ENCODE) {
-        std::cerr << "\nBytes: " << in_sz  << " (JSON) \xe2\x86\x92 "
+    if (op == OP_ENCODE) {
+        std::cerr << "\nBytes: " << in_sz  << " (JSON) -> "
                   << out_sz << " (TOON)\n";
         if (saving > 0)
             std::cerr << "Saved " << (in_sz - out_sz) << " bytes ("
@@ -203,7 +247,7 @@ void printStats(const std::string &input, const std::string &output, Op op) {
             std::cerr << "TOON is " << static_cast<int>(-saving)
                       << "% larger than JSON\n";
     } else {
-        std::cerr << "\nBytes: " << in_sz  << " (TOON) \xe2\x86\x92 "
+        std::cerr << "\nBytes: " << in_sz  << " (TOON) -> "
                   << out_sz << " (JSON)\n";
     }
 }
@@ -214,7 +258,7 @@ ctoon_delimiter parseDelimiter(const std::string &s) {
     return CTOON_DELIMITER_COMMA;
 }
 
-} // namespace
+} /* namespace */
 
 /* ============================================================
  * main
@@ -223,34 +267,34 @@ ctoon_delimiter parseDelimiter(const std::string &s) {
 int main(int argc, char **argv) {
     const std::string version = CTOON_VERSION_STRING;
 
-    CLI::App app{
-        "CToon - TOON \xe2\x86\x94 JSON converter\n"
+    CLI::App app(
+        "CToon - TOON <-> JSON converter\n"
         "Version: " + version + "\n\n"
         "TOON is a compact format optimised for LLM token usage.\n"
         "Auto-detects direction from extension (.toon=decode, .json=encode)\n"
         "or content when reading from stdin."
-    };
+    );
     app.set_help_flag("-h,--help", "Print this help message and exit");
 
     std::string inputPath, outputPath, delimStr = ",";
-    int  indent       = 2;
-    bool forceEncode  = false;
-    bool forceDecode  = false;
-    bool noStrict     = false;
-    bool lengthMarker = false;
-    bool statsFlag    = false;
-    bool showVersion  = false;
+    int         indent       = 2;
+    bool        forceEncode  = false;
+    bool        forceDecode  = false;
+    bool        noStrict     = false;
+    bool        lengthMarker = false;
+    bool        statsFlag    = false;
+    bool        showVersion  = false;
 
     app.add_option("input",           inputPath,   "Input file path (omit or - for stdin)")
        ->expected(0, 1);
     app.add_option("-o,--output",     outputPath,  "Output file path (omit for stdout)");
-    app.add_flag  ("-e,--encode",     forceEncode, "Force encode mode (JSON \xe2\x86\x92 TOON)");
-    app.add_flag  ("-d,--decode",     forceDecode, "Force decode mode (TOON \xe2\x86\x92 JSON)");
+    app.add_flag  ("-e,--encode",     forceEncode, "Force encode mode (JSON -> TOON)");
+    app.add_flag  ("-d,--decode",     forceDecode, "Force decode mode (TOON -> JSON)");
     app.add_option("--delimiter",     delimStr,
                    "Array delimiter: , (comma, default), \\t (tab), | (pipe)")
        ->check([](const std::string &s) -> std::string {
            if (s == "," || s == "\t" || s == "tab" || s == "|" || s == "pipe")
-               return {};
+               return std::string();
            return "Delimiter must be one of: ,  \\t  tab  |  pipe";
        });
     app.add_option("-i,--indent",     indent,
@@ -265,9 +309,9 @@ int main(int argc, char **argv) {
     if (argc == 1) {
         std::cout << app.help()
                   << "\nExamples:\n"
-                  << "  ctoon in.toon                    # TOON \xe2\x86\x92 JSON (stdout)\n"
-                  << "  ctoon in.toon -o out.json        # TOON \xe2\x86\x92 JSON (file)\n"
-                  << "  ctoon in.json -o out.toon        # JSON \xe2\x86\x92 TOON\n"
+                  << "  ctoon in.toon                    # TOON -> JSON (stdout)\n"
+                  << "  ctoon in.toon -o out.json        # TOON -> JSON (file)\n"
+                  << "  ctoon in.json -o out.toon        # JSON -> TOON\n"
                   << "  ctoon in.json --delimiter '\\t'   # tab-delimited arrays\n"
                   << "  ctoon in.json --length-marker    # items[#3]: ...\n"
                   << "  ctoon in.json --stats            # show byte savings\n"
@@ -298,7 +342,7 @@ int main(int argc, char **argv) {
             buf << std::cin.rdbuf();
             input = buf.str();
         } else {
-            if (!fs::exists(inputPath)) {
+            if (!fileExists(inputPath)) {
                 std::cerr << "Error: File not found: " << inputPath << "\n";
                 return 1;
             }
@@ -311,9 +355,10 @@ int main(int argc, char **argv) {
 
     if (input.empty()) { std::cerr << "Error: Input is empty.\n"; return 1; }
 
-    Op op = detectOp(inputPath, input, forceEncode, forceDecode);
+    Operation op = detectOp(inputPath, input, forceEncode, forceDecode);
 
-    ctoon_write_options enc_opts = {};
+    ctoon_write_options enc_opts;
+    memset(&enc_opts, 0, sizeof(enc_opts));
     enc_opts.flag      = lengthMarker ? CTOON_WRITE_LENGTH_MARKER : CTOON_WRITE_NOFLAG;
     enc_opts.delimiter = parseDelimiter(delimStr);
     enc_opts.indent    = indent > 0 ? indent : 2;
@@ -321,7 +366,7 @@ int main(int argc, char **argv) {
     /* ---- Convert ---- */
     try {
         std::string output;
-        if (op == Op::ENCODE)
+        if (op == OP_ENCODE)
             output = jsonToToon(input, enc_opts);
         else
             output = toonToJson(input, indent, !noStrict);
@@ -329,8 +374,8 @@ int main(int argc, char **argv) {
         if (!outputPath.empty()) {
             writeFile(outputPath, output);
             std::string src = fromStdin ? "<stdin>" : inputPath;
-            std::cout << (op == Op::ENCODE ? "JSON\xe2\x86\x92TOON" : "TOON\xe2\x86\x92JSON")
-                      << ": " << src << " \xe2\x86\x92 " << outputPath << "\n";
+            std::cout << (op == OP_ENCODE ? "JSON->TOON" : "TOON->JSON")
+                      << ": " << src << " -> " << outputPath << "\n";
         } else {
             std::cout << output;
             if (output.empty() || output.back() != '\n') std::cout << '\n';
