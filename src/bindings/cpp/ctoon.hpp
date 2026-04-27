@@ -248,7 +248,7 @@ public:
 /**
  * @brief Flag bits for TOON serialisation.
  *
- * Supports bitwise |, &, ^, ~, |=, &=, ^= operators.
+ * Supports bitwise |, |= operators.
  *
  * @code
  * using namespace ctoon::write_flag;
@@ -286,7 +286,7 @@ inline write_flag &operator|=(write_flag &l, write_flag r) CTOON_NOEXCEPT {
 /**
  * @brief Flag bits for TOON parsing.
  *
- * Supports bitwise |, &, ^, ~ operators.
+ * Supports bitwise |, |= operators.
  */
 enum class read_flag : uint32_t {
     NOFLAG              = static_cast<uint32_t>(CTOON_READ_NOFLAG),
