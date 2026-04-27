@@ -12,7 +12,6 @@
 #include "ctoon.hpp"
 
 namespace nb = nanobind;
-using namespace ctoon;
 
 /* -----------------------------------------------------------------------
  * Python <-> TOON conversion helpers
@@ -22,7 +21,7 @@ using namespace ctoon;
  * Convert a Python object to a mut_value in the given document.
  * Supports: None, bool, int, float, str, list, dict
  */
-static mut_value py_to_mutval(mut_document& doc, nb::handle obj) {
+static ctoon::mut_value py_to_mutval(ctoon::mut_document& doc, nb::handle obj) {
     if (obj.is_none()) {
         return doc.make_null();
     } else if (nb::isinstance<nb::bool_>(obj)) {
@@ -36,7 +35,7 @@ static mut_value py_to_mutval(mut_document& doc, nb::handle obj) {
     } else if (nb::isinstance<nb::str>(obj)) {
         return doc.make_str(nb::cast<std::string>(obj));
     } else if (nb::isinstance<nb::list>(obj) || nb::isinstance<nb::tuple>(obj)) {
-        mut_value arr = doc.make_arr();
+        ctoon::mut_value arr = doc.make_arr();
         nb::iterator it(nb::iter(obj));
         nb::iterator end;
         for (; it != end; ++it) {
@@ -44,11 +43,11 @@ static mut_value py_to_mutval(mut_document& doc, nb::handle obj) {
         }
         return arr;
     } else if (nb::isinstance<nb::dict>(obj)) {
-        mut_value obj2 = doc.make_obj();
+        ctoon::mut_value obj2 = doc.make_obj();
         nb::dict d = nb::cast<nb::dict>(obj);
         for (nb::handle key : d.keys()) {
             std::string k = nb::cast<std::string>(key);
-            mut_value v = py_to_mutval(doc, d[key]);
+            ctoon::mut_value v = py_to_mutval(doc, d[key]);
             obj2.obj_put(doc.make_str(k), v);
         }
         return obj2;
@@ -59,7 +58,7 @@ static mut_value py_to_mutval(mut_document& doc, nb::handle obj) {
 /**
  * Convert a mut_value to a Python object.
  */
-static nb::object mutval_to_py(mut_value val) {
+static nb::object mutval_to_py(ctoon::mut_value val) {
     if (!val.valid()) return nb::none();
     else if (val.is_null()) return nb::none();
     else if (val.is_true()) return nb::bool_(true);
@@ -90,7 +89,7 @@ static nb::object mutval_to_py(mut_value val) {
 /**
  * Convert a value (immutable) to a Python object.
  */
-static nb::object val_to_py(value val) {
+static nb::object val_to_py(ctoon::value val) {
     if (!val.valid()) return nb::none();
     else if (val.is_null()) return nb::none();
     else if (val.is_true()) return nb::bool_(true);
@@ -164,7 +163,7 @@ NB_MODULE(ctoon_py, m) {
     m.doc() = "CToon - Compact TOON format for Python (C++ backend with nanobind)";
 
     // Version
-    m.attr("__version__") = nb::str(version::string());
+    m.attr("__version__") = nb::str(ctoon::version::string());
 
     // Enums
     bind_enums(m);
@@ -175,7 +174,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- decode: TOON string -> Python object ---- */
     m.def("decode",
         [](const std::string& input, const Options& opts) {
-            auto doc = document::parse(input.data(), input.size(), opts.read_flag);
+            auto doc = ctoon::document::parse(input.data(), input.size(), opts.read_flag);
             return val_to_py(doc.root());
         },
         nb::arg("input"),
@@ -184,7 +183,7 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("decode",
         [](nb::bytes input, const Options& opts) {
-            auto doc = document::parse(input.c_str(), nb::len(input), opts.read_flag);
+            auto doc = ctoon::document::parse(input.c_str(), nb::len(input), opts.read_flag);
             return val_to_py(doc.root());
         },
         nb::arg("input"),
@@ -194,11 +193,11 @@ NB_MODULE(ctoon_py, m) {
     /* ---- encode: Python object -> TOON string ---- */
     m.def("encode",
         [](nb::handle obj, const Options& opts) {
-            auto doc = mut_document::create();
-            mut_value root = py_to_mutval(doc, obj);
+            auto doc = ctoon::mut_document::create();
+            ctoon::mut_value root = py_to_mutval(doc, obj);
             doc.set_root(root);
 
-            write_options wo;
+            ctoon::write_options wo;
             wo.indent = opts.indent;
             wo.delimiter = opts.delimiter;
             wo.flag = opts.write_flag;
@@ -230,7 +229,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- load / dump (file I/O) ---- */
     m.def("load",
         [](const std::string& filename, const Options& opts) {
-            auto doc = document::parse_file(filename.c_str(), opts.read_flag);
+            auto doc = ctoon::document::parse_file(filename.c_str(), opts.read_flag);
             return val_to_py(doc.root());
         },
         nb::arg("filename"),
@@ -239,11 +238,11 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("dump",
         [](nb::handle obj, const std::string& filename, const Options& opts) {
-            auto doc = mut_document::create();
-            mut_value root = py_to_mutval(doc, obj);
+            auto doc = ctoon::mut_document::create();
+            ctoon::mut_value root = py_to_mutval(doc, obj);
             doc.set_root(root);
 
-            write_options wo;
+            ctoon::write_options wo;
             wo.indent = opts.indent;
             wo.delimiter = opts.delimiter;
             wo.flag = opts.write_flag;
@@ -258,7 +257,7 @@ NB_MODULE(ctoon_py, m) {
     /* ---- JSON support ---- */
     m.def("loads_json",
         [](const std::string& json) {
-            auto doc = document::parse(json);
+            auto doc = ctoon::document::parse(json);
             return val_to_py(doc.root());
         },
         nb::arg("json"),
@@ -266,8 +265,8 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("dumps_json",
         [](nb::handle obj, int indent = 2) {
-            auto doc = mut_document::create();
-            mut_value root = py_to_mutval(doc, obj);
+            auto doc = ctoon::mut_document::create();
+            ctoon::mut_value root = py_to_mutval(doc, obj);
             doc.set_root(root);
 
             auto result = doc.to_json(indent);
@@ -279,7 +278,7 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("load_json",
         [](const std::string& filename) {
-            auto doc = document::parse_file(filename.c_str());
+            auto doc = ctoon::document::parse_file(filename.c_str());
             return val_to_py(doc.root());
         },
         nb::arg("filename"),
@@ -287,8 +286,8 @@ NB_MODULE(ctoon_py, m) {
 
     m.def("dump_json",
         [](nb::handle obj, const std::string& filename, int indent = 2) {
-            auto doc = mut_document::create();
-            mut_value root = py_to_mutval(doc, obj);
+            auto doc = ctoon::mut_document::create();
+            ctoon::mut_value root = py_to_mutval(doc, obj);
             doc.set_root(root);
             doc.write_file(filename.c_str());
         },
