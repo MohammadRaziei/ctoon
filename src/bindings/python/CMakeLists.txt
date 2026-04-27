@@ -16,6 +16,7 @@ if(DEFINED SKBUILD)
 
     # Link against the ctoon library
     target_link_libraries(ctoon_py PRIVATE ctoon::ctoonpp)
+    set_property(TARGET ctoon_py PROPERTY CXX_STANDARD 17)
 
     # Generate Python stubs
     add_custom_command(TARGET ctoon_py POST_BUILD
