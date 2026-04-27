@@ -20,6 +20,8 @@ if(DEFINED SKBUILD)
 
     # Generate Python stubs
     add_custom_command(TARGET ctoon_py POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E echo "=== Listing files in ${CMAKE_CURRENT_BINARY_DIR} ==="
+        COMMAND ${CMAKE_COMMAND} -E echo_directory "${CMAKE_CURRENT_BINARY_DIR}"
         COMMAND ${Python_EXECUTABLE} -m nanobind.stubgen
                 -m ctoon_py
                 -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
