@@ -23,6 +23,7 @@ if(DEFINED SKBUILD)
         COMMAND ${Python_EXECUTABLE} -m nanobind.stubgen
                 -m ctoon_py
                 -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+                -i ${CMAKE_CURRENT_BINARY_DIR}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating Python stubs (.pyi) for ctoon_py..."
         BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
