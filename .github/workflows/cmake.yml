@@ -19,11 +19,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.28.x'
-
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -31,18 +26,17 @@ jobs:
 
     - name: Install python deps
       run: pip install -r requirements-dev.txt
-    
-    - name: Use cmake
-      run: cmake --version
 
-    - name: Configure CMake
-      run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCTOON_BUILD_EXAMPLES=ON \
-          -DCTOON_BUILD_PYTHON=ON \
-          -DCTOON_BUILD_TESTS=ON \
-          -DCTOON_BUILD_DOCS=OFF
+    - name: Build Project
+      uses: threeal/cmake-action@v2.1.0
+      with:
+        build-dir: build
+        options: |
+          CMAKE_BUILD_TYPE=Release 
+          CTOON_BUILD_EXAMPLES=ON 
+          CTOON_BUILD_PYTHON=ON 
+          CTOON_BUILD_TESTS=ON 
+          CTOON_BUILD_DOCS=OFF
 
     - name: Build
       run: cmake --build build -j4
