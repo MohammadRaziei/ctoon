@@ -723,6 +723,12 @@ public:
         return parse(toon.data(), toon.size(), flags);
     }
 
+    /// @overload string_view (C++17) or string_view wrapper (C++11/14).
+    static document parse(string_view toon,
+                           ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+        return parse(toon.data(), toon.size(), flags);
+    }
+
     /**
      * @brief Parse a TOON file from disk.
      * @param path  Null-terminated file path.

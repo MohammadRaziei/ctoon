@@ -8,6 +8,7 @@
 
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/string_view.h>
 #include <nanobind/stl/variant.h>
 #include "ctoon.hpp"
 
@@ -173,7 +174,7 @@ NB_MODULE(ctoon_py, m) {
 
     /* ---- decode: TOON string -> Python object ---- */
     m.def("decode",
-        [](const std::string& input, const Options& opts) {
+        [](std::string_view input, const Options& opts) {
             auto doc = ctoon::document::parse(input.data(), input.size(), opts.read_flag);
             return val_to_py(doc.root());
         },
@@ -211,7 +212,7 @@ NB_MODULE(ctoon_py, m) {
 
     /* ---- loads / dumps aliases ---- */
     m.def("loads",
-        [](const std::string& s, const Options& opts) {
+        [](std::string_view s, const Options& opts) {
             auto doc = ctoon::document::parse(s.data(), s.size(), opts.read_flag);
             return val_to_py(doc.root());
         },
@@ -267,7 +268,7 @@ NB_MODULE(ctoon_py, m) {
 
     /* ---- JSON support ---- */
     m.def("loads_json",
-        [](const std::string& json) {
+        [](std::string_view json) {
             auto doc = ctoon::document::parse(json);
             return val_to_py(doc.root());
         },
