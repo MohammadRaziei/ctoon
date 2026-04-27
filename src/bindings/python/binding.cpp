@@ -211,16 +211,27 @@ NB_MODULE(ctoon_py, m) {
 
     /* ---- loads / dumps aliases ---- */
     m.def("loads",
-        [&m](const std::string& s, const Options& opts) {
-            return m.attr("decode")(s, opts);
+        [](const std::string& s, const Options& opts) {
+            auto doc = ctoon::document::parse(s.data(), s.size(), opts.read_flag);
+            return val_to_py(doc.root());
         },
         nb::arg("s"),
         nb::arg("options") = Options(),
         "Alias for decode()");
 
     m.def("dumps",
-        [&m](nb::handle obj, const Options& opts) {
-            return m.attr("encode")(obj, opts);
+        [](nb::handle obj, const Options& opts) {
+            auto doc = ctoon::mut_document::create();
+            ctoon::mut_value root = py_to_mutval(doc, obj);
+            doc.set_root(root);
+
+            ctoon::write_options wo;
+            wo.indent = opts.indent;
+            wo.delimiter = opts.delimiter;
+            wo.flag = opts.write_flag;
+
+            auto result = doc.write(wo);
+            return std::string(result.c_str(), result.size());
         },
         nb::arg("obj"),
         nb::arg("options") = Options(),
