@@ -56,11 +56,10 @@ function(apply_optimization_flags target)
 
     elseif(MSVC)
         # MSVC optimization flags
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /RTC1-")
-        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /RTC1-")
         target_compile_options(${target} PRIVATE
             /O2                     # Maximum optimization for speed
             /GL                     # Whole program optimization
+            /RTC1-
         )
 
         target_link_options(${target} PRIVATE
