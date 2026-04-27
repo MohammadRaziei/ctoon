@@ -5,14 +5,7 @@ file(GLOB CTOON_TEST_SOURCES CONFIGURE_DEPENDS
 
 add_executable(test_ctoon_cpp ${CTOON_TEST_SOURCES})
 
-# Default: test against normal headers (source tree)
-set(CTOON_TEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
-set(CTOON_TEST_BINDINGS_DIR "${PROJECT_SOURCE_DIR}/src/bindings")
-
-target_include_directories(test_ctoon_cpp PRIVATE 
-    "${CTOON_TEST_INCLUDE_DIR}"
-    "${CTOON_TEST_BINDINGS_DIR}"
-)
+target_include_directories(test_ctoon_cpp PRIVATE "${CTOON_TEST_SOURCE_DIR}")
 
 # Link against ctoon C++ wrapper library
 target_link_libraries(test_ctoon_cpp PRIVATE ctoon::ctoonpp)
@@ -41,6 +34,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         # Capture coverage data
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing coverage..."
         COMMAND ${LCOV_EXECUTABLE}
+                --ignore-errors mismatch
                 --capture
                 --directory ${CTOON_TEST_BINARY_DIR}
                 --base-directory ${PROJECT_SOURCE_DIR}

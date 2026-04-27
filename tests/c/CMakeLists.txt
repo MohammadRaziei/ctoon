@@ -3,15 +3,14 @@ file(GLOB CTOON_TEST_SOURCES_C CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c
 )
 
-add_executable(test_ctoon_c ${CTOON_TEST_SOURCES_C})
+add_executable(test_ctoon_c ${CTOON_TEST_SOURCES_C} ${CTOON_TEST_SOURCE_DIR}/utest/utest_main.cxx)
 
-# Default: test against normal headers (source tree)
-set(CTOON_TEST_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
-
-target_include_directories(test_ctoon_c PRIVATE "${CTOON_TEST_INCLUDE_DIR}")
+target_include_directories(test_ctoon_c PRIVATE 
+    "${CTOON_TEST_SOURCE_DIR}"
+)
 
 # Link against ctoon library
-target_link_libraries(test_ctoon_c PRIVATE ctoon)
+target_link_libraries(test_ctoon_c PRIVATE ctoon::ctoon)
 
 add_test(NAME test_ctoon_c COMMAND $<TARGET_FILE:test_ctoon_c>)
 
@@ -28,6 +27,12 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     # Enable coverage flags for the test executable
     target_compile_options(test_ctoon_c PRIVATE -O0 -g --coverage)
     target_link_options(test_ctoon_c PRIVATE --coverage)
+    
+    # Also add coverage to ctoon library for this test
+    set_target_properties(ctoon PROPERTIES
+        COMPILE_OPTIONS "--coverage"
+        LINK_OPTIONS "--coverage"
+    )
 
     # Create coverage binary directory for C tests
     set(CTOON_COVERAGE_C_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/c)
@@ -37,30 +42,26 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_C_BINARY_DIR}/html
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_COVERAGE_C_BINARY_DIR}/html
 
-        # Capture coverage data
+        # Capture coverage data from ctoon library only (not test files)
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing C coverage..."
+        # First capture all coverage, excluding test files to avoid mismatch errors
         COMMAND ${LCOV_EXECUTABLE}
-                --capture
-                --directory ${CTOON_TEST_BINARY_DIR}
+                -c
                 --base-directory ${PROJECT_SOURCE_DIR}
+                --directory ${CMAKE_BINARY_DIR}
+                --exclude "*/tests/*"
                 --no-external
                 --rc function_coverage=1
-                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
-
-        # Filter for ctoon files only
-        COMMAND ${CMAKE_COMMAND} -E echo "Filtering ctoon files..."
+                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
+        # Extract only ctoon source files
+        COMMAND ${CMAKE_COMMAND} -E echo "Filtering ctoon source files..."
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
-                ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
-                "*/ctoon/*"
-                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
-        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
-        COMMAND ${LCOV_EXECUTABLE}
-            --remove
-            ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
-            "*/tests/*"
-            --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
-        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
+                ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
+                "*/include/ctoon.h"
+                "*/src/ctoon.c"
+                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
+        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
 
         # Generate HTML report
         COMMAND ${CMAKE_COMMAND} -E echo "-- Generating HTML report..."
