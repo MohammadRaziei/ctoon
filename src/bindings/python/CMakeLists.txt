@@ -15,7 +15,6 @@ if(DEFINED SKBUILD)
     )
 
     # Link against the ctoon library
-    set_property(TARGET ctoonpp PROPERTY CXX_STANDARD 17)
     target_link_libraries(ctoon_py PRIVATE ctoon::ctoonpp)
     set_property(TARGET ctoon_py PROPERTY CXX_STANDARD 17)
 

@@ -49,27 +49,7 @@
 #   define CTOON_NOEXCEPT throw()
 #endif
 
-#if defined(__cplusplus)
-#   if __cplusplus >= 201703L
-#       define HAS_STRING_VIEW 1
-#   endif
-#endif
-
-#if !defined(HAS_STRING_VIEW) && defined(_MSVC_LANG)
-#   if _MSVC_LANG >= 201703L
-#       define HAS_STRING_VIEW 1
-#   endif
-#endif
-
-#if !defined(HAS_STRING_VIEW)
-#   if defined(__has_include)
-#       if __has_include(<string_view>)
-#           define HAS_STRING_VIEW 1
-#       endif
-#   endif
-#endif
-
-#if defined(HAS_STRING_VIEW)
+#if __cplusplus >= 201703L || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 #   include <string_view>
     namespace ctoon { using string_view = std::string_view; }
 #else
