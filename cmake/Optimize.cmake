@@ -56,21 +56,20 @@ function(apply_optimization_flags target)
 
     elseif(MSVC)
         # MSVC optimization flags
-        target_compile_options(${target} PRIVATE
-            /O2                     # Maximum optimization for speed
-            /GL                     # Whole program optimization
-            /RTC1-
-        )
+        # target_compile_options(${target} PRIVATE
+        #     /O2                     # Maximum optimization for speed
+        #     /GL                     # Whole program optimization
+        # )
 
-        target_link_options(${target} PRIVATE
-            /LTCG                   # Link-time code generation
-        )
+        # target_link_options(${target} PRIVATE
+        #     /LTCG                   # Link-time code generation
+        # )
 
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
-            target_compile_options(${target} PRIVATE
-                /arch:AVX2          # Enable AVX2 instructions
-            )
-        endif()
+        # if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
+        #     target_compile_options(${target} PRIVATE
+        #         /arch:AVX2          # Enable AVX2 instructions
+        #     )
+        # endif()
     endif()
 
     # # Platform-specific definitions
