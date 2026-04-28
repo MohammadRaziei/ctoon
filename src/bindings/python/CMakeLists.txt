@@ -19,15 +19,20 @@ if(DEFINED SKBUILD)
     set_property(TARGET ctoon_py PROPERTY CXX_STANDARD 17)
 
     # Generate Python stubs
-    add_custom_command(TARGET ctoon_py POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}" 
-                ${Python_EXECUTABLE} -m nanobind.stubgen
-                -m ctoon_py
-                -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMENT "Generating Python stubs (.pyi) for ctoon_py..."
-        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-    )
+    if(NOT WIN32)
+        add_custom_command(TARGET ctoon_py POST_BUILD
+            COMMAND ${Python_EXECUTABLE} -m nanobind.stubgen
+                    -m ctoon_py
+                    -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating Python stubs (.pyi) for ctoon_py..."
+            BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+        )
+        
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+            DESTINATION ctoon
+        )
+    endif()
 
     # Install rules for the Python package
     # This installs the compiled module (.so or .pyd) and the python source files
@@ -35,10 +40,6 @@ if(DEFINED SKBUILD)
     # 1. Install the compiled extension module into the 'ctoon' package directory
     install(TARGETS ctoon_py
         LIBRARY DESTINATION ctoon
-    )
-
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-        DESTINATION ctoon
     )
 
     # 2. Install the Python source files (.py) into the package directory
