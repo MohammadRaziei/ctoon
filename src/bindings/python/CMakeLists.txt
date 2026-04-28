@@ -19,20 +19,19 @@ if(DEFINED SKBUILD)
     set_property(TARGET ctoon_py PROPERTY CXX_STANDARD 17)
 
     # Generate Python stubs
-    if(NOT WIN32)
-        add_custom_command(TARGET ctoon_py POST_BUILD
-            COMMAND ${Python_EXECUTABLE} -m nanobind.stubgen
-                    -m ctoon_py
-                    -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-            COMMENT "Generating Python stubs (.pyi) for ctoon_py..."
-            BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-        )
-        
-        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
-            DESTINATION ctoon
-        )
-    endif()
+    add_custom_command(TARGET ctoon_py POST_BUILD
+        COMMAND ${Python_EXECUTABLE} -m nanobind.stubgen
+                -m ctoon_py
+                -o ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+                -i $<TARGET_FILE_DIR:ctoon_py>
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating Python stubs (.pyi) for ctoon_py..."
+        BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+    )
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ctoon_py.pyi
+        DESTINATION ctoon
+    )
 
     # Install rules for the Python package
     # This installs the compiled module (.so or .pyd) and the python source files
