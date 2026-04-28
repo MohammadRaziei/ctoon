@@ -39,7 +39,7 @@ jobs:
           CTOON_BUILD_DOCS=OFF
 
     - name: Build
-      run: cmake --build build -j4
+      run: cmake --build build -j4 --config Release
 
     - name: Run tests
       run: ctest --test-dir build --output-on-failure --extra-verbose
