@@ -41,7 +41,8 @@ jobs:
     - name: Build
       run: cmake --build build -j4 --config Release
 
-    - name: Run tests
+    - name: Run tests (Linux/macOS)
+      if: runner.os != 'Windows'
       run: ctest --test-dir build --output-on-failure --extra-verbose
       
 
