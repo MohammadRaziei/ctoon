@@ -2658,6 +2658,10 @@ bool ctoon_locate_pos(const char *str, size_t len, size_t pos,
 
 
 
+static bool ctoon_has_flag(ctoon_read_flag flags, ctoon_read_flag check) {
+    return (flags & check) != 0;
+}
+
 #if !CTOON_DISABLE_READER
 
 /*============================================================================
@@ -3742,6 +3746,405 @@ ctoon_doc *ctoon_read_fp(FILE *file,
     return doc;
 }
 
+
+/*==============================================================================
+ * MARK: - JSON Reader (Public)
+ *
+ * Parses RFC 8259 JSON text directly into the flat ctoon_val pool.
+ * The resulting ctoon_doc is identical in layout to one produced by the
+ * TOON reader — the same API (ctoon_get_str, ctoon_arr_iter, …) works on
+ * both without any conversion step.
+ *
+ * Reuses all reader infrastructure: ctoon_read_ctx, ctoon_ctn_open/close,
+ * ctoon_read_vpool, ctoon_str_pool_buf, ctoon_parse_str_quoted.
+ *============================================================================*/
+
+#if !CTOON_DISABLE_JSON
+
+/* ---- JSON whitespace skip ------------------------------------------------ */
+
+static void cj_skip_ws(ctoon_read_ctx *c) {
+    while (c->cur < c->eof) {
+        u8 ch = *c->cur;
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') c->cur++;
+        else break;
+    }
+}
+
+/* ---- JSON number parser -------------------------------------------------- */
+
+static bool cj_parse_number(ctoon_read_ctx *c, ctoon_val *val) {
+    const u8 *start = c->cur;
+    bool neg = false;
+
+    if (c->cur < c->eof && *c->cur == '-') { neg = true; c->cur++; }
+
+    /* integer digits */
+    if (c->cur >= c->eof || (u8)(*c->cur - '0') > 9)
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_NUMBER, "invalid number");
+
+    u64 uint_val = 0;
+    bool overflow = false;
+    while (c->cur < c->eof && (unsigned)(*c->cur - '0') <= 9) {
+        u8 d = (u8)(*c->cur++ - '0');
+        if (!overflow) {
+            if (uint_val > (U64_MAX - d) / 10) overflow = true;
+            else uint_val = uint_val * 10 + d;
+        }
+    }
+
+    /* if we hit '.', 'e', 'E' or overflow → float */
+    bool is_float = overflow ||
+                    (c->cur < c->eof && (*c->cur == '.' || *c->cur == 'e' || *c->cur == 'E'));
+
+    if (is_float) {
+        /* skip fractional and exponent parts */
+        if (c->cur < c->eof && *c->cur == '.') {
+            c->cur++;
+            while (c->cur < c->eof && (unsigned)(*c->cur - '0') <= 9) c->cur++;
+        }
+        if (c->cur < c->eof && (*c->cur == 'e' || *c->cur == 'E')) {
+            c->cur++;
+            if (c->cur < c->eof && (*c->cur == '+' || *c->cur == '-')) c->cur++;
+            while (c->cur < c->eof && (unsigned)(*c->cur - '0') <= 9) c->cur++;
+        }
+        /* parse via strtod for correctness */
+        usize tlen = (usize)(c->cur - start);
+        if (tlen >= 64)
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_NUMBER, "number too long");
+        char tmp[64];
+        memcpy(tmp, start, tlen); tmp[tlen] = '\0';
+        char *end = NULL; errno = 0;
+        double dv = strtod(tmp, &end);
+        if (end != tmp + tlen || errno != 0)
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_NUMBER, "invalid number");
+        val->tag = CTOON_TYPE_NUM | CTOON_SUBTYPE_REAL;
+        val->uni.f64 = dv;
+        return true;
+    }
+
+    /* integer */
+    if (neg) {
+        /* negate: if uint_val > INT64_MAX+1 it overflows i64 */
+        if (uint_val > (u64)INT64_MAX + 1) {
+            /* store as real */
+            usize tlen = (usize)(c->cur - start);
+            char tmp[64]; memcpy(tmp, start, tlen); tmp[tlen] = '\0';
+            char *end = NULL;
+            double dv = strtod(tmp, &end);
+            val->tag = CTOON_TYPE_NUM | CTOON_SUBTYPE_REAL;
+            val->uni.f64 = dv;
+            return true;
+        }
+        val->tag = CTOON_TYPE_NUM | CTOON_SUBTYPE_SINT;
+        val->uni.i64 = -(i64)uint_val;
+    } else {
+        val->tag = CTOON_TYPE_NUM | CTOON_SUBTYPE_UINT;
+        val->uni.u64 = uint_val;
+    }
+    return true;
+}
+
+/* ---- JSON value (forward-declared) --------------------------------------- */
+
+static bool cj_parse_value(ctoon_read_ctx *c);
+
+/* ---- JSON array ---------------------------------------------------------- */
+
+static bool cj_parse_array(ctoon_read_ctx *c) {
+    c->cur++; /* skip '[' */
+    if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
+    cj_skip_ws(c);
+    if (c->cur < c->eof && *c->cur == ']') { c->cur++; goto arr_done; }
+    for (;;) {
+        if (!cj_parse_value(c)) return false;
+        ctoon_ctn_child_added(c);
+        cj_skip_ws(c);
+        if (c->cur >= c->eof)
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "unterminated array");
+        if (*c->cur == ']') { c->cur++; break; }
+        if (*c->cur != ',')
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                       "expected ',' or ']'");
+        c->cur++; /* skip ',' */
+        cj_skip_ws(c);
+    }
+arr_done:
+    ctoon_ctn_close(c, CTOON_TYPE_ARR);
+    return true;
+}
+
+/* ---- JSON object --------------------------------------------------------- */
+
+static bool cj_parse_object(ctoon_read_ctx *c) {
+    c->cur++; /* skip '{' */
+    if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+    cj_skip_ws(c);
+    if (c->cur < c->eof && *c->cur == '}') { c->cur++; goto obj_done; }
+    for (;;) {
+        cj_skip_ws(c);
+        if (c->cur >= c->eof || *c->cur != '"')
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                       "expected '\"' for key");
+        /* key */
+        ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
+        if (!kv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        if (!ctoon_parse_str_quoted(c, kv)) return false;
+        /* colon */
+        cj_skip_ws(c);
+        if (c->cur >= c->eof || *c->cur != ':')
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                       "expected ':'");
+        c->cur++;
+        cj_skip_ws(c);
+        /* value */
+        if (!cj_parse_value(c)) return false;
+        ctoon_ctn_child_added(c); /* one kv-pair */
+        cj_skip_ws(c);
+        if (c->cur >= c->eof)
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "unterminated object");
+        if (*c->cur == '}') { c->cur++; break; }
+        if (*c->cur != ',')
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                       "expected ',' or '}'");
+        c->cur++; /* skip ',' */
+    }
+obj_done:
+    ctoon_ctn_close(c, CTOON_TYPE_OBJ);
+    return true;
+}
+
+/* ---- JSON value dispatcher ----------------------------------------------- */
+
+static bool cj_parse_value(ctoon_read_ctx *c) {
+    cj_skip_ws(c);
+    if (c->cur >= c->eof)
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                   "unexpected end of input");
+    u8 ch = *c->cur;
+
+    /* string */
+    if (ch == '"') {
+        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+        if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        return ctoon_parse_str_quoted(c, vv);
+    }
+    /* object */
+    if (ch == '{') return cj_parse_object(c);
+    /* array */
+    if (ch == '[') return cj_parse_array(c);
+    /* number */
+    if (ch == '-' || (ch >= '0' && ch <= '9')) {
+        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+        if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        return cj_parse_number(c, vv);
+    }
+    /* true */
+    if (c->eof - c->cur >= 4
+        && c->cur[0]=='t' && c->cur[1]=='r' && c->cur[2]=='u' && c->cur[3]=='e') {
+        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+        if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        vv->tag = CTOON_TYPE_BOOL | CTOON_SUBTYPE_TRUE; vv->uni.u64 = 0;
+        c->cur += 4; return true;
+    }
+    /* false */
+    if (c->eof - c->cur >= 5
+        && c->cur[0]=='f' && c->cur[1]=='a' && c->cur[2]=='l'
+        && c->cur[3]=='s' && c->cur[4]=='e') {
+        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+        if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        vv->tag = CTOON_TYPE_BOOL | CTOON_SUBTYPE_FALSE; vv->uni.u64 = 0;
+        c->cur += 5; return true;
+    }
+    /* null */
+    if (c->eof - c->cur >= 4
+        && c->cur[0]=='n' && c->cur[1]=='u' && c->cur[2]=='l' && c->cur[3]=='l') {
+        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+        if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        vv->tag = CTOON_TYPE_NULL; vv->uni.u64 = 0;
+        c->cur += 4; return true;
+    }
+    return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                               "unexpected character");
+}
+
+/* ---- JSON document builder ---------------------------------------------- */
+
+static ctoon_doc *cj_build_doc(char *dat, usize len,
+                                ctoon_read_flag flags,
+                                ctoon_alc alc,
+                                ctoon_read_err *err) {
+    /* Reuse ctoon_read_build_doc's setup by constructing our own ctx.
+       We cannot call ctoon_read_build_doc directly because it dispatches
+       to the TOON parser; instead we duplicate its setup/teardown here,
+       sharing all the pool helpers. */
+    ctoon_read_ctx c;
+    memset(&c, 0, sizeof(c));
+    c.flags = flags;
+    c.err   = err;
+
+    bool insitu = ctoon_has_flag(flags, CTOON_READ_INSITU);
+
+    /* padded input copy */
+    if (insitu) {
+        c.hdr = (const u8 *)dat; c.eof = (const u8 *)dat + len; c.cur = c.hdr;
+    } else {
+        if (len >= USIZE_MAX - CTOON_PADDING_SIZE) {
+            ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+            return NULL;
+        }
+        u8 *buf = (u8 *)alc.malloc(alc.ctx, len + CTOON_PADDING_SIZE);
+        if (!buf) { ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC); return NULL; }
+        memcpy(buf, dat, len); memset(buf + len, 0, CTOON_PADDING_SIZE);
+        c.hdr = buf; c.eof = buf + len; c.cur = buf;
+    }
+
+    /* val pool */
+    usize hdr_slots = (sizeof(ctoon_doc) + sizeof(ctoon_val) - 1) / sizeof(ctoon_val);
+    usize est_vals  = len / 8 + 8;
+    c.hdr_slots = hdr_slots;
+    if (!ctoon_read_vpool_init(&c.vp, alc, hdr_slots, est_vals)) {
+        ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        goto fail_input;
+    }
+
+    /* container stack */
+    if (!ctoon_ctn_stack_init(&c.st, alc)) {
+        ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        goto fail_vpool;
+    }
+    c.st.frames[0] = (ctoon_ctn_frame){ hdr_slots, 0 };
+
+    /* string pool */
+    if (!ctoon_str_pool_buf_init(&c.sp, alc, len)) {
+        ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+        goto fail_stack;
+    }
+
+    /* skip BOM */
+    if (ctoon_has_flag(flags, CTOON_READ_ALLOW_BOM)
+        && len >= 3 && is_utf8_bom(c.cur)) c.cur += 3;
+
+    /* skip leading whitespace */
+    cj_skip_ws(&c);
+
+    if (c.cur >= c.eof) {
+        /* empty → empty object */
+        ctoon_val *rv = ctoon_read_vpool_alloc(&c.vp);
+        if (!rv) { ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC); goto fail_spool; }
+        rv->tag     = (u64)CTOON_TYPE_OBJ;
+        rv->uni.ofs = sizeof(ctoon_val);
+        goto done;
+    }
+
+    if (!cj_parse_value(&c)) goto fail_spool;
+
+    /* skip trailing whitespace and ensure nothing follows */
+    cj_skip_ws(&c);
+    if (c.cur < c.eof) {
+        ctoon_read_set_err(&c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                            "trailing garbage after JSON value");
+        goto fail_spool;
+    }
+
+done:;
+    ctoon_ctn_stack_free(&c.st);
+    if (!insitu) alc.free(alc.ctx, (void *)c.hdr);
+
+    ctoon_doc *doc = (ctoon_doc *)(void *)c.vp.base;
+    memset(doc, 0, sizeof(ctoon_doc));
+    doc->root      = c.vp.base + hdr_slots;
+    doc->alc       = alc;
+    doc->dat_read  = (usize)(c.cur - c.hdr);
+    doc->val_read  = (usize)(c.vp.cur - doc->root);
+    doc->str_pool  = c.sp.buf;
+
+    /* trim val pool */
+    {
+        usize used = (usize)(c.vp.cur - c.vp.base);
+        ctoon_val *t = (ctoon_val *)alc.realloc(alc.ctx, c.vp.base,
+            c.vp.cap * sizeof(ctoon_val), used * sizeof(ctoon_val));
+        if (t) { doc = (ctoon_doc *)(void *)t; doc->root = t + hdr_slots; }
+    }
+    if (err) memset(err, 0, sizeof(*err));
+    return doc;
+
+fail_spool:
+    ctoon_str_pool_buf_free(&c.sp, alc);
+fail_stack:
+    ctoon_ctn_stack_free(&c.st);
+fail_vpool:
+    alc.free(alc.ctx, c.vp.base);
+fail_input:
+    if (!insitu) alc.free(alc.ctx, (void *)c.hdr);
+    return NULL;
+}
+
+/* ---- Public API ---------------------------------------------------------- */
+
+ctoon_doc *ctoon_read_json(char *dat, usize len,
+                            ctoon_read_flag flg,
+                            const ctoon_alc *alc_ptr,
+                            ctoon_read_err *err) {
+    ctoon_read_err tmp;
+    if (!err) err = &tmp;
+    ctoon_alc alc = alc_ptr ? *alc_ptr : CTOON_DEFAULT_ALC;
+    if (!dat) {
+        err->code = CTOON_READ_ERROR_INVALID_PARAMETER; err->msg = "input is NULL"; err->pos = 0;
+        return NULL;
+    }
+    if (!len) {
+        err->code = CTOON_READ_ERROR_INVALID_PARAMETER; err->msg = "length is 0"; err->pos = 0;
+        return NULL;
+    }
+    return cj_build_doc(dat, len, flg, alc, err);
+}
+
+ctoon_doc *ctoon_read_json_file(const char *path,
+                                 ctoon_read_flag flg,
+                                 const ctoon_alc *alc_ptr,
+                                 ctoon_read_err *err) {
+    ctoon_read_err tmp;
+    if (!err) err = &tmp;
+    if (!path) {
+        err->code = CTOON_READ_ERROR_INVALID_PARAMETER; err->msg = "path is NULL"; err->pos = 0;
+        return NULL;
+    }
+    FILE *f = fopen_safe(path, "rb");
+    if (!f) {
+        err->code = CTOON_READ_ERROR_FILE_OPEN; err->msg = "cannot open file"; err->pos = 0;
+        return NULL;
+    }
+    ctoon_doc *doc = ctoon_read_json_fp(f, flg, alc_ptr, err);  /* file helper */
+    fclose(f);
+    return doc;
+}
+
+ctoon_doc *ctoon_read_json_fp(FILE *file,
+                               ctoon_read_flag flg,
+                               const ctoon_alc *alc_ptr,
+                               ctoon_read_err *err) {
+    ctoon_read_err tmp;
+    if (!err) err = &tmp;
+    ctoon_alc alc = alc_ptr ? *alc_ptr : CTOON_DEFAULT_ALC;
+    if (!file) {
+        err->code = CTOON_READ_ERROR_INVALID_PARAMETER; err->msg = "file is NULL"; err->pos = 0;
+        return NULL;
+    }
+    usize len  = 0;
+    char *buf  = ctoon_read_file_to_buf(file, &len, alc);
+    if (!buf) {
+        err->code = CTOON_READ_ERROR_FILE_READ; err->msg = "cannot read file"; err->pos = 0;
+        return NULL;
+    }
+    ctoon_doc *doc = cj_build_doc(buf, len,
+                                   flg & (ctoon_read_flag)~CTOON_READ_INSITU, alc, err);
+    alc.free(alc.ctx, buf);
+    return doc;
+}
+
+#endif /* CTOON_DISABLE_JSON */
+
 #endif /* CTOON_DISABLE_READER */
 
 /*==============================================================================
@@ -4591,10 +4994,15 @@ ctoon_api char *ctoon_write_number(const ctoon_val *val, char *buf) {
     w.buf = NULL; /* prevent free */
     return buf;
 }
+#endif /* CTOON_DISABLE_WRITER */
 
+
+
+
+#if !(!defined(CTOON_ENABLE_JSON) || !CTOON_ENABLE_JSON)
 
 /*==============================================================================
- * MARK: - JSON Serializer (Public)
+ * MARK: - JSON Serializer
  *
  * Traverses the flat ctoon_val pool and emits RFC 8259 JSON.
  * Shares the ctoon_write_ctx buffer infrastructure from the TOON writer.
@@ -4781,9 +5189,9 @@ static char *cj_doc_write(const ctoon_val *root,
     return (char *)w.buf;
 }
 
-ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
-                                   int indent,
-                                   ctoon_write_flag flags,
+ctoon_api char *ctoon_write_json(const ctoon_doc *doc,
+                                  int indent,
+                                  ctoon_write_flag flg,
                                    const ctoon_alc *alc,
                                    size_t *len,
                                    ctoon_write_err *err) {
@@ -4795,12 +5203,12 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
         if (len) *len = 0;
         return NULL;
     }
-    return cj_doc_write(doc->root, indent, flags, alc, (usize *)len, err);
+    return cj_doc_write(doc->root, indent, flg, alc, (usize *)len, err);
 }
 
-ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
-                                       int indent,
-                                       ctoon_write_flag flags,
+ctoon_api char *ctoon_write_json_mut(const ctoon_mut_doc *doc,
+                                      int indent,
+                                      ctoon_write_flag flg,
                                        const ctoon_alc *alc,
                                        size_t *len,
                                        ctoon_write_err *err) {
@@ -4821,13 +5229,13 @@ ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
         if (len) *len = 0;
         return NULL;
     }
-    char *result = cj_doc_write(imut->root, indent, flags, alc,
+    char *result = cj_doc_write(imut->root, indent, flg, alc,
                                  (usize *)len, err);
     ctoon_doc_free(imut);
     return result;
 }
 
-#endif /* CTOON_DISABLE_WRITER */
+#endif /* CTOON_ENABLE_JSON */
 
 
 

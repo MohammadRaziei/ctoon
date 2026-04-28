@@ -79,6 +79,13 @@
 #endif
 
 /*
+ Define as 1 to enable the JSON reader and writer.
+ This enables ctoon_read_json*, ctoon_write_json* functions.
+ */
+#ifndef CTOON_ENABLE_JSON
+#endif
+
+/*
  Define as 1 to disable the fast floating-point number conversion in ctoon.
  Libc's `strtod/snprintf` will be used instead.
 
@@ -1334,15 +1341,78 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
                                    size_t *len,
                                    ctoon_write_err *err);
 
-/** Same as ctoon_doc_to_json() but operates on a mutable document. */
-ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
-                                       int indent,
-                                       ctoon_write_flag flags,
-                                       const ctoon_alc *alc,
-                                       size_t *len,
-                                       ctoon_write_err *err);
-
 #endif /* CTOON_DISABLE_WRITER */
+
+
+
+/*==============================================================================
+ * MARK: - JSON API
+ *============================================================================*/
+
+#if !(!defined(CTOON_ENABLE_JSON) && !CTOON_ENABLE_JSON)
+
+/**
+ * Parse a JSON string into a ctoon_doc.
+ *
+ * The returned document has the same flat ctoon_val pool layout as one
+ * produced by ctoon_read(). The full ctoon API (ctoon_obj_get,
+ * ctoon_arr_iter, ctoon_get_str, …) works on JSON-sourced documents
+ * without any conversion step.
+ *
+ * @param dat  Input bytes (UTF-8, null-terminator not required).
+ * @param len  Byte count. Must be > 0.
+ * @param flg  CTOON_READ_* flags (BOM, INSITU, etc.).
+ * @param alc  Allocator, or NULL for the default libc allocator.
+ * @param err  Receives error details on failure; may be NULL.
+ * @return     Heap-allocated document, or NULL on failure.
+ *             The caller must release it with ctoon_doc_free().
+ */
+ctoon_api ctoon_doc *ctoon_read_json(char *dat, size_t len,
+                                      ctoon_read_flag flg,
+                                      const ctoon_alc *alc,
+                                      ctoon_read_err *err);
+
+/** Parse a JSON file from disk. */
+ctoon_api ctoon_doc *ctoon_read_json_file(const char *path,
+                                           ctoon_read_flag flg,
+                                           const ctoon_alc *alc,
+                                           ctoon_read_err *err);
+
+/** Parse JSON from an open FILE pointer. */
+ctoon_api ctoon_doc *ctoon_read_json_fp(FILE *fp,
+                                         ctoon_read_flag flg,
+                                         const ctoon_alc *alc,
+                                         ctoon_read_err *err);
+
+/**
+ * Serialize a ctoon_doc to a JSON string.
+ *
+ * @param doc     The document to serialize. Must not be NULL.
+ * @param indent  Spaces per indent level. 0 = compact (no whitespace).
+ * @param flg     CTOON_WRITE_* flags (ESCAPE_UNICODE,
+ *                ALLOW_INF_AND_NAN, INF_AND_NAN_AS_NULL, …).
+ * @param alc     Allocator, or NULL for the default.
+ * @param len     Receives output byte count (excl. null terminator); may be NULL.
+ * @param err     Receives error details on failure; may be NULL.
+ * @return        Heap-allocated null-terminated JSON string, or NULL on failure.
+ *                The caller must free() the returned pointer.
+ */
+ctoon_api char *ctoon_write_json(const ctoon_doc *doc,
+                                  int indent,
+                                  ctoon_write_flag flg,
+                                  const ctoon_alc *alc,
+                                  size_t *len,
+                                  ctoon_write_err *err);
+
+/** Same as ctoon_write_json() but operates on a mutable document. */
+ctoon_api char *ctoon_write_json_mut(const ctoon_mut_doc *doc,
+                                      int indent,
+                                      ctoon_write_flag flg,
+                                      const ctoon_alc *alc,
+                                      size_t *len,
+                                      ctoon_write_err *err);
+
+#endif /* CTOON_DISABLE_JSON */
 
 
 
