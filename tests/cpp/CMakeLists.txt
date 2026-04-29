@@ -36,7 +36,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${LCOV_EXECUTABLE}
                 --ignore-errors mismatch
                 --capture
-                --directory ${CTOON_TEST_BINARY_DIR}
+                --directory ${CMAKE_CURRENT_BINARY_DIR}
                 --base-directory ${PROJECT_SOURCE_DIR}
                 --no-external
                 --rc function_coverage=1
@@ -47,14 +47,14 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
                 ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
-                "*/ctoon*"
+                "*/ctoon.*"
                 --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
         COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
         COMMAND ${LCOV_EXECUTABLE}
-            --remove
-            ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
-            "*/tests/*"
-            --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
+                --remove
+                ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
+                "*/tests/*"
+                --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
         COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
 
         # Generate HTML report
@@ -93,12 +93,12 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     # Add custom command to run GenerateIframe.cmake after coverage target
     add_custom_command(TARGET ctoon_coverage_cpp POST_BUILD
         COMMAND ${CMAKE_COMMAND}
-            -DIFRAME_SRC="html/index.html"
-            -DSECTION_TITLE="C++%20Core"
-            -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
-            -DPROJECT_NAME="${PROJECT_NAME}"
-            -DOUTPUT_DIR="${CTOON_COVERAGE_CPP_BINARY_DIR}"
-            -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+                -DIFRAME_SRC="html/index.html"
+                -DSECTION_TITLE="C++%20Core"
+                -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+                -DPROJECT_NAME="${PROJECT_NAME}"
+                -DOUTPUT_DIR="${CTOON_COVERAGE_CPP_BINARY_DIR}"
+                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
         COMMENT "Generating iframe wrapper for C++ coverage report"
         WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
     )

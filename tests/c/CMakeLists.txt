@@ -48,19 +48,19 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${LCOV_EXECUTABLE}
                 -c
                 --base-directory ${PROJECT_SOURCE_DIR}
-                --directory ${CMAKE_BINARY_DIR}
+                --directory ${CMAKE_CURRENT_BINARY_DIR}
                 --exclude "*/tests/*"
                 --no-external
                 --rc function_coverage=1
-                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
+                --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
         # Extract only ctoon source files
         COMMAND ${CMAKE_COMMAND} -E echo "Filtering ctoon source files..."
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
-                ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
-                "*/ctoon*"
+                ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
+                "*/ctoon.*"
                 --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
-        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
+        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_temp.lcov
 
         # Generate HTML report
         COMMAND ${CMAKE_COMMAND} -E echo "-- Generating HTML report..."
@@ -98,12 +98,12 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     # Add custom command to run GenerateIframe.cmake after coverage target
     add_custom_command(TARGET ctoon_coverage_c POST_BUILD
         COMMAND ${CMAKE_COMMAND}
-            -DIFRAME_SRC="html/index.html"
-            -DSECTION_TITLE="C%20Core"
-            -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
-            -DPROJECT_NAME="${PROJECT_NAME}"
-            -DOUTPUT_DIR="${CTOON_COVERAGE_C_BINARY_DIR}"
-            -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+                -DIFRAME_SRC="html/index.html"
+                -DSECTION_TITLE="C%20Core"
+                -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+                -DPROJECT_NAME="${PROJECT_NAME}"
+                -DOUTPUT_DIR="${CTOON_COVERAGE_C_BINARY_DIR}"
+                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
         COMMENT "Generating iframe wrapper for C coverage report"
         WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
     )
