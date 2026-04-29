@@ -29,7 +29,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
     target_link_options(test_ctoon_c PRIVATE --coverage)
     
     # Also add coverage to ctoon library for this test
-    set_target_properties(ctoon PROPERTIES
+    set_target_properties(test_ctoon_c PROPERTIES
         COMPILE_OPTIONS "--coverage"
         LINK_OPTIONS "--coverage"
     )
