@@ -233,3 +233,117 @@ UTEST(ctoon_cpp_tests, test_read_flags) {
 }
 
 UTEST_MAIN();
+/* =========================================================================
+ * JSON API – C++ binding  (requires CTOON_ENABLE_JSON=1)
+ * ========================================================================= */
+
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
+
+UTEST(ctoon_cpp_tests, test_parse_json_object) {
+    auto doc = ctoon::document::parse_json("{\"name\":\"Eve\",\"age\":28,\"ok\":true}");
+    ASSERT_TRUE(doc);
+
+    ctoon::value root = doc.root();
+    ASSERT_TRUE(root.is_obj());
+
+    ctoon::value name = root["name"];
+    ASSERT_TRUE(name.is_str());
+    ASSERT_STREQ("Eve", std::string(name.get_str()).c_str());
+
+    ctoon::value age = root["age"];
+    ASSERT_TRUE(age.is_num());
+    ASSERT_EQ(28U, age.get_uint());
+
+    ASSERT_TRUE(root["ok"].is_true());
+}
+
+UTEST(ctoon_cpp_tests, test_parse_json_array) {
+    auto doc = ctoon::document::parse_json("[1,2,3]");
+    ASSERT_TRUE(doc);
+
+    ctoon::value root = doc.root();
+    ASSERT_TRUE(root.is_arr());
+    ASSERT_EQ(3U, root.arr_size());
+    ASSERT_EQ(1U, root[(std::size_t)0].get_uint());
+    ASSERT_EQ(2U, root[(std::size_t)1].get_uint());
+    ASSERT_EQ(3U, root[(std::size_t)2].get_uint());
+}
+
+UTEST(ctoon_cpp_tests, test_parse_json_string_view) {
+    std::string src = "{\"x\":42}";
+    auto doc = ctoon::document::parse_json(src);
+    ASSERT_TRUE(doc);
+    ASSERT_EQ(42U, doc.root()["x"].get_uint());
+}
+
+UTEST(ctoon_cpp_tests, test_document_to_json) {
+    /* Parse TOON, serialize as JSON */
+    auto doc = ctoon::document::parse("name: Frank\nage: 35");
+    ASSERT_TRUE(doc);
+
+    ctoon::write_result r = doc.to_json(0);
+    std::string json = r.str();
+    ASSERT_FALSE(json.empty());
+    ASSERT_TRUE(json.find("Frank") != std::string::npos);
+    ASSERT_TRUE(json.find("\"name\"") != std::string::npos);
+}
+
+UTEST(ctoon_cpp_tests, test_mut_document_to_json) {
+    /* Build mutable doc, serialize as JSON */
+    ctoon::mut_document doc = ctoon::mut_document::create();
+    ctoon::mut_value obj = doc.make_obj();
+    doc.set_root(obj);
+    obj.obj_put(doc.make_str("city"), doc.make_str("Tehran"));
+    obj.obj_put(doc.make_str("pop"), doc.make_sint(9000000));
+
+    ctoon::write_result r = doc.to_json(0);
+    std::string json = r.str();
+    ASSERT_FALSE(json.empty());
+    ASSERT_TRUE(json.find("Tehran") != std::string::npos);
+    ASSERT_TRUE(json.find("\"city\"") != std::string::npos);
+}
+
+UTEST(ctoon_cpp_tests, test_free_function_to_json_doc) {
+    auto doc = ctoon::document::parse("score: 99");
+    ASSERT_TRUE(doc);
+    std::string json = ctoon::to_json(doc, 0).str();
+    ASSERT_TRUE(json.find("99") != std::string::npos);
+}
+
+UTEST(ctoon_cpp_tests, test_free_function_to_json_mut_doc) {
+    ctoon::mut_document doc = ctoon::mut_document::create();
+    ctoon::mut_value obj = doc.make_obj();
+    doc.set_root(obj);
+    obj.obj_put(doc.make_str("k"), doc.make_str("v"));
+    std::string json = ctoon::to_json(doc, 0).str();
+    ASSERT_TRUE(json.find("\"k\"") != std::string::npos);
+}
+
+UTEST(ctoon_cpp_tests, test_json_roundtrip_cpp) {
+    /* JSON → document → JSON should contain same keys */
+    std::string src = "{\"a\":1,\"b\":2,\"c\":3}";
+    auto doc = ctoon::document::parse_json(src);
+    ASSERT_TRUE(doc);
+
+    std::string out = doc.to_json(0).str();
+    ASSERT_TRUE(out.find("\"a\"") != std::string::npos);
+    ASSERT_TRUE(out.find("\"b\"") != std::string::npos);
+    ASSERT_TRUE(out.find("\"c\"") != std::string::npos);
+}
+
+UTEST(ctoon_cpp_tests, test_toon_json_toon_roundtrip) {
+    /* TOON → JSON → JSON-parse → check value */
+    auto tdoc = ctoon::document::parse("val: 123\nname: Grace");
+    ASSERT_TRUE(tdoc);
+
+    std::string json = tdoc.to_json(0).str();
+
+    auto jdoc = ctoon::document::parse_json(json);
+    ASSERT_TRUE(jdoc);
+
+    ctoon::value root = jdoc.root();
+    ASSERT_EQ(123U, root["val"].get_uint());
+    ASSERT_STREQ("Grace", std::string(root["name"].get_str()).c_str());
+}
+
+#endif /* CTOON_ENABLE_JSON */

@@ -47,7 +47,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
                 ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
-                "*/ctoon/*"
+                "*/ctoon*"
                 --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
         COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
         COMMAND ${LCOV_EXECUTABLE}
