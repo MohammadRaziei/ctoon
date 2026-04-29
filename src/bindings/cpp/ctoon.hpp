@@ -864,73 +864,42 @@ public:
 
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
     /**
-     * @brief Parse a JSON byte sequence into a TOON document.
-     *
-     * The returned document uses the same flat ctoon_val pool layout as
-     * one produced by parse(), so the full ctoon API works without any
-     * conversion step.
-     *
-     * @param json   Input pointer (need not be null-terminated).
-     * @param len    Byte count.
+     * @brief Parse a JSON string into a TOON document.
+     * @param json   Input (pointer+len, null-terminated, std::string, or string_view).
      * @param flags  @c CTOON_READ_* flags.
      * @throws ctoon::parse_error on failure.
      */
-    static document parse_json(const char *json, std::size_t len,
-                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+    static document from_json(const char *json, std::size_t len,
+                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
         ctoon_read_err err; std::memset(&err, 0, sizeof(err));
         ctoon_doc *d = ctoon_read_json(const_cast<char *>(json),
                                         len, flags, NULL, &err);
         if (!d) throw parse_error(err);
         return document(d);
     }
-
-    /// @overload Null-terminated JSON string.
-    static document parse_json(const char *json,
-                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json, std::strlen(json), flags);
+    /// @overload
+    static document from_json(const char *json,
+                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+        return from_json(json, std::strlen(json), flags);
+    }
+    /// @overload
+    static document from_json(const std::string &json,
+                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+        return from_json(json.data(), json.size(), flags);
+    }
+    /// @overload
+    static document from_json(string_view json,
+                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+        return from_json(json.data(), json.size(), flags);
     }
 
-    /// @overload std::string.
-    static document parse_json(const std::string &json,
-                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json.data(), json.size(), flags);
-    }
-
-    /// @overload string_view.
-    static document parse_json(string_view json,
-                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json.data(), json.size(), flags);
-    }
-
-    /** Parse a JSON file from disk into a TOON document. */
-    static document parse_json_file(const char *path,
-                                     ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+    /** @brief Parse a JSON file from disk into a TOON document. */
+    static document from_json_file(const char *path,
+                                    ctoon_read_flag flags = CTOON_READ_NOFLAG) {
         ctoon_read_err err; std::memset(&err, 0, sizeof(err));
         ctoon_doc *d = ctoon_read_json_file(path, flags, NULL, &err);
         if (!d) throw parse_error(err);
         return document(d);
-    }
-
-    /* --- from_json aliases (more idiomatic C++ name) ---------------- */
-    static document from_json(const char *json, std::size_t len,
-                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json, len, flags);
-    }
-    static document from_json(const char *json,
-                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json, flags);
-    }
-    static document from_json(const std::string &json,
-                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json, flags);
-    }
-    static document from_json(string_view json,
-                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json(json, flags);
-    }
-    static document from_json_file(const char *path,
-                                    ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse_json_file(path, flags);
     }
 #endif /* CTOON_ENABLE_JSON */
 
@@ -1194,20 +1163,9 @@ inline write_result write(const mut_document &d,
  * @throws ctoon::write_error on failure.
  */
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
-inline write_result to_json(const document &d,
-                              int indent = 2,
-                              ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
-    return d.to_json(indent, flags);
-}
 
-/// @overload
-inline write_result to_json(const mut_document &d,
-                              int indent = 2,
-                              ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
-    return d.to_json(indent, flags);
-}
+/* --- JSON input ----------------------------------------------------- */
 
-/// Parse a JSON string into a document (free-function alias for document::from_json).
 inline document from_json(const char *json, std::size_t len,
                             ctoon_read_flag flags = CTOON_READ_NOFLAG) {
     return document::from_json(json, len, flags);
@@ -1227,6 +1185,57 @@ inline document from_json(string_view json,
                             ctoon_read_flag flags = CTOON_READ_NOFLAG) {
     return document::from_json(json, flags);
 }
+inline document from_json_file(const char *path,
+                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
+    return document::from_json_file(path, flags);
+}
+
+/* --- JSON output ---------------------------------------------------- */
+
+inline write_result to_json(const document &d, int indent = 2,
+                              ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
+    return d.to_json(indent, flags);
+}
+/// @overload
+inline write_result to_json(const mut_document &d, int indent = 2,
+                              ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
+    return d.to_json(indent, flags);
+}
+
+/**
+ * @brief Serialize a document to a JSON file on disk.
+ * @param path    Output file path.
+ * @param indent  Spaces per indent level. 0 = compact.
+ * @throws ctoon::write_error on failure.
+ */
+inline void to_json_file(const document &d, const char *path,
+                           int indent = 2,
+                           ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
+    ctoon_write_err err; std::memset(&err, 0, sizeof(err));
+    size_t len = 0;
+    char *raw = ctoon_doc_to_json(d.raw(), indent, flags, NULL, &len, &err);
+    if (!raw) throw write_error(err);
+    FILE *fp = std::fopen(path, "wb");
+    if (!fp) { std::free(raw); throw write_error(err); }
+    std::fwrite(raw, 1, len, fp);
+    std::fclose(fp);
+    std::free(raw);
+}
+/// @overload for mut_document
+inline void to_json_file(const mut_document &d, const char *path,
+                           int indent = 2,
+                           ctoon_write_flag flags = CTOON_WRITE_NOFLAG) {
+    ctoon_write_err err; std::memset(&err, 0, sizeof(err));
+    size_t len = 0;
+    char *raw = ctoon_mut_doc_to_json(d.raw(), indent, flags, NULL, &len, &err);
+    if (!raw) throw write_error(err);
+    FILE *fp = std::fopen(path, "wb");
+    if (!fp) { std::free(raw); throw write_error(err); }
+    std::fwrite(raw, 1, len, fp);
+    std::fclose(fp);
+    std::free(raw);
+}
+
 #endif /* CTOON_ENABLE_JSON */
 
 } // namespace ctoon
