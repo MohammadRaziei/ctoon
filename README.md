@@ -7,6 +7,7 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C11](https://img.shields.io/badge/C-11-blue.svg)](https://en.cppreference.com/w/c/11)
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![CMake](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
@@ -18,7 +19,7 @@ A C implementation of the [TOON format](https://github.com/toon-format/spec) —
 ## Quick Start
 
 ```bash
-cmake -B build && cmake --build build
+cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 ./build/ctoon data.json          # JSON → TOON
 ./build/ctoon data.toon          # TOON → JSON
 cat data.json | ./build/ctoon    # stdin → TOON
@@ -40,6 +41,24 @@ TOON encodes structured data efficiently:
   }                                    Book,2
 }                                      Pen,5
 ```
+
+## Build
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j4
+ctest --test-dir build       # run tests
+```
+
+### CMake options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
+| `CTOON_BUILD_PYTHON` | OFF | Build Python bindings |
+| `CTOON_WITHOUT_JSON` | OFF | Disable built-in JSON reader/writer |
+
+JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). The CLI uses it directly — no external JSON library is required.
 
 ## CLI
 
@@ -73,57 +92,76 @@ cat data.toon | ctoon -d -
 ```c
 #include "ctoon.h"
 
-// --- Parse ---
-ctoon_doc *doc = ctoon_decode("name: Alice\nage: 30", 20);
+/* ---- Parse TOON ---- */
+ctoon_doc *doc = ctoon_read("name: Alice\nage: 30", 20, 0);
 ctoon_val *root = ctoon_doc_get_root(doc);
 
-// --- Access ---
-ctoon_val *name = ctoon_obj_get(root, "name");   // O(k)
-ctoon_val *v0   = ctoon_arr_get(arr, 0);          // O(1)
-ctoon_val *key  = ctoon_obj_get_key_at(obj, i);   // O(1), thread-safe
-ctoon_val *val  = ctoon_obj_get_val_at(obj, i);   // O(1), thread-safe
+/* ---- Access ---- */
+ctoon_val *name = ctoon_obj_get(root, "name");   /* O(k) linear scan */
+ctoon_val *v0   = ctoon_arr_get(arr, 0);          /* O(1) */
 
-// --- Iterate (full tree: O(n)) ---
-for (size_t i = 0; i < ctoon_obj_size(root); i++) {
-    ctoon_val *k = ctoon_obj_get_key_at(root, i);
-    ctoon_val *v = ctoon_obj_get_val_at(root, i);
-    // use ctoon_get_str(k), ctoon_get_type(v), etc.
+/* ---- Type queries ---- */
+ctoon_is_null(v)   ctoon_is_bool(v)   ctoon_is_num(v)
+ctoon_is_str(v)    ctoon_is_arr(v)    ctoon_is_obj(v)
+ctoon_is_true(v)   ctoon_is_false(v)
+ctoon_is_uint(v)   ctoon_is_sint(v)   ctoon_is_real(v)
+
+/* ---- Getters ---- */
+ctoon_get_str(v)   ctoon_get_uint(v)   ctoon_get_sint(v)
+ctoon_get_real(v)  ctoon_get_int(v)    ctoon_get_bool(v)
+ctoon_get_len(v)
+
+/* ---- Iterate object ---- */
+ctoon_obj_iter iter = ctoon_obj_iter_with(root);
+ctoon_val *key;
+while ((key = ctoon_obj_iter_next(&iter)) != NULL) {
+    ctoon_val *val = ctoon_obj_iter_get_val(key);
+    /* ctoon_get_str(key), ctoon_get_type(val), … */
 }
 
-// --- Type queries ---
-ctoon_is_null(v)    ctoon_is_bool(v)    ctoon_is_num(v)
-ctoon_is_str(v)     ctoon_is_arr(v)     ctoon_is_obj(v)
-ctoon_get_subtype(v)  // UINT / SINT / REAL
+/* ---- Iterate array ---- */
+ctoon_arr_iter it = ctoon_arr_iter_with(arr);
+ctoon_val *item;
+while ((item = ctoon_arr_iter_next(&it)) != NULL) { /* … */ }
 
-// --- Getters ---
-ctoon_get_str(v)    ctoon_get_uint(v)   ctoon_get_sint(v)
-ctoon_get_real(v)   ctoon_get_int(v)    ctoon_get_len(v)
-
-// --- Encode ---
+/* ---- Encode to TOON ---- */
 size_t len;
-char *toon = ctoon_encode(doc, &len);   // caller must free()
+char *toon = ctoon_write(doc, &len);   /* caller must free() */
 free(toon);
 
-// --- With options ---
+/* ---- Encode with options ---- */
 ctoon_write_options opts = {
     .flag      = CTOON_WRITE_LENGTH_MARKER,
     .delimiter = CTOON_DELIMITER_PIPE,
     .indent    = 2,
 };
-ctoon_err err = {};
-char *out = ctoon_encode_opts(doc, &opts, &len, &err);
+ctoon_write_err err = {};
+char *out = ctoon_write_opts(doc, &opts, NULL, &len, &err);
 
-// --- Build values ---
-ctoon_doc *doc2 = ctoon_doc_new(0);
-ctoon_val *obj  = ctoon_new_obj(doc2);
-ctoon_val *name = ctoon_new_str(doc2, "Alice");
-ctoon_val *age  = ctoon_new_uint(doc2, 30);
-ctoon_obj_set(doc2, obj, "name", name);
-ctoon_obj_set(doc2, obj, "age",  age);
-ctoon_doc_set_root(doc2, obj);
+/* ---- JSON input (requires CTOON_ENABLE_JSON=1) ---- */
+ctoon_doc *jdoc = ctoon_read_json(json_str, json_len, 0, NULL, NULL);
 
-// --- Cleanup ---
+/* ---- JSON output ---- */
+/* From immutable doc (O(n), zero copy): */
+char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, NULL);
+/* From mutable doc (O(n), one imut_copy pass): */
+char *json2 = ctoon_mut_doc_to_json(mdoc, 2, CTOON_WRITE_NOFLAG, NULL, &len, NULL);
+free(json); free(json2);
+
+/* ---- Build mutable document ---- */
+ctoon_mut_doc *mdoc = ctoon_mut_doc_new(NULL);
+ctoon_mut_val *obj  = ctoon_mut_obj(mdoc);
+ctoon_mut_obj_add_str(mdoc, obj, "name", "Alice");
+ctoon_mut_obj_add_uint(mdoc, obj, "age",  30);
+ctoon_mut_doc_set_root(mdoc, obj);
+
+/* ---- Convert between immutable and mutable ---- */
+ctoon_mut_doc *m = ctoon_doc_mut_copy(doc, NULL);   /* imut → mut  (deep copy) */
+ctoon_doc     *i = ctoon_mut_doc_imut_copy(m, NULL); /* mut  → imut (deep copy) */
+
+/* ---- Cleanup ---- */
 ctoon_doc_free(doc);
+ctoon_mut_doc_free(mdoc);
 ```
 
 ## C++ API
@@ -131,67 +169,86 @@ ctoon_doc_free(doc);
 ```cpp
 #include "ctoon.hpp"
 
-// Decode
-ctoon::Document doc = ctoon::decode("name: Alice\nage: 30");
-ctoon::Value root = doc.root();
+// Parse TOON
+ctoon::document doc = ctoon::document::parse("name: Alice\nage: 30");
+ctoon::value root = doc.root();
 
 // Access
-std::string name = root["name"].asString();
-int age          = root["age"].asInt();
-bool active      = root["active"].asBool();
+ctoon::string_view name = root["name"].get_str();
+uint64_t  age    = root["age"].get_uint();
+bool      active = root["active"].get_bool();
 
 // Iterate array
-for (ctoon::Value item : root["tags"]) {
-    std::cout << item.asString() << "\n";
+for (std::size_t i = 0; i < root["tags"].arr_size(); i++) {
+    ctoon::value item = root["tags"][i];
 }
 
-// Iterate object keys
-for (const std::string &key : root.keys()) {
-    ctoon::Value v = root[key];
+// Iterate object
+ctoon::value obj = root["person"];
+for (std::size_t i = 0; i < obj.obj_size(); i++) {
+    ctoon::value k = obj.obj_key_at(i);
+    ctoon::value v = obj.obj_val_at(i);
 }
 
 // Optional get
 if (auto v = root.get("optional_field")) {
-    std::cout << v->asString();
+    std::cout << v->get_str() << "\n";
 }
 
-// Encode
-std::string toon = doc.encode();
+// Encode to TOON
+ctoon::write_result toon = doc.encode();
+std::string toon_str = toon.str();
 
 // With options
-ctoon::EncodeOptions opts;
-opts.delimiter = ctoon::Delimiter::Pipe;
-opts.flag      = ctoon::WriteFlag::LengthMarker;
-std::string toon2 = doc.encode(opts);
+ctoon::write_options opts;
+opts.set_delimiter(ctoon::delimiter::PIPE);
+opts.set_flag(ctoon::write_flag::LENGTH_MARKER);
+ctoon::write_result toon2 = doc.encode(opts);
 
-// Build
-ctoon::Document doc2 = ctoon::Document::create();
-ctoon::Value obj  = doc2.newObject();
-ctoon::Value name = doc2.newString("Alice");
-doc2.objectSet(obj, "name", name);
-doc2.setRoot(obj);
+// JSON input/output (requires CTOON_ENABLE_JSON=1)
+ctoon::document jdoc = ctoon::document::parse_json("{\"x\":1}");
+ctoon::document jdoc2 = ctoon::document::parse_json(str);       // std::string
+ctoon::document jdoc3 = ctoon::document::parse_json(sv);        // string_view
+ctoon::document jdoc4 = ctoon::document::parse_json_file("f.json");
+
+ctoon::write_result json  = doc.to_json(2);   // immutable doc → JSON
+ctoon::write_result json2 = mdoc.to_json(2);  // mutable   doc → JSON
+
+// Free functions
+ctoon::write_result r  = ctoon::to_json(doc,  2);
+ctoon::write_result r2 = ctoon::to_json(mdoc, 2);
+
+// Build mutable
+ctoon::mut_document mdoc = ctoon::mut_document::create();
+ctoon::mut_value obj2 = mdoc.make_obj();
+mdoc.set_root(obj2);
+obj2.obj_put(mdoc.make_str("name"), mdoc.make_str("Alice"));
+obj2.obj_put(mdoc.make_str("age"),  mdoc.make_uint(30));
+
+// Convert immutable ↔ mutable
+ctoon::mut_document m = doc.mut_copy();
+ctoon::document     i = mdoc.imut_copy();
 
 // File I/O
-ctoon::Document doc3 = ctoon::Document::fromFile("data.toon");
-doc3.writeFile("out.toon");
+ctoon::document doc3 = ctoon::document::parse_file("data.toon");
+doc3.write_file("out.toon");
 ```
 
 ## Complexity
 
 | Operation | Time | Notes |
 |-----------|------|-------|
-| `ctoon_decode` / `ctoon_read` | O(n) | n = input bytes |
-| `ctoon_encode` / `ctoon_write` | O(n) | n = total nodes |
+| `ctoon_read` / `ctoon_read_json` | O(n) | n = input bytes |
+| `ctoon_write` / `ctoon_doc_to_json` | O(n) | n = total nodes, zero copy for imut |
+| `ctoon_mut_doc_to_json` | O(n) | one imut_copy pass then serialize |
 | `ctoon_arr_get(arr, i)` | **O(1)** | direct index |
-| `ctoon_obj_get_key_at(obj, i)` | **O(1)** | direct index, thread-safe |
-| `ctoon_obj_get_val_at(obj, i)` | **O(1)** | direct index, thread-safe |
 | `ctoon_obj_get(obj, key)` | O(k) | linear scan; k = key count |
-| Full tree traversal from root | **O(n)** | optimal; n = total nodes |
-| `ctoon_doc_free` | O(chunks) ≈ O(1) | frees arena in one pass |
+| `ctoon_obj_iter_next` | O(1) per step | |
+| `ctoon_doc_mut_copy` | O(n) | deep copy |
+| `ctoon_mut_doc_imut_copy` | O(n) | deep copy |
+| `ctoon_doc_free` | O(chunks) ≈ O(1) | arena freed in one pass |
 
-**Full tree traversal is O(n)** — each of the n nodes is visited exactly once. This is optimal since you must read every node. Stack depth is O(d) where d = nesting depth.
-
-`ctoon_obj_get(key)` is O(k) linear scan (no hash map). For deeply nested objects with many keys, prefer `ctoon_obj_get_key_at` / `ctoon_obj_get_val_at` in indexed loops.
+**Why no O(1) mut→imut cast?** Mutable documents use a circular doubly-linked list; immutable docs use a flat contiguous arena with `uni.ofs` offsets. The layouts are fundamentally different, so a zero-copy view is not possible — a full O(n) walk is required.
 
 ## Thread Safety
 
@@ -199,25 +256,9 @@ doc3.writeFile("out.toon");
 |-|-------|
 | Multiple threads reading different documents | ✅ Yes |
 | Multiple threads reading the same document | ✅ Yes |
-| `ctoon_obj_get_key_at` / `ctoon_obj_get_val_at` | ✅ Yes |
-| `ctoon_arr_get` | ✅ Yes |
+| `ctoon_arr_get` / `ctoon_arr_iter_next` | ✅ Yes |
 | `ctoon_obj_iter_get/next` | ⚠️ Thread-local (one iterator per thread) |
 | Writing/building a document from multiple threads | ❌ No (arena not thread-safe) |
-
-## Build
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j4
-ctest --test-dir build       # run tests
-```
-
-### CMake options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
-| `CTOON_BUILD_PYTHON` | OFF | Build Python bindings |
 
 ## License
 
