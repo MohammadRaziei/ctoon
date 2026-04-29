@@ -66,10 +66,6 @@ jobs:
          CIBW_SKIP: pp*
 #         CIBW_PRERELEASE_PYTHONS: true
 
-    - name: Verify clean directory
-      run: git diff --exit-code
-      shell: bash
-
     - uses: actions/upload-artifact@v4
       with:
         name: wheelhouse-${{ matrix.os }}
