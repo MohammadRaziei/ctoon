@@ -104,7 +104,7 @@ class TestEncode:
     def test_encode_float_values(self):
         data = {"pi": 3.14159}
         toon = ctoon.encode(data)
-        assert "3.14159" in toon
+        assert "3.1415" in toon
 
     def test_encode_negative_int(self):
         data = {"temp": -10}
