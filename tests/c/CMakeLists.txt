@@ -58,8 +58,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
                 ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
-                "*/include/ctoon.h"
-                "*/src/ctoon.c"
+                "*/ctoon*"
                 --output-file ${CTOON_COVERAGE_C_BINARY_DIR}/coverage.lcov
         COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_C_BINARY_DIR}/coverage_raw.lcov
 
