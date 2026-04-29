@@ -46,7 +46,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing C coverage..."
         # First capture all coverage, excluding test files to avoid mismatch errors
         COMMAND ${LCOV_EXECUTABLE}
-                -c
+                --capture
                 --base-directory ${PROJECT_SOURCE_DIR}
                 --directory ${CMAKE_CURRENT_BINARY_DIR}
                 --exclude "*/tests/*"

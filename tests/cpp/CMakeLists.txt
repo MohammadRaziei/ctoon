@@ -34,26 +34,19 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
         # Capture coverage data
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing coverage..."
         COMMAND ${LCOV_EXECUTABLE}
-                --ignore-errors mismatch
                 --capture
-                --directory ${CMAKE_CURRENT_BINARY_DIR}
                 --base-directory ${PROJECT_SOURCE_DIR}
+                --directory ${CMAKE_CURRENT_BINARY_DIR}
+                --exclude "*/tests/*"
                 --no-external
                 --rc function_coverage=1
-                --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
-
-        # Filter for ctoon files only
-        COMMAND ${CMAKE_COMMAND} -E echo "Filtering ctoon files..."
+                --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
+        # Extract only ctoon source files
+        COMMAND ${CMAKE_COMMAND} -E echo "Filtering ctoon source files..."
         COMMAND ${LCOV_EXECUTABLE}
                 --extract
-                ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
-                "*/ctoon.*"
-                --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
-        COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
-        COMMAND ${LCOV_EXECUTABLE}
-                --remove
                 ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
-                "*/tests/*"
+                "*/ctoon.*"
                 --output-file ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage.lcov
         COMMAND ${CMAKE_COMMAND} -E remove ${CTOON_COVERAGE_CPP_BINARY_DIR}/coverage_temp.lcov
 

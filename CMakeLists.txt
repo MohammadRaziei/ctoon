@@ -119,7 +119,7 @@ endif()
 install(DIRECTORY include DESTINATION .)
 
 # Print optimization summary
-print_optimization_summary()
+# print_optimization_summary()
 
 # Documentation (Doxygen + Sphinx)
 if(CTOON_BUILD_DOCS)
