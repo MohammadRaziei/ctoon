@@ -240,7 +240,7 @@ UTEST_MAIN();
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 
 UTEST(ctoon_cpp_tests, test_parse_json_object) {
-    auto doc = ctoon::document::parse_json("{\"name\":\"Eve\",\"age\":28,\"ok\":true}");
+    auto doc = ctoon::document::from_json("{\"name\":\"Eve\",\"age\":28,\"ok\":true}");
     ASSERT_TRUE(doc);
 
     ctoon::value root = doc.root();
@@ -258,7 +258,7 @@ UTEST(ctoon_cpp_tests, test_parse_json_object) {
 }
 
 UTEST(ctoon_cpp_tests, test_parse_json_array) {
-    auto doc = ctoon::document::parse_json("[1,2,3]");
+    auto doc = ctoon::document::from_json("[1,2,3]");
     ASSERT_TRUE(doc);
 
     ctoon::value root = doc.root();
@@ -271,7 +271,7 @@ UTEST(ctoon_cpp_tests, test_parse_json_array) {
 
 UTEST(ctoon_cpp_tests, test_parse_json_string_view) {
     std::string src = "{\"x\":42}";
-    auto doc = ctoon::document::parse_json(src);
+    auto doc = ctoon::document::from_json(src);
     ASSERT_TRUE(doc);
     ASSERT_EQ(42U, doc.root()["x"].get_uint());
 }
@@ -322,7 +322,7 @@ UTEST(ctoon_cpp_tests, test_free_function_to_json_mut_doc) {
 UTEST(ctoon_cpp_tests, test_json_roundtrip_cpp) {
     /* JSON → document → JSON should contain same keys */
     std::string src = "{\"a\":1,\"b\":2,\"c\":3}";
-    auto doc = ctoon::document::parse_json(src);
+    auto doc = ctoon::document::from_json(src);
     ASSERT_TRUE(doc);
 
     std::string out = doc.to_json(0).str();
@@ -338,7 +338,7 @@ UTEST(ctoon_cpp_tests, test_toon_json_toon_roundtrip) {
 
     std::string json = tdoc.to_json(0).str();
 
-    auto jdoc = ctoon::document::parse_json(json);
+    auto jdoc = ctoon::document::from_json(json);
     ASSERT_TRUE(jdoc);
 
     ctoon::value root = jdoc.root();
