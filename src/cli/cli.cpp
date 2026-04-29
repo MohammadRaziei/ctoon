@@ -5,7 +5,6 @@
 
 #include "ctoon.h"
 #include "CLI11.hpp"
-#include "json/yyjson.h"
 
 #include <fstream>
 #include <iostream>
@@ -105,76 +104,27 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
 }
 
 /* ============================================================
- * JSON → TOON  (yyjson_mut_val* → ctoon_mut_val*)
+ * JSON → TOON  (uses ctoon_read_json — no yyjson dependency)
  * ============================================================ */
-
-static ctoon_mut_val *json_val_to_toon(ctoon_mut_doc *tdoc,
-                                       yyjson_mut_val *val) {
-    if (!val || yyjson_mut_is_null(val))  return ctoon_mut_null(tdoc);
-    if (yyjson_mut_is_true(val))          return ctoon_mut_true(tdoc);
-    if (yyjson_mut_is_false(val))         return ctoon_mut_false(tdoc);
-
-    if (yyjson_mut_is_num(val)) {
-        yyjson_subtype sub = yyjson_mut_get_subtype(val);
-        if (sub == YYJSON_SUBTYPE_UINT) return ctoon_mut_uint(tdoc, yyjson_mut_get_uint(val));
-        if (sub == YYJSON_SUBTYPE_SINT) return ctoon_mut_sint(tdoc, yyjson_mut_get_sint(val));
-        return ctoon_mut_real(tdoc, yyjson_mut_get_real(val));
-    }
-
-    if (yyjson_mut_is_str(val))
-        return ctoon_mut_strncpy(tdoc, yyjson_mut_get_str(val),
-                                  yyjson_mut_get_len(val));
-
-    if (yyjson_mut_is_arr(val)) {
-        ctoon_mut_val *arr = ctoon_mut_arr(tdoc);
-        yyjson_mut_arr_iter it;
-        yyjson_mut_arr_iter_init(val, &it);
-        yyjson_mut_val *item;
-        while ((item = yyjson_mut_arr_iter_next(&it)))
-            ctoon_mut_arr_append(arr, json_val_to_toon(tdoc, item));
-        return arr;
-    }
-
-    if (yyjson_mut_is_obj(val)) {
-        ctoon_mut_val *obj = ctoon_mut_obj(tdoc);
-        yyjson_mut_obj_iter it;
-        yyjson_mut_obj_iter_init(val, &it);
-        yyjson_mut_val *key;
-        while ((key = yyjson_mut_obj_iter_next(&it))) {
-            yyjson_mut_val *v  = yyjson_mut_obj_iter_get_val(key);
-            ctoon_mut_val  *ck = ctoon_mut_strncpy(tdoc,
-                                                     yyjson_mut_get_str(key),
-                                                     yyjson_mut_get_len(key));
-            ctoon_mut_obj_add(obj, ck, json_val_to_toon(tdoc, v));
-        }
-        return obj;
-    }
-
-    return ctoon_mut_null(tdoc);
-}
 
 std::string jsonToToon(const std::string &input,
                        const ctoon_write_options &enc_opts) {
-    yyjson_read_err rerr;
+    /* Parse JSON directly into a ctoon immutable doc via ctoon_read_json.
+     * ctoon has a built-in JSON reader, so no yyjson is needed. */
+    ctoon_read_err rerr;
     memset(&rerr, 0, sizeof(rerr));
-    yyjson_doc *idoc = yyjson_read_opts(
+    ctoon_doc *idoc = ctoon_read_json(
         const_cast<char *>(input.data()), input.size(),
-        YYJSON_READ_NOFLAG, NULL, &rerr);
+        CTOON_READ_NOFLAG, NULL, &rerr);
     if (!idoc)
         throw std::runtime_error(std::string("JSON parse error at pos ")
-                                  + std::to_string(rerr.pos) + ": " + rerr.msg);
+                                  + std::to_string(rerr.pos) + ": "
+                                  + (rerr.msg ? rerr.msg : "unknown"));
 
-    /* Convert immutable yyjson doc to mutable so both sides use *_mut_ API */
-    yyjson_mut_doc *jdoc = yyjson_doc_mut_copy(idoc, NULL);
-    yyjson_doc_free(idoc);
-    if (!jdoc) throw std::runtime_error("yyjson_doc_mut_copy failed");
-
-    ctoon_mut_doc *tdoc = ctoon_mut_doc_new(NULL);
-    if (!tdoc) { yyjson_mut_doc_free(jdoc); throw std::bad_alloc(); }
-
-    ctoon_mut_doc_set_root(tdoc, json_val_to_toon(tdoc,
-                                       yyjson_mut_doc_get_root(jdoc)));
-    yyjson_mut_doc_free(jdoc);
+    /* Convert immutable → mutable so we can write as TOON */
+    ctoon_mut_doc *tdoc = ctoon_doc_mut_copy(idoc, NULL);
+    ctoon_doc_free(idoc);
+    if (!tdoc) throw std::runtime_error("ctoon_doc_mut_copy failed");
 
     ctoon_write_err werr;
     memset(&werr, 0, sizeof(werr));
