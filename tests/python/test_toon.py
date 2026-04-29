@@ -18,7 +18,7 @@ class TestModule:
 
     def test_version_exists(self):
         assert hasattr(ctoon, "__version__")
-        assert len(ctoon.__version__) > 0
+        assert len(ctoon.__version__) >= 5
 
     def test_encode_exists(self):
         assert callable(ctoon.encode)
