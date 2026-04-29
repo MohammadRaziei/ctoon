@@ -1341,6 +1341,31 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
                                    size_t *len,
                                    ctoon_write_err *err);
 
+/**
+ * Serialize a mutable document to a JSON string.
+ *
+ * Internally converts the mutable circular-linked-list layout to the flat
+ * immutable arena layout (one O(n) pass), then serializes.  Prefer
+ * ctoon_doc_to_json / ctoon_write_json when the document is already
+ * immutable to avoid the extra copy.
+ *
+ * @param doc    The mutable document to serialize. Must not be NULL.
+ * @param indent Spaces per indent level. 0 = compact (no whitespace).
+ * @param flags  CTOON_WRITE_* flags (subset shared with JSON).
+ * @param alc    Custom allocator, or NULL for the default.
+ * @param len    If not NULL, receives the byte length of the result
+ *               (not counting the null terminator).
+ * @param err    If not NULL, receives error details on failure.
+ * @return       Heap-allocated null-terminated JSON string, or NULL on
+ *               failure. The caller must free() the returned pointer.
+ */
+ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
+                                       int indent,
+                                       ctoon_write_flag flags,
+                                       const ctoon_alc *alc,
+                                       size_t *len,
+                                       ctoon_write_err *err);
+
 #endif /* CTOON_DISABLE_WRITER */
 
 
@@ -1349,7 +1374,7 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
  * MARK: - JSON API
  *============================================================================*/
 
-#if !(!defined(CTOON_ENABLE_JSON) && !CTOON_ENABLE_JSON)
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 
 /**
  * Parse a JSON string into a ctoon_doc.
@@ -1412,7 +1437,7 @@ ctoon_api char *ctoon_write_json_mut(const ctoon_mut_doc *doc,
                                       size_t *len,
                                       ctoon_write_err *err);
 
-#endif /* CTOON_DISABLE_JSON */
+#endif /* CTOON_ENABLE_JSON */
 
 
 

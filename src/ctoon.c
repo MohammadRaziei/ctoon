@@ -3759,7 +3759,7 @@ ctoon_doc *ctoon_read_fp(FILE *file,
  * ctoon_read_vpool, ctoon_str_pool_buf, ctoon_parse_str_quoted.
  *============================================================================*/
 
-#if !CTOON_DISABLE_JSON
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 
 /* ---- JSON whitespace skip ------------------------------------------------ */
 
@@ -4999,7 +4999,7 @@ ctoon_api char *ctoon_write_number(const ctoon_val *val, char *buf) {
 
 
 
-#if !(!defined(CTOON_ENABLE_JSON) || !CTOON_ENABLE_JSON)
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 
 /*==============================================================================
  * MARK: - JSON Serializer
@@ -5230,6 +5230,72 @@ ctoon_api char *ctoon_write_json_mut(const ctoon_mut_doc *doc,
         return NULL;
     }
     char *result = cj_doc_write(imut->root, indent, flg, alc,
+                                 (usize *)len, err);
+    ctoon_doc_free(imut);
+    return result;
+}
+
+/*
+ * ctoon_doc_to_json  –  immutable doc → JSON string  (O(n), zero copy)
+ *
+ * The immutable doc already uses the flat arena layout (contiguous ctoon_val
+ * nodes with uni.ofs offsets) that cj_doc_write understands, so we can
+ * call it directly without any intermediate copy.
+ */
+ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
+                                   int indent,
+                                   ctoon_write_flag flags,
+                                   const ctoon_alc *alc,
+                                   size_t *len,
+                                   ctoon_write_err *err) {
+    ctoon_write_err tmp_err;
+    if (!err) err = &tmp_err;
+    if (unlikely(!doc || !doc->root)) {
+        err->code = CTOON_WRITE_ERROR_INVALID_PARAMETER;
+        err->msg  = "doc is NULL";
+        if (len) *len = 0;
+        return NULL;
+    }
+    /* Direct delegation — cj_doc_write works on the immutable layout */
+    return cj_doc_write(doc->root, indent, flags, alc, (usize *)len, err);
+}
+
+/*
+ * ctoon_mut_doc_to_json  –  mutable doc → JSON string
+ *
+ * The mutable doc uses a circular linked-list layout that cj_doc_write
+ * does NOT understand, so we must first convert to the flat immutable
+ * layout.  imut_copy() walks the linked list once — O(n).  The resulting
+ * immutable doc is a temporary arena that is freed immediately after the
+ * JSON string is produced, keeping peak memory minimal.
+ *
+ * Callers that have already read an immutable doc (e.g. after ctoon_read)
+ * should prefer ctoon_doc_to_json / ctoon_write_json to avoid the copy.
+ */
+ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
+                                       int indent,
+                                       ctoon_write_flag flags,
+                                       const ctoon_alc *alc,
+                                       size_t *len,
+                                       ctoon_write_err *err) {
+    ctoon_write_err tmp_err;
+    if (!err) err = &tmp_err;
+    if (unlikely(!doc || !doc->root)) {
+        err->code = CTOON_WRITE_ERROR_INVALID_PARAMETER;
+        err->msg  = "doc is NULL";
+        if (len) *len = 0;
+        return NULL;
+    }
+    ctoon_alc a = alc ? *alc : CTOON_DEFAULT_ALC;
+    ctoon_doc *imut = ctoon_mut_doc_imut_copy(
+        (ctoon_mut_doc *)(uintptr_t)doc, &a);
+    if (unlikely(!imut)) {
+        err->code = CTOON_WRITE_ERROR_MEMORY_ALLOCATION;
+        err->msg  = MSG_MALLOC;
+        if (len) *len = 0;
+        return NULL;
+    }
+    char *result = cj_doc_write(imut->root, indent, flags, alc,
                                  (usize *)len, err);
     ctoon_doc_free(imut);
     return result;
