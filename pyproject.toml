@@ -64,7 +64,7 @@ define.CTOON_BUILD_EXAMPLES = "OFF"
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
-input = "includes/ctoon.h"
+input = "include/ctoon.h"
 regex = '''(?sx)
 \#define \s+ CTOON_VERSION_MAJOR \s+ (?P<major>\d+) .*?
 \#define \s+ CTOON_VERSION_MINOR \s+ (?P<minor>\d+) .*?
