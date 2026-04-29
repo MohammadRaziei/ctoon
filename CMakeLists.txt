@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.19)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include(DynamicVersion)
 
-project(CToon LANGUAGES CXX C VERSION 0.1.0)
+extract_version_string(
+    HEADER_FILE ${CMAKE_CURRENT_LIST_DIR}/include/ctoon.h
+    VERSION_PREFIX CTOON_
+    OUTPUT_VAR PROJECT_VERSION
+)
+
+project(CToon LANGUAGES CXX C VERSION ${PROJECT_VERSION})
 message(STATUS "Project: ${PROJECT_NAME}@v${PROJECT_VERSION}")
 include(Startup)
 
