@@ -841,13 +841,7 @@ public:
                            ctoon_read_flag flags = CTOON_READ_NOFLAG) {
         return parse(toon.data(), toon.size(), flags);
     }
-
-    /// @overload string_view (C++17) or string_view wrapper (C++11/14).
-    static document parse(string_view toon,
-                           ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return parse(toon.data(), toon.size(), flags);
-    }
-
+    
     /**
      * @brief Parse a TOON file from disk.
      * @param path  Null-terminated file path.
@@ -884,11 +878,6 @@ public:
     }
     /// @overload
     static document from_json(const std::string &json,
-                               ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-        return from_json(json.data(), json.size(), flags);
-    }
-    /// @overload
-    static document from_json(string_view json,
                                ctoon_read_flag flags = CTOON_READ_NOFLAG) {
         return from_json(json.data(), json.size(), flags);
     }
@@ -1181,10 +1170,6 @@ inline document from_json(const std::string &json,
     return document::from_json(json, flags);
 }
 /// @overload
-inline document from_json(string_view json,
-                            ctoon_read_flag flags = CTOON_READ_NOFLAG) {
-    return document::from_json(json, flags);
-}
 inline document from_json_file(const char *path,
                                 ctoon_read_flag flags = CTOON_READ_NOFLAG) {
     return document::from_json_file(path, flags);
