@@ -60,10 +60,11 @@ jobs:
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.4.1
       env:
-         CIBW_ARCHS_MACOS: universal2
+        MACOSX_DEPLOYMENT_TARGET: "10.13"
+        CIBW_ARCHS_MACOS: universal2
 #          CIBW_ARCHS_WINDOWS: auto ARM64
          # Disable building PyPy wheels on all platforms
-         CIBW_SKIP: pp*
+        CIBW_SKIP: pp*
 #         CIBW_PRERELEASE_PYTHONS: true
 
     - uses: actions/upload-artifact@v4
