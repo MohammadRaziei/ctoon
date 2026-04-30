@@ -19,9 +19,6 @@ import (
 
 func testDataDir(t *testing.T) string {
 	t.Helper()
-	if d := os.Getenv("CTOON_TEST_DATA_DIR"); d != "" {
-		return d
-	}
 	dir, err := filepath.Abs(filepath.Join("..", "data"))
 	if err != nil {
 		t.Fatalf("cannot resolve test data dir: %v", err)
