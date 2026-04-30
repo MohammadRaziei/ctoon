@@ -107,7 +107,7 @@ if(GO_COVER_CHECK EQUAL 0)
             -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
             -DPROJECT_NAME="${PROJECT_NAME}"
             -DOUTPUT_DIR="${CTOON_COVERAGE_GO_BINARY_DIR}"
-            -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+            -P "${PROJECT_SOURCE_DIR}/cmake/GenerateIframe.cmake"
         COMMENT "Generating iframe wrapper for Go coverage report"
         WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
     )

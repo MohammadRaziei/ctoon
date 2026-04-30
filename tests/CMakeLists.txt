@@ -98,7 +98,7 @@ if(TARGET ctoon_coverage_c AND TARGET ctoon_coverage_cpp AND TARGET ctoon_covera
                 -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
                 -DPROJECT_NAME="${PROJECT_NAME}"
                 -DOUTPUT_DIR="${CTOON_COVERAGE_TOTAL_BINARY_DIR}"
-                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+                -P "${PROJECT_SOURCE_DIR}/cmake/GenerateIframe.cmake"
             COMMENT "Generating iframe wrapper for total coverage report"
             WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
         )

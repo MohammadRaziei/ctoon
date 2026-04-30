@@ -103,7 +103,7 @@ if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
                 -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
                 -DPROJECT_NAME="${PROJECT_NAME}"
                 -DOUTPUT_DIR="${CTOON_COVERAGE_C_BINARY_DIR}"
-                -P "${CTOON_TEST_SOURCE_DIR}/GenerateIframe.cmake"
+                -P "${PROJECT_SOURCE_DIR}/cmake/GenerateIframe.cmake"
         COMMENT "Generating iframe wrapper for C coverage report"
         WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
     )
