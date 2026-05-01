@@ -578,62 +578,6 @@ static_inline void byte_copy_16(void *dst, const void *src) {
 #endif
 }
 
-/** Same as `memmove(dst, src, 2)`, allows overlap. */
-static_inline void byte_move_2(void *dst, const void *src) {
-#if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
-    u16 tmp;
-    memcpy(&tmp, src, 2);
-    memcpy(dst, &tmp, 2);
-#else
-    char tmp[2];
-    repeat2_incr(byte_move_src)
-    repeat2_incr(byte_move_dst)
-#endif
-}
-
-/** Same as `memmove(dst, src, 4)`, allows overlap. */
-static_inline void byte_move_4(void *dst, const void *src) {
-#if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
-    u32 tmp;
-    memcpy(&tmp, src, 4);
-    memcpy(dst, &tmp, 4);
-#else
-    char tmp[4];
-    repeat4_incr(byte_move_src)
-    repeat4_incr(byte_move_dst)
-#endif
-}
-
-/** Same as `memmove(dst, src, 8)`, allows overlap. */
-static_inline void byte_move_8(void *dst, const void *src) {
-#if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
-    u64 tmp;
-    memcpy(&tmp, src, 8);
-    memcpy(dst, &tmp, 8);
-#else
-    char tmp[8];
-    repeat8_incr(byte_move_src)
-    repeat8_incr(byte_move_dst)
-#endif
-}
-
-/** Same as `memmove(dst, src, 16)`, allows overlap. */
-static_inline void byte_move_16(void *dst, const void *src) {
-#if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
-    char *pdst = (char *)dst;
-    const char *psrc = (const char *)src;
-    u64 tmp1, tmp2;
-    memcpy(&tmp1, psrc, 8);
-    memcpy(&tmp2, psrc + 8, 8);
-    memcpy(pdst, &tmp1, 8);
-    memcpy(pdst + 8, &tmp2, 8);
-#else
-    char tmp[16];
-    repeat16_incr(byte_move_src)
-    repeat16_incr(byte_move_dst)
-#endif
-}
-
 
 /** Loads 3 bytes from `src` as a u32 (native-endian). */
 static_inline u32 byte_load_3(const void *src) {
@@ -1408,26 +1352,18 @@ static const u64 pow10_sig_table[] = {
     U64(0x9E19DB92, 0xB4E31BA9), U64(0x6C07A2C2, 0x6A8346D1)  /* ~= 10^324 */
 };
 
-/**
- Get the cached pow10 value from `pow10_sig_table`.
- @param exp10 The exponent of pow(10, e). This value must in range
-              `POW10_SIG_TABLE_MIN_EXP` to `POW10_SIG_TABLE_MAX_EXP`.
- @param hi    The highest 64 bits of pow(10, e).
- @param lo    The lower 64 bits after `hi`.
- */
+/** Get the cached pow10 value: hi/lo = the 128-bit significand of 10^exp10. */
 static_inline void pow10_table_get_sig(i32 exp10, u64 *hi, u64 *lo) {
-    i32 idx = exp10 - (POW10_SIG_TABLE_MIN_EXP);
+    i32 idx = exp10 - POW10_SIG_TABLE_MIN_EXP;
     *hi = pow10_sig_table[idx * 2];
     *lo = pow10_sig_table[idx * 2 + 1];
 }
 
-/**
- Get the exponent (base 2) for highest 64 bits significand in `pow10_sig_table`.
- */
-static_inline void pow10_table_get_exp(i32 exp10, i32 *exp2) {
-    /* e2 = floor(log2(pow(10, e))) - 64 + 1 */
-    /*    = floor(e * log2(10) - 63)         */
-    *exp2 = (exp10 * 217706 - 4128768) >> 16;
+/** Get the base-2 exponent for the cached 128-bit significand of 10^exp10.
+ *  Formula: floor(exp10 * log2(10)) - 63 */
+static_inline i32 pow10_table_get_exp(i32 exp10) {
+    /* floor(exp10 * 217706 / 65536) - 63, valid for [-343, 324] */
+    return (i32)(((i64)exp10 * 217706) >> 16) - 63;
 }
 
 #endif
@@ -1438,13 +1374,6 @@ static_inline void pow10_table_get_exp(i32 exp10, i32 *exp2) {
  * MARK: - Number and Bit Utils (Private)
  *============================================================================*/
 
-/** Convert bits to double. */
-static_inline f64 f64_from_bits(u64 u) {
-    f64 f;
-    memcpy(&f, &u, sizeof(u));
-    return f;
-}
-
 /** Convert double to bits. */
 static_inline u64 f64_to_bits(f64 f) {
     u64 u;
@@ -1452,7 +1381,14 @@ static_inline u64 f64_to_bits(f64 f) {
     return u;
 }
 
-/** Convert double to bits. */
+/** Convert bits to double. */
+static_inline f32 f32_to_bits_r(u32 u) {
+    f32 f;
+    memcpy(&f, &u, sizeof(f));
+    return f;
+}
+
+/** Type-pun f32 to u32. */
 static_inline u32 f32_to_bits(f32 f) {
     u32 u;
     memcpy(&u, &f, sizeof(u));
@@ -1464,7 +1400,7 @@ static_inline u64 f64_bits_inf(bool sign) {
 #if CTOON_HAS_IEEE_754
     return F64_BITS_INF | ((u64)sign << 63);
 #elif defined(INFINITY)
-    return f64_to_bits(sign ? -INFINITY : INFINITY);
+    return f64_to_bits(sign ? -(f64)INFINITY : (f64)INFINITY);
 #else
     return f64_to_bits(sign ? -HUGE_VAL : HUGE_VAL);
 #endif
@@ -1481,7 +1417,7 @@ static_inline u64 f64_bits_nan(bool sign) {
 #endif
 }
 
-/** Casting double to float, allow overflow. */
+/** Cast double to float, allow overflow (suppress UBSan). */
 #if ctoon_has_attribute(no_sanitize)
 __attribute__((no_sanitize("undefined")))
 #elif ctoon_gcc_available(4, 9, 0)
@@ -1489,6 +1425,40 @@ __attribute__((__no_sanitize_undefined__))
 #endif
 static_inline f32 f64_to_f32(f64 val) {
     return (f32)val;
+}
+
+
+/** Multiplies two 64-bit integers (a*b) → 128-bit result in hi:lo. */
+static_inline void u128_mul(u64 a, u64 b, u64 *hi, u64 *lo) {
+#if CTOON_HAS_INT128
+    u128 m = (u128)a * b;
+    *hi = (u64)(m >> 64);
+    *lo = (u64)(m);
+#else
+    u64 a0 = a & 0xFFFFFFFF, a1 = a >> 32;
+    u64 b0 = b & 0xFFFFFFFF, b1 = b >> 32;
+    u64 p00 = a0 * b0, p01 = a0 * b1;
+    u64 p10 = a1 * b0, p11 = a1 * b1;
+    u64 mid = (p00 >> 32) + (p01 & 0xFFFFFFFF) + p10;
+    *hi = p11 + (p01 >> 32) + (mid >> 32);
+    *lo = (mid << 32) | (p00 & 0xFFFFFFFF);
+#endif
+}
+
+/** Multiplies two 64-bit integers and adds c: (a*b+c) → 128-bit hi:lo. */
+static_inline void u128_mul_add(u64 a, u64 b, u64 c, u64 *hi, u64 *lo) {
+#if CTOON_HAS_INT128
+    u128 m = (u128)a * b + c;
+    *hi = (u64)(m >> 64);
+    *lo = (u64)(m);
+#else
+    u64 h, l, t;
+    u128_mul(a, b, &h, &l);
+    t = l + c;
+    h += (u64)((t < l) | (t < c));
+    *hi = h;
+    *lo = t;
+#endif
 }
 
 /** Returns the number of leading 0-bits in value (input should not be 0). */
@@ -1521,73 +1491,6 @@ static_inline u32 u64_lz_bits(u64 v) {
     v |= v >> 16;
     v |= v >> 32;
     return table[(v * U64(0x03F79D71, 0xB4CB0A89)) >> 58];
-#endif
-}
-
-/** Returns the number of trailing 0-bits in value (input should not be 0). */
-static_inline u32 u64_tz_bits(u64 v) {
-#if GCC_HAS_CTZLL
-    return (u32)__builtin_ctzll(v);
-#elif MSC_HAS_BIT_SCAN_64
-    unsigned long r;
-    _BitScanForward64(&r, v);
-    return (u32)r;
-#elif MSC_HAS_BIT_SCAN
-    unsigned long lo, hi;
-    bool lo_set = _BitScanForward(&lo, (u32)(v)) != 0;
-    _BitScanForward(&hi, (u32)(v >> 32));
-    hi += 32;
-    return lo_set ? lo : hi;
-#else
-    /* branchless, use De Bruijn sequence */
-    /* see: https://www.chessprogramming.org/BitScan */
-    const u8 table[64] = {
-         0,  1,  2, 53,  3,  7, 54, 27,  4, 38, 41,  8, 34, 55, 48, 28,
-        62,  5, 39, 46, 44, 42, 22,  9, 24, 35, 59, 56, 49, 18, 29, 11,
-        63, 52,  6, 26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
-        51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12
-    };
-    return table[((v & (~v + 1)) * U64(0x022FDD63, 0xCC95386D)) >> 58];
-#endif
-}
-
-/** Multiplies two 64-bit unsigned integers (a * b),
-    returns the 128-bit result as 'hi' and 'lo'. */
-static_inline void u128_mul(u64 a, u64 b, u64 *hi, u64 *lo) {
-#if CTOON_HAS_INT128
-    u128 m = (u128)a * b;
-    *hi = (u64)(m >> 64);
-    *lo = (u64)(m);
-#elif MSC_HAS_UMUL128
-    *lo = _umul128(a, b, hi);
-#else
-    u32 a0 = (u32)(a), a1 = (u32)(a >> 32);
-    u32 b0 = (u32)(b), b1 = (u32)(b >> 32);
-    u64 p00 = (u64)a0 * b0, p01 = (u64)a0 * b1;
-    u64 p10 = (u64)a1 * b0, p11 = (u64)a1 * b1;
-    u64 m0 = p01 + (p00 >> 32);
-    u32 m00 = (u32)(m0), m01 = (u32)(m0 >> 32);
-    u64 m1 = p10 + m00;
-    u32 m10 = (u32)(m1), m11 = (u32)(m1 >> 32);
-    *hi = p11 + m01 + m11;
-    *lo = ((u64)m10 << 32) | (u32)p00;
-#endif
-}
-
-/** Multiplies two 64-bit unsigned integers and add a value (a * b + c),
-    returns the 128-bit result as 'hi' and 'lo'. */
-static_inline void u128_mul_add(u64 a, u64 b, u64 c, u64 *hi, u64 *lo) {
-#if CTOON_HAS_INT128
-    u128 m = (u128)a * b + c;
-    *hi = (u64)(m >> 64);
-    *lo = (u64)(m);
-#else
-    u64 h, l, t;
-    u128_mul(a, b, &h, &l);
-    t = l + c;
-    h += (u64)(((t < l) | (t < c)));
-    *hi = h;
-    *lo = t;
 #endif
 }
 
@@ -4214,23 +4117,16 @@ static_inline bool ctoon_write_indent(ctoon_write_ctx *w, int depth) {
 /*---- number writer ---------------------------------------------------------*/
 
 
+
 /*==============================================================================
- * MARK: - Fast Float Writer (Ryu-lite / shortest round-trip)
+ * MARK: - Shortest Round-Trip f64 Writer (Private)
  *
- * Uses f64_to_bits, u64_lz_bits, u128_mul, u128_mul_add, pow10_table_get_sig,
- * and pow10_table_get_exp to produce the shortest round-trip decimal for a
- * finite f64 without snprintf.
- *
- * This is a simplified Ryu implementation.  For full Ryu correctness proofs
- * see: https://github.com/ulfjack/ryu
+ * Direct port of yyjson's write_f64_raw (Schubfach + fast path).
+ * Uses: pow10_table_get_sig, u128_mul, u128_mul_add, byte_copy_2,
+ *       byte_copy_4, byte_move_16, digit_table, u64_tz_bits, f64_to_bits
  *============================================================================*/
 
 #if !CTOON_DISABLE_FAST_FP_CONV
-
-/* IEEE 754 f64 constants */
-#define F64_MANTISSA_BITS 52
-#define F64_EXPONENT_BITS 11
-#define F64_EXPONENT_BIAS 1023
 
 /* floor(log10(2^e)) via integer arithmetic: floor(e * 78913 / 2^18) */
 static_inline i32 floor_log10_pow2(i32 e) {
@@ -4242,109 +4138,607 @@ static_inline i32 floor_log2_pow5(i32 e) {
 }
 
 /*
- * Multiply a 64-bit significand `m` by the cached power-of-5 for `i` and
- * return the upper 64 bits of the 128-bit product (= m * 5^i / 2^(64+j)).
+ * Multiply m by the 128-bit cached power for index i and return upper 64 bits.
  */
 static_inline u64 ryu_mul_pow5(u64 m, i32 i) {
-    u64 hi, lo;
-    u64 sig_hi, sig_lo;
-    /* pow10_sig_table stores 5^i normalised into [2^63, 2^64) */
+    u64 hi, lo, sig_hi, sig_lo;
     pow10_table_get_sig(i, &sig_hi, &sig_lo);
     u128_mul_add(m, sig_hi, 0, &hi, &lo);
     (void)sig_lo; (void)lo;
     return hi;
 }
 
-/*
- * Write the shortest round-trip decimal for finite `d` into `buf`.
- * Caller must provide at least 32 bytes.  Returns updated write pointer.
- */
-static_noinline u8 *write_f64_grisu(f64 d, u8 *buf) {
-    u64 bits = f64_to_bits(d);
+/** Move 16 bytes from src to dst (may overlap). */
+static_inline void byte_move_16(void *dst, const void *src) {
+#if CTOON_HAS_INT128
+    u128 tmp;
+    memcpy(&tmp, src, 16);
+    memcpy(dst, &tmp, 16);
+#else
+    u64 lo, hi;
+    memcpy(&lo, src,                  8);
+    memcpy(&hi, (const u8 *)src + 8,  8);
+    memcpy(dst,              &lo,     8);
+    memcpy((u8 *)dst + 8,    &hi,     8);
+#endif
+}
 
-    /* sign */
-    if (bits >> 63) { *buf++ = '-'; d = -d; bits ^= (u64)1 << 63; }
+/** Returns the number of trailing 0-bits in value (input should not be 0). */
+static_inline u32 u64_tz_bits(u64 v) {
+#if GCC_HAS_CTZLL
+    return (u32)__builtin_ctzll(v);
+#elif MSC_HAS_BIT_SCAN_64
+    unsigned long r;
+    _BitScanForward64(&r, v);
+    return (u32)r;
+#elif MSC_HAS_BIT_SCAN
+    unsigned long lo, hi;
+    bool lo_set = _BitScanForward(&lo, (u32)(v)) != 0;
+    _BitScanForward(&hi, (u32)(v >> 32));
+    hi += 32;
+    return lo_set ? lo : hi;
+#else
+    const u8 table[64] = {
+         0,  1,  2, 53,  3,  7, 54, 27,  4, 38, 41,  8, 34, 55, 48, 28,
+        62,  5, 39, 46, 44, 42, 22,  9, 24, 35, 59, 56, 49, 18, 29, 11,
+        63, 52,  6, 26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
+        51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12
+    };
+    return table[((v & (~v + 1)) * U64(0x022FDD63, 0xCC95386D)) >> 58];
+#endif
+}
 
-    /* zero */
-    if (bits == 0) { *buf++ = '0'; *buf++ = '.'; *buf++ = '0'; return buf; }
+static_inline u8 *write_u32_len_8(u32 val, u8 *buf) {
+    u32 aa, bb, cc, dd, aabb, ccdd;                 /* 8 digits: aabbccdd */
+    aabb = (u32)(((u64)val * 109951163) >> 40);     /* (val / 10000) */
+    ccdd = val - aabb * 10000;                      /* (val % 10000) */
+    aa = (aabb * 5243) >> 19;                       /* (aabb / 100) */
+    cc = (ccdd * 5243) >> 19;                       /* (ccdd / 100) */
+    bb = aabb - aa * 100;                           /* (aabb % 100) */
+    dd = ccdd - cc * 100;                           /* (ccdd % 100) */
+    byte_copy_2(buf + 0, digit_table + aa * 2);
+    byte_copy_2(buf + 2, digit_table + bb * 2);
+    byte_copy_2(buf + 4, digit_table + cc * 2);
+    byte_copy_2(buf + 6, digit_table + dd * 2);
+    return buf + 8;
+}
 
-    /* decompose IEEE 754 */
-    const u32 ieeeExponent  = (u32)(bits >> F64_MANTISSA_BITS) & ((1u << F64_EXPONENT_BITS) - 1);
-    const u64 ieeeMantissa  = bits & (((u64)1 << F64_MANTISSA_BITS) - 1);
+static_inline u8 *write_u32_len_4(u32 val, u8 *buf) {
+    u32 aa, bb;                                     /* 4 digits: aabb */
+    aa = (val * 5243) >> 19;                        /* (val / 100) */
+    bb = val - aa * 100;                            /* (val % 100) */
+    byte_copy_2(buf + 0, digit_table + aa * 2);
+    byte_copy_2(buf + 2, digit_table + bb * 2);
+    return buf + 4;
+}
 
-    u64 m2; i32 e2;
-    if (ieeeExponent == 0) {
-        m2 = ieeeMantissa;
-        e2 = 1 - F64_EXPONENT_BIAS - F64_MANTISSA_BITS;
-    } else {
-        m2 = ieeeMantissa | ((u64)1 << F64_MANTISSA_BITS);
-        e2 = (i32)ieeeExponent - F64_EXPONENT_BIAS - F64_MANTISSA_BITS;
+static_inline u8 *write_u32_len_1_to_8(u32 val, u8 *buf) {
+    u32 aa, bb, cc, dd, aabb, bbcc, ccdd, lz;
+
+    if (val < 100) {                                /* 1-2 digits: aa */
+        lz = val < 10;                              /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + val * 2 + lz);
+        buf -= lz;
+        return buf + 2;
+
+    } else if (val < 10000) {                       /* 3-4 digits: aabb */
+        aa = (val * 5243) >> 19;                    /* (val / 100) */
+        bb = val - aa * 100;                        /* (val % 100) */
+        lz = aa < 10;                               /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + aa * 2 + lz);
+        buf -= lz;
+        byte_copy_2(buf + 2, digit_table + bb * 2);
+        return buf + 4;
+
+    } else if (val < 1000000) {                     /* 5-6 digits: aabbcc */
+        aa = (u32)(((u64)val * 429497) >> 32);      /* (val / 10000) */
+        bbcc = val - aa * 10000;                    /* (val % 10000) */
+        bb = (bbcc * 5243) >> 19;                   /* (bbcc / 100) */
+        cc = bbcc - bb * 100;                       /* (bbcc % 100) */
+        lz = aa < 10;                               /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + aa * 2 + lz);
+        buf -= lz;
+        byte_copy_2(buf + 2, digit_table + bb * 2);
+        byte_copy_2(buf + 4, digit_table + cc * 2);
+        return buf + 6;
+
+    } else {                                        /* 7-8 digits: aabbccdd */
+        aabb = (u32)(((u64)val * 109951163) >> 40); /* (val / 10000) */
+        ccdd = val - aabb * 10000;                  /* (val % 10000) */
+        aa = (aabb * 5243) >> 19;                   /* (aabb / 100) */
+        cc = (ccdd * 5243) >> 19;                   /* (ccdd / 100) */
+        bb = aabb - aa * 100;                       /* (aabb % 100) */
+        dd = ccdd - cc * 100;                       /* (ccdd % 100) */
+        lz = aa < 10;                               /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + aa * 2 + lz);
+        buf -= lz;
+        byte_copy_2(buf + 2, digit_table + bb * 2);
+        byte_copy_2(buf + 4, digit_table + cc * 2);
+        byte_copy_2(buf + 6, digit_table + dd * 2);
+        return buf + 8;
     }
+}
 
-    /* check if d is an exact integer in range */
-    if (e2 >= 0 && e2 <= 10) {
-        /* d = m2 * 2^e2, fits exactly as integer */
-        u64 iv = m2 << e2;
-        buf = write_u64(iv, buf);
-        *buf++ = '.'; *buf++ = '0';
+static_inline u8 *write_u32_len_5_to_8(u32 val, u8 *buf) {
+    u32 aa, bb, cc, dd, aabb, bbcc, ccdd, lz;
+
+    if (val < 1000000) {                            /* 5-6 digits: aabbcc */
+        aa = (u32)(((u64)val * 429497) >> 32);      /* (val / 10000) */
+        bbcc = val - aa * 10000;                    /* (val % 10000) */
+        bb = (bbcc * 5243) >> 19;                   /* (bbcc / 100) */
+        cc = bbcc - bb * 100;                       /* (bbcc % 100) */
+        lz = aa < 10;                               /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + aa * 2 + lz);
+        buf -= lz;
+        byte_copy_2(buf + 2, digit_table + bb * 2);
+        byte_copy_2(buf + 4, digit_table + cc * 2);
+        return buf + 6;
+
+    } else {                                        /* 7-8 digits: aabbccdd */
+        aabb = (u32)(((u64)val * 109951163) >> 40); /* (val / 10000) */
+        ccdd = val - aabb * 10000;                  /* (val % 10000) */
+        aa = (aabb * 5243) >> 19;                   /* (aabb / 100) */
+        cc = (ccdd * 5243) >> 19;                   /* (ccdd / 100) */
+        bb = aabb - aa * 100;                       /* (aabb % 100) */
+        dd = ccdd - cc * 100;                       /* (ccdd % 100) */
+        lz = aa < 10;                               /* leading zero: 0 or 1 */
+        byte_copy_2(buf + 0, digit_table + aa * 2 + lz);
+        buf -= lz;
+        byte_copy_2(buf + 2, digit_table + bb * 2);
+        byte_copy_2(buf + 4, digit_table + cc * 2);
+        byte_copy_2(buf + 6, digit_table + dd * 2);
+        return buf + 8;
+    }
+}
+
+
+
+/*==============================================================================
+ * MARK: - Number Writer (Private)
+ *============================================================================*/
+
+
+/** Trailing zero count table for number 0 to 99.
+    (generate with misc/make_tables.c) */
+static const u8 dec_trailing_zero_table[] = {
+    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+static_inline u8 *write_u64_len_1_to_16(u64 val, u8 *buf) {
+    u64 hgh;
+    u32 low;
+    if (val < 100000000) {                          /* 1-8 digits */
+        buf = write_u32_len_1_to_8((u32)val, buf);
+        return buf;
+    } else {                                        /* 9-16 digits */
+        hgh = val / 100000000;                      /* (val / 100000000) */
+        low = (u32)(val - hgh * 100000000);         /* (val % 100000000) */
+        buf = write_u32_len_1_to_8((u32)hgh, buf);
+        buf = write_u32_len_8(low, buf);
         return buf;
     }
-    if (e2 < 0 && e2 >= -F64_MANTISSA_BITS) {
-        i32 sh = -e2;
-        if (sh <= F64_MANTISSA_BITS && (m2 & (((u64)1 << sh) - 1)) == 0) {
-            u64 iv = m2 >> sh;
-            if ((iv << sh) == m2) {
-                buf = write_u64(iv, buf);
-                *buf++ = '.'; *buf++ = '0';
-                return buf;
-            }
-        }
-    }
+}
 
-    /* general case: decimal exponent */
-    /* q = max(0, floor(log10(2^e2)) - 1) */
-    i32 q;
-    if (e2 >= 0) {
-        q = floor_log10_pow2(e2);
-        if (q > 0) q--;
+static_inline u8 *write_u64_len_1_to_17(u64 val, u8 *buf) {
+    u64 hgh;
+    u32 mid, low, one;
+    if (val >= (u64)100000000 * 10000000) {         /* len: 16 to 17 */
+        hgh = val / 100000000;                      /* (val / 100000000) */
+        low = (u32)(val - hgh * 100000000);         /* (val % 100000000) */
+        one = (u32)(hgh / 100000000);               /* (hgh / 100000000) */
+        mid = (u32)(hgh - (u64)one * 100000000);    /* (hgh % 100000000) */
+        *buf = (u8)((u8)one + (u8)'0');
+        buf += one > 0;
+        buf = write_u32_len_8(mid, buf);
+        buf = write_u32_len_8(low, buf);
+        return buf;
+    } else if (val >= (u64)100000000){              /* len: 9 to 15 */
+        hgh = val / 100000000;                      /* (val / 100000000) */
+        low = (u32)(val - hgh * 100000000);         /* (val % 100000000) */
+        buf = write_u32_len_1_to_8((u32)hgh, buf);
+        buf = write_u32_len_8(low, buf);
+        return buf;
+    } else {                                        /* len: 1 to 8 */
+        buf = write_u32_len_1_to_8((u32)val, buf);
+        return buf;
+    }
+}
+
+/**
+ Write an unsigned integer with a length of 7 to 9 with trailing zero trimmed.
+ These digits are named as "abbccddee" here.
+ For example, input 123456000, output "123456".
+ */
+static_inline u8 *write_u32_len_7_to_9_trim(u32 val, u8 *buf) {
+    bool lz;
+    u32 tz, tz1, tz2;
+
+    u32 abbcc = val / 10000;                        /* (abbccddee / 10000) */
+    u32 ddee = val - abbcc * 10000;                 /* (abbccddee % 10000) */
+    u32 abb = (u32)(((u64)abbcc * 167773) >> 24);   /* (abbcc / 100) */
+    u32 a = (abb * 41) >> 12;                       /* (abb / 100) */
+    u32 bb = abb - a * 100;                         /* (abb % 100) */
+    u32 cc = abbcc - abb * 100;                     /* (abbcc % 100) */
+
+    /* write abbcc */
+    buf[0] = (u8)(a + '0');
+    buf += a > 0;
+    lz = bb < 10 && a == 0;
+    byte_copy_2(buf + 0, digit_table + bb * 2 + lz);
+    buf -= lz;
+    byte_copy_2(buf + 2, digit_table + cc * 2);
+
+    if (ddee) {
+        u32 dd = (ddee * 5243) >> 19;               /* (ddee / 100) */
+        u32 ee = ddee - dd * 100;                   /* (ddee % 100) */
+        byte_copy_2(buf + 4, digit_table + dd * 2);
+        byte_copy_2(buf + 6, digit_table + ee * 2);
+        tz1 = dec_trailing_zero_table[dd];
+        tz2 = dec_trailing_zero_table[ee];
+        tz = ee ? tz2 : (tz1 + 2);
+        buf += 8 - tz;
+        return buf;
     } else {
-        q = floor_log10_pow2(-e2) - 1;
-        if (floor_log10_pow2(-e2) < 0) q = 0;
-        q = -q;
+        tz1 = dec_trailing_zero_table[bb];
+        tz2 = dec_trailing_zero_table[cc];
+        tz = cc ? tz2 : (tz1 + tz2);
+        buf += 4 - tz;
+        return buf;
     }
+}
 
-    /* shift m2 by e2 - floor(log2(5^q)) */
-    i32 k  = floor_log2_pow5(q < 0 ? -q : q) + 1 + 64;
-    i32 i2 = -e2 - q;
-    i32 j  = i2 - k + 64;
-    (void)j;
+/**
+ Write an unsigned integer with a length of 16 or 17 with trailing zero trimmed.
+ These digits are named as "abbccddeeffgghhii" here.
+ For example, input 1234567890123000, output "1234567890123".
+ */
+static_inline u8 *write_u64_len_16_to_17_trim(u64 val, u8 *buf) {
+    u32 tz, tz1, tz2;
 
-    /* Use pow10 table for division: digit = floor(m2 * 2^e2 / 10^q) */
-    u64 pow2 = (u64)1 << (e2 < 64 && e2 >= 0 ? e2 : 0);
-    (void)pow2;
+    u32 abbccddee = (u32)(val / 100000000);
+    u32 ffgghhii = (u32)(val - (u64)abbccddee * 100000000);
+    u32 abbcc = abbccddee / 10000;
+    u32 ddee = abbccddee - abbcc * 10000;
+    u32 abb = (u32)(((u64)abbcc * 167773) >> 24);   /* (abbcc / 100) */
+    u32 a = (abb * 41) >> 12;                       /* (abb / 100) */
+    u32 bb = abb - a * 100;                         /* (abb % 100) */
+    u32 cc = abbcc - abb * 100;                     /* (abbcc % 100) */
+    buf[0] = (u8)(a + '0');
+    buf += a > 0;
+    byte_copy_2(buf + 0, digit_table + bb * 2);
+    byte_copy_2(buf + 2, digit_table + cc * 2);
 
-    /* Simplified: use snprintf for the mantissa, then trim */
-    /* This still uses f64_to_bits for sign, and is the safe fallback */
-    int n = snprintf((char *)buf, 30, "%.17g", d);
-    buf += (n > 0) ? (usize)n : 0;
-
-    /* Trim unnecessary trailing zeros after decimal point */
-    u8 *dot = NULL;
-    for (u8 *p = buf - 1; p >= buf - n; p--) {
-        if (*p == '.') { dot = p; break; }
-        if (*p == 'e' || *p == 'E') break;
-    }
-    if (dot) {
-        /* find end of fractional part */
-        u8 *frac_end = dot + 1;
-        while (frac_end < buf && *frac_end >= '0' && *frac_end <= '9') frac_end++;
-        /* trim trailing zeros but keep at least one digit after dot */
-        while (frac_end - 1 > dot + 1 && *(frac_end - 1) == '0') {
-            frac_end--;
-            buf--;
+    if (ffgghhii) {
+        u32 dd = (ddee * 5243) >> 19;               /* (ddee / 100) */
+        u32 ee = ddee - dd * 100;                   /* (ddee % 100) */
+        u32 ffgg = (u32)(((u64)ffgghhii * 109951163) >> 40); /* (val / 10000) */
+        u32 hhii = ffgghhii - ffgg * 10000;         /* (val % 10000) */
+        u32 ff = (ffgg * 5243) >> 19;               /* (aabb / 100) */
+        u32 gg = ffgg - ff * 100;                   /* (aabb % 100) */
+        byte_copy_2(buf + 4, digit_table + dd * 2);
+        byte_copy_2(buf + 6, digit_table + ee * 2);
+        byte_copy_2(buf + 8, digit_table + ff * 2);
+        byte_copy_2(buf + 10, digit_table + gg * 2);
+        if (hhii) {
+            u32 hh = (hhii * 5243) >> 19;           /* (ccdd / 100) */
+            u32 ii = hhii - hh * 100;               /* (ccdd % 100) */
+            byte_copy_2(buf + 12, digit_table + hh * 2);
+            byte_copy_2(buf + 14, digit_table + ii * 2);
+            tz1 = dec_trailing_zero_table[hh];
+            tz2 = dec_trailing_zero_table[ii];
+            tz = ii ? tz2 : (tz1 + 2);
+            return buf + 16 - tz;
+        } else {
+            tz1 = dec_trailing_zero_table[ff];
+            tz2 = dec_trailing_zero_table[gg];
+            tz = gg ? tz2 : (tz1 + 2);
+            return buf + 12 - tz;
+        }
+    } else {
+        if (ddee) {
+            u32 dd = (ddee * 5243) >> 19;           /* (ddee / 100) */
+            u32 ee = ddee - dd * 100;               /* (ddee % 100) */
+            byte_copy_2(buf + 4, digit_table + dd * 2);
+            byte_copy_2(buf + 6, digit_table + ee * 2);
+            tz1 = dec_trailing_zero_table[dd];
+            tz2 = dec_trailing_zero_table[ee];
+            tz = ee ? tz2 : (tz1 + 2);
+            return buf + 8 - tz;
+        } else {
+            tz1 = dec_trailing_zero_table[bb];
+            tz2 = dec_trailing_zero_table[cc];
+            tz = cc ? tz2 : (tz1 + tz2);
+            return buf + 4 - tz;
         }
     }
-    return buf;
+}
+
+/** Write exponent part in range `e-324` to `e308`. */
+static_inline u8 *write_f64_exp(i32 exp, u8 *buf) {
+    byte_copy_2(buf, "e-");
+    buf += 2 - (exp >= 0);
+    exp = exp < 0 ? -exp : exp;
+    if (exp < 100) {
+        bool lz = exp < 10;
+        byte_copy_2(buf + 0, digit_table + (u32)exp * 2 + lz);
+        return buf + 2 - lz;
+    } else {
+        u32 hi = ((u32)exp * 656) >> 16;    /* exp / 100 */
+        u32 lo = (u32)exp - hi * 100;       /* exp % 100 */
+        buf[0] = (u8)((u8)hi + (u8)'0');
+        byte_copy_2(buf + 1, digit_table + lo * 2);
+        return buf + 3;
+    }
+}
+
+/** Magic number for fast `divide by power of 10`. */
+typedef struct {
+    u64 p10, mul;
+    u32 shr1, shr2;
+} div_pow10_magic;
+
+/** Generated with llvm, see https://github.com/llvm/llvm-project/
+    blob/main/llvm/lib/Support/DivisionByConstantInfo.cpp */
+static const div_pow10_magic div_pow10_table[] = {
+    { U64(0x00000000, 0x00000001), U64(0x00000000, 0x00000000), 0,  0  },
+    { U64(0x00000000, 0x0000000A), U64(0xCCCCCCCC, 0xCCCCCCCD), 0,  3  },
+    { U64(0x00000000, 0x00000064), U64(0x28F5C28F, 0x5C28F5C3), 2,  2  },
+    { U64(0x00000000, 0x000003E8), U64(0x20C49BA5, 0xE353F7CF), 3,  4  },
+    { U64(0x00000000, 0x00002710), U64(0x346DC5D6, 0x3886594B), 0,  11 },
+    { U64(0x00000000, 0x000186A0), U64(0x0A7C5AC4, 0x71B47843), 5,  7  },
+    { U64(0x00000000, 0x000F4240), U64(0x431BDE82, 0xD7B634DB), 0,  18 },
+    { U64(0x00000000, 0x00989680), U64(0xD6BF94D5, 0xE57A42BD), 0,  23 },
+    { U64(0x00000000, 0x05F5E100), U64(0xABCC7711, 0x8461CEFD), 0,  26 },
+    { U64(0x00000000, 0x3B9ACA00), U64(0x0044B82F, 0xA09B5A53), 9,  11 },
+    { U64(0x00000002, 0x540BE400), U64(0xDBE6FECE, 0xBDEDD5BF), 0,  33 },
+    { U64(0x00000017, 0x4876E800), U64(0xAFEBFF0B, 0xCB24AAFF), 0,  36 },
+    { U64(0x000000E8, 0xD4A51000), U64(0x232F3302, 0x5BD42233), 0,  37 },
+    { U64(0x00000918, 0x4E72A000), U64(0x384B84D0, 0x92ED0385), 0,  41 },
+    { U64(0x00005AF3, 0x107A4000), U64(0x0B424DC3, 0x5095CD81), 0,  42 },
+    { U64(0x00038D7E, 0xA4C68000), U64(0x00024075, 0xF3DCEAC3), 15, 20 },
+    { U64(0x002386F2, 0x6FC10000), U64(0x39A5652F, 0xB1137857), 0,  51 },
+    { U64(0x01634578, 0x5D8A0000), U64(0x00005C3B, 0xD5191B53), 17, 22 },
+    { U64(0x0DE0B6B3, 0xA7640000), U64(0x000049C9, 0x7747490F), 18, 24 },
+    { U64(0x8AC72304, 0x89E80000), U64(0x760F253E, 0xDB4AB0d3), 0,  62 },
+};
+
+/** Divide a number by power of 10. */
+static_inline void div_pow10(u64 num, u32 exp, u64 *div, u64 *mod, u64 *p10) {
+    u64 hi, lo;
+    div_pow10_magic m = div_pow10_table[exp];
+    u128_mul(num >> m.shr1, m.mul, &hi, &lo);
+    *div = hi >> m.shr2;
+    *mod = num - (*div * m.p10);
+    *p10 = m.p10;
+}
+
+/** Multiplies 64-bit integer and returns highest 64-bit rounded value. */
+static_inline u32 u64_round_to_odd(u64 u, u32 cp) {
+    u64 hi, lo;
+    u32 y_hi, y_lo;
+    u128_mul(cp, u, &hi, &lo);
+    y_hi = (u32)hi;
+    y_lo = (u32)(lo >> 32);
+    return y_hi | (y_lo > 1);
+}
+
+/** Multiplies 128-bit integer and returns highest 64-bit rounded value. */
+static_inline u64 u128_round_to_odd(u64 hi, u64 lo, u64 cp) {
+    u64 x_hi, x_lo, y_hi, y_lo;
+    u128_mul(cp, lo, &x_hi, &x_lo);
+    u128_mul_add(cp, hi, x_hi, &y_hi, &y_lo);
+    return y_hi | (y_lo > 1);
+}
+
+
+/** Convert f64 from binary to decimal (shortest but may have trailing zeros).
+    The input should not be 0, inf or nan. */
+static_inline void f64_bin_to_dec(u64 sig_raw, u32 exp_raw,
+                                  u64 sig_bin, i32 exp_bin,
+                                  u64 *sig_dec, i32 *exp_dec) {
+
+    bool is_even, irregular, round_up, trim;
+    bool u0_inside, u1_inside, w0_inside, w1_inside;
+    u64 s, sp, cb, cbl, cbr, vb, vbl, vbr, p10_hi, p10_lo, upper, lower, mid;
+    i32 k, h;
+
+    /*
+     Fast path:
+     For regular spacing significand 'c', there are 4 candidates:
+
+             u0             u1 c  w1                            w0
+     ----|----|----|----|----|-*--|----|----|----|----|----|----|----|----
+         9    0    1    2    3    4    5    6    7    8    9    0    1
+           |___________________|___________________|
+                             1ulp
+
+     The `1ulp` is in the range [1.0, 10.0).
+     If (c - 0.5ulp < u0), trim the last digit and round down.
+     If (c + 0.5ulp > w0), trim the last digit and round up.
+     If (c - 0.5ulp < u1), round down.
+     If (c + 0.5ulp > w1), round up.
+     */
+    while (likely(sig_raw)) {
+        u64 mod, dec, add_1, add_10, s_hi, s_lo;
+        u64 c, half_ulp, t0, t1;
+
+        /* k = floor(exp_bin * log10(2)); */
+        /* h = exp_bin + floor(log2(10) * -k); (h = 0/1/2/3) */
+        k = (i32)(exp_bin * 315653) >> 20;
+        h = exp_bin + ((-k * 217707) >> 16);
+        pow10_table_get_sig(-k, &p10_hi, &p10_lo);
+
+        /* sig_bin << (1/2/3/4) */
+        cb = sig_bin << (h + 1);
+        u128_mul(cb, p10_lo, &s_hi, &s_lo);
+        u128_mul_add(cb, p10_hi, s_hi, &s_hi, &s_lo);
+        mod = s_hi % 10;
+        dec = s_hi - mod;
+
+        /* right shift 4 to fit in u64 */
+        c = (mod << (64 - 4)) | (s_lo >> 4);
+        half_ulp = p10_hi >> (4 - h);
+
+        /* check w1, u0, w0 range */
+        w1_inside = (s_lo >= ((u64)1 << 63));
+        if (unlikely(s_lo == ((u64)1 << 63))) break;
+        u0_inside = (half_ulp >= c);
+        if (unlikely(half_ulp == c)) break;
+        t0 = ((u64)10 << (64 - 4));
+        t1 = c + half_ulp;
+        w0_inside = (t1 >= t0);
+        if (unlikely(t0 - t1 <= (u64)1)) break;
+
+        trim = (u0_inside | w0_inside);
+        add_10 = (w0_inside ? 10 : 0);
+        add_1 = mod + w1_inside;
+        *sig_dec = dec + (trim ? add_10 : add_1);
+        *exp_dec = k;
+        return;
+    }
+
+    /*
+     Schubfach algorithm:
+     Raffaello Giulietti, The Schubfach way to render doubles, 2022.
+     https://drive.google.com/file/d/1gp5xv4CAa78SVgCeWfGqqI4FfYYYuNFb (Paper)
+     https://github.com/openjdk/jdk/pull/3402 (Java implementation)
+     https://github.com/abolz/Drachennest (C++ implementation)
+     */
+    irregular = (sig_raw == 0 && exp_raw > 1);
+    is_even = !(sig_bin & 1);
+    cbl = 4 * sig_bin - 2 + irregular;
+    cb  = 4 * sig_bin;
+    cbr = 4 * sig_bin + 2;
+
+    /* k = floor(exp_bin * log10(2) + (irregular ? log10(3.0 / 4.0) : 0)); */
+    /* h = exp_bin + floor(log2(10) * -k) + 1; (h = 1/2/3/4) */
+    k = (i32)(exp_bin * 315653 - (irregular ? 131237 : 0)) >> 20;
+    h = exp_bin + ((-k * 217707) >> 16) + 1;
+    pow10_table_get_sig(-k, &p10_hi, &p10_lo);
+    p10_lo += 1;
+
+    vbl = u128_round_to_odd(p10_hi, p10_lo, cbl << h);
+    vb  = u128_round_to_odd(p10_hi, p10_lo, cb  << h);
+    vbr = u128_round_to_odd(p10_hi, p10_lo, cbr << h);
+    lower = vbl + !is_even;
+    upper = vbr - !is_even;
+
+    s = vb / 4;
+    if (s >= 10) {
+        sp = s / 10;
+        u0_inside = (lower <= 40 * sp);
+        w0_inside = (upper >= 40 * sp + 40);
+        if (u0_inside != w0_inside) {
+            *sig_dec = sp * 10 + (w0_inside ? 10 : 0);
+            *exp_dec = k;
+            return;
+        }
+    }
+    u1_inside = (lower <= 4 * s);
+    w1_inside = (upper >= 4 * s + 4);
+    mid = 4 * s + 2;
+    round_up = (vb > mid) || (vb == mid && (s & 1) != 0);
+    *sig_dec = s + ((u1_inside != w1_inside) ? w1_inside : round_up);
+    *exp_dec = k;
+}
+
+
+/*
+ * Write a double number (requires 40 bytes buffer).
+ * Direct port of yyjson's write_f64_raw, adapted for ctoon.
+ */
+static_noinline u8 *write_f64_ryu(f64 val, u8 *buf) {
+    u64 sig_bin, sig_dec, sig_raw;
+    i32 exp_bin, exp_dec, sig_len, dot_ofs;
+    u32 exp_raw;
+    u8 *end;
+    bool sign;
+    u64 raw = f64_to_bits(val);
+
+    sign    = (bool)(raw >> (F64_BITS - 1));
+    sig_raw = raw & F64_SIG_MASK;
+    exp_raw = (u32)((raw & F64_EXP_MASK) >> F64_SIG_BITS);
+
+    buf[0] = '-';
+    buf += sign;
+
+    /* zero */
+    if ((raw << 1) == 0) {
+        byte_copy_4(buf, "0.0");
+        return buf + 3;
+    }
+
+    if (likely(exp_raw != 0)) {
+        sig_bin = sig_raw | ((u64)1 << F64_SIG_BITS);
+        exp_bin = (i32)exp_raw - F64_EXP_BIAS - F64_SIG_BITS;
+
+        /* fast path: small exact integer */
+        if ((-F64_SIG_BITS <= exp_bin && exp_bin <= 0) &&
+            (u64_tz_bits(sig_bin) >= (u32)-exp_bin)) {
+            sig_dec = sig_bin >> (u32)-exp_bin;
+            buf = write_u64_len_1_to_16(sig_dec, buf);
+            byte_copy_2(buf, ".0");
+            return buf + 2;
+        }
+
+        f64_bin_to_dec(sig_raw, exp_raw, sig_bin, exp_bin, &sig_dec, &exp_dec);
+        sig_len = 16 + (sig_dec >= (u64)100000000 * 100000000);
+        dot_ofs = sig_len + exp_dec;
+
+        if (-6 < dot_ofs && dot_ofs <= 21) {
+            i32 num_sep_pos, dot_set_pos, pre_ofs;
+            u8 *num_hdr, *num_end, *num_sep, *dot_end;
+            bool no_pre_zero;
+
+            memset(buf, '0', 32);
+            no_pre_zero = (dot_ofs > 0);
+            pre_ofs     = no_pre_zero ? 0 : (2 - dot_ofs);
+            num_hdr     = buf + pre_ofs;
+            num_end     = write_u64_len_16_to_17_trim(sig_dec, num_hdr);
+
+            num_sep_pos = no_pre_zero ? dot_ofs : 0;
+            num_sep     = num_hdr + num_sep_pos;
+            byte_move_16(num_sep + no_pre_zero, num_sep);
+            num_end += no_pre_zero;
+
+            dot_set_pos = ctoon_max(dot_ofs, 1);
+            buf[dot_set_pos] = '.';
+
+            dot_end = buf + dot_ofs + 2;
+            return ctoon_max(dot_end, num_end);
+
+        } else {
+            end  = write_u64_len_16_to_17_trim(sig_dec, buf + 1);
+            end -= (end == buf + 2);
+            exp_dec += sig_len - 1;
+            buf[0] = buf[1];
+            buf[1] = '.';
+            return write_f64_exp(exp_dec, end);
+        }
+
+    } else {
+        /* subnormal */
+        sig_bin = sig_raw;
+        exp_bin = 1 - F64_EXP_BIAS - F64_SIG_BITS;
+        f64_bin_to_dec(sig_raw, exp_raw, sig_bin, exp_bin, &sig_dec, &exp_dec);
+
+        end = write_u64_len_1_to_17(sig_dec, buf + 1);
+        buf[0] = buf[1];
+        buf[1] = '.';
+        exp_dec += (i32)(end - buf) - 2;
+        while (*(end-1) == '0') end--;
+        if (*(end-1) == '.') end--;
+        return write_f64_exp(exp_dec, end);
+    }
 }
 
 #endif /* !CTOON_DISABLE_FAST_FP_CONV */
@@ -4394,12 +4788,9 @@ static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
                 p = write_i64((i64)d, p);
             } else {
 #if !CTOON_DISABLE_FAST_FP_CONV
-                /* Fast path: use Grisu-lite via pow10 tables + u128 multiply.
-                 * Produces the shortest round-trip decimal representation
-                 * without any heap allocation, avoiding snprintf overhead. */
-                p = write_f64_grisu(d, p);
+                p = write_f64_ryu(d, p);
 #else
-                int n = snprintf((char *)p, 32, "%.15g", d);
+                int n = snprintf((char *)p, 32, "%.17g", d);
                 p += (n > 0) ? (usize)n : 0;
 #endif
             }
