@@ -141,11 +141,22 @@ static void write_filelike(nb::handle fp, const ctoon::write_result &result) {
  * ========================================================================= */
 
 NB_MODULE(ctoon_py, m) {
-    /* Declare that this module requires the GIL.
-     * In Python 3.14+ free-threaded builds this suppresses the
-     * RuntimeWarning about GIL-unaware extension modules. */
+    /* Python 3.13+ free-threaded (GIL-disabled) builds require every
+     * extension module to explicitly declare its GIL stance.
+     * We declare Py_MOD_GIL_USED because ctoon_py is not thread-safe:
+     * Python will re-enable the GIL for this module and suppress the
+     * RuntimeWarning that would otherwise appear.
+     *
+     * API name changed between CPython releases:
+     *   3.13:  PyUnstable_Module_SetGIL  (PEP 703 unstable API)
+     *   3.14+: PyModule_SetGIL           (stabilised)
+     * Both are guarded by Py_GIL_DISABLED so classical builds are unaffected. */
 #ifdef Py_GIL_DISABLED
+#  if PY_VERSION_HEX >= 0x030e0000   /* 3.14+ */
+    PyModule_SetGIL(m.ptr(), Py_MOD_GIL_USED);
+#  else                              /* 3.13 */
     PyUnstable_Module_SetGIL(m.ptr(), Py_MOD_GIL_USED);
+#  endif
 #endif
 
     m.doc() = "CToon – Compact TOON serialisation (C++ nanobind backend)";
