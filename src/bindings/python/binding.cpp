@@ -2,278 +2,418 @@
  * @file binding.cpp
  * @brief Python bindings for CToon using nanobind.
  *
- * API similar to toon-python: encode(dict) -> str, decode(str) -> dict
- * Uses ctoon.hpp C++11 API with nanobind.
+ * API design goals:
+ *   - Python-friendly: mirrors json module (loads/dumps/load/dump)
+ *   - ReadFlag / WriteFlag enums exposed to Python (not raw integers)
+ *   - load/dump accept file-like objects (anything with .read()/.write())
+ *   - JSON support (loads_json/dumps_json/load_json/dump_json)
  */
 
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
-#include <nanobind/stl/variant.h>
+#include <nanobind/stl/optional.h>
 #include "ctoon.hpp"
 
 namespace nb = nanobind;
 
-/* -----------------------------------------------------------------------
- * Python <-> TOON conversion helpers
- * ----------------------------------------------------------------------- */
+/* =========================================================================
+ * Python <-> TOON value conversion
+ * ========================================================================= */
 
-/**
- * Convert a Python object to a mut_value in the given document.
- * Supports: None, bool, int, float, str, list, dict
- */
-static ctoon::mut_value py_to_mutval(ctoon::mut_document& doc, nb::handle obj) {
+static ctoon::mut_value py_to_mutval(ctoon::mut_document &doc, nb::handle obj) {
     if (obj.is_none()) {
         return doc.make_null();
-    } else if (nb::isinstance<nb::bool_>(obj)) {
+    }
+    if (nb::isinstance<nb::bool_>(obj)) {
         return doc.make_bool(nb::cast<bool>(obj));
-    } else if (nb::isinstance<nb::int_>(obj)) {
-        int64_t v = nb::cast<int64_t>(obj);
-        if (v < 0) return doc.make_sint(v);
-        return doc.make_uint(static_cast<uint64_t>(v));
-    } else if (nb::isinstance<nb::float_>(obj)) {
+    }
+    if (nb::isinstance<nb::int_>(obj)) {
+        /* try uint first to preserve large positive values */
+        try {
+            auto u = nb::cast<uint64_t>(obj);
+            int64_t s = nb::cast<int64_t>(obj);
+            return (s < 0) ? doc.make_sint(s) : doc.make_uint(u);
+        } catch (...) {
+            return doc.make_sint(nb::cast<int64_t>(obj));
+        }
+    }
+    if (nb::isinstance<nb::float_>(obj)) {
         return doc.make_real(nb::cast<double>(obj));
-    } else if (nb::isinstance<nb::str>(obj)) {
-        return doc.make_str(nb::cast<std::string>(obj));
-    } else if (nb::isinstance<nb::list>(obj) || nb::isinstance<nb::tuple>(obj)) {
+    }
+    if (nb::isinstance<nb::str>(obj)) {
+        auto s = nb::cast<std::string>(obj);
+        return doc.make_str(s);
+    }
+    if (nb::isinstance<nb::list>(obj) || nb::isinstance<nb::tuple>(obj)) {
         ctoon::mut_value arr = doc.make_arr();
-        nb::iterator it(nb::iter(obj));
-        nb::iterator end;
-        for (; it != end; ++it) {
-            arr.arr_append(py_to_mutval(doc, *it));
+        for (nb::handle item : obj) {
+            arr.arr_append(py_to_mutval(doc, item));
         }
         return arr;
-    } else if (nb::isinstance<nb::dict>(obj)) {
-        ctoon::mut_value obj2 = doc.make_obj();
-        nb::dict d = nb::cast<nb::dict>(obj);
-        for (nb::handle key : d.keys()) {
-            std::string k = nb::cast<std::string>(key);
-            ctoon::mut_value v = py_to_mutval(doc, d[key]);
-            obj2.obj_put(doc.make_str(k), v);
-        }
-        return obj2;
     }
-    throw std::runtime_error("Unsupported Python type for TOON conversion");
+    if (nb::isinstance<nb::dict>(obj)) {
+        ctoon::mut_value o = doc.make_obj();
+        nb::dict d = nb::cast<nb::dict>(obj);
+        for (auto [k, v] : d) {
+            if (!nb::isinstance<nb::str>(k))
+                throw std::runtime_error("TOON object keys must be strings");
+            auto ks = nb::cast<std::string>(k);
+            o.obj_put(doc.make_str(ks), py_to_mutval(doc, v));
+        }
+        return o;
+    }
+    throw std::runtime_error(
+        std::string("Unsupported Python type: ") +
+        nb::cast<std::string>(nb::str(obj.type())));
+}
+
+static nb::object val_to_py(ctoon::value val) {
+    if (!val.valid() || val.is_null()) return nb::none();
+    if (val.is_true())  return nb::bool_(true);
+    if (val.is_false()) return nb::bool_(false);
+    if (val.is_uint())  return nb::cast(val.get_uint());
+    if (val.is_sint())  return nb::cast(val.get_sint());
+    if (val.is_real())  return nb::cast(val.get_real());
+    if (val.is_str()) {
+        auto sv = val.get_str();
+        return nb::str(sv.data(), sv.size());
+    }
+    if (val.is_arr()) {
+        nb::list out;
+        for (auto item : val.arr_items())
+            out.append(val_to_py(item));
+        return out;
+    }
+    if (val.is_obj()) {
+        nb::dict out;
+        for (auto kv : val.obj_items()) {
+            auto ksv = kv.key().get_str();
+            nb::str key(ksv.data(), ksv.size());
+            out[key] = val_to_py(kv.val());
+        }
+        return out;
+    }
+    throw std::runtime_error("Unknown ctoon value type");
+}
+
+/* =========================================================================
+ * Helpers: read bytes from a file-like object
+ * ========================================================================= */
+
+/**
+ * Read all bytes from a Python file-like object (must have .read()).
+ * Returns the content as std::string.
+ */
+static std::string read_filelike(nb::handle fp) {
+    nb::object data = fp.attr("read")();
+    if (nb::isinstance<nb::bytes>(data)) {
+        auto b = nb::cast<nb::bytes>(data);
+        return std::string(b.c_str(), nb::len(b));
+    }
+    /* text mode – encode to UTF-8 */
+    return nb::cast<std::string>(data);
 }
 
 /**
- * Convert a value (immutable) to a Python object.
+ * Write string content to a Python file-like object (must have .write()).
  */
-static nb::object val_to_py(ctoon::value val) {
-    if (!val.valid()) return nb::none();
-    else if (val.is_null()) return nb::none();
-    else if (val.is_true()) return nb::bool_(true);
-    else if (val.is_false()) return nb::bool_(false);
-    else if (val.is_uint()) return nb::cast(nb::cast<std::uint64_t>(val.get_uint()));
-    else if (val.is_sint()) return nb::cast(nb::cast<std::int64_t>(val.get_sint()));
-    else if (val.is_real()) return nb::cast(nb::cast<double>(val.get_real()));
-    else if (val.is_str()) {
-        return nb::str(val.get_str().data(), val.get_str().size());
-    } else if (val.is_arr()) {
-        nb::list out = nb::list();
-        for (std::size_t i = 0; i < val.arr_size(); ++i) {
-            out.append(val_to_py(val.arr_get(i)));
-        }
-        return out;
-    } else if (val.is_obj()) {
-        nb::dict out = nb::dict();
-        for (auto kv : val.obj_items()) {
-            auto sv = kv.key().get_str();
-            std::string k(sv.data(), sv.size());
-            out[nb::cast(k)] = val_to_py(kv.val());
-        }
-        return out;
+static void write_filelike(nb::handle fp, const ctoon::write_result &result) {
+    /* detect if the file was opened in binary mode */
+    bool binary = false;
+    try {
+        nb::object mode = fp.attr("mode");
+        std::string m = nb::cast<std::string>(mode);
+        binary = (m.find('b') != std::string::npos);
+    } catch (...) {
+        /* no .mode attribute – try writing str, fall back to bytes */
     }
-    throw std::runtime_error("Unknown value type");
+    if (binary) {
+        fp.attr("write")(nb::bytes(result.c_str(), result.size()));
+    } else {
+        fp.attr("write")(nb::str(result.c_str(), result.size()));
+    }
 }
 
-/* -----------------------------------------------------------------------
- * Enum: Delimiter
- * -------------------------------------------------------------------- */
-void bind_enums(nb::module_& m) {
+
+/* =========================================================================
+ * Module
+ * ========================================================================= */
+
+NB_MODULE(ctoon_py, m) {
+    m.doc() = "CToon – Compact TOON serialisation (C++ nanobind backend)";
+    m.attr("__version__") = ctoon::version::string().data();
+
+    /* ------------------------------------------------------------------
+     * ReadFlag enum
+     * ------------------------------------------------------------------ */
+    nb::enum_<ctoon::read_flag>(m, "ReadFlag", nb::is_flag())
+        .value("NOFLAG",                  ctoon::read_flag::NOFLAG)
+        .value("INSITU",                  ctoon::read_flag::INSITU)
+        .value("STOP_WHEN_DONE",          ctoon::read_flag::STOP_WHEN_DONE)
+        .value("ALLOW_TRAILING_COMMAS",   ctoon::read_flag::ALLOW_TRAILING_COMMAS)
+        .value("ALLOW_COMMENTS",          ctoon::read_flag::ALLOW_COMMENTS)
+        .value("ALLOW_INF_AND_NAN",       ctoon::read_flag::ALLOW_INF_AND_NAN)
+        .value("NUMBER_AS_RAW",           ctoon::read_flag::NUMBER_AS_RAW)
+        .value("ALLOW_INVALID_UNICODE",   ctoon::read_flag::ALLOW_INVALID_UNICODE)
+        .value("BIGNUM_AS_RAW",           ctoon::read_flag::BIGNUM_AS_RAW)
+        .value("ALLOW_BOM",               ctoon::read_flag::ALLOW_BOM)
+        .value("ALLOW_EXT_NUMBER",        ctoon::read_flag::ALLOW_EXT_NUMBER)
+        .value("ALLOW_EXT_ESCAPE",        ctoon::read_flag::ALLOW_EXT_ESCAPE)
+        .value("ALLOW_EXT_WHITESPACE",    ctoon::read_flag::ALLOW_EXT_WHITESPACE)
+        .value("ALLOW_SINGLE_QUOTED_STR", ctoon::read_flag::ALLOW_SINGLE_QUOTED_STR)
+        .value("ALLOW_UNQUOTED_KEY",      ctoon::read_flag::ALLOW_UNQUOTED_KEY)
+        /* __or__: combine two flags and return a new ReadFlag instance
+         * using nb::type<T>() to construct without validation. */
+        .def("__or__",  [](nb::object self, nb::object other) -> nb::object {
+            uint32_t v = nb::cast<uint32_t>(self.attr("value"))
+                       | nb::cast<uint32_t>(other.attr("value"));
+            return self.type()(v);
+        })
+        .def("__ror__", [](nb::object self, nb::object other) -> nb::object {
+            uint32_t v = nb::cast<uint32_t>(self.attr("value"))
+                       | nb::cast<uint32_t>(other.attr("value"));
+            return self.type()(v);
+        })
+        .def("__int__", [](ctoon::read_flag a) {
+            return static_cast<uint32_t>(a); })
+        .export_values();
+
+    /* ------------------------------------------------------------------
+     * WriteFlag enum
+     * ------------------------------------------------------------------ */
+    nb::enum_<ctoon::write_flag>(m, "WriteFlag", nb::is_flag())
+        .value("NOFLAG",                ctoon::write_flag::NOFLAG)
+        .value("ESCAPE_UNICODE",        ctoon::write_flag::ESCAPE_UNICODE)
+        .value("ESCAPE_SLASHES",        ctoon::write_flag::ESCAPE_SLASHES)
+        .value("ALLOW_INF_AND_NAN",     ctoon::write_flag::ALLOW_INF_AND_NAN)
+        .value("INF_AND_NAN_AS_NULL",   ctoon::write_flag::INF_AND_NAN_AS_NULL)
+        .value("ALLOW_INVALID_UNICODE", ctoon::write_flag::ALLOW_INVALID_UNICODE)
+        .value("LENGTH_MARKER",         ctoon::write_flag::LENGTH_MARKER)
+        .value("NEWLINE_AT_END",        ctoon::write_flag::NEWLINE_AT_END)
+        .def("__or__",  [](nb::object self, nb::object other) -> nb::object {
+            uint32_t v = nb::cast<uint32_t>(self.attr("value"))
+                       | nb::cast<uint32_t>(other.attr("value"));
+            return self.type()(v);
+        })
+        .def("__ror__", [](nb::object self, nb::object other) -> nb::object {
+            uint32_t v = nb::cast<uint32_t>(self.attr("value"))
+                       | nb::cast<uint32_t>(other.attr("value"));
+            return self.type()(v);
+        })
+        .def("__int__", [](ctoon::write_flag a) {
+            return static_cast<uint32_t>(a); })
+        .export_values();
+
+    /* ------------------------------------------------------------------
+     * Delimiter enum
+     * ------------------------------------------------------------------ */
     nb::enum_<ctoon::delimiter>(m, "Delimiter")
         .value("COMMA", ctoon::delimiter::COMMA)
-        .value("TAB", ctoon::delimiter::TAB)
-        .value("PIPE", ctoon::delimiter::PIPE)
+        .value("TAB",   ctoon::delimiter::TAB)
+        .value("PIPE",  ctoon::delimiter::PIPE)
         .export_values();
-}
 
-/* -----------------------------------------------------------------------
- * Options - unified options for both encode and decode
- * -------------------------------------------------------------------- */
-struct Options {
-    /* Read options (used by decode/load) */
-    ctoon::read_flag read_flag = ctoon::read_flag::NOFLAG;
-
-    /* Write options (used by encode/dump) */
-    int indent = 2;
-    ctoon::delimiter delimiter = ctoon::delimiter::COMMA;
-    ctoon::write_flag write_flag = ctoon::write_flag::NOFLAG;
-};
-
-void bind_options(nb::module_& m) {
-    nb::class_<Options>(m, "Options")
-        .def(nb::init<>())
-        .def_rw("read_flag", &Options::read_flag, "CTOON_READ_* flags (use ReadFlag values)")
-        .def_rw("indent", &Options::indent, "Spaces per indent level (0 = compact)")
-        .def_rw("delimiter", &Options::delimiter, "Array value delimiter (use Delimiter values)")
-        .def_rw("write_flag", &Options::write_flag, "CTOON_WRITE_* flags (use WriteFlag values)")
-        .def("__repr__", [](const Options& o) {
-            std::string s = "<Options read_flag=0x" + std::to_string(static_cast<uint32_t>(o.read_flag)) +
-                            " write_flag=0x" + std::to_string(static_cast<uint32_t>(o.write_flag)) +
-                            " indent=" + std::to_string(o.indent) + ">";
-            return s;
-        });
-}
-
-/* -----------------------------------------------------------------------
- * Module definition
- * -------------------------------------------------------------------- */
-NB_MODULE(ctoon_py, m) {
-    m.doc() = "CToon - Compact TOON format for Python (C++ backend with nanobind)";
-
-    // Version
-    m.attr("__version__") = ctoon::version::string();
-
-    // Enums
-    bind_enums(m);
-
-    // Options
-    bind_options(m);
-
-    /* ---- decode: TOON string -> Python object ---- */
-    m.def("decode",
-        [](std::string_view input, const Options& opts) {
-            auto doc = ctoon::document::parse(input.data(), input.size(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
-            return val_to_py(doc.root());
-        },
-        nb::arg("input"),
-        nb::arg("options") = Options(),
-        "Decode a TOON string to a Python object");
-
-    m.def("decode",
-        [](nb::bytes input, const Options& opts) {
-            auto doc = ctoon::document::parse(input.c_str(), nb::len(input), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
-            return val_to_py(doc.root());
-        },
-        nb::arg("input"),
-        nb::arg("options") = Options(),
-        "Decode TOON bytes to a Python object");
-
-    /* ---- encode: Python object -> TOON string ---- */
-    m.def("encode",
-        [](nb::handle obj, const Options& opts) {
-            auto doc = ctoon::mut_document::create();
-            ctoon::mut_value root = py_to_mutval(doc, obj);
-            doc.set_root(root);
-
-            ctoon::write_options wo;
-            wo.with_flag(opts.write_flag)
-              .with_delimiter(opts.delimiter)
-              .with_indent(opts.indent);
-
-            auto result = doc.write(wo);
-            return std::string(result.c_str(), result.size());
-        },
-        nb::arg("data"),
-        nb::arg("options") = Options(),
-        "Encode a Python object to a TOON string");
-
-    /* ---- loads / dumps aliases ---- */
+    /* ------------------------------------------------------------------
+     * loads(s, *, flags=ReadFlag.NOFLAG) -> object
+     *
+     * Parse a TOON string or bytes object.
+     * ------------------------------------------------------------------ */
     m.def("loads",
-        [](std::string_view s, const Options& opts) {
-            auto doc = ctoon::document::parse(s.data(), s.size(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
+        [](nb::object s, ctoon::read_flag flags) -> nb::object {
+            std::string buf;
+            if (nb::isinstance<nb::bytes>(s)) {
+                auto b = nb::cast<nb::bytes>(s);
+                buf = std::string(b.c_str(), nb::len(b));
+            } else {
+                buf = nb::cast<std::string>(s);
+            }
+            auto doc = ctoon::document::parse(buf.data(), buf.size(), flags);
             return val_to_py(doc.root());
         },
         nb::arg("s"),
-        nb::arg("options") = Options(),
-        "Alias for decode()");
+        nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        "Parse a TOON string or bytes object. Returns a Python object.\n\n"
+        "    loads(s, flags=ReadFlag.NOFLAG) -> object");
 
+    /* ------------------------------------------------------------------
+     * load(fp, *, flags=ReadFlag.NOFLAG) -> object
+     *
+     * fp can be:
+     *   - a str / bytes path  -> read the file from disk
+     *   - a file-like object with .read() -> read from it
+     * ------------------------------------------------------------------ */
+    m.def("load",
+        [](nb::object fp, ctoon::read_flag flags) -> nb::object {
+            ctoon::document doc(nullptr);
+            if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
+                /* path string */
+                std::string path = nb::cast<std::string>(fp);
+                doc = ctoon::document::parse_file(path.c_str(), flags);
+            } else {
+                /* file-like: call .read() */
+                std::string buf = read_filelike(fp);
+                doc = ctoon::document::parse(buf.data(), buf.size(), flags);
+            }
+            return val_to_py(doc.root());
+        },
+        nb::arg("fp"),
+        nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        "Load TOON from a file path (str) or a file-like object with .read().\n\n"
+        "    load(fp, flags=ReadFlag.NOFLAG) -> object\n\n"
+        "    with open('data.toon') as f:\n"
+        "        obj = ctoon.load(f)\n"
+        "    obj = ctoon.load('data.toon')");
+
+    /* ------------------------------------------------------------------
+     * dumps(obj, *, indent=2, delimiter=Delimiter.COMMA,
+     *        flags=WriteFlag.NOFLAG) -> str
+     * ------------------------------------------------------------------ */
     m.def("dumps",
-        [](nb::handle obj, const Options& opts) {
-            auto doc = ctoon::mut_document::create();
-            ctoon::mut_value root = py_to_mutval(doc, obj);
-            doc.set_root(root);
-
-            ctoon::write_options wo;
-            wo.with_flag(opts.write_flag)
-              .with_delimiter(opts.delimiter)
-              .with_indent(opts.indent);
-
-            auto result = doc.write(wo);
-            return std::string(result.c_str(), result.size());
+        [](nb::handle obj,
+           int indent,
+           ctoon::delimiter delim,
+           ctoon::write_flag flags) -> std::string {
+            auto doc  = ctoon::mut_document::create();
+            doc.set_root(py_to_mutval(doc, obj));
+            auto result = doc.write(
+                ctoon::write_options()
+                    .with_indent(indent)
+                    .with_delimiter(delim)
+                    .with_flag(flags));
+            return result.str();
         },
         nb::arg("obj"),
-        nb::arg("options") = Options(),
-        "Alias for encode()");
+        nb::arg("indent")    = 2,
+        nb::arg("delimiter") = ctoon::delimiter::COMMA,
+        nb::arg("flags")     = ctoon::write_flag::NOFLAG,
+        "Serialize a Python object to a TOON string.\n\n"
+        "    dumps(obj, indent=2, delimiter=Delimiter.COMMA,\n"
+        "          flags=WriteFlag.NOFLAG) -> str");
 
-    /* ---- load / dump (file I/O) ---- */
-    m.def("load",
-        [](const std::string& filename, const Options& opts) {
-            auto doc = ctoon::document::parse_file(filename.c_str(), static_cast<ctoon_read_flag>(static_cast<uint32_t>(opts.read_flag)));
-            return val_to_py(doc.root());
-        },
-        nb::arg("filename"),
-        nb::arg("options") = Options(),
-        "Load a TOON file to a Python object");
-
+    /* ------------------------------------------------------------------
+     * dump(obj, fp, *, indent=2, delimiter=Delimiter.COMMA,
+     *       flags=WriteFlag.NOFLAG)
+     *
+     * fp can be:
+     *   - a str / bytes path  -> write the file to disk
+     *   - a file-like object with .write() -> write to it
+     * ------------------------------------------------------------------ */
     m.def("dump",
-        [](nb::handle obj, const std::string& filename, const Options& opts) {
-            auto doc = ctoon::mut_document::create();
-            ctoon::mut_value root = py_to_mutval(doc, obj);
-            doc.set_root(root);
+        [](nb::handle obj,
+           nb::object fp,
+           int indent,
+           ctoon::delimiter delim,
+           ctoon::write_flag flags) {
+            auto doc  = ctoon::mut_document::create();
+            doc.set_root(py_to_mutval(doc, obj));
+            auto wo   = ctoon::write_options()
+                            .with_indent(indent)
+                            .with_delimiter(delim)
+                            .with_flag(flags);
 
-            ctoon::write_options wo;
-            wo.with_flag(opts.write_flag)
-              .with_delimiter(opts.delimiter)
-              .with_indent(opts.indent);
-
-            doc.write_file(filename.c_str(), wo);
+            if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
+                std::string path = nb::cast<std::string>(fp);
+                doc.write_file(path.c_str(), wo);
+            } else {
+                write_filelike(fp, doc.write(wo));
+            }
         },
-        nb::arg("data"),
-        nb::arg("filename"),
-        nb::arg("options") = Options(),
-        "Dump a Python object to a TOON file");
+        nb::arg("obj"),
+        nb::arg("fp"),
+        nb::arg("indent")    = 2,
+        nb::arg("delimiter") = ctoon::delimiter::COMMA,
+        nb::arg("flags")     = ctoon::write_flag::NOFLAG,
+        "Serialize a Python object to a TOON file path or file-like object.\n\n"
+        "    dump(obj, fp, indent=2, delimiter=Delimiter.COMMA,\n"
+        "         flags=WriteFlag.NOFLAG)\n\n"
+        "    with open('out.toon', 'w') as f:\n"
+        "        ctoon.dump(data, f)\n"
+        "    ctoon.dump(data, 'out.toon')");
 
-    /* ---- JSON support ---- */
+    /* ------------------------------------------------------------------
+     * JSON support
+     * ------------------------------------------------------------------ */
+
+    /* loads_json(s, *, flags=ReadFlag.NOFLAG) -> object */
     m.def("loads_json",
-        [](std::string_view json, ctoon_read_flag flags) {
-            auto doc = ctoon::document::from_json(json.data(), json.size(), flags);
+        [](nb::object s, ctoon::read_flag flags) -> nb::object {
+            std::string buf;
+            if (nb::isinstance<nb::bytes>(s)) {
+                auto b = nb::cast<nb::bytes>(s);
+                buf = std::string(b.c_str(), nb::len(b));
+            } else {
+                buf = nb::cast<std::string>(s);
+            }
+            auto doc = ctoon::document::from_json(buf.data(), buf.size(), flags);
             return val_to_py(doc.root());
         },
-        nb::arg("json"), nb::arg("flags")=CTOON_READ_NOFLAG,
-        "Parse JSON string");
+        nb::arg("s"),
+        nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        "Parse a JSON string or bytes object.\n\n"
+        "    loads_json(s, flags=ReadFlag.NOFLAG) -> object");
 
-    m.def("dumps_json",
-        [](nb::handle obj, int indent = 2) {
-            auto doc = ctoon::mut_document::create();
-            ctoon::mut_value root = py_to_mutval(doc, obj);
-            doc.set_root(root);
-
-            auto result = doc.to_json(indent);
-            return std::string(result.c_str(), result.size());
-        },
-        nb::arg("data"),
-        nb::arg("indent") = 2,
-        "Serialize to JSON string");
-
+    /* load_json(fp, *, flags=ReadFlag.NOFLAG) -> object */
     m.def("load_json",
-        [](const std::string& filename, ctoon_read_flag flags) {
-            auto doc = ctoon::document::from_json_file(filename.c_str(), flags);
+        [](nb::object fp, ctoon::read_flag flags) -> nb::object {
+            ctoon::document doc(nullptr);
+            if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
+                std::string path = nb::cast<std::string>(fp);
+                doc = ctoon::document::from_json_file(path.c_str(), flags);
+            } else {
+                std::string buf = read_filelike(fp);
+                doc = ctoon::document::from_json(buf.data(), buf.size(), flags);
+            }
             return val_to_py(doc.root());
         },
-        nb::arg("filename"), nb::arg("flags")=CTOON_READ_NOFLAG,
-        "Load JSON file");
+        nb::arg("fp"),
+        nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        "Load JSON from a file path (str) or a file-like object with .read().\n\n"
+        "    load_json(fp, flags=ReadFlag.NOFLAG) -> object\n\n"
+        "    with open('data.json') as f:\n"
+        "        obj = ctoon.load_json(f)");
 
-    m.def("dump_json",
-        [](nb::handle obj, const std::string& filename, int indent = 2) {
+    /* dumps_json(obj, *, indent=2, flags=WriteFlag.NOFLAG) -> str */
+    m.def("dumps_json",
+        [](nb::handle obj, int indent, ctoon::write_flag flags) -> std::string {
             auto doc = ctoon::mut_document::create();
-            ctoon::mut_value root = py_to_mutval(doc, obj);
-            doc.set_root(root);
-            to_json_file(doc, filename.c_str(), indent);
+            doc.set_root(py_to_mutval(doc, obj));
+            return doc.to_json(indent, flags).str();
         },
-        nb::arg("data"),
-        nb::arg("filename"),
+        nb::arg("obj"),
         nb::arg("indent") = 2,
-        "Dump to JSON file");
+        nb::arg("flags")  = ctoon::write_flag::NOFLAG,
+        "Serialize a Python object to a JSON string.\n\n"
+        "    dumps_json(obj, indent=2, flags=WriteFlag.NOFLAG) -> str");
+
+    /* dump_json(obj, fp, *, indent=2, flags=WriteFlag.NOFLAG) */
+    m.def("dump_json",
+        [](nb::handle obj,
+           nb::object fp,
+           int indent,
+           ctoon::write_flag flags) {
+            auto doc = ctoon::mut_document::create();
+            doc.set_root(py_to_mutval(doc, obj));
+            if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
+                std::string path = nb::cast<std::string>(fp);
+                doc.to_json_file(path.c_str(), indent, flags);
+            } else {
+                write_filelike(fp, doc.to_json(indent, flags));
+            }
+        },
+        nb::arg("obj"),
+        nb::arg("fp"),
+        nb::arg("indent") = 2,
+        nb::arg("flags")  = ctoon::write_flag::NOFLAG,
+        "Serialize a Python object to a JSON file path or file-like object.\n\n"
+        "    dump_json(obj, fp, indent=2, flags=WriteFlag.NOFLAG)\n\n"
+        "    with open('out.json', 'w') as f:\n"
+        "        ctoon.dump_json(data, f)\n"
+        "    ctoon.dump_json(data, 'out.json')");
+
+    /* encode / decode – aliases matching original toon-python API
+     * nanobind cannot use m.attr() as a callable in m.def(), so we
+     * assign the attribute directly after the module is populated. */
+    m.attr("encode") = m.attr("dumps");
+    m.attr("decode") = m.attr("loads");
 }
