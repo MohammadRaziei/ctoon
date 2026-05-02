@@ -50,15 +50,15 @@ Documentation = "https://mohammadraziei.github.io/ctoon"
 "Bug Tracker" = "https://github.com/mohammadraziei/ctoon/issues"
 
 
-[tool.scikit-build.cmake]
-verbose = true
-args = ["-DCMAKE_BUILD_TYPE=Release", "--no-warn-unused-cli"]
-build-type = "Release"
-define.CMAKE_BUILD_PARALLEL_LEVEL = "8"
-define.CTOON_BUILD_PYTHON = "ON"
-define.CTOON_BUILD_TESTS = "OFF"
-define.CTOON_BUILD_DOCS = "OFF"
-define.CTOON_BUILD_EXAMPLES = "OFF"
+[tool.scikit-build]
+build.verbose = true
+cmake.args = ["-DCMAKE_BUILD_TYPE=Release", "--no-warn-unused-cli"]
+cmake.build-type = "Release"
+cmake.define.CMAKE_BUILD_PARALLEL_LEVEL = "8"
+cmake.define.CTOON_BUILD_PYTHON = "ON"
+cmake.define.CTOON_BUILD_TESTS = "OFF"
+cmake.define.CTOON_BUILD_DOCS = "OFF"
+cmake.define.CTOON_BUILD_EXAMPLES = "OFF"
 
 
 [tool.scikit-build.metadata.version]
