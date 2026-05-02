@@ -1,3 +1,6 @@
+# Development.Module only requires Python.h (no libpython needed).
+# This is correct for extension modules and works in manylinux environments
+# where libpython is intentionally absent.
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 if(DEFINED SKBUILD)
@@ -11,6 +14,7 @@ if(DEFINED SKBUILD)
     # Create the Python extension module
     # Note: The module name here ('ctoon_py') should match the NB_MODULE name in binding.cpp
     nanobind_add_module(ctoon_py
+        FREE_THREADED   # declare GIL requirement; nanobind handles PyModule_SetGIL
         ${BINDING_SOURCE_FILE}
     )
 
