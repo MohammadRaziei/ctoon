@@ -141,6 +141,13 @@ static void write_filelike(nb::handle fp, const ctoon::write_result &result) {
  * ========================================================================= */
 
 NB_MODULE(ctoon_py, m) {
+    /* Declare that this module requires the GIL.
+     * In Python 3.14+ free-threaded builds this suppresses the
+     * RuntimeWarning about GIL-unaware extension modules. */
+#ifdef Py_GIL_DISABLED
+    PyUnstable_Module_SetGIL(m.ptr(), Py_MOD_GIL_USED);
+#endif
+
     m.doc() = "CToon – Compact TOON serialisation (C++ nanobind backend)";
     m.attr("__version__") = ctoon::version::string().data();
 
