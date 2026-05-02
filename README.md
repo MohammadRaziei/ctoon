@@ -164,8 +164,8 @@ ctoon.DumpJSON(data, "out.json")
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc)
-ctest --test-dir build           # run C + C++ tests
+cmake --build build -j$(nproc) --target ctoon_test # Run C / C++ / python / Go tests
+cmake --build build -j$(nproc) --target ctoon_coverage # Get the coverage of C / C++ / python / Go tests.
 ```
 
 ### CMake options
