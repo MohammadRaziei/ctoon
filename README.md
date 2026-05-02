@@ -174,7 +174,7 @@ ctest --test-dir build           # run C + C++ tests
 |--------|---------|-------------|
 | `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
 | `CTOON_BUILD_PYTHON` | OFF | Build Python extension (nanobind) |
-| `CTOON_WITHOUT_JSON` | OFF | Disable built-in JSON reader/writer |
+| `CTOON_BUILD_DOCS` | OFF | Build documents |
 
 JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). The CLI uses it directly — no external JSON library required.
 
