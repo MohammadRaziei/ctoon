@@ -181,18 +181,15 @@ JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). The CLI uses it direc
 ### Python package
 
 ```bash
-pip install .          # build and install
-pip install -e .       # editable / development install
-pytest tests/python    # run Python tests
+pip install ctoon # build and install
 ```
 
-Requires nanobind ≥ 2.0 and scikit-build-core ≥ 0.8. Wheels are published to PyPI for Linux (manylinux x86\_64 / aarch64), macOS (universal2), and Windows.
+No runtime requirements.
 
 ### Go module
 
 ```bash
 go get github.com/mohammadraziei/ctoon
-go test ./...
 ```
 
 Requires Go 1.21+. Uses CGo to call the C core.
