@@ -1,7 +1,7 @@
 # CToon
 
 <div align="center">
-<img src="docs/images/ctoon-sq-ctoon.svg" width="256" alt="CToon Logo">
+<img src="https://raw.githubusercontent.com/MohammadRaziei/ctoon/refs/heads/master/docs/images/ctoon-sq-ctoon.svg" width="256" alt="CToon Logo">
 </div>
 
 <div align="center">
