@@ -4,366 +4,908 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CToon Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" id="hljs-theme-dark" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" id="hljs-theme-light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
     <style>
         :root {
-            /* Blue Light Theme */
-            --color-bg: #ffffff;
-            --color-bg-secondary: #f8f9fa;
-            --color-fg: #000000;
-            --color-fg-secondary: #6c757d;
-            --color-border: #dee2e6;
-            --color-accent: #4dabf7;
-            --color-accent-hover: #339af0;
-            --color-card: #ffffff;
-            --color-card-hover: #f1f3f5;
-            --color-card-border: #dee2e6;
-            --color-code-bg: #f5f5f5;
-            --color-icon-bg: linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.15);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
-            --transition: all 0.2s ease;
+            --bg:           #ffffff;
+            --bg2:          #f8f9fa;
+            --bg3:          #f1f3f5;
+            --fg:           #111111;
+            --fg2:          #6c757d;
+            --fg3:          #adb5bd;
+            --border:       #dee2e6;
+            --border2:      #ced4da;
+            --accent:       #4dabf7;
+            --accent-hover: #339af0;
+            --accent-glow:  rgba(77,171,247,0.18);
+            --accent-glow2: rgba(77,171,247,0.08);
+            --card:         #ffffff;
+            --card-border:  #dee2e6;
+            --card-hover:   #f8f9fa;
+            --code-bg:      #f4f4f8;
+            --code-fg:      #1a1a2e;
+            --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+            --shine:        linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 60%);
+            --shadow-sm:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md:    0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-lg:    0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+            --shadow-blue:  0 4px 20px rgba(77,171,247,0.25);
         }
-
         [data-theme="dark"] {
-            /* Blue Dark Theme */
-            --color-bg: #121212;
-            --color-bg-secondary: #1e1e1e;
-            --color-fg: #e0e0e0;
-            --color-fg-secondary: #a0a0a0;
-            --color-border: #333333;
-            --color-accent: #4dabf7;
-            --color-accent-hover: #74c0fc;
-            --color-card: #1e1e1e;
-            --color-card-hover: #2d2d2d;
-            --color-card-border: #333333;
-            --color-code-bg: #252532;
-            --color-icon-bg: linear-gradient(135deg, #4dabf7 0%, #74c0fc 100%);
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+            --bg:           #0f0f12;
+            --bg2:          #1a1a1f;
+            --bg3:          #242429;
+            --fg:           #e8e8f0;
+            --fg2:          #9090a0;
+            --fg3:          #606070;
+            --border:       #2a2a35;
+            --border2:      #363645;
+            --accent:       #4dabf7;
+            --accent-hover: #74c0fc;
+            --accent-glow:  rgba(77,171,247,0.15);
+            --accent-glow2: rgba(77,171,247,0.06);
+            --card:         #1a1a1f;
+            --card-border:  #2a2a35;
+            --card-hover:   #242429;
+            --code-bg:      #13131a;
+            --code-fg:      #e0e0f0;
+            --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #74c0fc 100%);
+            --shine:        linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 60%);
+            --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+            --shadow-md:    0 4px 12px rgba(0,0,0,0.5);
+            --shadow-lg:    0 12px 32px rgba(0,0,0,0.6);
+            --shadow-blue:  0 4px 24px rgba(77,171,247,0.2);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
-            background: var(--color-bg);
-            color: var(--color-fg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
             min-height: 100vh;
-            transition: var(--transition);
             line-height: 1.6;
+            transition: background 0.25s, color 0.25s;
         }
 
-        /* ── Top bar ──────────────────────────────────────── */
+        /* ── Topbar ─────────────────────────────────────────── */
         .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1.5rem;
-            border-bottom: 1px solid var(--color-border);
-            background: var(--color-bg);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 2rem;
+            height: 60px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
-
-        .topbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            text-decoration: none;
-            color: var(--color-fg);
-        }
-
-        .topbar-logo {
-            width: 45px;
-            height: 45px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .topbar-logo svg {
-            width: 100%;
-            height: 100%;
-            border-radius: 6px;
-        }
-
-        .topbar-name {
-            font-weight: 700;
-            font-size: 1rem;
-            letter-spacing: -0.02em;
-        }
-
+        .topbar-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--fg); }
+        .topbar-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+        .topbar-logo svg { width: 100%; height: 100%; }
+        .topbar-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+        .topbar-sep { width: 1px; height: 18px; background: var(--border2); margin: 0 0.25rem; }
+        .topbar-subtitle { font-size: 0.8rem; color: var(--fg2); font-weight: 400; }
         .topbar-version {
-            font-size: 0.75rem;
-            color: var(--color-fg-secondary);
-            background: var(--color-bg-secondary);
-            padding: 0.15rem 0.5rem;
-            border-radius: 999px;
-            font-family: ui-monospace, 'Cascadia Code', monospace;
+            font-size: 0.7rem; color: var(--accent); background: var(--accent-glow2);
+            border: 1px solid var(--accent-glow);
+            padding: 0.15rem 0.6rem; border-radius: 999px;
+            font-family: 'IBM Plex Mono', monospace; font-weight: 500;
         }
-
-        .topbar-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        /* ── Theme toggle ─────────────────────────────────── */
-        .theme-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border: 1px solid var(--color-border);
+        .topbar-actions { display: flex; align-items: center; gap: 0.6rem; }
+        .topbar-gh {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.8rem; font-weight: 500; color: var(--fg2);
+            text-decoration: none; padding: 0.3rem 0.7rem;
+            border: 1px solid var(--border);
             border-radius: 8px;
-            background: var(--color-bg);
-            color: var(--color-fg);
-            cursor: pointer;
-            transition: var(--transition);
+            transition: all 0.18s;
         }
-
-        .theme-toggle:hover {
-            background: var(--color-bg-secondary);
-            border-color: var(--color-accent);
+        .topbar-gh:hover { color: var(--fg); border-color: var(--accent); background: var(--accent-glow2); }
+        .theme-toggle {
+            display: flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border: 1px solid var(--border); border-radius: 8px;
+            background: transparent; color: var(--fg); cursor: pointer;
+            transition: all 0.18s;
         }
-
-        .theme-toggle svg {
-            width: 18px;
-            height: 18px;
-            transition: var(--transition);
-        }
-
+        .theme-toggle:hover { border-color: var(--accent); background: var(--accent-glow2); }
+        .theme-toggle svg { width: 16px; height: 16px; }
         .theme-toggle .icon-moon { display: none; }
         .theme-toggle .icon-sun  { display: block; }
         [data-theme="dark"] .theme-toggle .icon-moon { display: block; }
         [data-theme="dark"] .theme-toggle .icon-sun  { display: none; }
 
-        /* ── Hero ─────────────────────────────────────────── */
+        /* ── Layout ──────────────────────────────────────────── */
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+        /* ── Hero ────────────────────────────────────────────── */
         .hero {
             text-align: center;
-            padding: 4rem 1.5rem 3rem;
-            max-width: 720px;
-            margin: 0 auto;
+            padding: 5rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
         }
-
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -80px; left: 50%; transform: translateX(-50%);
+            width: 700px; height: 400px;
+            background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--accent);
+            background: var(--accent-glow2); border: 1px solid var(--accent-glow);
+            padding: 0.3rem 0.9rem; border-radius: 999px;
+            margin-bottom: 1.5rem;
+        }
+        .hero-eyebrow svg { width: 12px; height: 12px; }
         .hero h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, var(--color-accent) 0%, #22b8cf 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 3.2rem; font-weight: 800; letter-spacing: -0.04em;
+            margin-bottom: 1.2rem; line-height: 1.1;
+            background: linear-gradient(135deg, var(--accent) 0%, #22b8cf 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
-        .hero p {
-            font-size: 1.125rem;
-            color: var(--color-fg-secondary);
-            max-width: 520px;
-            margin: 0 auto;
+        .hero-desc {
+            font-size: 1.1rem; color: var(--fg2); max-width: 620px; margin: 0 auto 2.5rem;
+            line-height: 1.75;
         }
-
-        /* ── Cards grid ───────────────────────────────────── */
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.25rem;
-            max-width: 720px;
-            margin: 0 auto 4rem;
-            padding: 0 1.5rem;
+        .hero-stats {
+            display: flex; align-items: center; justify-content: center; gap: 2.5rem;
+            flex-wrap: wrap;
         }
+        .hero-stat { text-align: center; }
+        .hero-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; line-height: 1; }
+        .hero-stat-label { font-size: 0.75rem; color: var(--fg2); margin-top: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+        .hero-stat-div { width: 1px; height: 36px; background: var(--border); }
 
+        /* ── Section ─────────────────────────────────────────── */
+        .section { margin: 0 auto 4rem; }
+        .section-header { margin-bottom: 1.5rem; }
+        .section-label {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.12em; color: var(--accent);
+            font-family: 'IBM Plex Mono', monospace;
+            margin-bottom: 0.35rem;
+        }
+        .section-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+        .section-desc { font-size: 0.9rem; color: var(--fg2); margin-top: 0.35rem; }
+
+        /* ── Doc cards ───────────────────────────────────────── */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
         .card {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1.25rem;
-            background: var(--color-card);
-            border: 1px solid var(--color-card-border);
-            border-radius: 12px;
-            box-shadow: var(--shadow-sm);
-            text-decoration: none;
-            color: var(--color-fg);
-            transition: var(--transition);
-        }
-
-        .card:hover {
-            background: var(--color-card-hover);
-            border-color: var(--color-accent);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
-        }
-
-        .card-icon {
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            border-radius: 10px;
-            background: var(--color-icon-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-        }
-
-        .card h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            letter-spacing: -0.01em;
-        }
-
-        .card p {
-            font-size: 0.85rem;
-            color: var(--color-fg-secondary);
-            line-height: 1.5;
-        }
-
-        .card-arrow {
-            margin-left: auto;
-            opacity: 0;
-            transform: translateX(-4px);
-            transition: var(--transition);
-            color: var(--color-accent);
-            font-size: 1.1rem;
-        }
-
-        .card:hover .card-arrow {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        /* ── Quick commands ───────────────────────────────── */
-        .quick {
-            max-width: 720px;
-            margin: 0 auto 4rem;
-            padding: 0 1.5rem;
-        }
-
-        .quick h2 {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.01em;
-        }
-
-        .quick code {
-            display: block;
-            background: var(--color-code-bg);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
-            font-size: 0.85rem;
-            color: var(--color-accent);
-            overflow-x: auto;
-        }
-
-        /* ── Footer ───────────────────────────────────────── */
-        .footer {
-            text-align: center;
+            display: flex; flex-direction: column;
             padding: 1.5rem;
-            border-top: 1px solid var(--color-border);
-            font-size: 0.8rem;
-            color: var(--color-fg-secondary);
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            text-decoration: none; color: var(--fg);
+            transition: all 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .card::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: var(--shine);
+            pointer-events: none;
+            border-radius: inherit;
+        }
+        .card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-blue), var(--shadow-md);
+            transform: translateY(-3px);
+            background: var(--card-hover);
+        }
+        .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+        .card-icon {
+            width: 46px; height: 46px;
+            border-radius: 12px;
+            background: var(--icon-grad);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(77,171,247,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .card-icon svg { width: 22px; height: 22px; color: #fff; }
+        .card-badge {
+            font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; font-weight: 500;
+            color: var(--accent); background: var(--accent-glow2);
+            border: 1px solid var(--accent-glow);
+            padding: 0.2rem 0.55rem; border-radius: 6px;
+        }
+        .card h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 0.4rem; }
+        .card-desc { font-size: 0.85rem; color: var(--fg2); line-height: 1.6; flex: 1; }
+        .card-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 1.25rem; padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.78rem; color: var(--fg2);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        .card-tool { display: flex; align-items: center; gap: 0.4rem; }
+        .card-tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+        .card-arrow {
+            color: var(--accent); opacity: 0;
+            transform: translateX(-4px); transition: all 0.18s;
+            font-size: 0.85rem;
+        }
+        .card:hover .card-arrow { opacity: 1; transform: translateX(0); }
+
+        /* ── Tabbed panels ───────────────────────────────────── */
+        .tabbed-panel {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .tab-bar {
+            display: flex; align-items: stretch;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg2);
+            padding: 0 0.75rem;
+            overflow-x: auto;
+            gap: 0;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-btn {
+            display: flex; align-items: center; gap: 0.45rem;
+            padding: 0.7rem 1.1rem;
+            border: none; background: transparent;
+            color: var(--fg2);
+            font-family: 'Inter', sans-serif; font-size: 0.83rem; font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .tab-btn:hover { color: var(--fg); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-btn i { font-size: 0.88rem; }
+        .tab-btn .tab-svg { width: 13px; height: 13px; }
+        .tab-content { display: none; padding: 1.75rem; }
+        .tab-content.active { display: block; }
+
+        /* ── Code block ──────────────────────────────────────── */
+        .code-wrap {
+            position: relative;
+            background: var(--code-bg);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .code-label {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg2);
+        }
+        .code-lang-row { display: flex; align-items: center; gap: 0.5rem; }
+        .code-dots { display: flex; gap: 5px; }
+        .code-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
+        .code-lang { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 500; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.07em; }
+        .copy-btn {
+            display: flex; align-items: center; gap: 0.35rem;
+            font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500;
+            color: var(--fg2); background: transparent; border: none;
+            cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 5px;
+            transition: all 0.15s;
+        }
+        .copy-btn:hover { color: var(--accent); background: var(--accent-glow2); }
+        .copy-btn.copied { color: #40c057; }
+        pre {
+            margin: 0; padding: 1.1rem 1.25rem;
+            overflow-x: auto;
+            font-family: 'IBM Plex Mono', monospace; font-size: 0.83rem; line-height: 1.7;
+            color: var(--code-fg);
         }
 
-        .footer a {
-            color: var(--color-accent);
-            text-decoration: none;
+        /* highlight.js overrides */
+        .hljs { background: transparent !important; padding: 0 !important; font-size: inherit; line-height: inherit; }
+        pre code.hljs { display: block; overflow-x: auto; }
+
+        /* ── Install note ─────────────────────────────────────── */
+        .install-note {
+            font-size: 0.82rem; color: var(--fg2);
+            margin-top: 1rem; padding: 0.85rem 1.1rem;
+            background: var(--bg2); border-radius: 8px;
+            border-left: 3px solid var(--accent);
+            line-height: 1.6;
+        }
+        .install-note code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent); }
+
+        /* ── Divider ─────────────────────────────────────────── */
+        .divider { height: 1px; background: var(--border); margin: 1rem 0 2.5rem; }
+
+        /* ── Footer ──────────────────────────────────────────── */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 2.5rem 2rem;
+            margin-top: 2rem;
+        }
+        .footer-inner {
+            max-width: 1200px; margin: 0 auto;
+            display: grid; grid-template-columns: 1fr auto;
+            gap: 2rem; align-items: start;
+        }
+        .footer-brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+        .footer-logo { width: 28px; height: 28px; }
+        .footer-logo svg { width: 100%; height: 100%; }
+        .footer-name { font-weight: 700; font-size: 0.95rem; }
+        .footer-tagline { font-size: 0.82rem; color: var(--fg2); line-height: 1.5; max-width: 340px; }
+        .footer-copy { font-size: 0.75rem; color: var(--fg3); margin-top: 1rem; }
+        .footer-copy a { color: var(--fg2); text-decoration: none; }
+        .footer-copy a:hover { color: var(--accent); }
+
+        .footer-links { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; }
+        .footer-links-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg3); margin-bottom: 0.4rem; font-family: 'IBM Plex Mono', monospace; }
+        .footer-link {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.83rem; color: var(--fg2); text-decoration: none;
+            padding: 0.35rem 0.7rem; border-radius: 8px;
+            transition: all 0.15s;
+        }
+        .footer-link:hover { color: var(--accent); background: var(--accent-glow2); }
+        .footer-link i { font-size: 0.82rem; width: 14px; }
+        .footer-link-badge {
+            font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+            color: var(--accent); background: var(--accent-glow2);
+            border: 1px solid var(--accent-glow);
+            padding: 0.1rem 0.4rem; border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
         }
 
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* ── Responsive ───────────────────────────────────── */
-        @media (max-width: 600px) {
-            .hero h1 { font-size: 2rem; }
-            .cards { grid-template-columns: 1fr; }
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.2rem; }
+            .wrap { padding: 0 1rem; }
+            .topbar { padding: 0 1rem; }
+            .topbar-subtitle, .topbar-sep { display: none; }
+            .footer-inner { grid-template-columns: 1fr; }
+            .footer-links { align-items: flex-start; }
         }
     </style>
 </head>
 <body>
 
-<!-- Top bar -->
+<!-- Topbar -->
 <header class="topbar">
     <a class="topbar-brand" href="#">
-        <div class="topbar-logo">
-            @LOGO_CONTENT@
-        </div>
+        <div class="topbar-logo">@LOGO_CONTENT@</div>
         <span class="topbar-name">CToon</span>
+        <span class="topbar-sep"></span>
+        <span class="topbar-subtitle">Documentation</span>
     </a>
     <div class="topbar-actions">
-        <span class="topbar-version">@PROJECT_VERSION@</span>
+        <span class="topbar-version">v@PROJECT_VERSION@</span>
+        <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
         <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" /></svg>
-            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" /></svg>
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
         </button>
     </div>
 </header>
 
 <!-- Hero -->
-<section class="hero">
+<div class="hero">
+    <div class="hero-eyebrow">
+        <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        C · C++ · Python · Go
+    </div>
     <h1>CToon Documentation</h1>
-    <p>A high-performance C++ serialization library for JSON and TOON formats with Python bindings.</p>
-</section>
+    <p class="hero-desc">
+        A high-performance serialisation library for the TOON format — a compact, human-readable alternative to JSON.
+        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, and Go.
+    </p>
+    <div class="hero-stats">
+        <div class="hero-stat">
+            <div class="hero-stat-num">C99</div>
+            <div class="hero-stat-label">Core language</div>
+        </div>
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num">4</div>
+            <div class="hero-stat-label">Language bindings</div>
+        </div>
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num">MIT</div>
+            <div class="hero-stat-label">License</div>
+        </div>
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num">3.19+</div>
+            <div class="hero-stat-label">CMake required</div>
+        </div>
+    </div>
+</div>
 
-<!-- Cards -->
-<section class="cards">
-    <a href="cpp/html/index.html" class="card">
-        <span class="card-icon">⚙️</span>
-        <div>
+<div class="wrap">
+
+<!-- API References -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-label">API References</div>
+        <div class="section-title">Language Documentation</div>
+        <div class="section-desc">Full API reference for each language binding, generated from source.</div>
+    </div>
+    <div class="cards">
+
+        <a href="c/html/index.html" class="card">
+            <div class="card-top">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="card-badge">C99</span>
+            </div>
+            <h3>C API</h3>
+            <p class="card-desc">Core library interface. Covers document parsing with <code style="font-family:monospace;font-size:0.82em">ctoon_read</code>, serialisation with <code style="font-family:monospace;font-size:0.82em">ctoon_write</code>, JSON export, and full value-traversal API. Zero dependencies beyond the C standard library.</p>
+            <div class="card-footer">
+                <div class="card-tool"><div class="card-tool-dot"></div> Doxygen</div>
+                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
+
+        <a href="cpp/html/index.html" class="card">
+            <div class="card-top">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="card-badge">C++11</span>
+            </div>
             <h3>C++ API</h3>
-            <p>Full reference for the C++ library: Value, EncodeOptions, DecodeOptions, and more.</p>
-        </div>
-        <span class="card-arrow">→</span>
-    </a>
-    <a href="python/html/index.html" class="card">
-        <span class="card-icon">🐍</span>
-        <div>
-            <h3>Python API</h3>
-            <p>Python bindings via nanobind: loads_json, encode, decode, and CLI usage.</p>
-        </div>
-        <span class="card-arrow">→</span>
-    </a>
-</section>
+            <p class="card-desc">Header-only RAII wrappers around the C core. Covers <code style="font-family:monospace;font-size:0.82em">ctoon::document</code>, <code style="font-family:monospace;font-size:0.82em">value</code>, <code style="font-family:monospace;font-size:0.82em">make_document</code>, <code style="font-family:monospace;font-size:0.82em">EncodeOptions</code>, <code style="font-family:monospace;font-size:0.82em">DecodeOptions</code>, and read/write flag enums.</p>
+            <div class="card-footer">
+                <div class="card-tool"><div class="card-tool-dot"></div> Doxygen</div>
+                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
 
-<!-- Quick start -->
-<section class="quick">
-    <h2>Quick Start</h2>
-    <code>$ pip install ctoon</code>
-</section>
+        <a href="python/html/index.html" class="card">
+            <div class="card-top">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="card-badge">Python 3.9+</span>
+            </div>
+            <h3>Python API</h3>
+            <p class="card-desc">nanobind-based extension module. Documents <code style="font-family:monospace;font-size:0.82em">loads</code>, <code style="font-family:monospace;font-size:0.82em">dumps</code>, <code style="font-family:monospace;font-size:0.82em">load</code>, <code style="font-family:monospace;font-size:0.82em">dump</code>, JSON interop functions, and the <code style="font-family:monospace;font-size:0.82em">ReadFlag</code> / <code style="font-family:monospace;font-size:0.82em">WriteFlag</code> / <code style="font-family:monospace;font-size:0.82em">Delimiter</code> enums.</p>
+            <div class="card-footer">
+                <div class="card-tool"><div class="card-tool-dot"></div> Sphinx</div>
+                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
+
+        <a href="go/index.html" class="card">
+            <div class="card-top">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="card-badge">Go 1.21+</span>
+            </div>
+            <h3>Go API</h3>
+            <p class="card-desc">CGo bindings that wrap the C core. Covers <code style="font-family:monospace;font-size:0.82em">Loads</code>, <code style="font-family:monospace;font-size:0.82em">Dumps</code>, <code style="font-family:monospace;font-size:0.82em">LoadsJSON</code>, <code style="font-family:monospace;font-size:0.82em">DumpsJSON</code>, file I/O helpers, and encode/decode option structs.</p>
+            <div class="card-footer">
+                <div class="card-tool"><div class="card-tool-dot"></div> godoc</div>
+                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
+            </div>
+        </a>
+
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Installation -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-label">Get Started</div>
+        <div class="section-title">Installation</div>
+        <div class="section-desc">Add CToon to your project in seconds.</div>
+    </div>
+    <div class="tabbed-panel" id="install-panel">
+        <div class="tab-bar" id="install-tabs">
+            <button class="tab-btn active" data-tab="install-python" onclick="switchTab('install','python')">
+                <i class="fa-brands fa-python"></i> Python
+            </button>
+            <button class="tab-btn" data-tab="install-c" onclick="switchTab('install','c')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8.5C14.8 7.6 13.5 7 12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/></svg> C / C++
+            </button>
+            <button class="tab-btn" data-tab="install-go" onclick="switchTab('install','go')">
+                <i class="fa-brands fa-golang"></i> Go
+            </button>
+            <button class="tab-btn" data-tab="install-cli" onclick="switchTab('install','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
+        </div>
+
+        <div class="tab-content active" id="install-python">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-bash">pip install ctoon</code></pre>
+            </div>
+            <div class="install-note">
+                Requires Python 3.9+. No runtime dependencies — wheels ship a pre-built native extension for Linux, macOS, and Windows.<br>
+                Install the latest development build directly from source: <code>pip install git+https://github.com/MohammadRaziei/ctoon</code>
+            </div>
+        </div>
+
+        <div class="tab-content" id="install-c">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CMake — FetchContent</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-cmake"># CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(
+  ctoon
+  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(ctoon)
+
+# Link to your target
+target_link_libraries(my_app PRIVATE ctoon)
+
+# C++ header-only wrapper — no extra step needed
+# just #include "ctoon.hpp" after linking ctoon</code></pre>
+            </div>
+            <div class="install-note">
+                Requires CMake 3.19+ and a C99-compatible compiler. The C++11 header (<code>ctoon.hpp</code>) is header-only — linking <code>ctoon</code> is all that is needed for both C and C++ targets.
+            </div>
+        </div>
+
+        <div class="tab-content" id="install-go">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-bash">go get github.com/mohammadraziei/ctoon</code></pre>
+            </div>
+            <div class="install-note">
+                Requires Go 1.21+ with CGo enabled (<code>CGO_ENABLED=1</code>). The module bundles the C core source — no separate C library install is needed. A C compiler (gcc / clang) must be available on the build host.
+            </div>
+        </div>
+
+        <div class="tab-content" id="install-cli">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash — build from source</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-bash">git clone https://github.com/MohammadRaziei/ctoon.git
+cd ctoon
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
+
+# Optional: install to system path
+sudo cmake --install build</code></pre>
+            </div>
+            <div class="install-note">
+                The <code>ctoon</code> binary auto-detects the conversion direction from the file extension — <code>.json</code> files are encoded to TOON, <code>.toon</code> files are decoded to JSON. Use <code>-e</code> or <code>-d</code> to override.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Examples -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-label">Usage</div>
+        <div class="section-title">Quick Examples</div>
+        <div class="section-desc">Encode, decode, and interop with JSON in a few lines of code.</div>
+    </div>
+    <div class="tabbed-panel" id="example-panel">
+        <div class="tab-bar" id="example-tabs">
+            <button class="tab-btn active" data-tab="example-python" onclick="switchTab('example','python')">
+                <i class="fa-brands fa-python"></i> Python
+            </button>
+            <button class="tab-btn" data-tab="example-c" onclick="switchTab('example','c')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8.5C14.8 7.6 13.5 7 12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/></svg> C
+            </button>
+            <button class="tab-btn" data-tab="example-cpp" onclick="switchTab('example','cpp')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/><path d="M18 9.5h-3m1.5-1.5v3"/><path d="M22 9.5h-3m1.5-1.5v3"/></svg> C++
+            </button>
+            <button class="tab-btn" data-tab="example-go" onclick="switchTab('example','go')">
+                <i class="fa-brands fa-golang"></i> Go
+            </button>
+            <button class="tab-btn" data-tab="example-cli" onclick="switchTab('example','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
+        </div>
+
+        <div class="tab-content active" id="example-python">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">python</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-python">import ctoon
+
+# Encode Python dict → TOON string
+toon = ctoon.dumps({"name": "Alice", "age": 30})
+# name: Alice
+# age: 30
+
+# Decode TOON string → Python dict
+data = ctoon.loads(toon)
+
+# File I/O — path strings or file-like objects
+ctoon.dump(data, "out.toon")
+data = ctoon.load("out.toon")
+
+# JSON interop
+json_str = ctoon.dumps_json(data, indent=2)
+data     = ctoon.loads_json(json_str)
+ctoon.dump_json(data, "out.json")
+
+# Advanced encode flags
+from ctoon import WriteFlag, Delimiter
+toon = ctoon.dumps(data,
+    indent=4,
+    delimiter=Delimiter.PIPE,
+    flags=WriteFlag.LENGTH_MARKER | WriteFlag.NEWLINE_AT_END)</code></pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="example-c">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-c">#include "ctoon.h"
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+int main(void) {
+    const char *src = "name: Alice\nage: 30";
+    ctoon_doc *doc  = ctoon_read(src, strlen(src), 0);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+
+    /* Access fields */
+    ctoon_val *name = ctoon_obj_get(root, "name");
+    printf("%s\n", ctoon_get_str(name));   /* Alice */
+
+    /* Serialise back to TOON */
+    size_t len;
+    char *toon = ctoon_write(doc, &amp;len);
+    free(toon);
+
+    /* Export as JSON (CTOON_ENABLE_JSON=1, default) */
+    char *json = ctoon_doc_to_json(doc, 2,
+                     CTOON_WRITE_NOFLAG, NULL, &amp;len, NULL);
+    printf("%s\n", json);
+    free(json);
+
+    ctoon_doc_free(doc);
+    return 0;
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="example-cpp">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c++</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-cpp">#include "ctoon.hpp"
+#include &lt;iostream&gt;
+
+int main() {
+    // Parse a TOON document
+    auto doc  = ctoon::document::parse("name: Alice\nage: 30");
+    auto root = doc.root();
+    std::cout &lt;&lt; root["name"].get_str().str() &lt;&lt; "\n";  // Alice
+    std::cout &lt;&lt; root["age"].get_uint()        &lt;&lt; "\n";  // 30
+
+    // Serialise to TOON and JSON
+    std::cout &lt;&lt; doc.write().c_str()    &lt;&lt; "\n";
+    std::cout &lt;&lt; doc.to_json(2).c_str() &lt;&lt; "\n";
+
+    // Build a document programmatically
+    auto mdoc = ctoon::make_document();
+    auto obj  = mdoc.make_obj();
+    mdoc.set_root(obj);
+    obj.obj_put(mdoc.make_str("city"), mdoc.make_str("Tehran"));
+    obj.obj_put(mdoc.make_str("pop"),  mdoc.make_uint(9000000));
+    std::cout &lt;&lt; mdoc.to_json(0).c_str() &lt;&lt; "\n";
+
+    // Parse from JSON
+    auto jdoc = ctoon::document::from_json(R"({"x":1,"y":2})");
+    std::cout &lt;&lt; jdoc.root()["x"].get_uint() &lt;&lt; "\n";  // 1
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="example-go">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">go</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-go">package main
+
+import (
+    "fmt"
+    ctoon "github.com/mohammadraziei/ctoon"
+)
+
+func main() {
+    data := map[string]interface{}{
+        "name": "Alice",
+        "age":  int64(30),
+    }
+
+    // Encode → TOON
+    toon, _ := ctoon.Dumps(data)
+    fmt.Println(toon)
+
+    // Decode ← TOON
+    val, _ := ctoon.Loads(toon)
+    fmt.Println(val)
+
+    // File I/O
+    ctoon.EncodeToFile(data, "out.toon", ctoon.DefaultEncodeOptions())
+    val, _ = ctoon.DecodeFromFile("out.toon", ctoon.DefaultDecodeOptions())
+
+    // JSON interop
+    json, _ := ctoon.DumpsJSON(data, 2)
+    fmt.Println(json)
+    ctoon.DumpJSON(data, "out.json")
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="example-cli">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-bash"># JSON → TOON (auto-detected from extension)
+ctoon input.json
+ctoon input.json -o output.toon
+
+# TOON → JSON with pretty-printing
+ctoon input.toon
+ctoon input.toon -o output.json -i 4
+
+# Read from stdin
+cat data.json | ctoon -e -
+
+# Encoder options
+ctoon input.json --delimiter pipe     # comma (default), tab, pipe
+ctoon input.json --length-marker      # emit items[#3]: …
+ctoon input.json --stats              # print byte-savings summary
+
+# Force conversion direction
+ctoon -e input.json   # force encode  JSON → TOON
+ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /wrap -->
 
 <!-- Footer -->
 <footer class="footer">
-    &copy; 2024 Mohammad Raziei · <a href="https://github.com/MohammadRaziei/ctoon">GitHub</a> · MIT License
+    <div class="footer-inner">
+        <div>
+            <div class="footer-brand">
+                <div class="footer-logo">@LOGO_CONTENT@</div>
+                <span class="footer-name">CToon</span>
+            </div>
+            <div class="footer-tagline">
+                A high-performance C serialisation library for the TOON and JSON formats,
+                with idiomatic language bindings for C++, Python, and Go.
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
+                &nbsp;·&nbsp; <a href="https://github.com/MohammadRaziei/ctoon/blob/main/LICENSE">MIT License</a>
+                &nbsp;·&nbsp; v@PROJECT_VERSION@
+            </div>
+        </div>
+
+        <div>
+            <div class="footer-links-title">Resources</div>
+            <div class="footer-links">
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+                    <i class="fa-brands fa-github"></i> Source code
+                </a>
+                <a class="footer-link" href="cpp/html/index.html">
+                    <i class="fa-solid fa-book"></i> C / C++ reference
+                </a>
+                <a class="footer-link" href="python/html/index.html">
+                    <i class="fa-brands fa-python"></i> Python reference
+                </a>
+                <a class="footer-link" href="go/index.html">
+                    <i class="fa-brands fa-golang"></i> Go reference
+                </a>
+                <a class="footer-link" href="coverage/index.html">
+                    <i class="fa-solid fa-chart-pie"></i> Coverage report
+                    <span class="footer-link-badge">dev</span>
+                </a>
+            </div>
+        </div>
+    </div>
 </footer>
 
 <script>
-    // Theme toggle with localStorage persistence
-    const savedTheme = localStorage.getItem('ctoon-docs-theme');
-
-    if (savedTheme) {
-        document.documentElement.setAttribute('data-theme', savedTheme);
+    // ── Theme ────────────────────────────────────────────────
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        document.getElementById('hljs-theme-dark').disabled  = (theme !== 'dark');
+        document.getElementById('hljs-theme-light').disabled = (theme !== 'light');
     }
+    const saved = localStorage.getItem('ctoon-docs-theme') || 'dark';
+    applyTheme(saved);
 
     function toggleTheme() {
-        const current = document.documentElement.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
         localStorage.setItem('ctoon-docs-theme', next);
     }
-</script>
 
+    // ── highlight.js ─────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        hljs.configure({ ignoreUnescapedHTML: true });
+        hljs.highlightAll();
+    });
+
+    // ── Tab switching ────────────────────────────────────────
+    function switchTab(panel, lang) {
+        document.querySelectorAll('#' + panel + '-panel .tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('#' + panel + '-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+        const content = document.getElementById(panel + '-' + lang);
+        if (content) content.classList.add('active');
+        const btn = document.querySelector('#' + panel + '-tabs [data-tab="' + panel + '-' + lang + '"]');
+        if (btn) btn.classList.add('active');
+
+        const other = panel === 'install' ? 'example' : 'install';
+        const oc = document.getElementById(other + '-' + lang);
+        if (oc) {
+            document.querySelectorAll('#' + other + '-panel .tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('#' + other + '-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            oc.classList.add('active');
+            const ob = document.querySelector('#' + other + '-tabs [data-tab="' + other + '-' + lang + '"]');
+            if (ob) ob.classList.add('active');
+        }
+    }
+
+    // ── Copy button ──────────────────────────────────────────
+    function copyCode(btn) {
+        const code = btn.closest('.code-wrap').querySelector('pre code') ||
+                     btn.closest('.code-wrap').querySelector('pre');
+        navigator.clipboard.writeText(code.innerText).then(() => {
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> copied!';
+            btn.classList.add('copied');
+            setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> copy'; btn.classList.remove('copied'); }, 1800);
+        });
+    }
+</script>
 </body>
 </html>
