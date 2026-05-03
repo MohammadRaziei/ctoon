@@ -62,8 +62,6 @@ jobs:
       - name: List dist directory
         run: tree --du -shaC . 
 
-        use RELEASE_NAME, IS_TAG
-
         
 
       # - name: Create release
