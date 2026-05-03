@@ -8,7 +8,7 @@ PROJECT_ROOT = DOCS_DIR.parent.parent.parent
 IMAGES_DIR = PROJECT_ROOT / 'docs' / 'images'
 
 # Read version from ctoon.h
-CTOON_H = PROJECT_ROOT / 'includes' / 'ctoon.h'
+CTOON_H = PROJECT_ROOT / 'include' / 'ctoon.h'
 text = CTOON_H.read_text()
 
 _major = re.search(r'#define\s+CTOON_VERSION_MAJOR\s+(\d+)', text)
