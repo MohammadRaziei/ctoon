@@ -16,7 +16,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -52,7 +52,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v2
@@ -90,7 +90,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v2
@@ -147,7 +147,7 @@ jobs:
     
   #   steps:
   #   - name: Checkout repository
-  #     uses: actions/checkout@v4
+  #     uses: actions/checkout@v6
 
   #   - name: Download documentation artifact
   #     uses: actions/download-artifact@v4
