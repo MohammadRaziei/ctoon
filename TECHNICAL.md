@@ -1,327 +1,336 @@
-# CToon – Technical Reference
+# CToon — Technical Report
 
-## Overview
+## 1. Overview
 
-CToon is a C implementation of the [TOON format](https://github.com/toon-format/spec) —
-a compact, human-readable serialization format optimized for LLM token usage.
-It achieves 30–60% token reduction versus JSON while maintaining readability.
+CToon is a high-performance C implementation of the TOON serialisation format. Its design priority is **zero-copy parsing** and **minimal allocation overhead** — the same goals that motivated jq, RapidJSON, and yyjson. This report covers the internal data structures, memory layout, parsing algorithm, and the architectural differences between the immutable and mutable document models.
 
 ---
 
-## Architecture
+## 2. Value Representation (`ctoon_val`)
+
+Every value in a parsed document occupies exactly **16 bytes** on all platforms:
 
 ```
-Input (TOON text)
-       │
-       ▼
-┌─────────────┐
-│   Scanner   │  tp_parse_* — lexes/parses into ctoon_val tree
-│  (ctoon.c)  │  no separate AST phase; builds directly into arena
-└──────┬──────┘
-       │ ctoon_val* tree in arena
-       ▼
-┌─────────────┐
-│    Arena    │  chunk-based arena allocator (calloc chunks, no individual free)
-│ Allocator   │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐
-│  Serializer │  tw / tw_write_* — traverses ctoon_val tree, writes TOON text
-│  (ctoon.c)  │  options-aware: delimiter, indent, length-marker
-└─────────────┘
-```
-
----
-
-## Data Structures
-
-### Arena Allocator
-
-```
-ctoon_arena
-  └─ ctoon_arena_chunk → ctoon_arena_chunk → ...
-         │                     │
-     [data...]             [data...]
-```
-
-Chunks are allocated with `calloc` (zero-initialized).  
-All `ctoon_val` nodes live inside these chunks.  
-`ctoon_doc_free()` frees all chunks in O(k) where k = number of chunks.
-
-**Complexity:**
-- Allocation: O(1) amortized (bump pointer, new chunk only when full)
-- Free all: O(k) where k = chunks ≈ O(1) for typical documents
-
-### ctoon_val (node)
-
-Every value in the tree is a `ctoon_val`:
-
-```c
 struct ctoon_val {
-    ctoon_type type;        // tag: NULL, TRUE, FALSE, NUMBER, STRING, ARRAY, OBJECT
-    union {
-        struct {
-            union { double f64; uint64_t u64; int64_t s64; };  // 8 bytes
-            uint8_t subtype;                                     // 1 byte
-        } number;           // total: 16 bytes (with padding)
+    uint64_t     tag;   // type + subtype + length  (8 bytes)
+    ctoon_val_uni uni;  // payload                   (8 bytes)
+};
 
-        struct { const char *ptr; size_t len; } str;    // 16 bytes
-        struct { ctoon_val **items; size_t count, cap; } arr;  // 24 bytes
-        struct { ctoon_kv  *pairs; size_t count, cap; } obj;  // 24 bytes
-    } u;
+union ctoon_val_uni {
+    uint64_t    u64;   // unsigned integer
+    int64_t     i64;   // signed integer
+    double      f64;   // IEEE-754 double
+    const char *str;   // pointer into input buffer (zero-copy)
+    void       *ptr;   // generic pointer (mutable tree links)
+    size_t      ofs;   // byte offset to next sibling (immutable tree)
 };
 ```
 
-The `number` union stores exactly one of `f64`/`u64`/`s64` depending on `subtype` —
-no redundant copies, no precision loss for integers ≤ 2⁶³.
+### 2.1 Tag Bit Layout
 
-```mermaid
-classDiagram
-    class ctoon_val {
-        +ctoon_type type
-        +union u
-    }
-    class number_union {
-        +union f64_u64_s64
-        +uint8_t subtype
-    }
-    class str_struct {
-        +const char* ptr
-        +size_t len
-    }
-    class arr_struct {
-        +ctoon_val** items
-        +size_t count
-        +size_t cap
-    }
-    class obj_struct {
-        +ctoon_kv* pairs
-        +size_t count
-        +size_t cap
-    }
-    ctoon_val --> number_union : NUMBER
-    ctoon_val --> str_struct   : STRING / RAW
-    ctoon_val --> arr_struct   : ARRAY
-    ctoon_val --> obj_struct   : OBJECT
+The `tag` field encodes type, subtype, and (for strings/containers) length in a single 64-bit word:
+
 ```
+ 63                    8   7   6   5   4   3   2   1   0
+ ┌──────────────────────┬───────────────┬───────┬───────┐
+ │  length / child count│   (reserved)  │subtype│ type  │
+ └──────────────────────┴───────────────┴───────┴───────┘
+                                          [4:3]   [2:0]
+```
+
+| Bits | Field | Values |
+|------|-------|--------|
+| `[2:0]` | type | 0=NONE, 1=RAW, 2=NULL, 3=BOOL, 4=NUM, 5=STR, 6=ARR, 7=OBJ |
+| `[4:3]` | subtype | NUM→ 0=uint, 1=sint, 2=real; BOOL→ 0=false, 1=true; STR→ 1=no-escape |
+| `[63:8]` | length | string byte length **or** container child count |
+
+This means a string's `strlen` and a container's `size()` are O(1) — they require no traversal, just a single bit-shift of the tag.
 
 ---
 
-## Parser (tp)
+## 3. Immutable Document Memory Model
 
-The parser is a single-pass recursive descent parser with no backtracking.
+### 3.1 The Flat Arena (`ctoon_read_vpool`)
 
-```mermaid
-flowchart TD
-    A[ctoon_read dat len] --> B{Skip blank lines}
-    B --> C{First char?}
-    C -->|'['| D[tp_parse_array_body]
-    C -->|has ':'| E[tp_parse_object depth=0]
-    C -->|else| F[tp_parse_primitive]
+When `ctoon_read()` parses a document, it allocates all `ctoon_val` nodes into a **single contiguous arena** — a bump-pointer allocator called `ctoon_read_vpool`:
 
-    D --> G{has fields?}
-    G -->|yes '{'fields'}'| H[tp_parse_tabular_rows]
-    G -->|inline| I[tp_parse_inline_array]
-    G -->|EOL| J[tp_parse_list_items]
-
-    E --> K{key done, next char?}
-    K -->|'['| D
-    K -->|':'  EOL| L[tp_parse_object depth+1]
-    K -->|':'  value| F
-
-    J --> M{next line depth+1 not '-'?}
-    M -->|yes| N[add field to object item]
-    M -->|no or '-'| O[next list item]
+```
+struct ctoon_read_vpool {
+    ctoon_val *base;   // start of arena
+    ctoon_val *cur;    // next free slot (bump pointer)
+    size_t     cap;    // total slots allocated
+    ctoon_alc  alc;    // backing allocator
+};
 ```
 
-**Complexity:**
-- Time: O(n) — each byte read at most twice (once for line scanning, once for parsing)
-- Space: O(d) stack depth where d = maximum nesting depth
+The arena grows by 1.5× when full (`realloc`). After parsing completes, `vp.cur` is final and the arena is never modified again — making the document **read-only and pointer-stable**.
 
-### String Parsing
+### 3.2 Depth-First Pre-order Layout
 
-Strings are parsed in two passes:
-1. Measure unescaped length
-2. Allocate in arena, unescape into buffer
-
-No heap allocation per string — all go into the arena.
-
----
-
-## Serializer (tw)
+Nodes are written into the arena in **depth-first pre-order** as they are parsed. This produces a layout where a container's children are always at indices immediately following the container node:
 
 ```mermaid
-flowchart TD
-    A[ctoon_write_opts doc opts] --> B[tw_write_node root 0]
-    B --> C{node type}
-    C -->|NUMBER| D[tw_write_num: choose u64/s64/f64 by subtype]
-    C -->|STRING| E[tw_write_str: quote only if necessary]
-    C -->|ARRAY | F[tw_write_arr_content]
-    C -->|OBJECT| G[tw_write_obj]
-
-    F --> H{all primitive?}
-    H -->|yes| I[inline: v1 delim v2 ...]
-    H -->|tw_is_tabular?| J[tabular: header + rows]
-    H -->|no| K[list: '- ' item per line]
-
-    G --> L[for each pair: key: value]
-    L --> M{value type}
-    M -->|ARRAY tabular| N["key[N delim]{f1 delim f2}:"]
-    M -->|ARRAY other  | O["key[N delim]: ..."]
-    M -->|OBJECT       | P["key:\n  nested"]
-    M -->|primitive    | Q["key: value"]
+graph TD
+    subgraph "TOON input"
+        T["order:\n  id: ORD-1\n  items[2]: A,B"]
+    end
+    subgraph "Arena  (flat array, indices 0–5)"
+        V0["[0] OBJ 'order'\nuni.ofs = 5×16"]
+        V1["[1] STR 'id'\nuni.str → 'id'"]
+        V2["[2] STR 'ORD-1'\nuni.str → 'ORD-1'"]
+        V3["[3] ARR 'items'\nuni.ofs = 2×16"]
+        V4["[4] STR 'A'\nuni.str → 'A'"]
+        V5["[5] STR 'B'\nuni.str → 'B'"]
+    end
+    T --> V0
+    V0 --> V1
+    V1 --> V2
+    V2 --> V3
+    V3 --> V4
+    V4 --> V5
 ```
 
-**Tabular detection** (`tw_is_tabular`):
-- All items must be objects
-- All objects must have the same keys in the same order
-- All values must be primitives (no nested arrays/objects)
-- O(n·k) where n = rows, k = columns
+### 3.3 Traversal via `uni.ofs`
 
-**String quoting rules** — a value is quoted if:
-- Empty string
-- Leading/trailing space
-- Starts with `"- "` (list marker)
-- Contains: `"`, `\`, `\n`, `\r`, `\t`
-- Contains the active delimiter
-- Contains `:`, `[`, `{`, `}` (structural)
-- Is a reserved literal: `null`, `true`, `false`
-- Looks like a number (would be misread on decode)
+The `uni.ofs` field of a container stores the **byte distance to its next sibling** (i.e., the first node after the entire subtree). This is the key insight that makes both traversal and skipping O(1):
 
-**Bracket format:**
-- Comma delimiter (default): `[N]` or `[#N]`
-- Other delimiters: `[N|]`, `[N\t]` etc. — delimiter character inside bracket per spec
+```c
+// first child of a container: always at ctn + 1
+ctoon_val *unsafe_ctoon_get_first(ctoon_val *ctn) {
+    return ctn + 1;
+}
 
-**Complexity:**
-- Time: O(n) — each node visited once
-- Space: O(d) stack depth + O(output) dynamic buffer (doubles on growth)
-
----
-
-## API Design
+// next sibling:
+//   - for a leaf:      advance by sizeof(ctoon_val) (one slot)
+//   - for a container: advance by uni.ofs (skip entire subtree)
+ctoon_val *unsafe_ctoon_get_next(ctoon_val *val) {
+    bool   is_ctn = unsafe_ctoon_is_ctn(val);
+    size_t ofs    = is_ctn ? val->uni.ofs : sizeof(ctoon_val);
+    return (ctoon_val *)((uint8_t *)val + ofs);
+}
+```
 
 ```mermaid
 graph LR
-    subgraph "Low-level (like yyjson)"
-        R1[ctoon_read]
-        R2[ctoon_read_opts]
-        W1[ctoon_write]
-        W2[ctoon_write_opts]
+    subgraph "Arena traversal"
+        A["OBJ[0]\nofs=80"] -->|"+1 slot (first child)"| B["KEY[1]"]
+        B -->|"+1 slot"| C["VAL[2]"]
+        C -->|"+1 slot"| D["ARR[3]\nofs=32"]
+        D -->|"+1 slot (first child)"| E["VAL[4]"]
+        E -->|"+1 slot"| F["VAL[5]"]
+        D -->|"skip subtree (+ofs)"| G["next sibling of ARR"]
+        A -->|"skip entire OBJ (+ofs)"| H["end of document"]
     end
-    subgraph "High-level (like Python toon)"
-        D1[ctoon_decode]
-        D2[ctoon_decode_opts]
-        E1[ctoon_encode]
-        E2[ctoon_encode_opts]
+```
+
+**Complexity summary for immutable documents:**
+
+| Operation | Complexity | Mechanism |
+|-----------|-----------|-----------|
+| `ctoon_arr_get(arr, i)` | **O(i)** walk, but internally **O(1) per step** | each `get_next` is one pointer add |
+| `ctoon_obj_get(obj, key)` | O(k), k = key count | linear key scan |
+| `ctoon_arr_size(arr)` | **O(1)** | tag >> 8 |
+| `ctoon_obj_size(obj)` | **O(1)** | tag >> 8 |
+| skip subtree | **O(1)** | single `uni.ofs` dereference |
+| `ctoon_doc_free` | O(chunks) ≈ **O(1)** | free one or few arena chunks |
+
+### 3.4 Zero-Copy Strings
+
+String values do **not** copy the input buffer. `uni.str` points directly into the original input memory. This means:
+
+- `ctoon_get_str()` is a single pointer load — no allocation, no copy.
+- The input buffer **must remain valid** for the lifetime of the document.
+- `CTOON_READ_INSITU` allows in-place NUL-termination for even faster string access.
+
+---
+
+## 4. Mutable Document Memory Model
+
+### 4.1 Circular Doubly-Linked List
+
+The mutable tree uses a fundamentally different layout. Each `ctoon_mut_val` has an extra `next` pointer:
+
+```c
+struct ctoon_mut_val {
+    uint64_t       tag;   // same encoding as immutable
+    ctoon_val_uni  uni;   // uni.ptr → first child (for containers)
+    ctoon_mut_val *next;  // next sibling in circular linked list
+};
+```
+
+Containers maintain their children as a **circular singly-linked list** where `uni.ptr` points to the **last** child. This gives O(1) append and O(1) prepend:
+
+```mermaid
+graph LR
+    subgraph "OBJ node"
+        OBJ["OBJ\nuni.ptr ──►"]
     end
-    subgraph "File I/O"
-        RF[ctoon_read_file]
-        WF[ctoon_write_file]
-        DF[ctoon_decode_file]
-        EF[ctoon_encode_file]
+    subgraph "Children (circular)"
+        C["'city'\n'Tehran'"] --> D["'pop'\n9000000"] --> C
     end
-
-    D1 --> R1
-    D2 --> R2
-    E1 --> W1
-    E2 --> W2
-    W1 --> W2
-    D1 --> R1
-    RF --> R1
-    DF --> RF
-    WF --> W1
-    EF --> WF
+    OBJ --> D
+    note["uni.ptr → last child\nlast->next → first child"]
 ```
 
-`ctoon_decode/encode` are thin aliases for `ctoon_read/write` — they exist so user
-code reads naturally (matching the Python API) without any runtime overhead.
+- **Append**: `new->next = last->next; last->next = new; last = new` — O(1)
+- **Prepend**: `new->next = last->next; last->next = new` — O(1)
+- **Size**: stored in `tag >> 8` — O(1)
 
----
+### 4.2 Val Pool (Chunk Allocator)
 
-## Object Iteration
+Mutable nodes are allocated from a **chunk-based pool** (`ctoon_val_pool`). Each chunk is a `malloc`'d block; when a chunk is full, a new one is appended to the linked list. This avoids `realloc`/pointer-invalidation when the document grows:
 
-Two iteration styles:
-
-| Style | Thread-safe | Use case |
-|-------|-------------|----------|
-| `ctoon_obj_get_key_at(obj, i)` | ✅ Yes | Recursive traversal (CLI JSON converter) |
-| `ctoon_obj_iter_get/next` | ❌ No (global state) | Simple single-level loops |
-
-The index-based accessors were added specifically because `ctoon_obj_iter_*` uses
-a global `s_obj_iter` struct, which gets corrupted when recursing into nested objects.
-
----
-
-## Memory Layout Example
-
-For `{"name":"Alice","age":30}` (30 bytes input):
-
-```
-Arena chunk (64 KiB):
-┌────────────────────────────────────────────────┐
-│ ctoon_val [OBJECT]  24 bytes                   │
-│   pairs → ctoon_kv[2]  32 bytes                │
-│     [0].key → ctoon_val [STRING "name"]  32 B  │
-│     [0].val → ctoon_val [STRING "Alice"] 32 B  │
-│     [1].key → ctoon_val [STRING "age"]   32 B  │
-│     [1].val → ctoon_val [NUMBER 30]      16 B  │
-│ string data: "name\0Alice\0age\0"         14 B  │
-└────────────────────────────────────────────────┘
-Total: ~182 bytes in arena (vs 30 bytes input — 6× overhead typical for parse trees)
+```mermaid
+graph LR
+    Pool["val_pool"] --> C1["chunk 1\n[val][val][val]..."]
+    C1 --> C2["chunk 2\n[val][val]..."]
+    C2 --> C3["chunk 3 (current)\n[val][ free ]..."]
 ```
 
-All freed in one `free()` call.
+String data is similarly pooled in a `ctoon_str_pool` of `ctoon_str_chunk` blocks.
 
----
+### 4.3 Why Two Models?
 
-## Complexity Summary
-
-| Operation | Time | Space |
-|-----------|------|-------|
-| Parse TOON | O(n) | O(n) arena + O(d) stack |
-| Serialise to TOON | O(n) | O(output) |
-| `ctoon_obj_get` (linear scan) | O(k) | O(1) |
-| `ctoon_obj_get_key_at` | O(1) | O(1) |
-| `ctoon_arr_get` | O(1) | O(1) |
-| `ctoon_doc_free` | O(chunks) ≈ O(1) | — |
-| Tabular detection | O(n·k) | O(1) |
-
-n = total nodes, d = max nesting depth, k = keys per object
-
-`ctoon_obj_get` is O(k) linear scan (no hash map). For objects with many keys this
-is a known limitation; for typical API/LLM payloads (< 50 keys) it is negligible.
-
----
-
-## C++ Binding (ctoon.hpp)
-
-`ctoon.hpp` **shadows** `ctoon.h` completely — no `ctoon_*` function needs to be
-called directly after including it.
-
-```cpp
-// All of ctoon.h is wrapped:
-ctoon::Document doc = ctoon::decode("name: Alice\nage: 30");
-ctoon::Value root = doc.root();
-std::string name = root["name"].asString();   // no ctoon_obj_get needed
-std::string toon = doc.encode();              // no ctoon_encode needed
-
-// Options:
-ctoon::EncodeOptions opts;
-opts.delimiter = ctoon::Delimiter::Pipe;
-opts.flag = ctoon::WriteFlag::LengthMarker;
-std::string toon2 = doc.encode(opts);
+```mermaid
+graph TD
+    subgraph "Immutable (parsed)"
+        IA["Flat arena\nOne malloc\nCache-friendly\nRead-only\nO(1) subtree skip"]
+    end
+    subgraph "Mutable (built)"
+        MA["Chunk pool\nGrowable\nPointer-stable\nO(1) insert/delete\nCircular linked-list"]
+    end
+    IA -->|"ctoon_doc_mut_copy() — O(n)"| MA
+    MA -->|"ctoon_mut_doc_imut_copy() — O(n)"| IA
 ```
 
-`Document` owns the `ctoon_doc*` via `shared_ptr<ctoon_doc>` with `ctoon_doc_free`
-as the deleter. `Value` is a non-owning view (pointer into the arena) and must not
-outlive its `Document`.
+The conversion between the two is always O(n) — there is no zero-copy cast because the binary layouts are incompatible.
 
 ---
 
-## Known Limitations
+## 5. Parsing Algorithm
 
-1. **Object lookup O(k)** — linear scan, no hash table. Acceptable for typical use.
-2. **`ctoon_obj_iter_*` non-reentrant** — uses global state, not safe for recursive traversal. Use index-based accessors instead.
-3. **`TOON_INDENT` fixed at 2 in parser** — the decode `indent` option is plumbed through the options struct but the parser hardcodes 2-space detection. Customizable indent decoding is future work.
-4. **No `keyFolding` / `expandPaths`** — spec v1.5 features not yet implemented in C.
+### 5.1 Single-Pass Recursive Descent
+
+CToon uses a **single-pass, recursive-descent** parser with an explicit container stack (no call-stack recursion for containers). The parser reads left-to-right and writes nodes directly into the `vpool` arena in pre-order.
+
+```mermaid
+flowchart TD
+    Start([ctoon_read_opts]) --> Init["init vpool\ninit ctn_stack\ninit str_pool"]
+    Init --> ParseRoot["parse_value(root)"]
+    ParseRoot --> DetectType{type?}
+    DetectType -->|scalar| WriteVal["write ctoon_val to vpool\nadvance vp.cur"]
+    DetectType -->|container| PushStack["push frame to ctn_stack\nrecord container val index"]
+    PushStack --> ParseChildren["parse children\n(loop)"]
+    ParseChildren -->|more children| DetectType
+    ParseChildren -->|end of container| PopStack["pop frame\nwrite uni.ofs =\n  (vp.cur - ctn_val) × sizeof(val)"]
+    PopStack --> ParseRoot
+    WriteVal --> ParseRoot
+    ParseRoot --> Done([return ctoon_doc])
+```
+
+### 5.2 Container Stack
+
+The `ctoon_ctn_stack` tracks open containers during parsing:
+
+```c
+typedef struct {
+    size_t val_idx;  // index of container node in vpool
+    size_t count;    // child count accumulated so far
+} ctoon_ctn_frame;
+```
+
+When a container closes, the parser:
+1. Pops its frame
+2. Computes `uni.ofs = (vp.cur - &vpool[val_idx]) * sizeof(ctoon_val)`
+3. Writes `count` into the tag's upper bits
+
+This is the moment the flat-arena "skip" offset is finalised.
+
+### 5.3 String Handling
+
+Strings are **not copied** during parsing. The parser records a pointer (`uni.str`) directly into the input buffer and stores the byte length in the tag. Escape sequences are handled lazily — the `CTOON_SUBTYPE_NOESC` flag marks strings that require no unescaping, so `ctoon_get_str()` can return the pointer directly.
+
+---
+
+## 6. Float Serialisation (Ryu / Schubfach)
+
+For float-to-decimal conversion, CToon uses a port of the **Schubfach algorithm** (as implemented in yyjson). The key functions:
+
+- `f64_bin_to_dec()` — converts IEEE-754 significand/exponent to shortest decimal using cached `pow10_sig_table` + `u128_mul` / `u128_mul_add`
+- `write_f64_ryu()` — formats the result with correct decimal-point placement and scientific notation fallback
+- `write_u64_len_16_to_17_trim()` — fast 16-or-17-digit writer with trailing-zero trimming
+
+The algorithm guarantees the **shortest round-trip** representation — the minimal number of decimal digits that uniquely identifies the original `double` bit pattern.
+
+---
+
+## 7. Allocator Architecture
+
+CToon never calls `malloc` directly. All allocation goes through `ctoon_alc`:
+
+```c
+typedef struct {
+    void *(*malloc) (void *ctx, size_t size);
+    void *(*realloc)(void *ctx, void *ptr, size_t old_size, size_t size);
+    void  (*free)   (void *ctx, void *ptr);
+    void  *ctx;
+} ctoon_alc;
+```
+
+Three built-in allocators are provided:
+
+| Allocator | Use case |
+|-----------|----------|
+| `CTOON_DEFAULT_ALC` | wraps system `malloc`/`realloc`/`free` |
+| `ctoon_alc_pool_init()` | fixed-size bump allocator from user-supplied buffer (zero heap usage) |
+| dynamic pool | chunk-based pool for mutable documents |
+
+Passing a custom allocator allows CToon to be used in embedded environments, arenas shared across threads, or memory-mapped files.
+
+---
+
+## 8. Thread Safety
+
+```mermaid
+graph LR
+    subgraph "Safe"
+        R1["Thread A reads doc"] 
+        R2["Thread B reads doc"]
+        R1 & R2 -->|"concurrent reads"| Doc["ctoon_doc (immutable)"]
+    end
+    subgraph "Unsafe"
+        W1["Thread A builds doc"]
+        W2["Thread B builds doc"]
+        W1 & W2 -->|"concurrent writes"| Pool["val_pool\n(shared bump pointer)"]
+        Pool -->|"race condition"| Crash["❌ undefined behaviour"]
+    end
+```
+
+The immutable document is **fully thread-safe for concurrent reads** — it is never modified after `ctoon_read` returns. The mutable document and its underlying pool are **not thread-safe** — the bump pointer and linked-list manipulation require external locking if shared across threads.
+
+---
+
+## 9. JSON Interop
+
+When `CTOON_ENABLE_JSON=1` (default), CToon embeds a JSON reader and writer:
+
+- **`ctoon_read_json()`** parses JSON directly into the same flat-arena immutable format — the resulting `ctoon_doc` is indistinguishable from a TOON-parsed document.
+- **`ctoon_doc_to_json()`** serialises an immutable doc to JSON in a single O(n) pass using `cj_doc_write`, which understands the flat-arena layout and `uni.ofs` skip offsets.
+- **`ctoon_mut_doc_to_json()`** first calls `ctoon_mut_doc_imut_copy()` (one O(n) traversal of the circular linked-list) then delegates to `cj_doc_write`. The temporary immutable copy is freed immediately after serialisation.
+
+---
+
+## 10. Summary
+
+| Property | Immutable (`ctoon_doc`) | Mutable (`ctoon_mut_doc`) |
+|----------|------------------------|--------------------------|
+| Storage | Flat contiguous arena | Chunk-linked pool |
+| Node layout | Pre-order, depth-first | Circular linked-list |
+| Sibling navigation | `uni.ofs` byte offset | `next` pointer |
+| Append child | N/A (read-only) | O(1) |
+| Skip subtree | O(1) | O(subtree size) |
+| `arr_size` / `obj_size` | O(1) tag read | O(1) tag read |
+| `doc_free` | O(1) (one arena free) | O(chunks) |
+| Thread-safe reads | ✅ | ✅ |
+| Thread-safe writes | N/A | ❌ |
+| Convert to other | O(n) deep copy | O(n) deep copy |
