@@ -3,6 +3,8 @@ name: python build wheels
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
+    branches: [ master ]
 
 env:
   FORCE_COLOR: 3

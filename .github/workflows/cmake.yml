@@ -3,6 +3,8 @@ name: cmake stuff
 on:
   workflow_dispatch:
   workflow_call:
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build-and-test:
