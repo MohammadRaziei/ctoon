@@ -47,7 +47,7 @@ jobs:
     needs: [init]
 
   wheel:
-    uses: ./.github/workflows/wheel.yml
+    uses: ./.github/workflows/wheels.yml
     needs: [init]
 
   release:
