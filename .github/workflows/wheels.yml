@@ -22,9 +22,11 @@ jobs:
       with:
         submodules: false
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v6
       with:
-        python-version: "3.x"
+        python-version: "3.11"
+        cache: "pip"
+
 
 #    - name: Ruff Check
 #      run: pipx run ruff check .
