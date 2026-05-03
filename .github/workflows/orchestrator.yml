@@ -1,0 +1,86 @@
+name: Orchestration & Release
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches: [ master ]
+    tags: [ "v*" ]
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v.*$ ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"   
+            VERSION_FROM_TAG="${TAG_NAME#v}"     
+
+            VERSION_FROM_CODE=$(python version.py | tr -d '\n')
+
+            echo "Tag version: $VERSION_FROM_TAG"
+            echo "Code version: $VERSION_FROM_CODE"
+
+            if [[ "$VERSION_FROM_TAG" != "$VERSION_FROM_CODE" ]]; then
+              echo "❌ Version mismatch!"
+              exit 1
+            fi
+
+            echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          else
+            echo "release_name=__beta__" >> $GITHUB_OUTPUT
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+  cmake:
+    uses: ./.github/workflows/cmake.yml
+    needs: [init]
+
+  wheel:
+    uses: ./.github/workflows/wheel.yml
+    needs: [init]
+
+  release:
+    needs: [cmake, wheel]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+          
+      - name: List dist directory
+        run: tree --du -shaC . 
+
+        use RELEASE_NAME, IS_TAG
+
+        
+
+      # - name: Create release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     tag_name: __beta__
+      #     name: Beta Release
+      #     body: |
+      #       ## Artifacts
+
+      #       | Name | Description |
+      #       |------|------------|
+      #       | cmake-artifact | CMake build |
+      #       | wheel-artifact | Python wheel |
+      #       | go-artifact | Go binary |
+      #     files: |
+      #       **/*
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

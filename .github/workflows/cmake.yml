@@ -1,11 +1,8 @@
 name: cmake stuff
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   build-and-test:
@@ -138,38 +135,38 @@ jobs:
         path: build/coverage/
         retention-days: 5
 
-  deploy-pages:
-    needs: [build-docs, build-coverage]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
+  # deploy-pages:
+  #   needs: [build-docs, build-coverage]
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #     pages: write
+  #     id-token: write
     
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout repository
+  #     uses: actions/checkout@v4
 
-    - name: Download documentation artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: documentation
-        path: ./pages
+  #   - name: Download documentation artifact
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: documentation
+  #       path: ./pages
 
-    - name: Download coverage artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: coverage-report
-        path: ./pages/coverage     
+  #   - name: Download coverage artifact
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: coverage-report
+  #       path: ./pages/coverage     
 
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
+  #   - name: Setup Pages
+  #     uses: actions/configure-pages@v4
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./pages
+  #   - name: Upload artifact
+  #     uses: actions/upload-pages-artifact@v3
+  #     with:
+  #       path: ./pages
 
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+  #   - name: Deploy to GitHub Pages
+  #     id: deployment
+  #     uses: actions/deploy-pages@v4
