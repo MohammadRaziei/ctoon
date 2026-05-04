@@ -70,6 +70,9 @@ jobs:
       - name: List dist directory
         run: tree --du -shaC . 
 
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Get beta release notes
         env:
           GH_TOKEN: ${{ github.token }}
