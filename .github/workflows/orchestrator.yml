@@ -21,6 +21,8 @@ jobs:
 
       - name: Determine release type
         id: release_type
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${{ github.ref }}" =~ ^refs/tags/v.*$ ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"   
@@ -39,6 +41,7 @@ jobs:
             echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
           else
+            gh release view __beta__ --json assets --jq '.assets[].id' 2>/dev/null | xargs -I{} gh api repos/${{ github.repository }}/releases/assets/{} -X DELETE          
             echo "release_name=__beta__" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
           fi
@@ -47,12 +50,12 @@ jobs:
     uses: ./.github/workflows/cmake.yml
     needs: [init]
 
-  wheel:
-    uses: ./.github/workflows/wheels.yml
-    needs: [init]
+  # wheel:
+    # uses: ./.github/workflows/wheels.yml
+    # needs: [init]
 
   release:
-    needs: [cmake, wheel]
+    # needs: [cmake, wheel]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
