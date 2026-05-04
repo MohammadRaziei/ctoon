@@ -9,6 +9,10 @@ on:
 jobs:
   init:
     runs-on: ubuntu-latest
+    outputs:
+      release_name: ${{ steps.init.outputs.release_name }}
+      is_tag: ${{ steps.init.outputs.is_tag }}
+      version_string: ${{ steps.init.outputs.version_string }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -40,30 +44,46 @@ jobs:
       - name: Initialize release body
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ steps.init.outputs.RELEASE_NAME }}
-          name: ${{ steps.init.outputs.RELEASE_NAME }}
+          tag_name: ${{ steps.init.outputs.release_name }}
+          name: ${{ steps.init.outputs.release_name }}
           draft: false
-          prerelease: ${{ steps.init.outputs.IS_TAG == 'false' }}
+          prerelease: ${{ steps.init.outputs.is_tag == 'false' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body_path: .github/workflows/release_template.md
 
+  cmake:
+    uses: ./.github/workflows/cmake.yml
+    needs: [init]
+
+  wheel:
+    uses: ./.github/workflows/wheels.yml
+    needs: [init]
+
+
+  release-wheels:
+    needs: [wheel,init]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+          
+      - name: List dist directory
+        run: tree --du -shaC . 
 
       - name: Get beta release notes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view __beta__ --json body --jq '.body' 2>/dev/null > release_notes.md || echo "" > release_notes.md
-          cat release_notes.md
+        run: gh release view __beta__ --json body --jq '.body' 2>/dev/null > release_notes.md || echo "" > release_notes.md
 
-
-
-  # cmake:
-  #   uses: ./.github/workflows/cmake.yml
-  #   needs: [init]
-
-  # wheel:
-  #   uses: ./.github/workflows/wheels.yml
-  #   needs: [init]
+      - name: create release body
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.init.outputs.release_name }}
+          name: ${{ needs.init.outputs.release_name }}
+          draft: false
+          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body_path: release_notes.md
 
   # release:
   #   # needs: [cmake, wheel]
