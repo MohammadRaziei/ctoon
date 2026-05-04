@@ -81,7 +81,7 @@ jobs:
     - name: Upload documentation artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: documentation
+        name: cmake-documentation
         path: build/docs/
         retention-days: 5
 
@@ -136,42 +136,6 @@ jobs:
     - name: Upload coverage artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: coverage-report
+        name: cmake-coverage-report
         path: build/coverage/
         retention-days: 5
-
-  deploy-pages:
-    needs: [build-docs, build-coverage]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
-
-    - name: Download documentation artifact
-      uses: actions/download-artifact@v8
-      with:
-        name: documentation
-        path: ./pages
-
-    - name: Download coverage artifact
-      uses: actions/download-artifact@v8
-      with:
-        name: coverage-report
-        path: ./pages/coverage     
-
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./pages
-
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4

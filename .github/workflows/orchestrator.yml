@@ -103,33 +103,39 @@ jobs:
           password: ${{ secrets.PYPI_PASSWORD }}
           user: ${{ secrets.PYPI_USERNAME }}
 
-  # release:
-  #   # needs: [cmake, wheel]
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Download all artifacts
-  #       uses: actions/download-artifact@v8
-          
-  #     - name: List dist directory
-  #       run: tree --du -shaC . 
 
-        
+  deploy-pages:
+    needs: [cmake]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
 
-      # - name: Create release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     tag_name: __beta__
-      #     name: Beta Release
-      #     body: |
-      #       ## Artifacts
+    - name: Download documentation artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: cmake-documentation
+        path: ./pages
 
-      #       | Name | Description |
-      #       |------|------------|
-      #       | cmake-artifact | CMake build |
-      #       | wheel-artifact | Python wheel |
-      #       | go-artifact | Go binary |
-      #     files: |
-      #       **/*
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Download coverage artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: cmake-coverage-report
+        path: ./pages/coverage     
 
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./pages
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
