@@ -1,8 +1,12 @@
 
 <!--PYTHON_SECTION_BEGIN
-COMMENT--> 
-IF YOU SEE THIS THAT MEANS PYTHON SECTION IS NOT RAN YET
-<!--COMMENT
+PLACEHOLDER--> 
+> [!WARNING]
+> **Release In Progress**
+> ⏳ Generating release assets...
+> 
+> Please wait for the release pipeline to complete.
+<!--PLACEHOLDER
 | OS | Available Wheels & Source |
 | :--- | :--- |
 | **Windows** | [![win_amd64-cp314](https://img.shields.io/badge/win_amd64-cp314-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314-win_amd64.whl) [![win_amd64-cp314t](https://img.shields.io/badge/win_amd64-cp314t-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314t-win_amd64.whl) [![win_amd64-cp313](https://img.shields.io/badge/win_amd64-cp313-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp313-cp313-win_amd64.whl) [![win_amd64-cp312](https://img.shields.io/badge/win_amd64-cp312-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp312-cp312-win_amd64.whl) [![win_amd64-cp311](https://img.shields.io/badge/win_amd64-cp311-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp311-cp311-win_amd64.whl) [![win_amd64-cp310](https://img.shields.io/badge/win_amd64-cp310-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp310-cp310-win_amd64.whl) [![win_amd64-cp39](https://img.shields.io/badge/win_amd64-cp39-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp39-cp39-win_amd64.whl) [![win32-cp314](https://img.shields.io/badge/win32-cp314-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314-win32.whl) [![win32-cp314t](https://img.shields.io/badge/win32-cp314t-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314t-win32.whl) [![win32-cp313](https://img.shields.io/badge/win32-cp313-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp313-cp313-win32.whl) [![win32-cp312](https://img.shields.io/badge/win32-cp312-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp312-cp312-win32.whl) [![win32-cp311](https://img.shields.io/badge/win32-cp311-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp311-cp311-win32.whl) [![win32-cp310](https://img.shields.io/badge/win32-cp310-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp310-cp310-win32.whl) [![win32-cp39](https://img.shields.io/badge/win32-cp39-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp39-cp39-win32.whl) |
