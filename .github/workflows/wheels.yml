@@ -39,6 +39,7 @@ jobs:
 
     - uses: actions/upload-artifact@v7
       with:
+        name: wheelhouse-sdist
         path: dist/*.tar.gz
         overwrite: true
 

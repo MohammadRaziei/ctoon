@@ -66,6 +66,10 @@ jobs:
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v8
+        with:
+          pattern: wheelhouse-*
+          path: dist
+          merge-multiple: true
           
       - name: List dist directory
         run: tree --du -shaC . 
@@ -90,6 +94,13 @@ jobs:
           prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body_path: release_notes.md
+
+      - name: Publishing to PyPi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          password: ${{ secrets.PYPI_PASSWORD }}
+          user: ${{ secrets.PYPI_USERNAME }}
 
   # release:
   #   # needs: [cmake, wheel]
