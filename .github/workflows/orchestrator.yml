@@ -24,9 +24,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version_string="$(python version.py | tr -d '\n')"
+          echo "version_string=${version_string}" >> $GITHUB_OUTPUT
           if [[ "${{ github.ref }}" =~ ^refs/tags/v.*$ ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"   
-            [[ "$(python version.py | tr -d '\n')" == "${GITHUB_REF#refs/tags/v}" ]] || (echo "❌ Version mismatch!" && exit 1)
+            [[ "${version_string}" == "${GITHUB_REF#refs/tags/v}" ]] || (echo "❌ Version mismatch!" && exit 1)
             echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
           else
