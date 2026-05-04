@@ -64,6 +64,11 @@ jobs:
     needs: [wheel,init]
     runs-on: ubuntu-latest
     steps:
+      - name: Download workflows
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
@@ -73,11 +78,6 @@ jobs:
           
       - name: List dist directory
         run: tree --du -shaC . 
-
-      - name: Download workflows
-        uses: actions/checkout@v6
-        with:
-          sparse-checkout: .github
 
       - name: Get beta release notes
         env:
@@ -96,8 +96,7 @@ jobs:
           prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
           token: ${{ secrets.GITHUB_TOKEN }}
           body_path: release_notes.md
-          files: |
-            dist/*
+          files: dist/*
 
       - name: Publishing to PyPi
         uses: pypa/gh-action-pypi-publish@release/v1
