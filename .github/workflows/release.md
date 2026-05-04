@@ -3,8 +3,8 @@
 PLACEHOLDER--> 
 > [!WARNING]
 > **Python Wheels Release In Progress**
-> ⏳ Generating release assets...
 > 
+> ⏳ Generating release assets...
 > Please wait for the release pipeline to complete.
 <!--PLACEHOLDER
 | OS | Available Wheels & Source |
