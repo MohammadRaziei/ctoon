@@ -41,7 +41,7 @@ jobs:
             echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
           else
-            gh release view __beta__ --json assets --jq '.assets[].id' 2>/dev/null | xargs -I{} gh api repos/${{ github.repository }}/releases/assets/{} -X DELETE 2>/dev/null || true
+            gh api repos/${{ github.repository }}/releases/tags/__beta__ --jq '.assets[].id' 2>/dev/null | xargs -r -I {} gh api repos/${{ github.repository }}/releases/assets/{} -X DELETE 2>/dev/null || true
             echo "release_name=__beta__" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
           fi
