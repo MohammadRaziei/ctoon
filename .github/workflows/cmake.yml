@@ -79,7 +79,7 @@ jobs:
       run: cmake --build build --target ctoon_docs
 
     - name: Upload documentation artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: documentation
         path: build/docs/
@@ -134,7 +134,7 @@ jobs:
         verbose: true
 
     - name: Upload coverage artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-report
         path: build/coverage/

@@ -19,25 +19,14 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Determine release type
-        id: release_type
+      - name: Initalize
+        id: init
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "${{ github.ref }}" =~ ^refs/tags/v.*$ ]]; then
             TAG_NAME="${GITHUB_REF#refs/tags/}"   
-            VERSION_FROM_TAG="${TAG_NAME#v}"     
-
-            VERSION_FROM_CODE=$(python version.py | tr -d '\n')
-
-            echo "Tag version: $VERSION_FROM_TAG"
-            echo "Code version: $VERSION_FROM_CODE"
-
-            if [[ "$VERSION_FROM_TAG" != "$VERSION_FROM_CODE" ]]; then
-              echo "❌ Version mismatch!"
-              exit 1
-            fi
-
+            [[ "$(python version.py | tr -d '\n')" == "${GITHUB_REF#refs/tags/v}" ]] || (echo "❌ Version mismatch!" && exit 1)
             echo "release_name=$TAG_NAME" >> $GITHUB_OUTPUT
             echo "is_tag=true" >> $GITHUB_OUTPUT
           else
@@ -45,6 +34,18 @@ jobs:
             echo "release_name=__beta__" >> $GITHUB_OUTPUT
             echo "is_tag=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Initialize release body
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.init.outputs.RELEASE_NAME }}
+          name: ${{ steps.init.outputs.RELEASE_NAME }}
+          draft: false
+          prerelease: ${{ steps.init.outputs.IS_TAG == 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body_path: .github/workflows/release.md
+
+
 
   cmake:
     uses: ./.github/workflows/cmake.yml
