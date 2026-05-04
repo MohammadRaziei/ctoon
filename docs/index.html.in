@@ -12,370 +12,7 @@
     <link rel="stylesheet" id="hljs-theme-light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
-    <style>
-        :root {
-            --bg:           #ffffff;
-            --bg2:          #f8f9fa;
-            --bg3:          #f1f3f5;
-            --fg:           #111111;
-            --fg2:          #6c757d;
-            --fg3:          #adb5bd;
-            --border:       #dee2e6;
-            --border2:      #ced4da;
-            --accent:       #4dabf7;
-            --accent-hover: #339af0;
-            --accent-glow:  rgba(77,171,247,0.18);
-            --accent-glow2: rgba(77,171,247,0.08);
-            --card:         #ffffff;
-            --card-border:  #dee2e6;
-            --card-hover:   #f8f9fa;
-            --code-bg:      #f4f4f8;
-            --code-fg:      #1a1a2e;
-            --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
-            --shine:        linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 60%);
-            --shadow-sm:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-            --shadow-md:    0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
-            --shadow-lg:    0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
-            --shadow-blue:  0 4px 20px rgba(77,171,247,0.25);
-        }
-        [data-theme="dark"] {
-            --bg:           #0f0f12;
-            --bg2:          #1a1a1f;
-            --bg3:          #242429;
-            --fg:           #e8e8f0;
-            --fg2:          #9090a0;
-            --fg3:          #606070;
-            --border:       #2a2a35;
-            --border2:      #363645;
-            --accent:       #4dabf7;
-            --accent-hover: #74c0fc;
-            --accent-glow:  rgba(77,171,247,0.15);
-            --accent-glow2: rgba(77,171,247,0.06);
-            --card:         #1a1a1f;
-            --card-border:  #2a2a35;
-            --card-hover:   #242429;
-            --code-bg:      #13131a;
-            --code-fg:      #e0e0f0;
-            --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #74c0fc 100%);
-            --shine:        linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 60%);
-            --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
-            --shadow-md:    0 4px 12px rgba(0,0,0,0.5);
-            --shadow-lg:    0 12px 32px rgba(0,0,0,0.6);
-            --shadow-blue:  0 4px 24px rgba(77,171,247,0.2);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg);
-            color: var(--fg);
-            min-height: 100vh;
-            line-height: 1.6;
-            transition: background 0.25s, color 0.25s;
-        }
-
-        /* ── Topbar ─────────────────────────────────────────── */
-        .topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0 2rem;
-            height: 60px;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg);
-            position: sticky; top: 0; z-index: 100;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        .topbar-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--fg); }
-        .topbar-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
-        .topbar-logo svg { width: 100%; height: 100%; }
-        .topbar-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
-        .topbar-sep { width: 1px; height: 18px; background: var(--border2); margin: 0 0.25rem; }
-        .topbar-subtitle { font-size: 0.8rem; color: var(--fg2); font-weight: 400; }
-        .topbar-version {
-            font-size: 0.7rem; color: var(--accent); background: var(--accent-glow2);
-            border: 1px solid var(--accent-glow);
-            padding: 0.15rem 0.6rem; border-radius: 999px;
-            font-family: 'IBM Plex Mono', monospace; font-weight: 500;
-        }
-        .topbar-actions { display: flex; align-items: center; gap: 0.6rem; }
-        .topbar-gh {
-            display: flex; align-items: center; gap: 0.4rem;
-            font-size: 0.8rem; font-weight: 500; color: var(--fg2);
-            text-decoration: none; padding: 0.3rem 0.7rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            transition: all 0.18s;
-        }
-        .topbar-gh:hover { color: var(--fg); border-color: var(--accent); background: var(--accent-glow2); }
-        .theme-toggle {
-            display: flex; align-items: center; justify-content: center;
-            width: 34px; height: 34px;
-            border: 1px solid var(--border); border-radius: 8px;
-            background: transparent; color: var(--fg); cursor: pointer;
-            transition: all 0.18s;
-        }
-        .theme-toggle:hover { border-color: var(--accent); background: var(--accent-glow2); }
-        .theme-toggle svg { width: 16px; height: 16px; }
-        .theme-toggle .icon-moon { display: none; }
-        .theme-toggle .icon-sun  { display: block; }
-        [data-theme="dark"] .theme-toggle .icon-moon { display: block; }
-        [data-theme="dark"] .theme-toggle .icon-sun  { display: none; }
-
-        /* ── Layout ──────────────────────────────────────────── */
-        .wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-
-        /* ── Hero ────────────────────────────────────────────── */
-        .hero {
-            text-align: center;
-            padding: 5rem 2rem 4rem;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -80px; left: 50%; transform: translateX(-50%);
-            width: 700px; height: 400px;
-            background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
-            pointer-events: none;
-        }
-        .hero-eyebrow {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-            color: var(--accent);
-            background: var(--accent-glow2); border: 1px solid var(--accent-glow);
-            padding: 0.3rem 0.9rem; border-radius: 999px;
-            margin-bottom: 1.5rem;
-        }
-        .hero-eyebrow svg { width: 12px; height: 12px; }
-        .hero h1 {
-            font-size: 3.2rem; font-weight: 800; letter-spacing: -0.04em;
-            margin-bottom: 1.2rem; line-height: 1.1;
-            background: linear-gradient(135deg, var(--accent) 0%, #22b8cf 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .hero-desc {
-            font-size: 1.1rem; color: var(--fg2); max-width: 620px; margin: 0 auto 2.5rem;
-            line-height: 1.75;
-        }
-        .hero-stats {
-            display: flex; align-items: center; justify-content: center; gap: 2.5rem;
-            flex-wrap: wrap;
-        }
-        .hero-stat { text-align: center; }
-        .hero-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; line-height: 1; }
-        .hero-stat-label { font-size: 0.75rem; color: var(--fg2); margin-top: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
-        .hero-stat-div { width: 1px; height: 36px; background: var(--border); }
-
-        /* ── Section ─────────────────────────────────────────── */
-        .section { margin: 0 auto 4rem; }
-        .section-header { margin-bottom: 1.5rem; }
-        .section-label {
-            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.12em; color: var(--accent);
-            font-family: 'IBM Plex Mono', monospace;
-            margin-bottom: 0.35rem;
-        }
-        .section-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
-        .section-desc { font-size: 0.9rem; color: var(--fg2); margin-top: 0.35rem; }
-
-        /* ── Doc cards ───────────────────────────────────────── */
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
-        .card {
-            display: flex; flex-direction: column;
-            padding: 1.5rem;
-            background: var(--card);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            box-shadow: var(--shadow-sm);
-            text-decoration: none; color: var(--fg);
-            transition: all 0.2s;
-            position: relative; overflow: hidden;
-        }
-        .card::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: var(--shine);
-            pointer-events: none;
-            border-radius: inherit;
-        }
-        .card:hover {
-            border-color: var(--accent);
-            box-shadow: var(--shadow-blue), var(--shadow-md);
-            transform: translateY(-3px);
-            background: var(--card-hover);
-        }
-        .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
-        .card-icon {
-            width: 46px; height: 46px;
-            border-radius: 12px;
-            background: var(--icon-grad);
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 2px 8px rgba(77,171,247,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
-            position: relative;
-            flex-shrink: 0;
-        }
-        .card-icon svg { width: 22px; height: 22px; color: #fff; }
-        .card-badge {
-            font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; font-weight: 500;
-            color: var(--accent); background: var(--accent-glow2);
-            border: 1px solid var(--accent-glow);
-            padding: 0.2rem 0.55rem; border-radius: 6px;
-        }
-        .card h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 0.4rem; }
-        .card-desc { font-size: 0.85rem; color: var(--fg2); line-height: 1.6; flex: 1; }
-        .card-footer {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-top: 1.25rem; padding-top: 1rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.78rem; color: var(--fg2);
-            font-family: 'IBM Plex Mono', monospace;
-        }
-        .card-tool { display: flex; align-items: center; gap: 0.4rem; }
-        .card-tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-        .card-arrow {
-            color: var(--accent); opacity: 0;
-            transform: translateX(-4px); transition: all 0.18s;
-            font-size: 0.85rem;
-        }
-        .card:hover .card-arrow { opacity: 1; transform: translateX(0); }
-
-        /* ── Tabbed panels ───────────────────────────────────── */
-        .tabbed-panel {
-            background: var(--card);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-        .tab-bar {
-            display: flex; align-items: stretch;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg2);
-            padding: 0 0.75rem;
-            overflow-x: auto;
-            gap: 0;
-        }
-        .tab-bar::-webkit-scrollbar { display: none; }
-        .tab-btn {
-            display: flex; align-items: center; gap: 0.45rem;
-            padding: 0.7rem 1.1rem;
-            border: none; background: transparent;
-            color: var(--fg2);
-            font-family: 'Inter', sans-serif; font-size: 0.83rem; font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            white-space: nowrap;
-            transition: all 0.15s;
-        }
-        .tab-btn:hover { color: var(--fg); }
-        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-        .tab-btn i { font-size: 0.88rem; }
-        .tab-btn .tab-svg { width: 13px; height: 13px; }
-        .tab-content { display: none; padding: 1.75rem; }
-        .tab-content.active { display: block; }
-
-        /* ── Code block ──────────────────────────────────────── */
-        .code-wrap {
-            position: relative;
-            background: var(--code-bg);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-        }
-        .code-label {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0.5rem 1rem;
-            border-bottom: 1px solid var(--border);
-            background: var(--bg2);
-        }
-        .code-lang-row { display: flex; align-items: center; gap: 0.5rem; }
-        .code-dots { display: flex; gap: 5px; }
-        .code-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
-        .code-lang { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 500; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.07em; }
-        .copy-btn {
-            display: flex; align-items: center; gap: 0.35rem;
-            font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500;
-            color: var(--fg2); background: transparent; border: none;
-            cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 5px;
-            transition: all 0.15s;
-        }
-        .copy-btn:hover { color: var(--accent); background: var(--accent-glow2); }
-        .copy-btn.copied { color: #40c057; }
-        pre {
-            margin: 0; padding: 1.1rem 1.25rem;
-            overflow-x: auto;
-            font-family: 'IBM Plex Mono', monospace; font-size: 0.83rem; line-height: 1.7;
-            color: var(--code-fg);
-        }
-
-        /* highlight.js overrides */
-        .hljs { background: transparent !important; padding: 0 !important; font-size: inherit; line-height: inherit; }
-        pre code.hljs { display: block; overflow-x: auto; }
-
-        /* ── Install note ─────────────────────────────────────── */
-        .install-note {
-            font-size: 0.82rem; color: var(--fg2);
-            margin-top: 1rem; padding: 0.85rem 1.1rem;
-            background: var(--bg2); border-radius: 8px;
-            border-left: 3px solid var(--accent);
-            line-height: 1.6;
-        }
-        .install-note code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent); }
-
-        /* ── Divider ─────────────────────────────────────────── */
-        .divider { height: 1px; background: var(--border); margin: 1rem 0 2.5rem; }
-
-        /* ── Footer ──────────────────────────────────────────── */
-        .footer {
-            border-top: 1px solid var(--border);
-            padding: 2.5rem 2rem;
-            margin-top: 2rem;
-        }
-        .footer-inner {
-            max-width: 1200px; margin: 0 auto;
-            display: grid; grid-template-columns: 1fr auto;
-            gap: 2rem; align-items: start;
-        }
-        .footer-brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
-        .footer-logo { width: 28px; height: 28px; }
-        .footer-logo svg { width: 100%; height: 100%; }
-        .footer-name { font-weight: 700; font-size: 0.95rem; }
-        .footer-tagline { font-size: 0.82rem; color: var(--fg2); line-height: 1.5; max-width: 340px; }
-        .footer-copy { font-size: 0.75rem; color: var(--fg3); margin-top: 1rem; }
-        .footer-copy a { color: var(--fg2); text-decoration: none; }
-        .footer-copy a:hover { color: var(--accent); }
-
-        .footer-links { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; }
-        .footer-links-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg3); margin-bottom: 0.4rem; font-family: 'IBM Plex Mono', monospace; }
-        .footer-link {
-            display: flex; align-items: center; gap: 0.5rem;
-            font-size: 0.83rem; color: var(--fg2); text-decoration: none;
-            padding: 0.35rem 0.7rem; border-radius: 8px;
-            transition: all 0.15s;
-        }
-        .footer-link:hover { color: var(--accent); background: var(--accent-glow2); }
-        .footer-link i { font-size: 0.82rem; width: 14px; }
-        .footer-link-badge {
-            font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
-            color: var(--accent); background: var(--accent-glow2);
-            border: 1px solid var(--accent-glow);
-            padding: 0.1rem 0.4rem; border-radius: 4px;
-            font-family: 'IBM Plex Mono', monospace;
-        }
-
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.2rem; }
-            .wrap { padding: 0 1rem; }
-            .topbar { padding: 0 1rem; }
-            .topbar-subtitle, .topbar-sep { display: none; }
-            .footer-inner { grid-template-columns: 1fr; }
-            .footer-links { align-items: flex-start; }
-        }
-    </style>
+    <link rel="stylesheet" href="ctoon-docs.css">
 </head>
 <body>
 
@@ -442,67 +79,77 @@
         <div class="section-title">Language Documentation</div>
         <div class="section-desc">Full API reference for each language binding, generated from source.</div>
     </div>
-    <div class="cards">
+    <div class="tabbed-panel" id="docs-panel">
+        <div class="tab-bar" id="docs-tabs">
+            <button class="tab-btn active" data-tab="docs-c" onclick="switchTab('docs','c')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
+            </button>
+            <button class="tab-btn" data-tab="docs-cpp" onclick="switchTab('docs','cpp')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C++
+            </button>
+            <button class="tab-btn" data-tab="docs-python" onclick="switchTab('docs','python')">
+                <i class="fa-brands fa-python"></i> Python
+            </button>
+            <button class="tab-btn" data-tab="docs-go" onclick="switchTab('docs','go')">
+                <i class="fa-brands fa-golang"></i> Go
+            </button>
+        </div>
 
-        <a href="c/html/index.html" class="card">
-            <div class="card-top">
-                <div class="card-icon">
+        <div class="tab-content active" id="docs-c">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                 </div>
-                <span class="card-badge">C99</span>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">C API <span class="card-badge">C99</span></div>
+                    <p class="doc-card-desc">Core library interface. Covers document parsing with <code>ctoon_read</code>, serialisation with <code>ctoon_write</code>, JSON export via <code>ctoon_doc_to_json</code>, and full value-traversal API including <code>ctoon_obj_get</code>, <code>ctoon_arr_get</code>, and typed getters. Zero dependencies beyond the C standard library.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with Doxygen</span></div>
+                    <a href="c/html/index.html" class="doc-card-btn">Open C Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
             </div>
-            <h3>C API</h3>
-            <p class="card-desc">Core library interface. Covers document parsing with <code style="font-family:monospace;font-size:0.82em">ctoon_read</code>, serialisation with <code style="font-family:monospace;font-size:0.82em">ctoon_write</code>, JSON export, and full value-traversal API. Zero dependencies beyond the C standard library.</p>
-            <div class="card-footer">
-                <div class="card-tool"><div class="card-tool-dot"></div> Doxygen</div>
-                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-            </div>
-        </a>
+        </div>
 
-        <a href="cpp/html/index.html" class="card">
-            <div class="card-top">
-                <div class="card-icon">
+        <div class="tab-content" id="docs-cpp">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                 </div>
-                <span class="card-badge">C++11</span>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">C++ API <span class="card-badge">C++11</span></div>
+                    <p class="doc-card-desc">Header-only RAII wrappers around the C core. Covers <code>ctoon::document</code>, <code>ctoon::value</code>, <code>ctoon::make_document</code>, <code>EncodeOptions</code>, <code>DecodeOptions</code>, and read/write flag enums. All objects manage lifetime automatically — no manual free calls needed.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with Doxygen</span></div>
+                    <a href="cpp/html/index.html" class="doc-card-btn">Open C++ Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
             </div>
-            <h3>C++ API</h3>
-            <p class="card-desc">Header-only RAII wrappers around the C core. Covers <code style="font-family:monospace;font-size:0.82em">ctoon::document</code>, <code style="font-family:monospace;font-size:0.82em">value</code>, <code style="font-family:monospace;font-size:0.82em">make_document</code>, <code style="font-family:monospace;font-size:0.82em">EncodeOptions</code>, <code style="font-family:monospace;font-size:0.82em">DecodeOptions</code>, and read/write flag enums.</p>
-            <div class="card-footer">
-                <div class="card-tool"><div class="card-tool-dot"></div> Doxygen</div>
-                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-            </div>
-        </a>
+        </div>
 
-        <a href="python/html/index.html" class="card">
-            <div class="card-top">
-                <div class="card-icon">
+        <div class="tab-content" id="docs-python">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                 </div>
-                <span class="card-badge">Python 3.9+</span>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">Python API <span class="card-badge">Python 3.9+</span></div>
+                    <p class="doc-card-desc">nanobind-based extension module. Documents <code>loads</code>, <code>dumps</code>, <code>load</code>, <code>dump</code>, JSON interop functions (<code>loads_json</code>, <code>dumps_json</code>), and the <code>ReadFlag</code> / <code>WriteFlag</code> / <code>Delimiter</code> enums. Ships pre-built wheels for Linux, macOS, and Windows.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with Sphinx</span></div>
+                    <a href="python/html/index.html" class="doc-card-btn">Open Python Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
             </div>
-            <h3>Python API</h3>
-            <p class="card-desc">nanobind-based extension module. Documents <code style="font-family:monospace;font-size:0.82em">loads</code>, <code style="font-family:monospace;font-size:0.82em">dumps</code>, <code style="font-family:monospace;font-size:0.82em">load</code>, <code style="font-family:monospace;font-size:0.82em">dump</code>, JSON interop functions, and the <code style="font-family:monospace;font-size:0.82em">ReadFlag</code> / <code style="font-family:monospace;font-size:0.82em">WriteFlag</code> / <code style="font-family:monospace;font-size:0.82em">Delimiter</code> enums.</p>
-            <div class="card-footer">
-                <div class="card-tool"><div class="card-tool-dot"></div> Sphinx</div>
-                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-            </div>
-        </a>
+        </div>
 
-        <a href="go/index.html" class="card">
-            <div class="card-top">
-                <div class="card-icon">
+        <div class="tab-content" id="docs-go">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                 </div>
-                <span class="card-badge">Go 1.21+</span>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">Go API <span class="card-badge">Go 1.21+</span></div>
+                    <p class="doc-card-desc">CGo bindings that wrap the C core. Covers <code>Loads</code>, <code>Dumps</code>, <code>LoadsJSON</code>, <code>DumpsJSON</code>, file I/O helpers (<code>EncodeToFile</code>, <code>DecodeFromFile</code>), and encode/decode option structs. Requires CGo-enabled build environment.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with godoc</span></div>
+                    <a href="go/index.html" class="doc-card-btn">Open Go Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
             </div>
-            <h3>Go API</h3>
-            <p class="card-desc">CGo bindings that wrap the C core. Covers <code style="font-family:monospace;font-size:0.82em">Loads</code>, <code style="font-family:monospace;font-size:0.82em">Dumps</code>, <code style="font-family:monospace;font-size:0.82em">LoadsJSON</code>, <code style="font-family:monospace;font-size:0.82em">DumpsJSON</code>, file I/O helpers, and encode/decode option structs.</p>
-            <div class="card-footer">
-                <div class="card-tool"><div class="card-tool-dot"></div> godoc</div>
-                <span class="card-arrow"><i class="fa-solid fa-arrow-right"></i></span>
-            </div>
-        </a>
+        </div>
 
     </div>
 </div>
@@ -518,11 +165,14 @@
     </div>
     <div class="tabbed-panel" id="install-panel">
         <div class="tab-bar" id="install-tabs">
-            <button class="tab-btn active" data-tab="install-python" onclick="switchTab('install','python')">
-                <i class="fa-brands fa-python"></i> Python
+            <button class="tab-btn active" data-tab="install-c" onclick="switchTab('install','c')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
             </button>
-            <button class="tab-btn" data-tab="install-c" onclick="switchTab('install','c')">
-                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8.5C14.8 7.6 13.5 7 12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/></svg> C / C++
+            <button class="tab-btn" data-tab="install-cpp" onclick="switchTab('install','cpp')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C++
+            </button>
+            <button class="tab-btn" data-tab="install-python" onclick="switchTab('install','python')">
+                <i class="fa-brands fa-python"></i> Python
             </button>
             <button class="tab-btn" data-tab="install-go" onclick="switchTab('install','go')">
                 <i class="fa-brands fa-golang"></i> Go
@@ -532,7 +182,7 @@
             </button>
         </div>
 
-        <div class="tab-content active" id="install-python">
+        <div class="tab-content" id="install-python">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
@@ -546,7 +196,7 @@
             </div>
         </div>
 
-        <div class="tab-content" id="install-c">
+        <div class="tab-content active" id="install-c">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CMake — FetchContent</span></div>
@@ -561,14 +211,34 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ctoon)
 
-# Link to your target
-target_link_libraries(my_app PRIVATE ctoon)
-
-# C++ header-only wrapper — no extra step needed
-# just #include "ctoon.hpp" after linking ctoon</code></pre>
+# Link the C target
+target_link_libraries(my_app PRIVATE ctoon::ctoon)</code></pre>
             </div>
             <div class="install-note">
-                Requires CMake 3.19+ and a C99-compatible compiler. The C++11 header (<code>ctoon.hpp</code>) is header-only — linking <code>ctoon</code> is all that is needed for both C and C++ targets.
+                Requires CMake 3.19+ and a C99-compatible compiler. Link against <code>ctoon::ctoon</code> and include <code>ctoon.h</code>.
+            </div>
+        </div>
+
+        <div class="tab-content" id="install-cpp">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CMake — FetchContent</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-cmake"># CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(
+  ctoon
+  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(ctoon)
+
+# Link the C++ target
+target_link_libraries(my_app PRIVATE ctoon::ctoonpp)</code></pre>
+            </div>
+            <div class="install-note">
+                Requires CMake 3.19+ and a C++11-compatible compiler. Link against <code>ctoon::ctoonpp</code> and include <code>ctoon.hpp</code>. The C++ wrapper is header-only on top of the C core — all RAII lifetime management is included automatically.
             </div>
         </div>
 
@@ -617,14 +287,14 @@ sudo cmake --install build</code></pre>
     </div>
     <div class="tabbed-panel" id="example-panel">
         <div class="tab-bar" id="example-tabs">
-            <button class="tab-btn active" data-tab="example-python" onclick="switchTab('example','python')">
-                <i class="fa-brands fa-python"></i> Python
-            </button>
-            <button class="tab-btn" data-tab="example-c" onclick="switchTab('example','c')">
-                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8.5C14.8 7.6 13.5 7 12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/></svg> C
+            <button class="tab-btn active" data-tab="example-c" onclick="switchTab('example','c')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
             </button>
             <button class="tab-btn" data-tab="example-cpp" onclick="switchTab('example','cpp')">
-                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.5 0 2.8-.5 3.9-1.4"/><path d="M18 9.5h-3m1.5-1.5v3"/><path d="M22 9.5h-3m1.5-1.5v3"/></svg> C++
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C++
+            </button>
+            <button class="tab-btn" data-tab="example-python" onclick="switchTab('example','python')">
+                <i class="fa-brands fa-python"></i> Python
             </button>
             <button class="tab-btn" data-tab="example-go" onclick="switchTab('example','go')">
                 <i class="fa-brands fa-golang"></i> Go
@@ -634,7 +304,7 @@ sudo cmake --install build</code></pre>
             </button>
         </div>
 
-        <div class="tab-content active" id="example-python">
+        <div class="tab-content" id="example-python">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">python</span></div>
@@ -668,7 +338,7 @@ toon = ctoon.dumps(data,
             </div>
         </div>
 
-        <div class="tab-content" id="example-c">
+        <div class="tab-content active" id="example-c">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c</span></div>

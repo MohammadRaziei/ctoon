@@ -94,15 +94,15 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND}
         -DOUTPUT_DIR=${CTOON_DOCS_OUT}
         -DINDEX_IN=${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
+        -DCSS_FILE=${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         -DPROJECT_VERSION=${PROJECT_VERSION}
         -DLOGO_SQ=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
-        -DLOGO_SQ_CTOON=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq-ctoon.svg
         -P ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
         ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
-        ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq-ctoon.svg
     COMMENT "Creating documentation route index"
     VERBATIM
 )

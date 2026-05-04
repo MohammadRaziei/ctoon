@@ -7,6 +7,10 @@ cmake_minimum_required(VERSION 3.19)
 
 file(MAKE_DIRECTORY "${OUTPUT_DIR}")
 
+if(DEFINED CSS_FILE)
+  file(COPY_FILE "${CSS_FILE}" "${OUTPUT_DIR}/ctoon-docs.css")
+endif()
+
 # ── Read SVG logo for embedding ───────────────────────────────
 if(DEFINED LOGO_SQ AND EXISTS "${LOGO_SQ}")
   file(READ "${LOGO_SQ}" LOGO_CONTENT)
