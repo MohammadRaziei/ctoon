@@ -1,11 +1,11 @@
 
 <!--PYTHON_SECTION_BEGIN
 PLACEHOLDER--> 
-> [!WARNING]
-> **Python Wheels Release In Progress**
+> [!WARNING]  
+> **Python Wheels Release In Progress**  
 > 
-> ⏳ Generating release assets...
-> Please wait for the release pipeline to complete.
+> ⏳ Generating release assets...  
+> Please wait for the release pipeline to complete.  
 <!--PLACEHOLDER
 | OS | Available Wheels & Source | 
 | :--- | :--- |
