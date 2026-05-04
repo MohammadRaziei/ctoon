@@ -43,27 +43,27 @@ jobs:
           draft: false
           prerelease: ${{ steps.init.outputs.IS_TAG == 'false' }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          body_path: .github/workflows/release.md
+          body_path: .github/workflows/release_template.md
 
 
 
-  cmake:
-    uses: ./.github/workflows/cmake.yml
-    needs: [init]
+  # cmake:
+  #   uses: ./.github/workflows/cmake.yml
+  #   needs: [init]
 
   # wheel:
-    # uses: ./.github/workflows/wheels.yml
-    # needs: [init]
+  #   uses: ./.github/workflows/wheels.yml
+  #   needs: [init]
 
-  release:
-    # needs: [cmake, wheel]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
+  # release:
+  #   # needs: [cmake, wheel]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download all artifacts
+  #       uses: actions/download-artifact@v8
           
-      - name: List dist directory
-        run: tree --du -shaC . 
+  #     - name: List dist directory
+  #       run: tree --du -shaC . 
 
         
 
