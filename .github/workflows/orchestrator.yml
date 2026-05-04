@@ -74,8 +74,10 @@ jobs:
       - name: List dist directory
         run: tree --du -shaC . 
 
-      - name: Checkout repository
+      - name: Download workflows
         uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
 
       - name: Get beta release notes
         env:
@@ -114,9 +116,6 @@ jobs:
       id-token: write
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v6
-
     - name: Download documentation artifact
       uses: actions/download-artifact@v8
       with:
