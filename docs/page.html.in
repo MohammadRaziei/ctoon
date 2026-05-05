@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@PAGE_TITLE@ — CToon</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" id="hljs-theme-dark"  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" id="hljs-theme-light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
+    <style>
+@CSS_CONTENT@
+
+/* ── Page-specific layout ────────────────────────────────────────────────── */
+.page-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 4rem;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────────────────────────── */
+.page-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--fg2);
+    padding: 0.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+}
+
+.page-breadcrumb a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.page-breadcrumb a:hover { text-decoration: underline; }
+.page-breadcrumb-sep { color: var(--fg3); }
+
+/* ── Sidebar TOC ─────────────────────────────────────────────────────────── */
+.page-toc {
+    position: sticky;
+    top: 80px;
+    font-size: 0.82rem;
+}
+
+.page-toc-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--fg3);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 0.75rem;
+}
+
+.page-toc ul {
+    list-style: none;
+    border-left: 1px solid var(--border);
+}
+
+.page-toc ul li a {
+    display: block;
+    padding: 0.3rem 0.75rem;
+    color: var(--fg2);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+    transition: all 0.15s;
+    line-height: 1.4;
+}
+
+.page-toc ul li a:hover,
+.page-toc ul li a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-glow2);
+}
+
+.page-toc ul li.toc-h3 a { padding-left: 1.5rem; font-size: 0.78rem; }
+
+/* ── Article content ─────────────────────────────────────────────────────── */
+.page-article { min-width: 0; }
+
+.page-article h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent) 0%, #22b8cf 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-article h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 2.5rem 0 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg);
+}
+
+.page-article h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 1.75rem 0 0.5rem;
+    color: var(--fg);
+}
+
+.page-article h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.4rem;
+    color: var(--fg2);
+}
+
+.page-article p {
+    font-size: 0.925rem;
+    color: var(--fg2);
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.page-article a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.page-article a:hover { text-decoration: underline; }
+
+.page-article ul,
+.page-article ol {
+    font-size: 0.925rem;
+    color: var(--fg2);
+    line-height: 1.8;
+    margin: 0.5rem 0 1rem 1.5rem;
+}
+
+.page-article li { margin-bottom: 0.3rem; }
+
+.page-article code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82em;
+    color: var(--accent);
+    background: var(--accent-glow2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+}
+
+/* code blocks — rendered by highlight_code() in convert_page.py */
+.page-article .code-wrap {
+    margin: 1rem 0;
+}
+
+.page-article pre code { font-size: 0.83rem; }
+
+.page-article blockquote {
+    border-left: 3px solid var(--accent);
+    background: var(--bg2);
+    padding: 0.75rem 1.1rem;
+    margin: 1rem 0;
+    color: var(--fg2);
+    font-size: 0.9rem;
+}
+
+.page-article blockquote p { margin: 0; }
+
+.page-article table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    margin: 1rem 0;
+}
+
+.page-article th {
+    text-align: left;
+    padding: 0.6rem 1rem;
+    background: var(--bg2);
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg2);
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.page-article td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--fg2);
+    vertical-align: top;
+}
+
+.page-article tr:last-child td { border-bottom: none; }
+.page-article tr:hover td      { background: var(--bg2); }
+
+.page-article hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0;
+}
+
+/* ── Admonitions (if mdit_py_plugins is available) ───────────────────────── */
+.admonition {
+    border-left: 3px solid var(--accent);
+    background: var(--bg2);
+    padding: 0.85rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+}
+
+.admonition-title {
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 0.4rem;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+.admonition.warning { border-left-color: #fcc419; }
+.admonition.warning .admonition-title { color: #fcc419; }
+.admonition.danger  { border-left-color: #ff6b6b; }
+.admonition.danger  .admonition-title { color: #ff6b6b; }
+.admonition.tip     { border-left-color: #40c057; }
+.admonition.tip     .admonition-title { color: #40c057; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    .page-wrap {
+        grid-template-columns: 1fr;
+    }
+    .page-toc { display: none; }
+}
+
+@media (max-width: 640px) {
+    .page-wrap { padding: 1.5rem 1rem 3rem; }
+}
+    </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+    <a class="topbar-brand" href="../index.html">
+        <div class="topbar-logo">@LOGO_CONTENT@</div>
+        <span class="topbar-name">CToon</span>
+        <span class="topbar-sep"></span>
+        <span class="topbar-subtitle">@NAV_LABEL@</span>
+    </a>
+    <div class="topbar-actions">
+        <span class="topbar-version">v@PROJECT_VERSION@</span>
+        <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+        </button>
+    </div>
+</header>
+
+<!-- Breadcrumb -->
+@BREADCRUMBS@
+
+<!-- Main layout: sidebar TOC + article -->
+<div class="page-wrap">
+    <aside class="page-toc" id="page-toc">
+        <div class="page-toc-title">On this page</div>
+        <ul id="toc-list"></ul>
+    </aside>
+
+    <article class="page-article" id="page-article">
+        @BODY_CONTENT@
+    </article>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div>
+            <div class="footer-brand">
+                <div class="footer-logo">@LOGO_CONTENT@</div>
+                <span class="footer-name">CToon</span>
+            </div>
+            <div class="footer-tagline">
+                A high-performance serialisation library for the TOON and JSON formats,
+                with idiomatic language bindings for C++, Python, and Go.
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
+                &nbsp;·&nbsp; <a href="https://github.com/MohammadRaziei/ctoon/blob/main/LICENSE">MIT License</a>
+                &nbsp;·&nbsp; v@PROJECT_VERSION@
+            </div>
+        </div>
+        <div>
+            <div class="footer-links-title">Resources</div>
+            <div class="footer-links">
+                <a class="footer-link" href="../index.html">
+                    <i class="fa-solid fa-house"></i> Documentation home
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+                    <i class="fa-brands fa-github"></i> Source code
+                </a>
+                <a class="footer-link" href="../coverage/index.html">
+                    <i class="fa-solid fa-chart-pie"></i> Coverage report
+                    <span class="footer-link-badge">dev</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // ── State ────────────────────────────────────────────────
+    const STORAGE_KEY = 'ctoon-docs';
+
+    const state = { theme: 'dark' };
+
+    function setState(patch) {
+        Object.assign(state, patch);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(
+            Object.assign(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'), patch)
+        ));
+        render();
+    }
+
+    function render() {
+        document.documentElement.setAttribute('data-theme', state.theme);
+        document.getElementById('hljs-theme-dark').disabled  = (state.theme !== 'dark');
+        document.getElementById('hljs-theme-light').disabled = (state.theme !== 'light');
+    }
+
+    function toggleTheme() {
+        setState({ theme: state.theme === 'dark' ? 'light' : 'dark' });
+    }
+
+    // ── Copy button ──────────────────────────────────────────
+    function copyCode(btn) {
+        const code = btn.closest('.code-wrap').querySelector('pre code') ||
+                     btn.closest('.code-wrap').querySelector('pre');
+        navigator.clipboard.writeText(code.innerText).then(() => {
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-regular fa-copy"></i> copy';
+                btn.classList.remove('copied');
+            }, 1800);
+        });
+    }
+
+    // ── TOC builder ──────────────────────────────────────────
+    function buildToc() {
+        const article  = document.getElementById('page-article');
+        const tocList  = document.getElementById('toc-list');
+        const headings = article.querySelectorAll('h2, h3');
+
+        if (headings.length === 0) {
+            document.getElementById('page-toc').style.display = 'none';
+            return;
+        }
+
+        headings.forEach((h, i) => {
+            if (!h.id) h.id = 'heading-' + i;
+            const li = document.createElement('li');
+            li.className = h.tagName === 'H3' ? 'toc-h3' : 'toc-h2';
+            li.innerHTML = `<a href="#${h.id}">${h.textContent}</a>`;
+            tocList.appendChild(li);
+        });
+
+        // Highlight active section on scroll
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tocList.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+                    const active = tocList.querySelector(`a[href="#${entry.target.id}"]`);
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+
+        headings.forEach(h => observer.observe(h));
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            if (saved.theme) state.theme = saved.theme;
+        } catch (e) {}
+
+        render();
+        buildToc();
+
+        hljs.configure({ ignoreUnescapedHTML: true });
+        hljs.highlightAll();
+    });
+</script>
+
+</body>
+</html>
