@@ -114,9 +114,7 @@ add_custom_target(ctoon_docs_index DEPENDS ${CTOON_INDEX_OUT})
 
 set(CTOON_DOCS_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(DEFINED LOGO_SQ AND NOT EXISTS "${LOGO_SQ}")
-    set(LOGO_SQ ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg)
-endif()
+set(LOGO_SQ ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/CToonPages.cmake)
 

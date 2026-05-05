@@ -93,6 +93,7 @@ function(ctoon_add_page)
             "${_CTOON_PAGE_CSS}"
         COMMENT "Building page: ${ARG_TITLE}"
         VERBATIM
+        USES_TERMINAL
     )
 
     add_custom_target("ctoon_docs_page_${ARG_NAME}" DEPENDS "${_OUTPUT_HTML}")
@@ -100,7 +101,7 @@ function(ctoon_add_page)
     # Register in the global list so ctoon_docs can depend on all pages
     set_property(GLOBAL APPEND PROPERTY CTOON_PAGE_TARGETS "ctoon_docs_page_${ARG_NAME}")
 
-    message(STATUS "CtoonPages: registered page '${ARG_NAME}' → ${_OUTPUT_HTML}")
+    message(STATUS "CToonPages: registered page '${ARG_NAME}' → ${_OUTPUT_HTML}")
 endfunction()
 
 # ── ctoon_add_all_pages_dependency ───────────────────────────────────────────
