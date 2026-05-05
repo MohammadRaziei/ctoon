@@ -82,7 +82,9 @@ jobs:
       - name: Get beta release notes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release view __beta__ --json body --jq '.body' 2>/dev/null > release_notes.md || echo "" > release_notes.md
+        run: |
+          gh release view __beta__ --json body --jq '.body' 2>/dev/null > release_notes.md || echo "" > release_notes.md
+          cat release_notes.md
 
       - name: Changing the release_note.md  
         run: python .github/workflows/process_release.py -i release_notes.md -o release_notes.md -s PYTHON_SECTION -v "RELEASE_NAME=${{ needs.init.outputs.release_name }}" -v "VERSION_STRING=${{ needs.init.outputs.version_string }}"
