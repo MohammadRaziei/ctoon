@@ -525,45 +525,65 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
 </footer>
 
 <script>
-    // ── Theme ────────────────────────────────────────────────
-    function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        document.getElementById('hljs-theme-dark').disabled  = (theme !== 'dark');
-        document.getElementById('hljs-theme-light').disabled = (theme !== 'light');
-    }
-    const saved = localStorage.getItem('ctoon-docs-theme') || 'dark';
-    applyTheme(saved);
+    // ── State ────────────────────────────────────────────────
+    // Single source of truth — like React state but vanilla JS.
+    // All panels (docs, install, example) are always in sync.
+    const PANELS = ['docs', 'install', 'example'];
+    const STORAGE_KEY = 'ctoon-docs';
 
-    function toggleTheme() {
-        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        applyTheme(next);
-        localStorage.setItem('ctoon-docs-theme', next);
+    const state = {
+        theme: 'dark',
+        lang:  'c',
+    };
+
+    function setState(patch) {
+        Object.assign(state, patch);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
     }
 
-    // ── highlight.js ─────────────────────────────────────────
+    function render() {
+        // Theme
+        document.documentElement.setAttribute('data-theme', state.theme);
+        document.getElementById('hljs-theme-dark').disabled  = (state.theme !== 'dark');
+        document.getElementById('hljs-theme-light').disabled = (state.theme !== 'light');
+
+        // Tabs — every panel follows state.lang
+        PANELS.forEach(panel => {
+            // tab buttons
+            document.querySelectorAll('#' + panel + '-tabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === panel + '-' + state.lang);
+            });
+            // tab content panes
+            document.querySelectorAll('#' + panel + '-panel .tab-content').forEach(pane => {
+                pane.classList.toggle('active', pane.id === panel + '-' + state.lang);
+            });
+        });
+    }
+
+    // ── Init ─────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
+        // Restore persisted state
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            if (saved.theme) state.theme = saved.theme;
+            if (saved.lang)  state.lang  = saved.lang;
+        } catch (e) {}
+
+        render();
+
         hljs.configure({ ignoreUnescapedHTML: true });
         hljs.highlightAll();
     });
 
-    // ── Tab switching ────────────────────────────────────────
+    // ── Public API ───────────────────────────────────────────
     function switchTab(panel, lang) {
-        document.querySelectorAll('#' + panel + '-panel .tab-content').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('#' + panel + '-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
-        const content = document.getElementById(panel + '-' + lang);
-        if (content) content.classList.add('active');
-        const btn = document.querySelector('#' + panel + '-tabs [data-tab="' + panel + '-' + lang + '"]');
-        if (btn) btn.classList.add('active');
+        // panel arg is ignored — all panels always sync to the same lang
+        setState({ lang });
+    }
 
-        const other = panel === 'install' ? 'example' : 'install';
-        const oc = document.getElementById(other + '-' + lang);
-        if (oc) {
-            document.querySelectorAll('#' + other + '-panel .tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('#' + other + '-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-            oc.classList.add('active');
-            const ob = document.querySelector('#' + other + '-tabs [data-tab="' + other + '-' + lang + '"]');
-            if (ob) ob.classList.add('active');
-        }
+    function toggleTheme() {
+        setState({ theme: state.theme === 'dark' ? 'light' : 'dark' });
     }
 
     // ── Copy button ──────────────────────────────────────────
