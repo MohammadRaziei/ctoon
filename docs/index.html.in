@@ -93,6 +93,9 @@
             <button class="tab-btn" data-tab="docs-go" onclick="switchTab('docs','go')">
                 <i class="fa-brands fa-golang"></i> Go
             </button>
+            <button class="tab-btn" data-tab="docs-cli" onclick="switchTab('docs','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
         </div>
 
         <div class="tab-content active" id="docs-c">
@@ -147,6 +150,20 @@
                     <p class="doc-card-desc">CGo bindings that wrap the C core. Covers <code>Loads</code>, <code>Dumps</code>, <code>LoadsJSON</code>, <code>DumpsJSON</code>, file I/O helpers (<code>EncodeToFile</code>, <code>DecodeFromFile</code>), and encode/decode option structs. Requires CGo-enabled build environment.</p>
                     <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with godoc</span></div>
                     <a href="go/index.html" class="doc-card-btn">Open Go Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="docs-cli">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">CLI Reference <span class="card-badge">v@PROJECT_VERSION@</span></div>
+                    <p class="doc-card-desc">Command-line tool for converting between JSON and TOON formats. Covers all options and flags including <code>--delimiter</code>, <code>--length-marker</code>, <code>--stats</code>, stdin piping, and forced encode/decode modes. Auto-detects conversion direction from file extension.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Written in Markdown</span></div>
+                    <a href="cli/index.html" class="doc-card-btn">Open CLI Reference <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>
@@ -548,15 +565,21 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
         document.getElementById('hljs-theme-dark').disabled  = (state.theme !== 'dark');
         document.getElementById('hljs-theme-light').disabled = (state.theme !== 'light');
 
-        // Tabs — every panel follows state.lang
+        // Tabs — sync all panels to state.lang, fallback to first tab if lang absent
         PANELS.forEach(panel => {
-            // tab buttons
-            document.querySelectorAll('#' + panel + '-tabs .tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.tab === panel + '-' + state.lang);
+            const btns  = document.querySelectorAll('#' + panel + '-tabs .tab-btn');
+            const panes = document.querySelectorAll('#' + panel + '-panel .tab-content');
+
+            // Check if this panel actually has the requested lang
+            const targetPane = document.getElementById(panel + '-' + state.lang);
+            const effectiveLang = targetPane ? state.lang : (btns[0] ? btns[0].dataset.tab.replace(panel + '-', '') : null);
+            if (!effectiveLang) return;
+
+            btns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === panel + '-' + effectiveLang);
             });
-            // tab content panes
-            document.querySelectorAll('#' + panel + '-panel .tab-content').forEach(pane => {
-                pane.classList.toggle('active', pane.id === panel + '-' + state.lang);
+            panes.forEach(pane => {
+                pane.classList.toggle('active', pane.id === panel + '-' + effectiveLang);
             });
         });
     }
