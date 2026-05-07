@@ -1,0 +1,15 @@
+<!--
+CTOON_ASCII_ART
+
+  CToon — C implementation of the TOON serialisation format
+  with idiomatic bindings for C++, Python, and Go.
+
+  Author  : Mohammad Raziei
+  Email   : mohammadraziei1375@gmail.com
+  GitHub  : https://github.com/MohammadRaziei/ctoon
+  License : MIT
+  Version : CTOON_VERSION
+
+  Generated automatically by the CToon build system.
+  Do not edit manually.
+-->

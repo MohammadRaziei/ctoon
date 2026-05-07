@@ -132,3 +132,16 @@ add_custom_target(ctoon_docs
 
 add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index)
 ctoon_finalize_pages(ctoon_docs)
+
+# ── Post-process: inject HTML comment into all output HTML files ──
+
+add_custom_command(TARGET ctoon_docs POST_BUILD
+    COMMAND ${CMAKE_COMMAND}
+        -DOUTPUT_DIR=${CTOON_DOCS_OUT}
+        -DCOMMENT_IN=${CMAKE_CURRENT_SOURCE_DIR}/initial_comment.in
+        -DASCII_ART_FILE=${CMAKE_CURRENT_SOURCE_DIR}/images/ctoon-sq.txt
+        -DPROJECT_VERSION=${PROJECT_VERSION}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/InjectComment.cmake
+    COMMENT "Injecting HTML comments into documentation pages"
+    VERBATIM
+)
