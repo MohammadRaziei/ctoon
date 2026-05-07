@@ -34,14 +34,9 @@ except ImportError:
 def render_markdown(md_text: str) -> str:
     """Convert Markdown to HTML using markdown-it-py with common plugins."""
     try:
-        # Try to load extras (tables, strikethrough, etc.)
         from mdit_py_plugins.front_matter import front_matter_plugin
         from mdit_py_plugins.admon import admon_plugin
-        md = (
-            MarkdownIt("commonmark", {"highlight": highlight_code})
-            .enable("table")
-            .enable("strikethrough")
-        )
+        md = MarkdownIt("commonmark").enable("table").enable("strikethrough")
         try:
             md = md.use(front_matter_plugin)
         except Exception:
@@ -51,31 +46,48 @@ def render_markdown(md_text: str) -> str:
         except Exception:
             pass
     except ImportError:
-        md = MarkdownIt("commonmark", {"highlight": highlight_code}).enable("table")
+        md = MarkdownIt("commonmark").enable("table")
 
-    return md.render(md_text)
+    raw_html = md.render(md_text)
+
+    # Post-process: wrap every <pre><code class="language-X">...</code></pre>
+    # with our custom code-wrap chrome (dots + lang label + copy button)
+    raw_html = _wrap_code_blocks(raw_html)
+    return raw_html
 
 
-def highlight_code(code: str, lang: str, attrs: str) -> str:
-    """Wrap code blocks so highlight.js picks them up."""
-    lang = lang.strip() if lang else "plaintext"
-    escaped = (code
-               .replace("&", "&amp;")
-               .replace("<", "&lt;")
-               .replace(">", "&gt;"))
-    return (
-        f'<div class="code-wrap">'
-        f'<div class="code-label">'
-        f'<div class="code-lang-row">'
-        f'<div class="code-dots"><span></span><span></span><span></span></div>'
-        f'<span class="code-lang">{lang}</span>'
-        f'</div>'
-        f'<button class="copy-btn" onclick="copyCode(this)">'
-        f'<i class="fa-regular fa-copy"></i> copy</button>'
-        f'</div>'
-        f'<pre><code class="language-{lang}">{escaped}</code></pre>'
-        f'</div>'
+def _wrap_code_blocks(html: str) -> str:
+    """Replace bare <pre><code ...> blocks with styled code-wrap divs."""
+    import re
+
+    def replacer(m):
+        attrs      = m.group(1) or ''
+        code_body  = m.group(2)
+
+        # Extract language name from class e.g. class="language-bash" → bash
+        lang_match = re.search(r'language-([a-zA-Z0-9_+-]+)', attrs)
+        lang = lang_match.group(1) if lang_match else 'plaintext'
+
+        return (
+            f'<div class="code-wrap">'
+            f'<div class="code-label">'
+            f'<div class="code-lang-row">'
+            f'<div class="code-dots"><span></span><span></span><span></span></div>'
+            f'<span class="code-lang">{lang}</span>'
+            f'</div>'
+            f'<button class="copy-btn" onclick="copyCode(this)">'
+            f'<i class="fa-regular fa-copy"></i> copy</button>'
+            f'</div>'
+            f'<pre><code class="language-{lang}">{code_body}</code></pre>'
+            f'</div>'
+        )
+
+    # Match <pre><code class="...">...</code></pre>  (non-greedy, DOTALL)
+    pattern = re.compile(
+        r'<pre><code((?:\s+[^>]*)?)?>(.*?)</code></pre>',
+        re.DOTALL
     )
+    return pattern.sub(replacer, html)
 
 
 # ── Extract title from first H1 (optional) ───────────────────────────────────
