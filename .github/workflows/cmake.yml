@@ -82,7 +82,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: cmake-documentation
-        path: build/docs/
+        path: build/docs/out
         retention-days: 5
 
   build-coverage:

@@ -1,7 +1,7 @@
 CToon Python API
 ================
 
-**CToon** is a high-performance C++ serialization library with Python bindings
+**CToon** is a high-performance C serialisation library with Python bindings
 built via nanobind.
 
 Quick Example
@@ -11,46 +11,54 @@ Quick Example
 
    import ctoon
 
-   data = {"name": "Ali", "age": 30, "tags": ["developer", "C++"]}
+   data = {"name": "Alice", "age": 30, "tags": ["developer", "C++"]}
 
-   json_str = ctoon.dumps_json(data, indent=2)
-   toon_str = ctoon.encode(data)
+   # TOON
+   toon_str = ctoon.dumps(data)
+   data      = ctoon.loads(toon_str)
 
-Functions
----------
+   # JSON interop
+   json_str  = ctoon.dumps_json(data, indent=2)
+   data      = ctoon.loads_json(json_str)
+
+   # File I/O
+   ctoon.dump(data, "out.toon")
+   data = ctoon.load("out.toon")
+
+TOON Functions
+--------------
+
+.. autofunction:: ctoon.loads
+.. autofunction:: ctoon.dumps
+.. autofunction:: ctoon.load
+.. autofunction:: ctoon.dump
+
+JSON Functions
+--------------
 
 .. autofunction:: ctoon.loads_json
 .. autofunction:: ctoon.dumps_json
 .. autofunction:: ctoon.load_json
 .. autofunction:: ctoon.dump_json
-.. autofunction:: ctoon.encode
-.. autofunction:: ctoon.decode
-.. autofunction:: ctoon.encode_to_file
-.. autofunction:: ctoon.decode_from_file
-.. autofunction:: ctoon.loads_toon
-.. autofunction:: ctoon.dumps_toon
-.. autofunction:: ctoon.loads
-.. autofunction:: ctoon.dumps
 
-Classes
+Aliases
 -------
 
-.. autoclass:: ctoon.EncodeOptions
-   :members:
-   :undoc-members:
-
-.. autoclass:: ctoon.DecodeOptions
-   :members:
-   :undoc-members:
+.. autofunction:: ctoon.encode
+.. autofunction:: ctoon.decode
 
 Enums
 -----
 
-.. autoclass:: ctoon.Delimiter
+.. autoclass:: ctoon.ReadFlag
    :members:
    :undoc-members:
 
-.. autoclass:: ctoon.Type
+.. autoclass:: ctoon.WriteFlag
+   :members:
+   :undoc-members:
+
+.. autoclass:: ctoon.Delimiter
    :members:
    :undoc-members:
 

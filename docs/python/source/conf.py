@@ -3,7 +3,6 @@
 from pathlib import Path
 import re
 import sys
-import os
 
 DOCS_DIR     = Path(__file__).resolve().parent
 PROJECT_ROOT = DOCS_DIR.parent.parent.parent
@@ -24,9 +23,7 @@ if CTOON_H.exists():
     version = f'{major}.{minor}.{patch}'
 
 # ── Import ctoon from build/python/install ────────────────────────────────────
-_install_dir = os.environ.get('CTOON_PYTHON_INSTALL_DIR', '')
-if _install_dir:
-    sys.path.insert(0, _install_dir)
+sys.path.insert(0, '.')
 
 import ctoon  # noqa: E402
 

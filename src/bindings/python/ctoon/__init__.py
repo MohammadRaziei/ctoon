@@ -7,20 +7,21 @@ from .ctoon_py import *  # noqa: F401, F403
 from .ctoon_py import __version__  # noqa: F401
 
 __all__ = [
+    # TOON serialisation
+    "loads",
+    "dumps",
+    "load",
+    "dump",
+    # JSON interop
     "loads_json",
     "dumps_json",
     "load_json",
     "dump_json",
+    # Aliases
     "encode",
     "decode",
-    "encode_to_file",
-    "decode_from_file",
-    "loads_toon",
-    "dumps_toon",
-    "loads",
-    "dumps",
+    # Enums
+    "ReadFlag",
+    "WriteFlag",
     "Delimiter",
-    "EncodeOptions",
-    "DecodeOptions",
-    "Type",
 ]

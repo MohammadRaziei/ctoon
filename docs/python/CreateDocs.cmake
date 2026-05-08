@@ -43,13 +43,12 @@ file(MAKE_DIRECTORY "${PY_DOCTREES}")
 # ── Run Sphinx ────────────────────────────────────────────────────────────────
 # Pass CTOON_PYTHON_INSTALL_DIR as environment variable so conf.py can read it
 execute_process(
-    COMMAND ${CMAKE_COMMAND} -E env
-        "CTOON_PYTHON_INSTALL_DIR=${CTOON_PYTHON_INSTALL_DIR}"
-        "${PYTHON_EXECUTABLE}" -m sphinx
+    COMMAND ${PYTHON_EXECUTABLE} -m sphinx
             -b html
             -d "${PY_DOCTREES}"
             "${SOURCE_DIR}"
             "${PY_HTML}"
+    WORKING_DIRECTORY ${CTOON_PYTHON_INSTALL_DIR}
     RESULT_VARIABLE SPHINX_RESULT
 )
 
