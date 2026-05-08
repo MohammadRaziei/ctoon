@@ -71,7 +71,7 @@ jobs:
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
           -DCTOON_BUILD_EXAMPLES=OFF \
-          -DCTOON_BUILD_PYTHON=OFF \
+          -DCTOON_BUILD_PYTHON=ON \
           -DCTOON_BUILD_TESTS=OFF \
           -DCTOON_BUILD_DOCS=ON
 
