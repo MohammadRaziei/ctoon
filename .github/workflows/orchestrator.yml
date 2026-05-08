@@ -109,7 +109,10 @@ jobs:
       uses: actions/download-artifact@v8
       with:
         name: cmake-coverage-report
-        path: ./pages/coverage     
+        path: ./pages/coverage   
+        
+    - name: List pages directory
+      run: tree --du -shaC pages
 
     - name: Setup Pages
       uses: actions/configure-pages@v4
