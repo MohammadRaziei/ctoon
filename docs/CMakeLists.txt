@@ -67,6 +67,7 @@ if(SPHINX_CHECK EQUAL 0)
             -DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}
             -DSOURCE_DIR=${CTOON_DOCS_PYTHON_DIR}/source
             -DOUTPUT_DIR=${CTOON_DOCS_PYTHON_OUT}
+            -DCTOON_PYTHON_INSTALL_DIR=${CMAKE_BINARY_DIR}/python/install
             -P ${CTOON_DOCS_PYTHON_DIR}/CreateDocs.cmake
         DEPENDS
             ${CTOON_DOCS_PYTHON_DIR}/CreateDocs.cmake
@@ -77,6 +78,11 @@ if(SPHINX_CHECK EQUAL 0)
     )
 
     add_custom_target(ctoon_docs_python DEPENDS ${CTOON_DOCS_PYTHON_HTML})
+
+    # Must have ctoon_build_python run first so the module is installed
+    if(TARGET ctoon_build_python)
+        add_dependencies(ctoon_docs_python ctoon_build_python)
+    endif()
 else()
     message(WARNING "Sphinx not found - Python documentation will not be generated")
     add_custom_target(ctoon_docs_python
@@ -132,6 +138,7 @@ add_custom_target(ctoon_docs
 
 add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index)
 ctoon_finalize_pages(ctoon_docs)
+
 
 # ── Post-process: inject HTML comment into all output HTML files ──
 
