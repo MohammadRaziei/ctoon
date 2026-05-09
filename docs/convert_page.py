@@ -196,7 +196,7 @@ def build_section(args):
         # ── Breadcrumb ───────────────────────────────────────────────────────
         breadcrumbs = (
             f'<nav class="page-breadcrumb">'
-            f'<a href="../../index.html">Docs</a>'
+            f'<a href="../index.html">Docs</a>'
             f'<span class="page-breadcrumb-sep">›</span>'
             f'<a href="index.html">{args.section_title}</a>'
             f'<span class="page-breadcrumb-sep">›</span>'

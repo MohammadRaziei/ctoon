@@ -290,7 +290,7 @@
 
 <!-- Topbar -->
 <header class="topbar">
-    <a class="topbar-brand" href="../../index.html">
+    <a class="topbar-brand" href="../index.html">
         <div class="topbar-logo">@LOGO_CONTENT@</div>
         <span class="topbar-name">CToon</span>
         <span class="topbar-sep"></span>
@@ -362,13 +362,13 @@
         <div>
             <div class="footer-links-title">Resources</div>
             <div class="footer-links">
-                <a class="footer-link" href="../../index.html">
+                <a class="footer-link" href="../index.html">
                     <i class="fa-solid fa-house"></i> Documentation home
                 </a>
                 <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
                     <i class="fa-brands fa-github"></i> Source code
                 </a>
-                <a class="footer-link" href="../../coverage/index.html">
+                <a class="footer-link" href="../coverage/index.html">
                     <i class="fa-solid fa-chart-pie"></i> Coverage report
                     <span class="footer-link-badge">dev</span>
                 </a>
