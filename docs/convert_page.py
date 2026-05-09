@@ -146,6 +146,7 @@ def build_page(args):
     html = html.replace('@CSS_CONTENT@',     css)
     html = html.replace('@BREADCRUMBS@',     breadcrumbs)
     html = html.replace('@BODY_CONTENT@',    body_html)
+    html = html.replace('@FAVICON@',         '../ctoon-sq.svg')
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -240,6 +241,7 @@ def build_section(args):
         html = html.replace('@BODY_CONTENT@',    body_html)
         html = html.replace('@PREV_BTN@',        prev_btn)
         html = html.replace('@NEXT_BTN@',        next_btn)
+        html = html.replace('@FAVICON@',         '../ctoon-sq.svg')
 
         out_path = section_dir / out_name
         out_path.write_text(html, encoding='utf-8')
