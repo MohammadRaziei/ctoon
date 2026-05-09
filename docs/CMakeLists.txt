@@ -124,9 +124,20 @@ set(LOGO_SQ ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/CToonPages.cmake)
 
-ctoon_add_page(NAME cli        SOURCE cli.md        TITLE "CLI Reference")
+# ctoon_add_page(NAME cli        SOURCE cli.md        TITLE "CLI Reference")
 # ctoon_add_page(NAME benchmark  SOURCE benchmark.md  TITLE "Benchmarks")
 # ctoon_add_page(NAME changelog  SOURCE changelog.md  TITLE "Changelog")
+
+ctoon_add_section(
+    NAME  cli
+    TITLE "CLI Reference"
+    SOURCES
+        "cli/index.md:Overview"
+        "cli/installation.md:Installation"
+        "cli/options.md:Options"
+        "cli/examples.md:Examples"
+)
+
 
 
 # ── Master target ─────────────────────────────────────────────

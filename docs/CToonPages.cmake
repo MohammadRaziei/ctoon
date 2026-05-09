@@ -52,6 +52,9 @@ set(_CTOON_PAGE_TEMPLATE "${CTOON_DOCS_SRC}/page.html.in"
 set(_CTOON_PAGE_CSS "${CTOON_DOCS_SRC}/ctoon-docs.css"
     CACHE INTERNAL "Path to ctoon-docs.css")
 
+set(_CTOON_SECTION_TEMPLATE "${CTOON_DOCS_SRC}/section.html.in"
+    CACHE INTERNAL "Path to the ctoon section HTML template")
+
 # ── ctoon_add_page ────────────────────────────────────────────────────────────
 function(ctoon_add_page)
     cmake_parse_arguments(ARG "" "NAME;SOURCE;TITLE;NAV_LABEL;OUTPUT_DIR" "" ${ARGN})
@@ -93,7 +96,6 @@ function(ctoon_add_page)
             "${_CTOON_PAGE_CSS}"
         COMMENT "Building page: ${ARG_TITLE}"
         VERBATIM
-        USES_TERMINAL
     )
 
     add_custom_target("ctoon_docs_page_${ARG_NAME}" DEPENDS "${_OUTPUT_HTML}")
@@ -101,11 +103,92 @@ function(ctoon_add_page)
     # Register in the global list so ctoon_docs can depend on all pages
     set_property(GLOBAL APPEND PROPERTY CTOON_PAGE_TARGETS "ctoon_docs_page_${ARG_NAME}")
 
-    message(STATUS "CToonPages: registered page '${ARG_NAME}' → ${_OUTPUT_HTML}")
+    message(STATUS "CtoonPages: registered page '${ARG_NAME}' → ${_OUTPUT_HTML}")
 endfunction()
 
-# ── ctoon_add_all_pages_dependency ───────────────────────────────────────────
-# Call this after all ctoon_add_page() calls to wire pages into ctoon_docs.
+# ── ctoon_add_section ─────────────────────────────────────────────────────────
+# Build a multi-page section where all pages share a sidebar nav + prev/next.
+#
+# Usage:
+#   ctoon_add_section(
+#       NAME    <name>               # unique identifier and output subdir
+#       TITLE   <"Section Title">    # shown in sidebar header and topbar
+#       SOURCES                      # list of "file.md:Page Title" entries
+#           "index.md:Overview"
+#           "installation.md:Installation"
+#           "usage.md:Usage"
+#           ...
+#       [OUTPUT_DIR <dir>]           # optional override (default: ${CTOON_DOCS_OUT}/<name>)
+#   )
+function(ctoon_add_section)
+    cmake_parse_arguments(ARG "" "NAME;TITLE;OUTPUT_DIR" "SOURCES" ${ARGN})
+
+    if(NOT ARG_NAME OR NOT ARG_TITLE OR NOT ARG_SOURCES)
+        message(FATAL_ERROR "ctoon_add_section: NAME, TITLE, and SOURCES are required")
+    endif()
+
+    if(NOT ARG_OUTPUT_DIR)
+        set(ARG_OUTPUT_DIR "${CTOON_DOCS_OUT}/${ARG_NAME}")
+    endif()
+
+    # Build the comma-separated pages string for the Python script
+    # and collect all source md files for DEPENDS
+    set(_PAGES_ARG "")
+    set(_MD_SOURCES "")
+    foreach(_entry IN LISTS ARG_SOURCES)
+        # entry is "file.md:Title" — resolve md path
+        if(_entry MATCHES "^([^:]+):(.+)$")
+            set(_md_file "${CMAKE_MATCH_1}")
+            set(_page_title "${CMAKE_MATCH_2}")
+        else()
+            set(_md_file "${_entry}")
+            set(_page_title "")
+        endif()
+
+        if(NOT IS_ABSOLUTE "${_md_file}")
+            set(_md_file "${CTOON_DOCS_SRC}/${_md_file}")
+        endif()
+
+        if(_PAGES_ARG)
+            string(APPEND _PAGES_ARG ",${_md_file}:${_page_title}")
+        else()
+            set(_PAGES_ARG "${_md_file}:${_page_title}")
+        endif()
+
+        list(APPEND _MD_SOURCES "${_md_file}")
+    endforeach()
+
+    # Output stamp: we track the first page (index.html) as the primary output
+    set(_STAMP "${ARG_OUTPUT_DIR}/index.html")
+
+    add_custom_command(
+        OUTPUT "${_STAMP}"
+        COMMAND ${Python3_EXECUTABLE} "${_CTOON_CONVERT_SCRIPT}"
+            --section
+            --section-title "${ARG_TITLE}"
+            --section-dir   "${ARG_OUTPUT_DIR}"
+            --section-pages "${_PAGES_ARG}"
+            --source-dir    "${CTOON_DOCS_SRC}"
+            --template      "${_CTOON_SECTION_TEMPLATE}"
+            --css           "${_CTOON_PAGE_CSS}"
+            --logo          "${LOGO_SQ}"
+            --version       "${PROJECT_VERSION}"
+        DEPENDS
+            ${_MD_SOURCES}
+            "${_CTOON_CONVERT_SCRIPT}"
+            "${_CTOON_SECTION_TEMPLATE}"
+            "${_CTOON_PAGE_CSS}"
+        COMMENT "Building section: ${ARG_TITLE}"
+        VERBATIM
+    )
+
+    add_custom_target("ctoon_docs_section_${ARG_NAME}" DEPENDS "${_STAMP}")
+    set_property(GLOBAL APPEND PROPERTY CTOON_PAGE_TARGETS "ctoon_docs_section_${ARG_NAME}")
+
+    message(STATUS "CtoonPages: registered section '${ARG_NAME}' → ${ARG_OUTPUT_DIR}/")
+endfunction()
+
+# ── ctoon_finalize_pages ──────────────────────────────────────────────────────
 macro(ctoon_finalize_pages TARGET)
     get_property(_page_targets GLOBAL PROPERTY CTOON_PAGE_TARGETS)
     if(_page_targets)
