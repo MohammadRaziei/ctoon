@@ -21,8 +21,8 @@
     margin: 0 auto;
     padding: 2rem 2rem 4rem;
     display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 3rem;
+    grid-template-columns: 220px 1fr 200px;
+    gap: 2.5rem;
     align-items: start;
 }
 
@@ -42,13 +42,10 @@
 .page-breadcrumb a:hover      { text-decoration: underline; }
 .page-breadcrumb-sep          { color: var(--fg3); }
 
-/* ── Section sidebar ─────────────────────────────────────────────────────── */
+/* ── Section sidebar (left — section nav only) ───────────────────────────── */
 .section-sidebar {
     position: sticky;
     top: 80px;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
 }
 
 .section-nav-title {
@@ -81,7 +78,13 @@
 .section-nav-list li a.active       { color: var(--accent); border-left-color: var(--accent); background: var(--accent-glow2); font-weight: 600; }
 .section-nav-list li a .nav-index   { font-size: 0.68rem; color: var(--fg3); font-family: 'IBM Plex Mono', monospace; min-width: 18px; }
 
-/* ── In-page TOC ─────────────────────────────────────────────────────────── */
+/* ── Right TOC panel ─────────────────────────────────────────────────────── */
+.page-toc {
+    position: sticky;
+    top: 80px;
+    font-size: 0.82rem;
+}
+
 .page-toc-title {
     font-size: 0.68rem;
     font-weight: 700;
@@ -268,7 +271,11 @@
 .admonition.tip .admonition-title     { color: #40c057; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .section-layout         { grid-template-columns: 200px 1fr; }
+    .page-toc               { display: none; }
+}
+@media (max-width: 768px) {
     .section-layout         { grid-template-columns: 1fr; }
     .section-sidebar        { display: none; }
 }
@@ -306,21 +313,15 @@
 <!-- Layout -->
 <div class="section-layout">
 
-    <!-- Sidebar -->
+    <!-- Sidebar (left) -->
     <aside class="section-sidebar">
-        <div>
-            <div class="section-nav-title">@SECTION_TITLE@</div>
-            <ul class="section-nav-list" id="section-nav">
-                @SECTION_NAV@
-            </ul>
-        </div>
-        <div class="page-toc" id="page-toc">
-            <div class="page-toc-title">On this page</div>
-            <ul id="toc-list"></ul>
-        </div>
+        <div class="section-nav-title">@SECTION_TITLE@</div>
+        <ul class="section-nav-list" id="section-nav">
+            @SECTION_NAV@
+        </ul>
     </aside>
 
-    <!-- Article -->
+    <!-- Article (center) -->
     <article class="page-article" id="page-article">
         @BODY_CONTENT@
 
@@ -330,6 +331,12 @@
             @NEXT_BTN@
         </nav>
     </article>
+
+    <!-- TOC (right) -->
+    <aside class="page-toc" id="page-toc">
+        <div class="page-toc-title">On this page</div>
+        <ul id="toc-list"></ul>
+    </aside>
 
 </div>
 
