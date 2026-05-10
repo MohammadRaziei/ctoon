@@ -559,17 +559,17 @@
 
             return `
                 <div class="card-header">
-                    <div class="card-icon">${icons[item.id] || icons.code}</div>
+                    <div class="card-icon" style="background:linear-gradient(135deg,${color} 0%,${color}cc 100%)">${icons[item.id] || icons.code}</div>
                     <span class="badge" style="color:${color};background:${hexToRgba(color,0.1)};border-color:${hexToRgba(color,0.3)}">${badgeText}</span>
                 </div>
                 <div class="card-title">${item.title}</div>
                 <p class="card-desc">${item.desc}</p>
                 ${barHtml}
                 <div class="card-footer">
-                    <a ${isDisabled ? '' : `href="${item.htmlLink}"`} class="${isDisabled ? 'btn btn-disabled' : 'btn btn-primary'}">
+                    <a ${isDisabled ? '' : `href="${item.htmlLink}"`} class="${isDisabled ? 'btn btn-disabled' : 'btn btn-primary'}" style="${isDisabled ? '' : `background:${color}`}">
                         ${icons.link} View Report
                     </a>
-                    <a href="${item.lcovLink}" class="btn btn-secondary" download>
+                    <a href="${item.lcovLink}" class="btn btn-secondary" style="color:${color};border-color:${hexToRgba(color,0.4)}" download>
                         ${icons.download} .lcov
                     </a>
                 </div>`;
