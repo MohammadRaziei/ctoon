@@ -499,25 +499,26 @@
         // ── Render a card ────────────────────────────────────────────────────
         function renderCard(item, pct) {
             const color      = item.color;
-            const badgeText  = pct !== null ? pct + '%' : item.badge;
-            const barColor   = covColor(pct) || color;
+            const badgeText  = item.badge;   // always original badge from CMake
+            const numPct     = pct !== null ? parseFloat(pct) : null;
+            const barColor   = covColor(numPct) || color;
             const isDisabled = item.htmlLink === '#';
 
-            const barHtml = pct !== null ? `
+            const barHtml = numPct !== null ? `
                 <div class="cov-bar-wrap">
                     <div class="cov-bar-top">
                         <span>Line coverage</span>
                         <span style="color:${barColor};font-weight:700">${pct}%</span>
                     </div>
                     <div class="cov-bar-track">
-                        <div class="cov-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+                        <div class="cov-bar-fill" style="width:${numPct}%;background:${barColor}"></div>
                     </div>
                 </div>` : '';
 
             return `
                 <div class="card-header">
                     <div class="card-icon">${icons[item.id] || icons.code}</div>
-                    <span class="badge" style="color:${pct !== null ? barColor : color};background:${hexToRgba(color,0.1)};border-color:${hexToRgba(color,0.3)}">${badgeText}</span>
+                    <span class="badge" style="color:${color};background:${hexToRgba(color,0.1)};border-color:${hexToRgba(color,0.3)}">${badgeText}</span>
                 </div>
                 <div class="card-title">${item.title}</div>
                 <p class="card-desc">${item.desc}</p>
