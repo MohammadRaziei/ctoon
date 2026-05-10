@@ -474,21 +474,54 @@
         };
 
         // ── Parse LCOV to get overall line coverage % ────────────────────────
-        // Supports both standard lcov (LF:/LH:) and Go-style (DA:line,count only)
+        // Supports both standard lcov (LF:/LH:) and Go-style (DA:line,count only).
+        // Go lcov may have duplicate DA entries for the same line — we take the
+        // max count per line to avoid inflating LF (matching what go tool cover reports).
         function parseLcovCoverage(text) {
             let lf = 0, lh = 0;
             let hasLF = false;
 
+            // Check if file has LF:/LH: summary lines
             for (const line of text.split('\n')) {
-                const t = line.trim();
-                if (t.startsWith('LF:')) { lf += parseInt(t.slice(3)) || 0; hasLF = true; }
-                else if (t.startsWith('LH:')) { lh += parseInt(t.slice(3)) || 0; }
-                else if (!hasLF && t.startsWith('DA:')) {
-                    // Go-style: DA:linenum,count
-                    const count = parseInt(t.split(',')[1]);
-                    if (!isNaN(count)) { lf++; if (count > 0) lh++; }
+                if (line.trim().startsWith('LF:')) { hasLF = true; break; }
+            }
+
+            if (hasLF) {
+                // Standard lcov format
+                for (const line of text.split('\n')) {
+                    const t = line.trim();
+                    if (t.startsWith('LF:')) lf += parseInt(t.slice(3)) || 0;
+                    else if (t.startsWith('LH:')) lh += parseInt(t.slice(3)) || 0;
+                }
+            } else {
+                // Go-style: only DA: lines, possibly with duplicates per line.
+                // Build a map: lineNum → max(count) per SF block.
+                const lineMap = new Map();
+                for (const line of text.split('\n')) {
+                    const t = line.trim();
+                    if (t === 'end_of_record') {
+                        // flush block
+                        for (const [, count] of lineMap) {
+                            lf++;
+                            if (count > 0) lh++;
+                        }
+                        lineMap.clear();
+                    } else if (t.startsWith('DA:')) {
+                        const parts = t.slice(3).split(',');
+                        if (parts.length < 2) continue;
+                        const lineNum = parts[0];
+                        const count   = parseInt(parts[1]) || 0;
+                        // keep max count for this line
+                        lineMap.set(lineNum, Math.max(lineMap.get(lineNum) ?? 0, count));
+                    }
+                }
+                // flush last block if no end_of_record
+                for (const [, count] of lineMap) {
+                    lf++;
+                    if (count > 0) lh++;
                 }
             }
+
             if (lf === 0) return null;
             return (lh / lf * 100).toFixed(1);
         }
