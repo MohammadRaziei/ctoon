@@ -146,7 +146,7 @@
         <div class="navbar-logo">
             @LOGO_CONTENT@
         </div>
-        <a class="navbar-brand" href="#">@PROJECT_NAME@</a>
+        <a class="navbar-brand" href="../../index.html">@PROJECT_NAME@</a>
         <span class="navbar-breadcrumb">
             <a href="../index.html">Coverage Dashboard</a>
             <span class="sep">&rsaquo;</span>
