@@ -474,14 +474,23 @@
         };
 
         // ── Parse LCOV to get overall line coverage % ────────────────────────
+        // Supports both standard lcov (LF:/LH:) and Go-style (DA:line,count only)
         function parseLcovCoverage(text) {
-            let found = 0, hit = 0;
+            let lf = 0, lh = 0;
+            let hasLF = false;
+
             for (const line of text.split('\n')) {
-                if (line.startsWith('LF:'))  found += parseInt(line.slice(3)) || 0;
-                if (line.startsWith('LH:'))  hit   += parseInt(line.slice(3)) || 0;
+                const t = line.trim();
+                if (t.startsWith('LF:')) { lf += parseInt(t.slice(3)) || 0; hasLF = true; }
+                else if (t.startsWith('LH:')) { lh += parseInt(t.slice(3)) || 0; }
+                else if (!hasLF && t.startsWith('DA:')) {
+                    // Go-style: DA:linenum,count
+                    const count = parseInt(t.split(',')[1]);
+                    if (!isNaN(count)) { lf++; if (count > 0) lh++; }
+                }
             }
-            if (found === 0) return null;
-            return (hit / found * 100).toFixed(1);
+            if (lf === 0) return null;
+            return (lh / lf * 100).toFixed(1);
         }
 
         function covColor(pct) {
@@ -546,19 +555,20 @@
                 card.innerHTML = renderCard(item, null);
                 container.appendChild(card);
 
-                // Fetch lcov and update card with real percentage
+                // --card-color drives the hover shine — always from item.color (badge color passed by CMake)
+                card.style.setProperty('--card-color', item.color);
+                card.innerHTML = renderCard(item, null);
+                container.appendChild(card);
+
+                // Fetch lcov and update progress bar with real percentage
                 fetch(item.lcovLink)
                     .then(r => r.ok ? r.text() : null)
                     .then(text => {
                         if (!text) return;
                         const pct = parseLcovCoverage(text);
-                        const numPct = pct !== null ? parseFloat(pct) : null;
-                        const barColor = covColor(numPct) || item.color;
-                        // Update --card-color to match coverage level
-                        card.style.setProperty('--card-color', barColor);
-                        card.innerHTML = renderCard(item, numPct !== null ? pct : null);
+                        card.innerHTML = renderCard(item, pct);
                     })
-                    .catch(() => {}); // silently ignore if lcov not available
+                    .catch(() => {});
             });
         }
     </script>
