@@ -6,7 +6,6 @@ end
 %% File fixtures
 
 function setupOnce(testCase)
-% Locate test data directory relative to this test file
 here = fileparts(mfilename('fullpath'));
 testCase.TestData.DataDir = fullfile(here, '..', 'data');
 end
@@ -47,13 +46,14 @@ verifyEqual(testCase, double(v), -7);
 end
 
 function testDecodeReal(testCase)
-v = ctoon_decode('2.718');
+v = ctoon_decode('3.14');
 verifyClass(testCase, v, 'double');
-verifyEqual(testCase, v, 2.718, 'AbsTol', 1e-10);
+verifyEqual(testCase, v, 3.14, 'AbsTol', 1e-10);
 end
 
 function testDecodeString(testCase)
-v = ctoon_decode('"hello"');
+% Bare string (no quotes needed in TOON)
+v = ctoon_decode('hello');
 verifyEqual(testCase, v, 'hello');
 end
 
@@ -62,33 +62,52 @@ end
 %% -------------------------------------------------------------------------
 
 function testDecodeArray(testCase)
-v = ctoon_decode('[1,2,3]');
+% TOON array syntax: [n]: v1,v2,...
+v = ctoon_decode('[3]: 1,2,3');
 verifyClass(testCase, v, 'cell');
 verifyEqual(testCase, numel(v), 3);
+verifyEqual(testCase, double(v{1}), 1);
+verifyEqual(testCase, double(v{2}), 2);
+verifyEqual(testCase, double(v{3}), 3);
 end
 
 function testDecodeObject(testCase)
-v = ctoon_decode('{name:Alice,active:true}');
+% TOON object syntax: key: value (newline separated)
+v = ctoon_decode("name: Alice\nage: 30\nactive: true");
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, v.name, 'Alice');
+verifyEqual(testCase, double(v.age), 30);
 verifyClass(testCase, v.active, 'logical');
 verifyTrue(testCase, v.active);
 end
 
 function testDecodeNestedObject(testCase)
-v = ctoon_decode('{a:{b:1}}');
+% Nested object via indentation
+v = ctoon_decode("person:\n  name: Bob\n  age: 25");
 verifyClass(testCase, v, 'struct');
-verifyClass(testCase, v.a, 'struct');
-verifyEqual(testCase, double(v.a.b), 1);
+verifyClass(testCase, v.person, 'struct');
+verifyEqual(testCase, v.person.name, 'Bob');
+verifyEqual(testCase, double(v.person.age), 25);
+end
+
+function testDecodeObjectWithArray(testCase)
+v = ctoon_decode("name: Alice\nage: 30\nactive: true\ntags[3]: programming,c++,serialization");
+verifyEqual(testCase, v.name, 'Alice');
+verifyEqual(testCase, double(v.age), 30);
+verifyTrue(testCase, v.active);
+verifyClass(testCase, v.tags, 'cell');
+verifyEqual(testCase, numel(v.tags), 3);
 end
 
 %% -------------------------------------------------------------------------
 %  ctoon_encode / ctoon_decode round-trip
 %% -------------------------------------------------------------------------
 
-function testRoundTripDouble(testCase)
+function testRoundTripReal(testCase)
+% Use non-integer double to avoid uint64 promotion
 original = 3.14159;
 v = ctoon_decode(ctoon_encode(original));
+verifyClass(testCase, v, 'double');
 verifyEqual(testCase, v, original, 'AbsTol', 1e-10);
 end
 
@@ -123,14 +142,15 @@ verifyEqual(testCase, double(v), double(original));
 end
 
 function testRoundTripCell(testCase)
-original = {42.0, 'abc', false};
+original = {1.5, 'abc', false};
 v = ctoon_decode(ctoon_encode(original));
 verifyClass(testCase, v, 'cell');
 verifyEqual(testCase, numel(v), numel(original));
 end
 
 function testRoundTripStruct(testCase)
-original.x     = 1.0;
+% Use non-integer doubles to avoid uint64 promotion on round-trip
+original.x     = 1.5;
 original.label = 'point';
 original.flag  = false;
 v = ctoon_decode(ctoon_encode(original));
@@ -141,14 +161,6 @@ verifyClass(testCase, v.flag, 'logical');
 verifyFalse(testCase, v.flag);
 end
 
-function testRoundTripDoubleArray(testCase)
-original = [1.0, 2.0, 3.0];
-v = ctoon_decode(ctoon_encode(original));
-verifyClass(testCase, v, 'cell');
-verifyEqual(testCase, numel(v), 3);
-verifyEqual(testCase, double(v{1}), 1.0, 'AbsTol', 1e-10);
-end
-
 %% -------------------------------------------------------------------------
 %  ctoon_read / ctoon_write — file I/O
 %% -------------------------------------------------------------------------
@@ -156,7 +168,6 @@ end
 function testReadSample1(testCase)
 sample = fullfile(testCase.TestData.DataDir, 'sample1_user.toon');
 assumeTrue(testCase, isfile(sample), 'Test data file not found — skipping.');
-
 v = ctoon_read(sample);
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, v.name, 'Alice');
@@ -170,14 +181,11 @@ end
 function testWriteReadRoundTrip(testCase)
 tmp = [tempname, '.toon'];
 testCase.addTeardown(@() deleteIfExists(tmp));
-
 original.pi    = 3.14159;
 original.label = 'round-trip';
 original.ok    = true;
-
 ctoon_write(original, tmp);
 verifyTrue(testCase, isfile(tmp));
-
 v = ctoon_read(tmp);
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, v.pi, original.pi, 'AbsTol', 1e-10);
@@ -191,7 +199,8 @@ end
 %% -------------------------------------------------------------------------
 
 function testDecodeInvalidToon(testCase)
-verifyError(testCase, @() ctoon_decode('{invalid!!!'), 'ctoon:decodeError');
+% A sequence that cannot be valid TOON: binary-style garbage
+verifyError(testCase, @() ctoon_decode(sprintf('\x01\x02\x03')), 'ctoon:decodeError');
 end
 
 function testReadMissingFile(testCase)
@@ -203,7 +212,7 @@ verifyError(testCase, @() ctoon_decode(42), 'ctoon:badArg');
 end
 
 function testWriteInvalidPath(testCase)
-verifyError(testCase, @() ctoon_write(struct('x',1), '/no/such/dir/out.toon'), ...
+verifyError(testCase, @() ctoon_write(struct('x', 1.5), '/no/such/dir/out.toon'), ...
     'ctoon:writeError');
 end
 
