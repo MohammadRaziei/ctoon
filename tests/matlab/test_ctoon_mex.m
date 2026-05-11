@@ -1,218 +1,216 @@
-%% test_ctoon_mex.m
-% Unit tests for the CToon MATLAB binding.
-%
-% Tests the public API:
-%   ctoon_encode, ctoon_decode, ctoon_read, ctoon_write
-%
-% Usage — interactive:
-%   addpath('<build>/src/bindings/matlab');
-%   addpath('<repo>/tests/matlab');
-%   test_ctoon_mex
-%
-% Usage — non-interactive (CI / cmake -P):
-%   matlab -batch "addpath('...'); addpath('...'); test_ctoon_mex"
-%
-% Exits with a MATLAB error (non-zero exit code) on any failure.
-
-fprintf('=== CToon MATLAB binding test suite ===\n\n');
-
-TEST_DATA_DIR = fullfile(fileparts(mfilename('fullpath')), '..', 'data');
-
-passed = 0;
-failed = 0;
-
-% -------------------------------------------------------------------------
-% Helpers
-% -------------------------------------------------------------------------
-
-function check(cond, name)
-    if cond
-        fprintf('  [PASS] %s\n', name);
-    else
-        error('ctoon:testFailed', '[FAIL] %s', name);
-    end
+%% Main function
+function tests = test_ctoon_mex
+tests = functiontests(localfunctions);
 end
 
-function check_eq(a, b, name)
-    check(isequal(a, b), name);
+%% File fixtures
+
+function setupOnce(testCase)
+% Locate test data directory relative to this test file
+here = fileparts(mfilename('fullpath'));
+testCase.TestData.DataDir = fullfile(here, '..', 'data');
 end
 
-% =========================================================================
-% 1. ctoon_decode — scalar primitives
-% =========================================================================
-fprintf('--- ctoon_decode: scalars ---\n');
-try
-    check(isempty(ctoon_decode('null')) && isa(ctoon_decode('null'),'double'), ...
-          'null  → []');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] null: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('true');
-    check(islogical(v) && v == true, 'true  → logical 1');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] true: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('false');
-    check(islogical(v) && v == false, 'false → logical 0');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] false: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('42');
-    check(isnumeric(v) && double(v) == 42, 'uint 42 → numeric');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] uint42: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('-7');
-    check(isnumeric(v) && double(v) == -7, 'sint -7 → numeric');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] sint-7: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('2.718');
-    check(isa(v,'double') && abs(v-2.718)<1e-10, 'real 2.718 → double');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] real: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('"hello"');
-    check_eq(v, 'hello', 'string "hello" → char');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] string: %s\n', e.message); failed=failed+1; end
-
-% =========================================================================
-% 2. ctoon_decode — composite types
-% =========================================================================
-fprintf('\n--- ctoon_decode: composite ---\n');
-try
-    v = ctoon_decode('[1,2,3]');
-    check(iscell(v) && numel(v)==3, 'array → cell(3)');
-    passed = passed + 1;
-catch e; fprintf('  [FAIL] array: %s\n', e.message); failed=failed+1; end
-
-try
-    v = ctoon_decode('{name:Alice,active:true}');
-    check(isstruct(v),              'object → struct');
-    check_eq(v.name,  'Alice',      'object.name');
-    check(islogical(v.active) && v.active, 'object.active');
-    passed = passed + 3;
-catch e; fprintf('  [FAIL] object: %s\n', e.message); failed=failed+1; end
-
-% =========================================================================
-% 3. ctoon_encode / ctoon_decode round-trip
-% =========================================================================
-fprintf('\n--- ctoon_encode / ctoon_decode round-trip ---\n');
-
-function roundtrip(val, label, passed, failed)
-    try
-        s = ctoon_encode(val);
-        v = ctoon_decode(s);
-        if iscell(val)
-            ok = iscell(v) && numel(v)==numel(val);
-        elseif isstruct(val)
-            ok = isstruct(v) && ...
-                 all(ismember(fieldnames(val), fieldnames(v)));
-        elseif ischar(val)
-            ok = isequal(v, val);
-        elseif islogical(val)
-            ok = islogical(v) && v == val;
-        else
-            ok = abs(double(v) - double(val)) < 1e-10;
-        end
-        if ok
-            fprintf('  [PASS] encode/decode: %s\n', label);
-            passed = passed + 1;
-        else
-            fprintf('  [FAIL] encode/decode: %s\n', label);
-            failed = failed + 1;
-        end
-    catch e
-        fprintf('  [FAIL] encode/decode %s: %s\n', label, e.message);
-        failed = failed + 1;
-    end
+function teardownOnce(~)
 end
 
-roundtrip(3.14159,         'double',  passed, failed);
-roundtrip('world',         'string',  passed, failed);
-roundtrip(true,            'logical', passed, failed);
-roundtrip(int64(-999),     'int64',   passed, failed);
-roundtrip(uint64(2^40),    'uint64',  passed, failed);
-roundtrip({42.0,'a',false},'cell',    passed, failed);
+%% -------------------------------------------------------------------------
+%  ctoon_decode — scalar primitives
+%% -------------------------------------------------------------------------
 
-st.x     = 1.0;
-st.label = 'point';
-st.flag  = false;
-roundtrip(st, 'struct', passed, failed);
-
-% =========================================================================
-% 4. ctoon_read / ctoon_write — file I/O
-% =========================================================================
-fprintf('\n--- ctoon_read / ctoon_write ---\n');
-
-sample1 = fullfile(TEST_DATA_DIR, 'sample1_user.toon');
-if exist(sample1, 'file')
-    try
-        v = ctoon_read(sample1);
-        check(isstruct(v),                       'read: → struct');
-        check_eq(v.name, 'Alice',                'read: name = Alice');
-        check(double(v.age) == 30,               'read: age  = 30');
-        check(islogical(v.active) && v.active,   'read: active = true');
-        check(iscell(v.tags) && numel(v.tags)==3,'read: tags has 3 items');
-        passed = passed + 5;
-    catch e; fprintf('  [FAIL] read sample1: %s\n',e.message); failed=failed+1; end
-else
-    fprintf('  [SKIP] read — data file not found: %s\n', sample1);
+function testDecodeNull(testCase)
+v = ctoon_decode('null');
+verifyEmpty(testCase, v);
+verifyClass(testCase, v, 'double');
 end
 
+function testDecodeTrue(testCase)
+v = ctoon_decode('true');
+verifyClass(testCase, v, 'logical');
+verifyTrue(testCase, v);
+end
+
+function testDecodeFalse(testCase)
+v = ctoon_decode('false');
+verifyClass(testCase, v, 'logical');
+verifyFalse(testCase, v);
+end
+
+function testDecodeUint(testCase)
+v = ctoon_decode('42');
+verifyEqual(testCase, double(v), 42);
+end
+
+function testDecodeSint(testCase)
+v = ctoon_decode('-7');
+verifyEqual(testCase, double(v), -7);
+end
+
+function testDecodeReal(testCase)
+v = ctoon_decode('2.718');
+verifyClass(testCase, v, 'double');
+verifyEqual(testCase, v, 2.718, 'AbsTol', 1e-10);
+end
+
+function testDecodeString(testCase)
+v = ctoon_decode('"hello"');
+verifyEqual(testCase, v, 'hello');
+end
+
+%% -------------------------------------------------------------------------
+%  ctoon_decode — composite types
+%% -------------------------------------------------------------------------
+
+function testDecodeArray(testCase)
+v = ctoon_decode('[1,2,3]');
+verifyClass(testCase, v, 'cell');
+verifyEqual(testCase, numel(v), 3);
+end
+
+function testDecodeObject(testCase)
+v = ctoon_decode('{name:Alice,active:true}');
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, v.name, 'Alice');
+verifyClass(testCase, v.active, 'logical');
+verifyTrue(testCase, v.active);
+end
+
+function testDecodeNestedObject(testCase)
+v = ctoon_decode('{a:{b:1}}');
+verifyClass(testCase, v, 'struct');
+verifyClass(testCase, v.a, 'struct');
+verifyEqual(testCase, double(v.a.b), 1);
+end
+
+%% -------------------------------------------------------------------------
+%  ctoon_encode / ctoon_decode round-trip
+%% -------------------------------------------------------------------------
+
+function testRoundTripDouble(testCase)
+original = 3.14159;
+v = ctoon_decode(ctoon_encode(original));
+verifyEqual(testCase, v, original, 'AbsTol', 1e-10);
+end
+
+function testRoundTripString(testCase)
+original = 'world';
+v = ctoon_decode(ctoon_encode(original));
+verifyEqual(testCase, v, original);
+end
+
+function testRoundTripLogicalTrue(testCase)
+v = ctoon_decode(ctoon_encode(true));
+verifyClass(testCase, v, 'logical');
+verifyTrue(testCase, v);
+end
+
+function testRoundTripLogicalFalse(testCase)
+v = ctoon_decode(ctoon_encode(false));
+verifyClass(testCase, v, 'logical');
+verifyFalse(testCase, v);
+end
+
+function testRoundTripInt64(testCase)
+original = int64(-999);
+v = ctoon_decode(ctoon_encode(original));
+verifyEqual(testCase, double(v), double(original));
+end
+
+function testRoundTripUint64(testCase)
+original = uint64(2^40);
+v = ctoon_decode(ctoon_encode(original));
+verifyEqual(testCase, double(v), double(original));
+end
+
+function testRoundTripCell(testCase)
+original = {42.0, 'abc', false};
+v = ctoon_decode(ctoon_encode(original));
+verifyClass(testCase, v, 'cell');
+verifyEqual(testCase, numel(v), numel(original));
+end
+
+function testRoundTripStruct(testCase)
+original.x     = 1.0;
+original.label = 'point';
+original.flag  = false;
+v = ctoon_decode(ctoon_encode(original));
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, v.x, original.x, 'AbsTol', 1e-10);
+verifyEqual(testCase, v.label, original.label);
+verifyClass(testCase, v.flag, 'logical');
+verifyFalse(testCase, v.flag);
+end
+
+function testRoundTripDoubleArray(testCase)
+original = [1.0, 2.0, 3.0];
+v = ctoon_decode(ctoon_encode(original));
+verifyClass(testCase, v, 'cell');
+verifyEqual(testCase, numel(v), 3);
+verifyEqual(testCase, double(v{1}), 1.0, 'AbsTol', 1e-10);
+end
+
+%% -------------------------------------------------------------------------
+%  ctoon_read / ctoon_write — file I/O
+%% -------------------------------------------------------------------------
+
+function testReadSample1(testCase)
+sample = fullfile(testCase.TestData.DataDir, 'sample1_user.toon');
+assumeTrue(testCase, isfile(sample), 'Test data file not found — skipping.');
+
+v = ctoon_read(sample);
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, v.name, 'Alice');
+verifyEqual(testCase, double(v.age), 30);
+verifyClass(testCase, v.active, 'logical');
+verifyTrue(testCase, v.active);
+verifyClass(testCase, v.tags, 'cell');
+verifyEqual(testCase, numel(v.tags), 3);
+end
+
+function testWriteReadRoundTrip(testCase)
 tmp = [tempname, '.toon'];
-try
-    orig.pi    = 3.14159;
-    orig.label = 'round-trip';
-    orig.ok    = true;
-    ctoon_write(orig, tmp);
-    check(exist(tmp,'file')==2, 'write: file created');
-    v = ctoon_read(tmp);
-    check(isstruct(v),                     'write/read: struct');
-    check(abs(v.pi - 3.14159) < 1e-10,    'write/read: pi');
-    check_eq(v.label, 'round-trip',        'write/read: label');
-    passed = passed + 4;
-catch e; fprintf('  [FAIL] write/read: %s\n',e.message); failed=failed+1; end
-if exist(tmp,'file'), delete(tmp); end
+testCase.addTeardown(@() deleteIfExists(tmp));
 
-% =========================================================================
-% 5. Error handling
-% =========================================================================
-fprintf('\n--- error handling ---\n');
-try
-    ctoon_decode('{invalid!!!');
-    fprintf('  [FAIL] decode invalid: no error thrown\n'); failed=failed+1;
-catch
-    fprintf('  [PASS] decode invalid TOON → error\n'); passed=passed+1;
+original.pi    = 3.14159;
+original.label = 'round-trip';
+original.ok    = true;
+
+ctoon_write(original, tmp);
+verifyTrue(testCase, isfile(tmp));
+
+v = ctoon_read(tmp);
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, v.pi, original.pi, 'AbsTol', 1e-10);
+verifyEqual(testCase, v.label, original.label);
+verifyClass(testCase, v.ok, 'logical');
+verifyTrue(testCase, v.ok);
 end
 
-try
-    ctoon_read('/no/such/file.toon');
-    fprintf('  [FAIL] read missing: no error thrown\n'); failed=failed+1;
-catch
-    fprintf('  [PASS] read missing file → error\n'); passed=passed+1;
+%% -------------------------------------------------------------------------
+%  Error handling
+%% -------------------------------------------------------------------------
+
+function testDecodeInvalidToon(testCase)
+verifyError(testCase, @() ctoon_decode('{invalid!!!'), 'ctoon:decodeError');
 end
 
-
-try
-    ctoon_decode(42);       % non-string input
-    fprintf('  [FAIL] decode non-string: no error thrown\n'); failed=failed+1;
-catch
-    fprintf('  [PASS] decode non-string input → error\n'); passed=passed+1;
+function testReadMissingFile(testCase)
+verifyError(testCase, @() ctoon_read('/no/such/file.toon'), 'ctoon:readError');
 end
 
-% =========================================================================
-% Summary
-% =========================================================================
-fprintf('\n=== Results: %d passed, %d failed ===\n', passed, failed);
-if failed > 0
-    error('ctoon:testFailed', '%d test(s) failed.', failed);
+function testDecodeNonString(testCase)
+verifyError(testCase, @() ctoon_decode(42), 'ctoon:badArg');
 end
-fprintf('All tests passed.\n');
+
+function testWriteInvalidPath(testCase)
+verifyError(testCase, @() ctoon_write(struct('x',1), '/no/such/dir/out.toon'), ...
+    'ctoon:writeError');
+end
+
+%% -------------------------------------------------------------------------
+%  Helpers
+%% -------------------------------------------------------------------------
+
+function deleteIfExists(f)
+if isfile(f), delete(f); end
+end
