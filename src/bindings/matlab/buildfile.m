@@ -15,6 +15,8 @@ function plan = buildfile
 %                                  (default: directory of this buildfile)
 %       global BUILD_COVERAGE_DIR  coverage report output directory
 %                                  (default: BUILD_DIR/coverage)
+%       global TEST_DIR            directory containing test_ctoon_mex.m
+%                                  (default: <repo>/tests/matlab)
 %       global MEX_SOURCES_PATH    directory containing ctoon.c
 %                                  (default: <repo>/src)
 %       global MEX_INCLUDE_DIR     directory containing ctoon.h
@@ -23,9 +25,10 @@ function plan = buildfile
 %   CMake invocation pattern:
 %
 %       matlab -sd src/bindings/matlab -batch \
-%         "global BUILD_DIR BUILD_COVERAGE_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR; \
+%         "global BUILD_DIR BUILD_COVERAGE_DIR TEST_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR; \
 %          BUILD_DIR='${CMAKE_CURRENT_BINARY_DIR}'; \
 %          BUILD_COVERAGE_DIR='${CTOON_COVERAGE_MATLAB_BINARY_DIR}'; \
+%          TEST_DIR='${PROJECT_SOURCE_DIR}/tests/matlab'; \
 %          MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
 %          MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
 %          buildtool mex"
@@ -45,23 +48,14 @@ function plan = buildfile
 
 import matlab.buildtool.tasks.TestTask
 
-global BUILD_DIR BUILD_COVERAGE_DIR
+global BUILD_DIR BUILD_COVERAGE_DIR TEST_DIR
 
-here    = fileparts(mfilename('fullpath'));
-testDir = fullfile(here, '..', '..', '..', 'tests', 'matlab');
+here = fileparts(mfilename('fullpath'));
 
 % ---- resolve paths -------------------------------------------------------
-if isempty(BUILD_DIR)
-    buildDir = here;
-else
-    buildDir = strtrim(BUILD_DIR);
-end
-
-if isempty(BUILD_COVERAGE_DIR)
-    covDir = fullfile(buildDir, 'coverage');
-else
-    covDir = strtrim(BUILD_COVERAGE_DIR);
-end
+buildDir = resolve_global(BUILD_DIR, here);
+covDir   = resolve_global(BUILD_COVERAGE_DIR, fullfile(buildDir, 'coverage'));
+testDir  = resolve_global(TEST_DIR, fullfile(here, '..', '..', '..', 'tests', 'matlab'));
 
 covHtmlDir = fullfile(covDir, 'html');
 covXmlFile = fullfile(covDir, 'cobertura.xml');
@@ -69,15 +63,12 @@ covXmlFile = fullfile(covDir, 'cobertura.xml');
 % ---- build plan ----------------------------------------------------------
 plan = buildplan(localfunctions);
 
-% "test" — run tests + HTML coverage report
 plan("test") = TestTask(testDir, SourceFiles=buildDir) ...
     .addCodeCoverage(fullfile(covHtmlDir, 'index.html'));
 
-% "coverage" — depends on test; coverageTask also writes lcov + Cobertura
 plan("coverage").Dependencies = "test";
-
-plan("test").Dependencies  = "mex";
-plan("clean").Dependencies = {};
+plan("test").Dependencies     = "mex";
+plan("clean").Dependencies    = {};
 
 plan.DefaultTasks = "mex";
 
@@ -93,15 +84,12 @@ function mexTask(~)
 
 global BUILD_DIR
 
-here = fileparts(mfilename('fullpath'));
+here     = fileparts(mfilename('fullpath'));
+buildDir = resolve_global(BUILD_DIR, here);
+
 run(fullfile(here, 'ctoon_build.m'));
 
 % Add the output directory so .m wrappers are visible to subsequent tasks
-if isempty(BUILD_DIR)
-    buildDir = here;
-else
-    buildDir = strtrim(BUILD_DIR);
-end
 addpath(buildDir);
 
 end % mexTask
@@ -109,26 +97,13 @@ end % mexTask
 
 function coverageTask(~)
 %COVERAGE  Write Cobertura XML and lcov tracefile from test coverage data.
-%
-%   "test" has already run the tests and written the HTML report.
-%   This task converts the results to Cobertura XML (via TestRunner) and
-%   lcov format (via matlab.coverage.Result on R2024b+).
 
-global BUILD_DIR BUILD_COVERAGE_DIR
+global BUILD_DIR BUILD_COVERAGE_DIR TEST_DIR
 
-here = fileparts(mfilename('fullpath'));
-
-if isempty(BUILD_DIR)
-    buildDir = here;
-else
-    buildDir = strtrim(BUILD_DIR);
-end
-
-if isempty(BUILD_COVERAGE_DIR)
-    covDir = fullfile(buildDir, 'coverage');
-else
-    covDir = strtrim(BUILD_COVERAGE_DIR);
-end
+here     = fileparts(mfilename('fullpath'));
+buildDir = resolve_global(BUILD_DIR, here);
+covDir   = resolve_global(BUILD_COVERAGE_DIR, fullfile(buildDir, 'coverage'));
+testDir  = resolve_global(TEST_DIR, fullfile(here, '..', '..', '..', 'tests', 'matlab'));
 
 covXmlFile  = fullfile(covDir, 'cobertura.xml');
 covLcovFile = fullfile(covDir, 'coverage.lcov');
@@ -137,8 +112,6 @@ covMatFile  = fullfile(covDir, 'coverage.mat');
 if ~isfolder(covDir)
     mkdir(covDir);
 end
-
-testDir = fullfile(here, '..', '..', '..', 'tests', 'matlab');
 
 import matlab.unittest.TestRunner
 import matlab.unittest.plugins.CodeCoveragePlugin
@@ -156,7 +129,7 @@ if any([results.Failed])
 end
 fprintf('  Cobertura XML → %s\n', covXmlFile);
 
-% ---- lcov tracefile (R2024b+) -------------------------------------------
+% ---- lcov (R2024b+) ------------------------------------------------------
 try
     import matlab.unittest.plugins.codecoverage.CoverageResult
     runner2 = TestRunner.withNoPlugins;
@@ -166,16 +139,14 @@ try
     result = load(covMatFile).result;
     write(result, covLcovFile);
     delete(covMatFile);
-    fprintf('  lcov tracefile  → %s\n', covLcovFile);
+    fprintf('  lcov            → %s\n', covLcovFile);
 catch
-    % Fallback: minimal valid stub for older releases
     fid = fopen(covLcovFile, 'w');
     if fid ~= -1
         fprintf(fid, 'TN:\nend_of_record\n');
         fclose(fid);
     end
-    fprintf('  lcov stub       → %s  (R2024b+ needed for full lcov)\n', ...
-            covLcovFile);
+    fprintf('  lcov stub       → %s  (R2024b+ needed for full lcov)\n', covLcovFile);
 end
 
 end % coverageTask
@@ -186,19 +157,9 @@ function cleanTask(~)
 
 global BUILD_DIR BUILD_COVERAGE_DIR
 
-here = fileparts(mfilename('fullpath'));
-
-if isempty(BUILD_DIR)
-    buildDir = here;
-else
-    buildDir = strtrim(BUILD_DIR);
-end
-
-if isempty(BUILD_COVERAGE_DIR)
-    covDir = fullfile(buildDir, 'coverage');
-else
-    covDir = strtrim(BUILD_COVERAGE_DIR);
-end
+here     = fileparts(mfilename('fullpath'));
+buildDir = resolve_global(BUILD_DIR, here);
+covDir   = resolve_global(BUILD_COVERAGE_DIR, fullfile(buildDir, 'coverage'));
 
 cleaned = false;
 
@@ -207,7 +168,6 @@ if ~strcmp(buildDir, here) && isfolder(buildDir)
     fprintf('  Removed: %s\n', buildDir);
     cleaned = true;
 elseif strcmp(buildDir, here)
-    % Only remove the MEX binary, not the source files
     mexFile = fullfile(here, ['ctoon_mex.' mexext]);
     if isfile(mexFile)
         delete(mexFile);
@@ -227,3 +187,15 @@ if ~cleaned
 end
 
 end % cleanTask
+
+
+% =========================================================================
+% Helper: return global var value if non-empty, else default
+% =========================================================================
+function val = resolve_global(var, default)
+if isempty(var)
+    val = default;
+else
+    val = strtrim(var);
+end
+end

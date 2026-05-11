@@ -28,11 +28,12 @@ endif()
 # Common -batch prefix using -sd and pre-set workspace variables
 # ---------------------------------------------------------------------------
 set(_BT_VARS
-    "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR BUILD_COVERAGE_DIR; \
+    "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR BUILD_COVERAGE_DIR TEST_DIR; \
      BUILD_DIR='${_mex_bin}'; \
      MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
      MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
-     BUILD_COVERAGE_DIR='${CTOON_COVERAGE_MATLAB_BINARY_DIR}'")
+     BUILD_COVERAGE_DIR='${CTOON_COVERAGE_MATLAB_BINARY_DIR}'; \
+     TEST_DIR='${PROJECT_SOURCE_DIR}/tests/matlab'")
 
 # ---------------------------------------------------------------------------
 # Test target

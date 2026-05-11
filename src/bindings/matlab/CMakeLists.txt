@@ -43,10 +43,11 @@ add_custom_target(ctoon_mex ALL
     COMMAND ${Matlab_MAIN_PROGRAM}
             -sd "${_binding_src}"
             -batch
-            "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR; \
+            "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR TEST_DIR; \
              BUILD_DIR='${CMAKE_CURRENT_BINARY_DIR}'; \
              MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
              MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
+             TEST_DIR='${PROJECT_SOURCE_DIR}/tests/matlab'; \
              buildtool mex"
     BYPRODUCTS
         ${CMAKE_CURRENT_BINARY_DIR}/ctoon_mex.${Matlab_MEX_EXTENSION}
