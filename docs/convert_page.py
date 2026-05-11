@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-convert_page.py — CToon Markdown → HTML page converter.
+convert_page.py — CToon Markdown/RST → HTML page converter.
 
 Single page mode:
     python3 convert_page.py
-        --input     <source.md>
+        --input     <source.md|source.rst>
         --output    <out/index.html>
         --title     "Page Title"
         --nav-label "Short Label"
@@ -17,12 +17,12 @@ Section mode (multi-page):
     python3 convert_page.py --section
         --section-title  "CLI Reference"
         --section-dir    <out/cli/>
-        --section-pages  "index.md:Overview,installation.md:Installation,..."
+        --section-pages  "index.md:Overview,installation.rst:Installation,..."
         --template       <section.html.in>
         --css            <ctoon-docs.css>
         [--logo          <ctoon-sq.svg>]
         --version        "1.0.0"
-        --source-dir     <docs/>     # base dir for resolving md paths
+        --source-dir     <docs/>
 """
 
 import argparse
@@ -33,11 +33,62 @@ from pathlib import Path
 # ── Dependency check ──────────────────────────────────────────────────────────
 try:
     from markdown_it import MarkdownIt
-    from markdown_it.rules_block import fence
 except ImportError:
     print("ERROR: markdown-it-py is not installed.\n"
           "Run: pip install markdown-it-py", file=sys.stderr)
     sys.exit(1)
+
+
+# ── RST → HTML ────────────────────────────────────────────────────────────────
+def render_rst(rst_text: str) -> str:
+    """Convert RST to HTML using docutils, then apply ctoon code-wrap styling."""
+    try:
+        from docutils.core import publish_parts
+        from docutils.writers.html5_polyglot import Writer
+    except ImportError:
+        print("ERROR: docutils is not installed.\n"
+              "Run: pip install docutils", file=sys.stderr)
+        sys.exit(1)
+
+    parts = publish_parts(
+        source=rst_text,
+        writer=Writer(),
+        settings_overrides={
+            'initial_header_level': 1,
+            'syntax_highlight':     'none',
+            'smart_quotes':         True,
+            'halt_level':           5,        # don't die on warnings
+            'report_level':         5,
+            'embed_stylesheet':     False,
+            'stylesheet_path':      None,
+        },
+    )
+    html = parts['body']
+
+    # docutils wraps code blocks in <pre class="code ..."><span ...>
+    # Normalise to the same <pre><code class="language-X"> form so
+    # _wrap_code_blocks can handle them uniformly.
+    def _norm_rst_code(m):
+        cls   = m.group(1)          # e.g. "code bash" or "code literal-block"
+        inner = m.group(2)
+        # Strip any <span ...> tags docutils injects for syntax highlight
+        inner = re.sub(r'<span[^>]*>', '', inner)
+        inner = inner.replace('</span>', '')
+        # Detect language from class e.g. "code bash" → bash
+        lang_m = re.search(r'code\s+(\w+)', cls)
+        lang   = lang_m.group(1) if lang_m else 'plaintext'
+        if lang in ('literal-block', 'doctest'):
+            lang = 'plaintext'
+        return f'<pre><code class="language-{lang}">{inner}</code></pre>'
+
+    html = re.sub(
+        r'<pre class="([^"]*)">(.*?)</pre>',
+        _norm_rst_code,
+        html,
+        flags=re.DOTALL,
+    )
+
+    return _wrap_code_blocks(html)
 
 
 # ── Markdown → HTML ───────────────────────────────────────────────────────────
@@ -100,6 +151,15 @@ def _wrap_code_blocks(html: str) -> str:
     return pattern.sub(replacer, html)
 
 
+# ── Dispatcher ───────────────────────────────────────────────────────────────
+def render_content(source_path: Path) -> str:
+    """Render .md or .rst file to HTML body."""
+    text = source_path.read_text(encoding='utf-8')
+    if source_path.suffix.lower() == '.rst':
+        return render_rst(text)
+    return render_markdown(text)
+
+
 # ── Extract title from first H1 (optional) ───────────────────────────────────
 def extract_h1(md_text: str) -> str | None:
     m = re.search(r'^#\s+(.+)$', md_text, re.MULTILINE)
@@ -135,7 +195,7 @@ def build_page(args):
     css          = Path(args.css).read_text(encoding='utf-8')
     logo_content = read_logo(args.logo)
 
-    body_html   = render_markdown(md_text)
+    body_html   = render_content(Path(args.input))
     breadcrumbs = make_breadcrumbs(args.nav_label)
 
     html = template
@@ -179,8 +239,8 @@ def build_section(args):
 
     # Build each page
     for i, (md_path, title, out_name) in enumerate(pages):
-        md_text  = md_path.read_text(encoding='utf-8')
-        body_html = render_markdown(md_text)
+        md_text   = md_path.read_text(encoding='utf-8')
+        body_html = render_content(md_path)
 
         # ── Sidebar nav ──────────────────────────────────────────────────────
         nav_items = []
@@ -241,7 +301,7 @@ def build_section(args):
         html = html.replace('@BODY_CONTENT@',    body_html)
         html = html.replace('@PREV_BTN@',        prev_btn)
         html = html.replace('@NEXT_BTN@',        next_btn)
-        html = html.replace('@FAVICON@',         '../ctoon-sq.svg')
+        html = html.replace('@FAVICON@',         '../../ctoon-sq.svg')
 
         out_path = section_dir / out_name
         out_path.write_text(html, encoding='utf-8')

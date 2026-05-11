@@ -108,14 +108,15 @@ endfunction()
 
 # ── ctoon_add_section ─────────────────────────────────────────────────────────
 # Build a multi-page section where all pages share a sidebar nav + prev/next.
+# Supports both .md (Markdown) and .rst (reStructuredText) source files.
 #
 # Usage:
 #   ctoon_add_section(
 #       NAME    <name>               # unique identifier and output subdir
 #       TITLE   <"Section Title">    # shown in sidebar header and topbar
-#       SOURCES                      # list of "file.md:Page Title" entries
+#       SOURCES                      # list of "file.md:Page Title" or "file.rst:Page Title"
 #           "index.md:Overview"
-#           "installation.md:Installation"
+#           "installation.rst:Installation"
 #           "usage.md:Usage"
 #           ...
 #       [OUTPUT_DIR <dir>]           # optional override (default: ${CTOON_DOCS_OUT}/<name>)
