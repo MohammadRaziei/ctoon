@@ -5,40 +5,53 @@
 %   Compiles ctoon_mex.c into a MEX binary and places it in BUILD_DIR.
 %   Meant to be called from buildfile.m (mexTask) or directly from MATLAB.
 %
-%   Configurable variables — set in the base workspace or via -batch:
+%   Configurable via global variables (set before calling):
 %
-%     MEX_SOURCES_PATH   directory containing ctoon.c
-%                        (default: same directory as this file)
-%     MEX_INCLUDE_DIR    directory containing ctoon.h
-%                        (default: same directory as this file)
-%     BUILD_DIR          output directory for MEX binary and .m wrappers
-%                        (default: same directory as this file)
+%     global MEX_SOURCES_PATH   directory containing ctoon.c
+%                               (default: <repo>/src)
+%     global MEX_INCLUDE_DIR    directory containing ctoon.h
+%                               (default: <repo>/include)
+%     global BUILD_DIR          output directory for MEX binary and .m wrappers
+%                               (default: same directory as this file)
 %
 %   CMake / CI usage:
 %
 %     matlab -sd src/bindings/matlab -batch \
-%       "BUILD_DIR='<bindir>'; MEX_SOURCES_PATH='<src>'; \
+%       "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR; \
+%        BUILD_DIR='<bindir>'; MEX_SOURCES_PATH='<src>'; \
 %        MEX_INCLUDE_DIR='<inc>'; buildtool mex"
+%
+%   Interactive usage (no variables needed — paths resolved automatically):
+%
+%     buildtool mex
 %
 %   See also: ctoon_install, buildfile.
 
-here = fileparts(mfilename('fullpath'));
+global MEX_SOURCES_PATH MEX_INCLUDE_DIR BUILD_DIR
 
-% ---- resolve workspace variables ----------------------------------------
-function val = ws_get(name, default)
-    if evalin('base', ['exist(''' name ''', ''var'')'])
-        val = strtrim(evalin('base', name));
-        if isempty(val), val = default; end
-    else
-        val = default;
-    end
+here     = fileparts(mfilename('fullpath'));
+repoRoot = fullfile(here, '..', '..', '..');
+
+% ---- resolve paths -------------------------------------------------------
+if isempty(MEX_SOURCES_PATH)
+    mexSourcesPath = fullfile(repoRoot, 'src');
+else
+    mexSourcesPath = strtrim(MEX_SOURCES_PATH);
 end
 
-mexSourcesPath = ws_get('MEX_SOURCES_PATH', here);
-mexIncludeDir  = ws_get('MEX_INCLUDE_DIR',  here);
-buildDir       = ws_get('BUILD_DIR',        here);
+if isempty(MEX_INCLUDE_DIR)
+    mexIncludeDir = fullfile(repoRoot, 'include');
+else
+    mexIncludeDir = strtrim(MEX_INCLUDE_DIR);
+end
 
-% ---- validate sources ---------------------------------------------------
+if isempty(BUILD_DIR)
+    buildDir = here;
+else
+    buildDir = strtrim(BUILD_DIR);
+end
+
+% ---- validate sources ----------------------------------------------------
 mexGateway = fullfile(here, 'ctoon_mex.c');
 ctoonSrc   = fullfile(mexSourcesPath, 'ctoon.c');
 
@@ -52,12 +65,12 @@ if ~isfolder(mexIncludeDir)
     error('ctoon_build:notFound', 'include dir not found: %s', mexIncludeDir);
 end
 
-% ---- create output dir if needed ----------------------------------------
+% ---- create output dir if needed -----------------------------------------
 if ~isfolder(buildDir)
     mkdir(buildDir);
 end
 
-% ---- compile ------------------------------------------------------------
+% ---- compile -------------------------------------------------------------
 fprintf('  MEX_SOURCES_PATH : %s\n', mexSourcesPath);
 fprintf('  MEX_INCLUDE_DIR  : %s\n', mexIncludeDir);
 fprintf('  BUILD_DIR        : %s\n', buildDir);
@@ -68,7 +81,7 @@ mex(mexGateway, ctoonSrc, ...
     '-outdir', buildDir,   ...
     '-output', 'ctoon_mex');
 
-% ---- copy wrappers when buildDir differs from here ----------------------
+% ---- copy wrappers when buildDir differs from here -----------------------
 if ~strcmp(here, buildDir)
     wrappers = { ...
         'ctoon_encode.m',  ...
