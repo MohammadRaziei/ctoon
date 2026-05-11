@@ -89,10 +89,20 @@ end % buildfile
 % =========================================================================
 
 function mexTask(~)
-%MEX  Compile ctoon_mex via ctoon_build.
+%MEX  Compile ctoon_mex via ctoon_build, then add output dir to path.
+
+global BUILD_DIR
 
 here = fileparts(mfilename('fullpath'));
 run(fullfile(here, 'ctoon_build.m'));
+
+% Add the output directory so .m wrappers are visible to subsequent tasks
+if isempty(BUILD_DIR)
+    buildDir = here;
+else
+    buildDir = strtrim(BUILD_DIR);
+end
+addpath(buildDir);
 
 end % mexTask
 

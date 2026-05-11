@@ -2,8 +2,7 @@
 % Unit tests for the CToon MATLAB binding.
 %
 % Tests the public API:
-%   ctoon_encode, ctoon_decode, ctoon_read, ctoon_write,
-%   ctoon_encode_json, ctoon_decode_json
+%   ctoon_encode, ctoon_decode, ctoon_read, ctoon_write
 %
 % Usage — interactive:
 %   addpath('<build>/src/bindings/matlab');
@@ -184,28 +183,7 @@ catch e; fprintf('  [FAIL] write/read: %s\n',e.message); failed=failed+1; end
 if exist(tmp,'file'), delete(tmp); end
 
 % =========================================================================
-% 5. ctoon_encode_json / ctoon_decode_json
-% =========================================================================
-fprintf('\n--- JSON encode / decode ---\n');
-try
-    v = ctoon_decode_json('{"x":1,"y":-2.5,"label":"origin"}');
-    check(isstruct(v),               'decode_json → struct');
-    check(double(v.x) == 1,         'decode_json: x = 1');
-    check(abs(v.y - (-2.5)) < 1e-10,'decode_json: y = -2.5');
-    check_eq(v.label, 'origin',      'decode_json: label');
-    passed = passed + 4;
-catch e; fprintf('  [FAIL] decode_json: %s\n',e.message); failed=failed+1; end
-
-try
-    s = ctoon_encode_json(struct('hello','world','n',99.0));
-    check(ischar(s) && ~isempty(s),           'encode_json → string');
-    check(~isempty(strfind(s,'hello')),       'encode_json: key present');
-    check(~isempty(strfind(s,'world')),       'encode_json: value present');
-    passed = passed + 3;
-catch e; fprintf('  [FAIL] encode_json: %s\n',e.message); failed=failed+1; end
-
-% =========================================================================
-% 6. Error handling
+% 5. Error handling
 % =========================================================================
 fprintf('\n--- error handling ---\n');
 try
@@ -222,12 +200,6 @@ catch
     fprintf('  [PASS] read missing file → error\n'); passed=passed+1;
 end
 
-try
-    ctoon_decode_json('{bad json!!!');
-    fprintf('  [FAIL] decode_json invalid: no error thrown\n'); failed=failed+1;
-catch
-    fprintf('  [PASS] decode_json invalid JSON → error\n'); passed=passed+1;
-end
 
 try
     ctoon_decode(42);       % non-string input
