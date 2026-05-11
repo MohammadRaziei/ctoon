@@ -5,7 +5,7 @@
  * Use the public wrappers instead:
  *   ctoon_encode(value)          encode MATLAB value → TOON string
  *   ctoon_decode(str)            decode TOON string  → MATLAB value
- *   ctoon_read(path)             read   .toon file   → MATLAB value
+ *   ctoon_read(filepath)         read   .toon file   → MATLAB value
  *   ctoon_write(value, path)     write  .toon file
  *   ctoon_encode_json(value)     encode MATLAB value → JSON string
  *   ctoon_decode_json(str)       decode JSON string  → MATLAB value
@@ -61,9 +61,8 @@ static mxArray *val_to_mx(ctoon_val *val) {
     }
 
     if (ctoon_is_sint(val)) {
-        /* sint bits are stored as raw uint64 in the tag-value pair */
         mxArray *out = mxCreateNumericMatrix(1, 1, mxINT64_CLASS, mxREAL);
-        *((int64_t *)mxGetData(out)) = (int64_t)ctoon_get_uint(val);
+        *((int64_t *)mxGetData(out)) = ctoon_get_sint(val);
         return out;
     }
 
@@ -88,7 +87,6 @@ static mxArray *val_to_mx(ctoon_val *val) {
         if (sz == 0)
             return mxCreateStructMatrix(1, 1, 0, NULL);
 
-        /* Collect field names first, then populate */
         const char **keys = (const char **)mxMalloc(sz * sizeof(const char *));
         if (!keys)
             mexErrMsgIdAndTxt("ctoon:memory", "mxMalloc failed for field names.");
@@ -112,7 +110,7 @@ static mxArray *val_to_mx(ctoon_val *val) {
         return st;
     }
 
-    return mxCreateDoubleMatrix(0, 0, mxREAL); /* unknown → [] */
+    return mxCreateDoubleMatrix(0, 0, mxREAL);
 }
 
 /* =========================================================================
@@ -143,7 +141,6 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         return ctoon_mut_uint(doc, *((uint64_t *)mxGetData(mx)));
 
     if (mxIsDouble(mx)) {
-        /* Non-scalar double array → TOON array of reals */
         size_t n = mxGetNumberOfElements(mx);
         double *pr = mxGetDoubles(mx);
         ctoon_mut_val *arr = ctoon_mut_arr(doc);
@@ -194,7 +191,6 @@ static char *require_str(const mxArray *mx, int argn) {
     return s;
 }
 
-/** Build a mut_doc whose root is converted from mx. Caller must free. */
 static ctoon_mut_doc *doc_from_mx(const mxArray *mx) {
     ctoon_mut_doc *doc = ctoon_mut_doc_new(NULL);
     if (!doc)
@@ -212,6 +208,7 @@ static void do_encode(int nlhs, mxArray *plhs[],
                       int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "encode: value argument required.");
+
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     size_t len = 0;
     char *out = ctoon_mut_write(doc, &len);
@@ -227,9 +224,12 @@ static void do_decode(int nlhs, mxArray *plhs[],
                       int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "decode: string argument required.");
+
     char *s = require_str(prhs[1], 2);
-    ctoon_read_err err; memset(&err, 0, sizeof(err));
-    ctoon_doc *doc = ctoon_read(s, CTOON_READ_NOFLAG);
+    size_t slen = strlen(s);
+    ctoon_read_err err;
+    memset(&err, 0, sizeof(err));
+    ctoon_doc *doc = ctoon_read(s, slen, CTOON_READ_NOFLAG);
     mxFree(s);
     if (!doc)
         mexErrMsgIdAndTxt("ctoon:decodeError",
@@ -244,8 +244,10 @@ static void do_read(int nlhs, mxArray *plhs[],
                     int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "read: filepath argument required.");
+
     char *path = require_str(prhs[1], 2);
-    ctoon_read_err err; memset(&err, 0, sizeof(err));
+    ctoon_read_err err;
+    memset(&err, 0, sizeof(err));
     ctoon_doc *doc = ctoon_read_file(path, CTOON_READ_NOFLAG, NULL, &err);
     mxFree(path);
     if (!doc)
@@ -260,13 +262,18 @@ static void do_write(int nlhs, mxArray *plhs[],
                      int nrhs, const mxArray *prhs[]) {
     if (nrhs < 3)
         mexErrMsgIdAndTxt("ctoon:badArg", "write: value and filepath required.");
+
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     char *path = require_str(prhs[2], 3);
-    bool ok = ctoon_mut_write_file(path, doc, NULL);
+    ctoon_write_err werr;
+    memset(&werr, 0, sizeof(werr));
+    bool ok = ctoon_mut_write_file(path, doc, NULL, NULL, &werr);
     mxFree(path);
     ctoon_mut_doc_free(doc);
     if (!ok)
-        mexErrMsgIdAndTxt("ctoon:writeError", "ctoon_mut_write_file() failed.");
+        mexErrMsgIdAndTxt("ctoon:writeError",
+            "ctoon_mut_write_file() failed: %s",
+            werr.msg ? werr.msg : "unknown error");
 }
 
 /* "encode_json"  value → json_str */
@@ -278,12 +285,17 @@ static void do_encode_json(int nlhs, mxArray *plhs[],
 #else
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "encode_json: value argument required.");
+
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
+    ctoon_write_err werr;
+    memset(&werr, 0, sizeof(werr));
     size_t len = 0;
-    char *out = ctoon_write_json_mut(doc, NULL, &len);
+    char *out = ctoon_write_json_mut(doc, 0, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
     ctoon_mut_doc_free(doc);
     if (!out)
-        mexErrMsgIdAndTxt("ctoon:encodeError", "ctoon_write_json_mut() failed.");
+        mexErrMsgIdAndTxt("ctoon:encodeError",
+            "ctoon_write_json_mut() failed: %s",
+            werr.msg ? werr.msg : "unknown error");
     if (nlhs > 0) plhs[0] = mxCreateString(out);
     free(out);
 #endif
@@ -298,9 +310,12 @@ static void do_decode_json(int nlhs, mxArray *plhs[],
 #else
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "decode_json: string argument required.");
+
     char *s = require_str(prhs[1], 2);
-    ctoon_read_err err; memset(&err, 0, sizeof(err));
-    ctoon_doc *doc = ctoon_read_json(s, strlen(s), CTOON_READ_NOFLAG, NULL, &err);
+    size_t slen = strlen(s);
+    ctoon_read_err err;
+    memset(&err, 0, sizeof(err));
+    ctoon_doc *doc = ctoon_read_json(s, slen, CTOON_READ_NOFLAG, NULL, &err);
     mxFree(s);
     if (!doc)
         mexErrMsgIdAndTxt("ctoon:decodeError",
