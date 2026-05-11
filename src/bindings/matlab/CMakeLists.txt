@@ -2,17 +2,19 @@
 # CToon MATLAB MEX Binding
 # =============================================================================
 #
-# Builds ctoon_mex (the internal MEX gateway) and installs the public
-# .m wrapper functions alongside it.
+# Sole responsibility: compile ctoon_mex.c into a MEX shared library and
+# install it together with the public .m wrappers.
 #
-# Responsibilities of this file:
-#   - Locate MATLAB
-#   - Compile ctoon_mex.c → ctoon_mex.<mexext>
-#   - Install the MEX binary and .m wrappers
-#   - Copy .m wrappers next to the built MEX (so the build tree is usable
-#     without installing)
+# Building from MATLAB (recommended):
+#   cd src/bindings/matlab
+#   buildtool mex          % uses buildfile.m → mexTask()
 #
-# Test and coverage targets live in tests/matlab/CMakeLists.txt.
+# Building via CMake (for CI / system builds without interactive MATLAB):
+#   cmake -B build -DMatlab_ROOT_DIR=/path/to/matlab
+#   cmake --build build --target ctoon_mex
+#
+# Test and coverage targets are in tests/matlab/CMakeLists.txt and also
+# delegate to buildtool (buildtool test / buildtool coverage).
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.19)
@@ -32,7 +34,7 @@ endif()
 message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
 
 # ---------------------------------------------------------------------------
-# MEX gateway
+# MEX gateway  (ctoon_mex)
 # ---------------------------------------------------------------------------
 matlab_add_mex(
     NAME        ctoon_mex
@@ -54,11 +56,8 @@ target_compile_options(ctoon_mex PRIVATE
     $<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wall -Wextra>
 )
 
-# Expose the MEX build directory to the parent scope so tests/matlab can use it
-set(CTOON_MEX_OUTPUT_DIR $<TARGET_FILE_DIR:ctoon_mex> PARENT_SCOPE)
-
 # ---------------------------------------------------------------------------
-# Public .m wrappers
+# Install
 # ---------------------------------------------------------------------------
 set(CTOON_MATLAB_WRAPPERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ctoon_encode.m
@@ -69,22 +68,14 @@ set(CTOON_MATLAB_WRAPPERS
     ${CMAKE_CURRENT_SOURCE_DIR}/ctoon_decode_json.m
 )
 
-# Copy wrappers next to the built MEX so one addpath() is enough
-foreach(_w IN LISTS CTOON_MATLAB_WRAPPERS)
-    get_filename_component(_name "${_w}" NAME)
-    add_custom_command(TARGET ctoon_mex POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${_w}" "$<TARGET_FILE_DIR:ctoon_mex>/${_name}"
-        COMMENT "Copying ${_name} → MEX output dir"
-    )
-endforeach()
-
-# ---------------------------------------------------------------------------
-# Install
-# ---------------------------------------------------------------------------
 install(TARGETS ctoon_mex
     LIBRARY DESTINATION matlab
     RUNTIME DESTINATION matlab
 )
-install(FILES ${CTOON_MATLAB_WRAPPERS} DESTINATION matlab)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ctoon_mex.c DESTINATION matlab/src)
+install(FILES ${CTOON_MATLAB_WRAPPERS}
+              ${CMAKE_CURRENT_SOURCE_DIR}/buildfile.m
+    DESTINATION matlab
+)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ctoon_mex.c
+    DESTINATION matlab/src
+)

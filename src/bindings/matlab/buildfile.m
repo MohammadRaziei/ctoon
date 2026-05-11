@@ -1,183 +1,83 @@
-function buildfile(varargin)
-%BUILDFILE  Build the CToon MEX gateway from within MATLAB.
+function plan = buildfile
+%BUILDFILE  MATLAB Build Tool plan for the CToon MATLAB MEX binding.
 %
-%   BUILDFILE()
-%   BUILDFILE('json', true|false)
-%   BUILDFILE('outdir', '/path/to/dir')
-%   BUILDFILE('verbose', true|false)
+%   Run from the project root or any subfolder:
 %
-%   Compiles ctoon_mex.c (and the ctoon C library) into a MEX binary and
-%   places it — together with the public .m wrappers — in the output
-%   directory.  After buildfile() completes, a single addpath() call is
-%   enough to use the binding.
-%
-%   Options (name-value pairs):
-%     'json'     true  (default) — compile with CTOON_ENABLE_JSON=1
-%                false           — omit JSON reader/writer
-%     'outdir'   output directory for the MEX binary and .m files.
-%                Default: same directory as this script.
-%     'verbose'  true  — print the full mex command before running it
-%                false (default) — silent
-%
-%   Examples:
-%     % Build in-place (MEX ends up next to buildfile.m)
-%     buildfile
-%
-%     % Build without JSON support
-%     buildfile('json', false)
-%
-%     % Build into a specific directory
-%     buildfile('outdir', fullfile(getenv('HOME'), 'matlab', 'ctoon'))
+%       buildtool              % default task: test (mex -> test)
+%       buildtool mex          % compile ctoon_mex only
+%       buildtool test         % compile + run tests + HTML coverage report
+%       buildtool coverage     % compile + run tests + Cobertura XML report
+%       buildtool -tasks       % list available tasks
 %
 %   Requirements:
-%     - A C compiler configured for MATLAB  (run |mex -setup C| once)
-%     - MATLAB R2018a or newer
+%       MATLAB R2022b+  (Build Tool)
+%       MATLAB R2024a+  (addCodeCoverage)
+%       A C compiler configured for MEX  (run `mex -setup C` once)
 %
-%   See also: mex, ctoon_encode, ctoon_decode, ctoon_read, ctoon_write,
-%             ctoon_encode_json, ctoon_decode_json.
+%   See also: buildtool, matlab.buildtool.tasks.TestTask
+
+import matlab.buildtool.tasks.TestTask
 
 % -------------------------------------------------------------------------
-% Parse options
+% Paths (relative to this buildfile, which lives in src/bindings/matlab)
 % -------------------------------------------------------------------------
-p = inputParser();
-p.addParameter('json',    true,  @(x) islogical(x) && isscalar(x));
-p.addParameter('outdir',  '',    @ischar);
-p.addParameter('verbose', false, @(x) islogical(x) && isscalar(x));
-p.parse(varargin{:});
+here    = fileparts(mfilename('fullpath'));   % …/src/bindings/matlab
+testDir = fullfile(here, '..', '..', '..', 'tests', 'matlab');
 
-opt_json    = p.Results.json;
-opt_outdir  = p.Results.outdir;
-opt_verbose = p.Results.verbose;
+covHtmlDir = fullfile(here, 'coverage', 'html');
+covXmlFile = fullfile(here, 'coverage', 'cobertura.xml');
 
 % -------------------------------------------------------------------------
-% Locate repository root relative to this script
+% Build plan
 % -------------------------------------------------------------------------
-here    = fileparts(mfilename('fullpath'));          % …/src/bindings/matlab
-repoRoot = fullfile(here, '..', '..', '..');         % project root
-repoRoot = GetFullPath(repoRoot);                    % resolve ..
+plan = buildplan(localfunctions);
 
-srcDir  = fullfile(repoRoot, 'src');
-incDir  = fullfile(repoRoot, 'include');
+% "test" — run tests, collect coverage over the .m wrappers in this folder
+plan("test") = TestTask(testDir, SourceFiles=here) ...
+    .addCodeCoverage([covHtmlDir filesep 'index.html']);
 
-mexSrc  = fullfile(here,   'ctoon_mex.c');
-libSrc  = fullfile(srcDir, 'ctoon.c');
+% "coverage" — same as test but also writes Cobertura XML (for CI)
+plan("coverage") = TestTask(testDir, SourceFiles=here) ...
+    .addCodeCoverage(["code-coverage/report.html", covXmlFile]);
 
-% -------------------------------------------------------------------------
-% Validate sources exist
-% -------------------------------------------------------------------------
-assert(exist(mexSrc, 'file') == 2, ...
-    'buildfile: cannot find ctoon_mex.c at %s', mexSrc);
-assert(exist(libSrc, 'file') == 2, ...
-    'buildfile: cannot find ctoon.c at %s', libSrc);
-assert(exist(incDir, 'dir')  == 7, ...
-    'buildfile: include directory not found at %s', incDir);
+% "mex" must run before "test" and "coverage"
+plan("test").Dependencies     = "mex";
+plan("coverage").Dependencies = "mex";
 
-% -------------------------------------------------------------------------
-% Output directory
-% -------------------------------------------------------------------------
-if isempty(opt_outdir)
-    opt_outdir = here;
-end
-if ~exist(opt_outdir, 'dir')
-    mkdir(opt_outdir);
-    fprintf('buildfile: created output directory: %s\n', opt_outdir);
-end
-
-% -------------------------------------------------------------------------
-% Assemble mex() arguments
-% -------------------------------------------------------------------------
-args = { ...
-    mexSrc, ...
-    libSrc, ...
-    ['-I', incDir], ...
-    '-outdir', opt_outdir, ...
-    '-output', 'ctoon_mex', ...
-};
-
-if opt_json
-    if ispc()
-        args{end+1} = 'COMPFLAGS=$COMPFLAGS /DCTOON_ENABLE_JSON=1';
-    else
-        args{end+1} = 'CFLAGS=$CFLAGS -DCTOON_ENABLE_JSON=1';
-    end
-end
-
-% -------------------------------------------------------------------------
-% Build
-% -------------------------------------------------------------------------
-if opt_verbose
-    fprintf('buildfile: running mex with args:\n');
-    for k = 1:numel(args)
-        fprintf('  %s\n', args{k});
-    end
-end
-
-fprintf('buildfile: compiling ctoon_mex ... ');
-try
-    mex(args{:});
-catch e
-    fprintf('FAILED\n');
-    rethrow(e);
-end
-fprintf('OK\n');
-
-% -------------------------------------------------------------------------
-% Copy .m wrappers to outdir (skip if already there)
-% -------------------------------------------------------------------------
-wrappers = { ...
-    'ctoon_encode.m', ...
-    'ctoon_decode.m', ...
-    'ctoon_read.m',   ...
-    'ctoon_write.m',  ...
-    'ctoon_encode_json.m', ...
-    'ctoon_decode_json.m', ...
-};
-
-for k = 1:numel(wrappers)
-    src = fullfile(here, wrappers{k});
-    dst = fullfile(opt_outdir, wrappers{k});
-    if ~strcmp(src, dst)
-        copyfile(src, dst, 'f');
-    end
-end
-
-% -------------------------------------------------------------------------
-% Done
-% -------------------------------------------------------------------------
-fprintf('buildfile: done.\n');
-fprintf('buildfile: add to path with:\n');
-fprintf('    addpath(''%s'')\n', opt_outdir);
-fprintf('buildfile: verify with:\n');
-fprintf('    ctoon_encode(struct(''hello'', ''world''))\n');
+% Default task
+plan.DefaultTasks = "test";
 
 end % buildfile
 
 
 % =========================================================================
-% Helper: resolve a path with .. components (no Java, no system calls)
+% Local task functions
 % =========================================================================
-function out = GetFullPath(p)
-    % Split on separators, resolve '..', reassemble.
-    if ispc()
-        sep = '\';
-    else
-        sep = '/';
-    end
-    parts = strsplit(p, {'/','\'});
-    out_parts = {};
-    for k = 1:numel(parts)
-        tok = parts{k};
-        if strcmp(tok, '..')
-            if ~isempty(out_parts)
-                out_parts(end) = [];
-            end
-        elseif ~isempty(tok) && ~strcmp(tok, '.')
-            out_parts{end+1} = tok; %#ok<AGROW>
-        end
-    end
-    if ispc()
-        out = strjoin(out_parts, sep);
-    else
-        out = ['/', strjoin(out_parts, sep)];
-    end
+
+function mexTask(~)
+%MEX  Compile ctoon_mex.c + ctoon.c into a MEX binary.
+%
+%   JSON support is enabled by default (CTOON_ENABLE_JSON=1).
+%   The resulting binary and all .m wrappers land in the same folder as
+%   this buildfile so that a single addpath() is enough to use the binding.
+
+here     = fileparts(mfilename('fullpath'));
+repoRoot = fullfile(here, '..', '..', '..');
+incDir   = fullfile(repoRoot, 'include');
+mexSrc   = fullfile(here,   'ctoon_mex.c');
+libSrc   = fullfile(repoRoot, 'src', 'ctoon.c');
+
+assert(isfile(mexSrc), 'mexTask: ctoon_mex.c not found at %s', mexSrc);
+assert(isfile(libSrc), 'mexTask: ctoon.c not found at %s',     libSrc);
+
+if ispc()
+    cflags = 'COMPFLAGS=$COMPFLAGS /DCTOON_ENABLE_JSON=1';
+else
+    cflags = 'CFLAGS=$CFLAGS -DCTOON_ENABLE_JSON=1';
 end
+
+fprintf('  Compiling ctoon_mex ...\n');
+mex(mexSrc, libSrc, ['-I', incDir], '-outdir', here, cflags);
+fprintf('  Done → %s\n', here);
+
+end % mexTask
