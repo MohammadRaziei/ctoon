@@ -7,23 +7,19 @@
  *   ctoon_decode(str)            decode TOON string  → MATLAB value
  *   ctoon_read(filepath)         read   .toon file   → MATLAB value
  *   ctoon_write(value, path)     write  .toon file
- *   ctoon_encode_json(value)     encode MATLAB value → JSON string
- *   ctoon_decode_json(str)       decode JSON string  → MATLAB value
  *
  * Dispatch key (prhs[0], char):
- *   "encode"       prhs[1]=value              → plhs[0]=toon_str
- *   "decode"       prhs[1]=toon_str           → plhs[0]=value
- *   "read"         prhs[1]=filepath           → plhs[0]=value
- *   "write"        prhs[1]=value, prhs[2]=path
- *   "encode_json"  prhs[1]=value              → plhs[0]=json_str
- *   "decode_json"  prhs[1]=json_str           → plhs[0]=value
- *   "version"                                 → plhs[0]=ver_str
+ *   "encode"   prhs[1]=value              → plhs[0]=toon_str
+ *   "decode"   prhs[1]=toon_str           → plhs[0]=value
+ *   "read"     prhs[1]=filepath           → plhs[0]=value
+ *   "write"    prhs[1]=value, prhs[2]=path
+ *   "version"                             → plhs[0]=ver_str
  *
  * MATLAB ↔ TOON type mapping:
  *   []            ↔  null
  *   logical       ↔  bool
  *   double scalar ↔  real
- *   int64 scalar  ↔  sint
+ *   int64  scalar ↔  sint
  *   uint64 scalar ↔  uint
  *   char/string   ↔  str
  *   cell array    ↔  array
@@ -49,7 +45,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx);
 
 static mxArray *val_to_mx(ctoon_val *val) {
     if (!val || ctoon_is_null(val))
-        return mxCreateDoubleMatrix(0, 0, mxREAL); /* null → [] */
+        return mxCreateDoubleMatrix(0, 0, mxREAL);
 
     if (ctoon_is_true(val))  return mxCreateLogicalScalar(1);
     if (ctoon_is_false(val)) return mxCreateLogicalScalar(0);
@@ -122,7 +118,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         return ctoon_mut_null(doc);
 
     if (mxIsLogical(mx) && mxIsScalar(mx))
-        return ctoon_mut_bool(doc, mxGetLogicals(mx)[0] != 0);
+        return ctoon_mut_bool(doc, ((mxLogical *)mxGetData(mx))[0] != 0);
 
     if (mxIsChar(mx)) {
         char *s = mxArrayToString(mx);
@@ -142,7 +138,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
 
     if (mxIsDouble(mx)) {
         size_t n = mxGetNumberOfElements(mx);
-        double *pr = mxGetDoubles(mx);
+        double *pr = (double *)mxGetPr(mx);
         ctoon_mut_val *arr = ctoon_mut_arr(doc);
         for (size_t i = 0; i < n; i++)
             ctoon_mut_arr_append(arr, ctoon_mut_real(doc, pr[i]));
@@ -203,12 +199,10 @@ static ctoon_mut_doc *doc_from_mx(const mxArray *mx) {
  * Dispatch handlers
  * ========================================================================= */
 
-/* "encode"  value → toon_str */
 static void do_encode(int nlhs, mxArray *plhs[],
                       int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "encode: value argument required.");
-
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     size_t len = 0;
     char *out = ctoon_mut_write(doc, &len);
@@ -219,12 +213,10 @@ static void do_encode(int nlhs, mxArray *plhs[],
     free(out);
 }
 
-/* "decode"  toon_str → value */
 static void do_decode(int nlhs, mxArray *plhs[],
                       int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "decode: string argument required.");
-
     char *s = require_str(prhs[1], 2);
     size_t slen = strlen(s);
     ctoon_read_err err;
@@ -239,12 +231,10 @@ static void do_decode(int nlhs, mxArray *plhs[],
     ctoon_doc_free(doc);
 }
 
-/* "read"    filepath → value */
 static void do_read(int nlhs, mxArray *plhs[],
                     int nrhs, const mxArray *prhs[]) {
     if (nrhs < 2)
         mexErrMsgIdAndTxt("ctoon:badArg", "read: filepath argument required.");
-
     char *path = require_str(prhs[1], 2);
     ctoon_read_err err;
     memset(&err, 0, sizeof(err));
@@ -257,12 +247,10 @@ static void do_read(int nlhs, mxArray *plhs[],
     ctoon_doc_free(doc);
 }
 
-/* "write"   value, filepath */
 static void do_write(int nlhs, mxArray *plhs[],
                      int nrhs, const mxArray *prhs[]) {
     if (nrhs < 3)
         mexErrMsgIdAndTxt("ctoon:badArg", "write: value and filepath required.");
-
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     char *path = require_str(prhs[2], 3);
     ctoon_write_err werr;
@@ -276,56 +264,6 @@ static void do_write(int nlhs, mxArray *plhs[],
             werr.msg ? werr.msg : "unknown error");
 }
 
-/* "encode_json"  value → json_str */
-static void do_encode_json(int nlhs, mxArray *plhs[],
-                           int nrhs, const mxArray *prhs[]) {
-#ifndef CTOON_ENABLE_JSON
-    mexErrMsgIdAndTxt("ctoon:noJson",
-        "MEX was built without JSON support (CTOON_ENABLE_JSON not set).");
-#else
-    if (nrhs < 2)
-        mexErrMsgIdAndTxt("ctoon:badArg", "encode_json: value argument required.");
-
-    ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
-    ctoon_write_err werr;
-    memset(&werr, 0, sizeof(werr));
-    size_t len = 0;
-    char *out = ctoon_write_json_mut(doc, 0, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
-    ctoon_mut_doc_free(doc);
-    if (!out)
-        mexErrMsgIdAndTxt("ctoon:encodeError",
-            "ctoon_write_json_mut() failed: %s",
-            werr.msg ? werr.msg : "unknown error");
-    if (nlhs > 0) plhs[0] = mxCreateString(out);
-    free(out);
-#endif
-}
-
-/* "decode_json"  json_str → value */
-static void do_decode_json(int nlhs, mxArray *plhs[],
-                           int nrhs, const mxArray *prhs[]) {
-#ifndef CTOON_ENABLE_JSON
-    mexErrMsgIdAndTxt("ctoon:noJson",
-        "MEX was built without JSON support (CTOON_ENABLE_JSON not set).");
-#else
-    if (nrhs < 2)
-        mexErrMsgIdAndTxt("ctoon:badArg", "decode_json: string argument required.");
-
-    char *s = require_str(prhs[1], 2);
-    size_t slen = strlen(s);
-    ctoon_read_err err;
-    memset(&err, 0, sizeof(err));
-    ctoon_doc *doc = ctoon_read_json(s, slen, CTOON_READ_NOFLAG, NULL, &err);
-    mxFree(s);
-    if (!doc)
-        mexErrMsgIdAndTxt("ctoon:decodeError",
-            "Failed to parse JSON string (code %u).", err.code);
-    if (nlhs > 0) plhs[0] = val_to_mx(ctoon_doc_get_root(doc));
-    ctoon_doc_free(doc);
-#endif
-}
-
-/* "version" → 'X.Y.Z' */
 static void do_version(int nlhs, mxArray *plhs[],
                        int nrhs, const mxArray *prhs[]) {
     uint32_t v = ctoon_version();
@@ -343,20 +281,18 @@ void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[]) {
     if (nrhs < 1 || !mxIsChar(prhs[0]))
         mexErrMsgIdAndTxt("ctoon:badArg",
-            "Internal gateway — use ctoon_encode/ctoon_decode/ctoon_read/"
-            "ctoon_write/ctoon_encode_json/ctoon_decode_json instead.");
+            "Internal gateway — use ctoon_encode / ctoon_decode / "
+            "ctoon_read / ctoon_write instead.");
 
     char *cmd = mxArrayToString(prhs[0]);
     if (!cmd)
         mexErrMsgIdAndTxt("ctoon:memory", "mxArrayToString failed.");
 
-    if      (strcmp(cmd, "encode")      == 0) do_encode(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "decode")      == 0) do_decode(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "read")        == 0) do_read(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "write")       == 0) do_write(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "encode_json") == 0) do_encode_json(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "decode_json") == 0) do_decode_json(nlhs, plhs, nrhs, prhs);
-    else if (strcmp(cmd, "version")     == 0) do_version(nlhs, plhs, nrhs, prhs);
+    if      (strcmp(cmd, "encode")  == 0) do_encode(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "decode")  == 0) do_decode(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "read")    == 0) do_read(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "write")   == 0) do_write(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "version") == 0) do_version(nlhs, plhs, nrhs, prhs);
     else {
         char msg[256];
         snprintf(msg, sizeof(msg), "Unknown internal command '%s'.", cmd);

@@ -26,7 +26,6 @@ option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_PYTHON "Build Python" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
-option(CTOON_WITHOUT_JSON "Build without JSON support" OFF)
 
 
 set(CTOON_SOURCE_DIR ${PROJECT_SOURCE_DIR})
@@ -49,9 +48,6 @@ target_compile_definitions(ctoon PUBLIC
     CTOON_ENABLE_JSON=1
 )
 
-if(CTOON_WITHOUT_JSON)
-    target_compile_definitions(ctoon PUBLIC CTOON_WITHOUT_JSON)
-endif()
 
 # C++ wrapper library (header-only interface)
 add_library(ctoonpp INTERFACE)
@@ -67,10 +63,6 @@ target_compile_definitions(ctoonpp INTERFACE
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
     CTOON_ENABLE_JSON=1
 )
-
-if(CTOON_WITHOUT_JSON)
-    target_compile_definitions(ctoonpp INTERFACE CTOON_WITHOUT_JSON)
-endif()
 
 # Compiler options
 target_compile_options(ctoon PRIVATE
@@ -107,6 +99,9 @@ endif()
 install(TARGETS ctoon_cli
     RUNTIME DESTINATION bin
 )
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/matlab)
+
 
 # Tests
 if(CTOON_BUILD_TESTS)

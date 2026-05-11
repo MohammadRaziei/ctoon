@@ -28,7 +28,7 @@ function value = ctoon_decode(str)
 %   Errors:
 %     Throws ctoon:decodeError when STR is not valid TOON.
 %
-%   See also: CTOON_ENCODE, CTOON_READ, CTOON_DECODE_JSON.
+%   See also: CTOON_ENCODE, CTOON_READ.
 
 if ~ischar(str) && ~isstring(str)
     error('ctoon:badArg', 'ctoon_decode: input must be a character array or string.');

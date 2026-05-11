@@ -2,19 +2,13 @@
 # CToon MATLAB Tests + Coverage
 # =============================================================================
 #
-# Delegates all test execution and coverage reporting to the MATLAB Build Tool
-# via `buildtool` — the authoritative build system for the MATLAB side.
+# Delegates to MATLAB Build Tool:
+#   buildtool test      → run tests + HTML coverage
+#   buildtool coverage  → run tests + HTML + lcov + Cobertura XML
 #
-# buildtool tasks used:
-#   mex       compile ctoon_mex (defined as mexTask in buildfile.m)
-#   test      run tests + produce HTML coverage report  (TestTask)
-#   coverage  run tests + produce HTML + Cobertura XML  (TestTask)
-#
-# The buildfile.m lives in src/bindings/matlab/ next to ctoon_mex.c.
-#
-# Targets created:
-#   ctoon_test_matlab       cmake --build . --target ctoon_test_matlab
-#   ctoon_coverage_matlab   cmake --build . --target ctoon_coverage_matlab
+# Targets:
+#   ctoon_test_matlab       hooks into ctoon_test
+#   ctoon_coverage_matlab   hooks into ctoon_coverage
 # =============================================================================
 
 if(NOT Matlab_FOUND OR NOT TARGET ctoon_mex)
@@ -22,52 +16,54 @@ if(NOT Matlab_FOUND OR NOT TARGET ctoon_mex)
     return()
 endif()
 
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
-set(CTOON_MATLAB_BINDING_DIR ${PROJECT_SOURCE_DIR}/src/bindings/matlab)
-set(CTOON_MATLAB_BUILDFILE    ${CTOON_MATLAB_BINDING_DIR}/buildfile.m)
+set(_binding_src ${PROJECT_SOURCE_DIR}/src/bindings/matlab)
+set(_mex_bin     ${CMAKE_BINARY_DIR}/src/bindings/matlab)
 
-if(NOT EXISTS "${CTOON_MATLAB_BUILDFILE}")
-    message(STATUS
-        "buildfile.m not found at ${CTOON_MATLAB_BUILDFILE} — "
-        "ctoon_test_matlab / ctoon_coverage_matlab skipped.")
+if(NOT EXISTS "${_binding_src}/buildfile.m")
+    message(STATUS "buildfile.m not found — MATLAB test targets skipped.")
     return()
 endif()
 
 # ---------------------------------------------------------------------------
-# Helper: locate the buildtool executable
-#
-# `buildtool` is a MATLAB command, not a standalone binary.
-# We invoke it as: matlab -batch "buildtool <task>"
+# Common -batch prefix using -sd and pre-set workspace variables
 # ---------------------------------------------------------------------------
-set(_BT_PREFIX "cd('${CTOON_MATLAB_BINDING_DIR}'); buildtool")
+set(_BT_VARS
+    "BUILD_DIR='${_mex_bin}'; \
+     MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
+     MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
+     BUILD_COVERAGE_DIR='${CTOON_COVERAGE_MATLAB_BINARY_DIR}'")
 
 # ---------------------------------------------------------------------------
-# Test target  — runs `buildtool test` (mex → TestTask + HTML coverage)
+# Test target
 # ---------------------------------------------------------------------------
 add_custom_target(ctoon_test_matlab
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running MATLAB build tool: test..."
-    COMMAND ${Matlab_MAIN_PROGRAM} -batch "${_BT_PREFIX} test"
-    WORKING_DIRECTORY ${CTOON_MATLAB_BINDING_DIR}
+    COMMAND ${Matlab_MAIN_PROGRAM}
+            -sd "${_binding_src}"
+            -batch "${_BT_VARS}; buildtool test"
+    WORKING_DIRECTORY ${_binding_src}
     USES_TERMINAL
 )
 add_dependencies(ctoon_test_matlab ctoon_mex)
 add_dependencies(ctoon_test ctoon_test_matlab)
 
-# CTest registration
 add_test(NAME test_ctoon_matlab
-    COMMAND ${Matlab_MAIN_PROGRAM} -batch "${_BT_PREFIX} test"
-    WORKING_DIRECTORY ${CTOON_MATLAB_BINDING_DIR}
+    COMMAND ${Matlab_MAIN_PROGRAM}
+            -sd "${_binding_src}"
+            -batch "${_BT_VARS}; buildtool test"
+    WORKING_DIRECTORY ${_binding_src}
 )
 
 # ---------------------------------------------------------------------------
-# Coverage target  — runs `buildtool coverage` (mex → TestTask + XML report)
+# Coverage target
 # ---------------------------------------------------------------------------
 add_custom_target(ctoon_coverage_matlab
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running MATLAB build tool: coverage..."
-    COMMAND ${Matlab_MAIN_PROGRAM} -batch "${_BT_PREFIX} coverage"
-    WORKING_DIRECTORY ${CTOON_MATLAB_BINDING_DIR}
+    COMMAND ${Matlab_MAIN_PROGRAM}
+            -sd "${_binding_src}"
+            -batch "${_BT_VARS}; buildtool coverage"
+    WORKING_DIRECTORY ${_binding_src}
+    USES_TERMINAL
 )
 add_dependencies(ctoon_coverage_matlab ctoon_mex)
 add_dependencies(ctoon_coverage ctoon_coverage_matlab)
