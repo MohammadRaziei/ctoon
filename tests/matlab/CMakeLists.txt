@@ -16,6 +16,7 @@ if(NOT Matlab_FOUND OR NOT TARGET ctoon_mex)
     return()
 endif()
 
+
 set(_binding_src ${PROJECT_SOURCE_DIR}/src/bindings/matlab)
 set(_mex_bin     ${CMAKE_BINARY_DIR}/src/bindings/matlab)
 
