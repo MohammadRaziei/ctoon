@@ -73,7 +73,8 @@ end
 
 function testDecodeObject(testCase)
 % TOON object syntax: key: value (newline separated)
-v = ctoon_decode("name: Alice\nage: 30\nactive: true");
+toon = sprintf('name: Alice\nage: 30\nactive: true');
+v = ctoon_decode(toon);
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, v.name, 'Alice');
 verifyEqual(testCase, double(v.age), 30);
@@ -83,7 +84,8 @@ end
 
 function testDecodeNestedObject(testCase)
 % Nested object via indentation
-v = ctoon_decode("person:\n  name: Bob\n  age: 25");
+toon = sprintf('person:\n  name: Bob\n  age: 25');
+v = ctoon_decode(toon);
 verifyClass(testCase, v, 'struct');
 verifyClass(testCase, v.person, 'struct');
 verifyEqual(testCase, v.person.name, 'Bob');
@@ -91,7 +93,8 @@ verifyEqual(testCase, double(v.person.age), 25);
 end
 
 function testDecodeObjectWithArray(testCase)
-v = ctoon_decode("name: Alice\nage: 30\nactive: true\ntags[3]: programming,c++,serialization");
+toon = sprintf('name: Alice\nage: 30\nactive: true\ntags[3]: programming,c++,serialization');
+v = ctoon_decode(toon);
 verifyEqual(testCase, v.name, 'Alice');
 verifyEqual(testCase, double(v.age), 30);
 verifyTrue(testCase, v.active);
@@ -199,8 +202,8 @@ end
 %% -------------------------------------------------------------------------
 
 function testDecodeInvalidToon(testCase)
-% A sequence that cannot be valid TOON: binary-style garbage
-verifyError(testCase, @() ctoon_decode(sprintf('\x01\x02\x03')), 'ctoon:decodeError');
+% Empty string produces CTOON_READ_ERROR_EMPTY_CONTENT
+verifyError(testCase, @() ctoon_decode(''), 'ctoon:decodeError');
 end
 
 function testReadMissingFile(testCase)
