@@ -1,0 +1,233 @@
+/*
+ * custom.css — CToon Sphinx theme override
+ * Aligns Furo dark theme with ctoon-docs.css palette.
+ *
+ * Author  : Mohammad Raziei
+ * License : MIT
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Dark palette (matches ctoon-docs.css exactly) ───────────────────────── */
+body[data-theme="dark"],
+body:not([data-theme="light"]) {
+    --color-background-primary:     #0f0f12;
+    --color-background-secondary:   #1a1a1f;
+    --color-background-hover:       #242429;
+    --color-background-hover--transparent: #24242900;
+    --color-background-border:      #2a2a35;
+
+    --color-foreground-primary:     #e8e8f0;
+    --color-foreground-secondary:   #9090a0;
+    --color-foreground-muted:       #606070;
+    --color-foreground-border:      #2a2a35;
+
+    --color-brand-primary:          #4dabf7;
+    --color-brand-content:          #4dabf7;
+    --color-brand-visited:          #74c0fc;
+
+    --color-sidebar-background:             #1a1a1f;
+    --color-sidebar-background-border:      #2a2a35;
+    --color-sidebar-brand-text:             #e8e8f0;
+    --color-sidebar-caption-text:           #606070;
+    --color-sidebar-link-text:              #9090a0;
+    --color-sidebar-link-text--top-level:   #4dabf7;
+    --color-sidebar-search-background:      #242429;
+    --color-sidebar-search-background--focus: #2a2a35;
+    --color-sidebar-search-border:          #2a2a35;
+    --color-sidebar-search-icon:            #606070;
+
+    --color-toc-title-text:         #606070;
+    --color-toc-item-text:          #9090a0;
+    --color-toc-item-text--hover:   #e8e8f0;
+    --color-toc-item-text--active:  #4dabf7;
+    --color-toc-background:         #0f0f12;
+
+    --color-header-background:      #1a1a1f;
+    --color-header-border:          #2a2a35;
+    --color-header-text:            #e8e8f0;
+
+    --color-inline-code-background: rgba(77, 171, 247, 0.08);
+    --color-highlighted-background: rgba(77, 171, 247, 0.15);
+    --color-highlight-on-target:    rgba(77, 171, 247, 0.1);
+
+    --color-admonition-background:  #1a1a1f;
+
+    --color-api-background:         rgba(77, 171, 247, 0.05);
+    --color-api-background-hover:   rgba(77, 171, 247, 0.1);
+    --color-api-name:               #4dabf7;
+    --color-api-pre-name:           #74c0fc;
+    --color-api-overall:            #9090a0;
+    --color-api-keyword:            #9090a0;
+}
+
+/* ── Fonts ───────────────────────────────────────────────────────────────── */
+body {
+    --font-stack:            'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-stack--monospace: 'IBM Plex Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    --font-stack--headings:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Border radius → 0 (matches ctoon sharp aesthetic) ──────────────────── */
+body[data-theme="dark"] .sig:not(.sig-inline),
+body:not([data-theme="light"]) .sig:not(.sig-inline) {
+    border-radius: 0;
+}
+
+body[data-theme="dark"] .admonition,
+body[data-theme="dark"] .topic,
+body:not([data-theme="light"]) .admonition,
+body:not([data-theme="light"]) .topic {
+    border-radius: 0;
+}
+
+body[data-theme="dark"] .highlight,
+body:not([data-theme="light"]) .highlight {
+    border-radius: 0;
+}
+
+body[data-theme="dark"] pre.literal-block,
+body:not([data-theme="light"]) pre.literal-block {
+    border-radius: 0;
+}
+
+body[data-theme="dark"] kbd:not(.compound),
+body:not([data-theme="light"]) kbd:not(.compound) {
+    border-radius: 0;
+}
+
+body[data-theme="dark"] table.docutils,
+body:not([data-theme="light"]) table.docutils {
+    border-radius: 0;
+    box-shadow: none;
+    border: 1px solid var(--color-background-border);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+body[data-theme="dark"] .sidebar-brand,
+body:not([data-theme="light"]) .sidebar-brand {
+    border-bottom: 1px solid var(--color-background-border);
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+body[data-theme="dark"] .sidebar-brand-text,
+body:not([data-theme="light"]) .sidebar-brand-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #4dabf7 0%, #22b8cf 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body[data-theme="dark"] .sidebar-tree .current > .reference,
+body:not([data-theme="light"]) .sidebar-tree .current > .reference {
+    color: #4dabf7;
+    background: rgba(77, 171, 247, 0.08);
+    border-left: 2px solid #4dabf7;
+}
+
+body[data-theme="dark"] .toc-tree li.scroll-current > .reference,
+body:not([data-theme="light"]) .toc-tree li.scroll-current > .reference {
+    color: #4dabf7;
+    font-weight: 600;
+}
+
+/* ── API docs (autodoc) ──────────────────────────────────────────────────── */
+body[data-theme="dark"] dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) > dt,
+body:not([data-theme="light"]) dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.glossary):not(.simple) > dt {
+    background: rgba(77, 171, 247, 0.06);
+    border-left: 3px solid #4dabf7;
+    padding-left: 0.75rem;
+    margin-left: -0.75rem;
+}
+
+body[data-theme="dark"] .sig-name,
+body:not([data-theme="light"]) .sig-name {
+    color: #4dabf7;
+}
+
+body[data-theme="dark"] .sig-prename,
+body:not([data-theme="light"]) .sig-prename {
+    color: #74c0fc;
+    opacity: 0.7;
+}
+
+/* ── Code blocks ─────────────────────────────────────────────────────────── */
+body[data-theme="dark"] .highlight pre,
+body:not([data-theme="light"]) .highlight pre {
+    background: #13131a;
+    border: 1px solid #2a2a35;
+}
+
+body[data-theme="dark"] code.literal,
+body[data-theme="dark"] .sig-inline,
+body:not([data-theme="light"]) code.literal,
+body:not([data-theme="light"]) .sig-inline {
+    color: #4dabf7;
+    background: rgba(77, 171, 247, 0.08);
+    border-color: rgba(77, 171, 247, 0.2);
+}
+
+/* ── Admonitions ─────────────────────────────────────────────────────────── */
+body[data-theme="dark"] .admonition.note,
+body:not([data-theme="light"]) .admonition.note {
+    border-left-color: #4dabf7;
+}
+
+body[data-theme="dark"] .admonition.note > .admonition-title,
+body:not([data-theme="light"]) .admonition.note > .admonition-title {
+    background: rgba(77, 171, 247, 0.1);
+    color: #4dabf7;
+}
+
+/* ── Links ───────────────────────────────────────────────────────────────── */
+body[data-theme="dark"] a,
+body:not([data-theme="light"]) a {
+    color: #4dabf7;
+    text-decoration-color: rgba(77, 171, 247, 0.3);
+}
+
+body[data-theme="dark"] a:hover,
+body:not([data-theme="light"]) a:hover {
+    color: #74c0fc;
+    text-decoration-color: #74c0fc;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+body[data-theme="dark"] table.docutils th,
+body:not([data-theme="light"]) table.docutils th {
+    background: #242429;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9090a0;
+}
+
+body[data-theme="dark"] table.docutils td,
+body:not([data-theme="light"]) table.docutils td {
+    border-color: #2a2a35;
+}
+
+/* ── Bottom of page (prev/next) ──────────────────────────────────────────── */
+body[data-theme="dark"] .bottom-of-page,
+body:not([data-theme="light"]) .bottom-of-page {
+    border-top-color: #2a2a35;
+    color: #9090a0;
+}
+
+body[data-theme="dark"] .related-pages a,
+body:not([data-theme="light"]) .related-pages a {
+    border: 1px solid #2a2a35;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.18s;
+}
+
+body[data-theme="dark"] .related-pages a:hover,
+body:not([data-theme="light"]) .related-pages a:hover {
+    border-color: #4dabf7;
+    background: rgba(77, 171, 247, 0.06);
+}

@@ -2,10 +2,8 @@ CToon Python API
 ================
 
 **CToon** is a high-performance C serialisation library with Python bindings
-built via nanobind.
-
-Quick Example
--------------
+built via nanobind. It provides a compact, human-readable alternative to JSON
+designed to minimise LLM token usage.
 
 .. code-block:: python
 
@@ -13,59 +11,21 @@ Quick Example
 
    data = {"name": "Alice", "age": 30, "tags": ["developer", "C++"]}
 
-   # TOON
-   toon_str = ctoon.dumps(data)
-   data      = ctoon.loads(toon_str)
+   toon_str = ctoon.dumps(data)   # encode → TOON
+   data      = ctoon.loads(toon_str)  # decode ← TOON
 
-   # JSON interop
-   json_str  = ctoon.dumps_json(data, indent=2)
-   data      = ctoon.loads_json(json_str)
-
-   # File I/O
-   ctoon.dump(data, "out.toon")
-   data = ctoon.load("out.toon")
-
-TOON Functions
---------------
-
-.. autofunction:: ctoon.loads
-.. autofunction:: ctoon.dumps
-.. autofunction:: ctoon.load
-.. autofunction:: ctoon.dump
-
-JSON Functions
---------------
-
-.. autofunction:: ctoon.loads_json
-.. autofunction:: ctoon.dumps_json
-.. autofunction:: ctoon.load_json
-.. autofunction:: ctoon.dump_json
-
-Aliases
--------
-
-.. autofunction:: ctoon.encode
-.. autofunction:: ctoon.decode
-
-Enums
------
-
-.. autoclass:: ctoon.ReadFlag
-   :members:
-   :undoc-members:
-
-.. autoclass:: ctoon.WriteFlag
-   :members:
-   :undoc-members:
-
-.. autoclass:: ctoon.Delimiter
-   :members:
-   :undoc-members:
-
-CLI
----
+Installation
+------------
 
 .. code-block:: bash
 
-   ctoon input.json -o output.toon
-   python -m ctoon.manager --version
+   pip install ctoon
+
+.. toctree::
+   :maxdepth: 1
+
+   Overview <self>
+   toon
+   json
+   enums
+   cli

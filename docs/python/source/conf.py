@@ -82,18 +82,13 @@ napoleon_numpy_docstring  = True
 # ── HTML output ───────────────────────────────────────────────────────────────
 language         = 'en'
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-html_theme       = 'furo'
+html_theme       = 'ctoon'
+html_theme_path  = [str(DOCS_DIR / '_themes')]
+html_css_files   = []
+pygments_style   = 'monokai'
 
-_logo = IMAGES_DIR / 'ctoon-sq-ctoon.svg'
+_logo = IMAGES_DIR / 'ctoon-sq.svg'
 if _logo.exists():
     html_logo = str(_logo)
-
-html_theme_options = {
-    'navigation_with_keys': True,
-    'top_of_page_button':   'edit',
-    'source_repository':    'https://github.com/MohammadRaziei/ctoon/',
-    'source_branch':        'master',
-    'source_directory':     'docs/python/source/',
-}
 
 html_last_updated_fmt = '%Y-%m-%d %H:%M'

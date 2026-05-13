@@ -1,0 +1,14 @@
+{#
+  ctoon-nav.html — sidebar navigation
+  Uses Sphinx toctree() — works when toctree is not :hidden:
+#}
+{%- set nav = toctree(maxdepth=1, titles_only=True, collapse=False) %}
+{%- if nav %}
+{{ nav }}
+{%- else %}
+<ul>
+    <li class="{{ 'current' if pagename == master_doc else '' }}">
+        <a href="{{ pathto(master_doc) }}">Overview</a>
+    </li>
+</ul>
+{%- endif %}

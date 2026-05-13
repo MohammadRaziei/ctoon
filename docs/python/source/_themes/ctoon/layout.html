@@ -1,0 +1,203 @@
+{%- extends "basic/layout.html" %}
+
+{%- block htmltitle %}
+<title>{{ title|striptags|e }} — CToon</title>
+{% endblock %}
+
+{%- block extrahead %}
+<link rel="icon" href="{{ pathto('_static/ctoon-sq.svg', 1) }}" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" id="hljs-theme" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+{% endblock %}
+
+{%- block body_tag %}
+<body data-theme="dark">
+{% endblock %}
+
+{# ── Hide basic theme chrome ──────────────────────────────────────────────── #}
+{%- block relbar1 %}{% endblock %}
+{%- block relbar2 %}{% endblock %}
+
+{# ── Topbar ───────────────────────────────────────────────────────────────── #}
+{%- block header %}
+<header class="topbar">
+    <a class="topbar-brand" href="{{ pathto(master_doc|default('index')) }}">
+        {%- if logo_url %}
+        <div class="topbar-logo"><img src="{{ logo_url|e }}" alt="CToon" width="36" height="36"></div>
+        {%- endif %}
+        <span class="topbar-name">CToon</span>
+        <span class="topbar-sep"></span>
+        <span class="topbar-subtitle">Python API</span>
+    </a>
+    <div class="topbar-actions">
+        <span class="topbar-version">v{{ version }}</span>
+        <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+{# ── Breadcrumb ───────────────────────────────────────────────────────────── #}
+{%- block content %}
+{%- if parents %}
+<nav class="page-breadcrumb">
+    <a href="{{ pathto(root_doc) }}">{{ shorttitle }}</a>
+    {%- for parent in parents %}
+    <span class="page-breadcrumb-sep">›</span>
+    <a href="{{ parent.link|e }}">{{ parent.title }}</a>
+    {%- endfor %}
+    <span class="page-breadcrumb-sep">›</span>
+    <span>{{ title|striptags }}</span>
+</nav>
+{%- endif %}
+
+{# ── Three-column layout ──────────────────────────────────────────────────── #}
+<div class="section-layout">
+
+    {# Left: section nav #}
+    <aside class="section-sidebar">
+        <div class="section-nav-title">Python API</div>
+        <nav class="section-nav-list" id="section-nav-list">
+            {%- include "ctoon-nav.html" %}
+        </nav>
+    </aside>
+
+    {# Center: article #}
+    <article class="page-article" id="page-article" role="main">
+        {%- block document %}
+        {{ body }}
+        {%- endblock %}
+
+        {# Prev / Next #}
+        <nav class="page-nav">
+            {%- if prev %}
+            <a href="{{ prev.link|e }}" class="page-nav-btn page-nav-prev">
+                <span class="page-nav-direction"><i class="fa-solid fa-arrow-left"></i> Previous</span>
+                <span class="page-nav-label">{{ prev.title }}</span>
+            </a>
+            {%- else %}
+            <div class="page-nav-btn page-nav-empty"></div>
+            {%- endif %}
+            {%- if next %}
+            <a href="{{ next.link|e }}" class="page-nav-btn page-nav-next">
+                <span class="page-nav-direction">Next <i class="fa-solid fa-arrow-right"></i></span>
+                <span class="page-nav-label">{{ next.title }}</span>
+            </a>
+            {%- else %}
+            <div class="page-nav-btn page-nav-empty"></div>
+            {%- endif %}
+        </nav>
+    </article>
+
+    {# Right: in-page TOC (built by JS) #}
+    <aside class="page-toc" id="page-toc">
+        <div class="page-toc-title">On this page</div>
+        <ul id="toc-list"></ul>
+    </aside>
+
+</div>
+{%- endblock %}
+
+{# ── Footer ───────────────────────────────────────────────────────────────── #}
+{%- block footer %}
+<footer class="footer">
+    <div class="footer-inner">
+        <div>
+            <div class="footer-brand">
+                {%- if logo_url %}
+                <div class="footer-logo"><img src="{{ logo_url|e }}" alt="CToon" width="28" height="28"></div>
+                {%- endif %}
+                <span class="footer-name">CToon</span>
+            </div>
+            <div class="footer-tagline">
+                A high-performance serialisation library for the TOON and JSON formats,
+                with idiomatic language bindings for C++, Python, and Go.
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
+                &nbsp;·&nbsp; <a href="https://github.com/MohammadRaziei/ctoon/blob/main/LICENSE">MIT License</a>
+                &nbsp;·&nbsp; v{{ version }}
+            </div>
+        </div>
+        <div>
+            <div class="footer-links-title">Resources</div>
+            <div class="footer-links">
+                <a class="footer-link" href="{{ pathto(master_doc|default('index')) }}">
+                    <i class="fa-solid fa-book"></i> API Reference
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+                    <i class="fa-brands fa-github"></i> Source code
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+<script>
+    const STORAGE_KEY = 'ctoon-docs';
+    const state = { theme: 'dark' };
+
+    function setState(patch) {
+        Object.assign(state, patch);
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.assign(saved, patch)));
+        render();
+    }
+
+    function render() {
+        document.body.setAttribute('data-theme', state.theme);
+    }
+
+    function toggleTheme() {
+        setState({ theme: state.theme === 'dark' ? 'light' : 'dark' });
+    }
+
+    function buildToc() {
+        const article  = document.getElementById('page-article');
+        const tocList  = document.getElementById('toc-list');
+        if (!article || !tocList) return;
+        const headings = article.querySelectorAll('h2, h3');
+        if (headings.length === 0) {
+            const toc = document.getElementById('page-toc');
+            if (toc) toc.style.display = 'none';
+            return;
+        }
+        headings.forEach((h, i) => {
+            if (!h.id) h.id = 'heading-' + i;
+            const li = document.createElement('li');
+            li.className = h.tagName === 'H3' ? 'toc-h3' : 'toc-h2';
+            li.innerHTML = `<a href="#${h.id}">${h.textContent}</a>`;
+            tocList.appendChild(li);
+        });
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    tocList.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+                    const active = tocList.querySelector(`a[href="#${entry.target.id}"]`);
+                    if (active) active.classList.add('active');
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+        headings.forEach(h => observer.observe(h));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            if (saved.theme) state.theme = saved.theme;
+        } catch(e) {}
+        render();
+        buildToc();
+        hljs.configure({ ignoreUnescapedHTML: true });
+        document.querySelectorAll('pre code:not(.hljs)').forEach(b => hljs.highlightElement(b));
+    });
+</script>
+{% endblock %}
