@@ -140,6 +140,55 @@ ctoon_add_section(
 
 
 
+
+
+# ── MATLAB Documentation ──────────────────────────────────────────────────────
+
+set(CTOON_DOCS_MATLAB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/matlab)
+set(CTOON_DOCS_MATLAB_OUT ${CTOON_DOCS_OUT}/matlab)
+# All RST files (hand-written + generated) land in one place
+set(CTOON_DOCS_MATLAB_GEN ${CMAKE_CURRENT_BINARY_DIR}/matlab)
+
+file(GLOB _matlab_m_sources "${PROJECT_SOURCE_DIR}/src/bindings/matlab/ctoon_*.m")
+file(GLOB _matlab_hand_rst  "${CTOON_DOCS_MATLAB_DIR}/source/*.rst")
+
+# CreateDocs.cmake: copies hand-written .rst + extracts .m docstrings,
+# all into CTOON_DOCS_MATLAB_GEN
+add_custom_command(
+    OUTPUT  ${CTOON_DOCS_MATLAB_GEN}/api.rst
+    COMMAND ${CMAKE_COMMAND}
+            -DPYTHON_EXECUTABLE=${Python3_EXECUTABLE}
+            -DMATLAB_BINDING_DIR=${PROJECT_SOURCE_DIR}/src/bindings/matlab
+            -DSOURCE_DIR=${CTOON_DOCS_MATLAB_DIR}/source
+            -DOUT_DIR=${CTOON_DOCS_MATLAB_GEN}
+            -DPROJECT_VERSION=${PROJECT_VERSION}
+            -P ${CTOON_DOCS_MATLAB_DIR}/CreateDocs.cmake
+    DEPENDS
+        ${CTOON_DOCS_MATLAB_DIR}/CreateDocs.cmake
+        ${CTOON_DOCS_MATLAB_DIR}/extract_matlab_docs.py
+        ${_matlab_m_sources}
+        ${_matlab_hand_rst}
+    COMMENT "Extracting MATLAB API documentation"
+    VERBATIM
+)
+
+add_custom_target(ctoon_docs_matlab_extract
+    DEPENDS ${CTOON_DOCS_MATLAB_GEN}/api.rst
+)
+
+# All sources from CTOON_DOCS_MATLAB_GEN — single source of truth
+ctoon_add_section(
+    NAME  matlab
+    TITLE "MATLAB Binding"
+    SOURCES
+        "${CTOON_DOCS_MATLAB_GEN}/installation.rst:Installation"
+        "${CTOON_DOCS_MATLAB_GEN}/usage.rst:Usage"
+        "${CTOON_DOCS_MATLAB_GEN}/api.rst:API Reference"
+    OUTPUT_DIR ${CTOON_DOCS_MATLAB_OUT}
+)
+
+add_dependencies(ctoon_docs_section_matlab ctoon_docs_matlab_extract)
+
 # ── Master target ─────────────────────────────────────────────
 
 add_custom_target(ctoon_docs
@@ -147,7 +196,7 @@ add_custom_target(ctoon_docs
     COMMENT "Building all documentation"
 )
 
-add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index)
+add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index ctoon_docs_section_matlab)
 ctoon_finalize_pages(ctoon_docs)
 
 
