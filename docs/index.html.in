@@ -13,6 +13,7 @@
     <link rel="stylesheet" id="hljs-theme-light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css" disabled>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
     <link rel="stylesheet" href="ctoon-docs.css">
 </head>
 <body>
@@ -41,7 +42,7 @@
 <div class="hero">
     <div class="hero-eyebrow">
         <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        C · C++ · Python · Go
+        C · C++ · Python · Go · MATLAB
     </div>
     <h1>CToon Documentation</h1>
     <p class="hero-desc">
@@ -55,7 +56,7 @@
         </div>
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num">4</div>
+            <div class="hero-stat-num">5</div>
             <div class="hero-stat-label">Language bindings</div>
         </div>
         <div class="hero-stat-div"></div>
@@ -82,7 +83,10 @@
     </div>
     <div class="tabbed-panel" id="docs-panel">
         <div class="tab-bar" id="docs-tabs">
-            <button class="tab-btn active" data-tab="docs-c" onclick="switchTab('docs','c')">
+            <button class="tab-btn active" data-tab="docs-cli" onclick="switchTab('docs','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
+            <button class="tab-btn" data-tab="docs-c" onclick="switchTab('docs','c')">
                 <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
             </button>
             <button class="tab-btn" data-tab="docs-cpp" onclick="switchTab('docs','cpp')">
@@ -94,12 +98,12 @@
             <button class="tab-btn" data-tab="docs-go" onclick="switchTab('docs','go')">
                 <i class="fa-brands fa-golang"></i> Go
             </button>
-            <button class="tab-btn" data-tab="docs-cli" onclick="switchTab('docs','cli')">
-                <i class="fa-solid fa-terminal"></i> CLI
+            <button class="tab-btn" data-tab="docs-matlab" onclick="switchTab('docs','matlab')">
+                <i class="fa-solid fa-square-root-variable"></i> MATLAB
             </button>
         </div>
 
-        <div class="tab-content active" id="docs-c">
+        <div class="tab-content" id="docs-c">
             <div class="doc-card-inner">
                 <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -155,7 +159,7 @@
             </div>
         </div>
 
-        <div class="tab-content" id="docs-cli">
+        <div class="tab-content active" id="docs-cli">
             <div class="doc-card-inner">
                 <div class="doc-card-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -165,6 +169,20 @@
                     <p class="doc-card-desc">Command-line tool for converting between JSON and TOON formats. Covers all options and flags including <code>--delimiter</code>, <code>--length-marker</code>, <code>--stats</code>, stdin piping, and forced encode/decode modes. Auto-detects conversion direction from file extension.</p>
                     <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Written in Markdown</span></div>
                     <a href="cli/index.html" class="doc-card-btn">Open CLI Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="docs-matlab">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">MATLAB API <span class="card-badge">R2014b+</span></div>
+                    <p class="doc-card-desc">MEX-based binding for the CToon C library. Documents <code>ctoon_encode</code>, <code>ctoon_decode</code>, <code>ctoon_read</code>, and <code>ctoon_write</code>. Works with any MATLAB R2014b or newer — no toolboxes required. Build with <code>ctoon_build</code> or via CMake.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Generated from .m docstrings</span></div>
+                    <a href="matlab/index.html" class="doc-card-btn">Open MATLAB Reference <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>
@@ -183,7 +201,10 @@
     </div>
     <div class="tabbed-panel" id="install-panel">
         <div class="tab-bar" id="install-tabs">
-            <button class="tab-btn active" data-tab="install-c" onclick="switchTab('install','c')">
+            <button class="tab-btn active" data-tab="install-cli" onclick="switchTab('install','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
+            <button class="tab-btn" data-tab="install-c" onclick="switchTab('install','c')">
                 <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
             </button>
             <button class="tab-btn" data-tab="install-cpp" onclick="switchTab('install','cpp')">
@@ -195,8 +216,8 @@
             <button class="tab-btn" data-tab="install-go" onclick="switchTab('install','go')">
                 <i class="fa-brands fa-golang"></i> Go
             </button>
-            <button class="tab-btn" data-tab="install-cli" onclick="switchTab('install','cli')">
-                <i class="fa-solid fa-terminal"></i> CLI
+            <button class="tab-btn" data-tab="install-matlab" onclick="switchTab('install','matlab')">
+                <i class="fa-solid fa-square-root-variable"></i> MATLAB
             </button>
         </div>
 
@@ -214,7 +235,7 @@
             </div>
         </div>
 
-        <div class="tab-content active" id="install-c">
+        <div class="tab-content" id="install-c">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CMake — FetchContent</span></div>
@@ -273,7 +294,7 @@ target_link_libraries(my_app PRIVATE ctoon::ctoonpp)</code></pre>
             </div>
         </div>
 
-        <div class="tab-content" id="install-cli">
+        <div class="tab-content active" id="install-cli">
             <div class="section-label" style="margin-bottom:1rem">Option 1 — pip <span style="font-size:0.75rem;color:var(--fg2);text-transform:none;letter-spacing:0">(recommended)</span></div>
             <div class="code-wrap">
                 <div class="code-label">
@@ -304,6 +325,22 @@ sudo cmake --install build</code></pre>
                 Requires CMake 3.19+ and a C99 compiler. Builds the binary from source — useful if you want a custom build configuration or are on a platform without a pre-built wheel.
             </div>
         </div>
+
+        <div class="tab-content" id="install-matlab">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">matlab</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-matlab">cd src/bindings/matlab
+ctoon_install</code></pre>
+            </div>
+            <div class="install-note">
+                Requires MATLAB R2014b+ and a C compiler (<code>mex -setup C</code>).
+                <code>ctoon_install</code> compiles the MEX gateway and permanently adds the binding to your MATLAB path.
+                For MATLAB R2022b+ you can also use <code>buildtool mex</code>.
+            </div>
+        </div>
 </div>
 
 <div class="divider"></div>
@@ -317,7 +354,10 @@ sudo cmake --install build</code></pre>
     </div>
     <div class="tabbed-panel" id="example-panel">
         <div class="tab-bar" id="example-tabs">
-            <button class="tab-btn active" data-tab="example-c" onclick="switchTab('example','c')">
+            <button class="tab-btn active" data-tab="example-cli" onclick="switchTab('example','cli')">
+                <i class="fa-solid fa-terminal"></i> CLI
+            </button>
+            <button class="tab-btn" data-tab="example-c" onclick="switchTab('example','c')">
                 <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> C
             </button>
             <button class="tab-btn" data-tab="example-cpp" onclick="switchTab('example','cpp')">
@@ -329,8 +369,8 @@ sudo cmake --install build</code></pre>
             <button class="tab-btn" data-tab="example-go" onclick="switchTab('example','go')">
                 <i class="fa-brands fa-golang"></i> Go
             </button>
-            <button class="tab-btn" data-tab="example-cli" onclick="switchTab('example','cli')">
-                <i class="fa-solid fa-terminal"></i> CLI
+            <button class="tab-btn" data-tab="example-matlab" onclick="switchTab('example','matlab')">
+                <i class="fa-solid fa-square-root-variable"></i> MATLAB
             </button>
         </div>
 
@@ -368,7 +408,7 @@ toon = ctoon.dumps(data,
             </div>
         </div>
 
-        <div class="tab-content active" id="example-c">
+        <div class="tab-content" id="example-c">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c</span></div>
@@ -479,7 +519,7 @@ func main() {
             </div>
         </div>
 
-        <div class="tab-content" id="example-cli">
+        <div class="tab-content active" id="example-cli">
             <div class="code-wrap">
                 <div class="code-label">
                     <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
@@ -506,6 +546,30 @@ ctoon -e input.json   # force encode  JSON → TOON
 ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
             </div>
         </div>
+
+        <div class="tab-content" id="example-matlab">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">matlab</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-matlab">% Encode a MATLAB struct → TOON string
+s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+% name: Alice
+% age: 30
+% active: true
+
+% Decode TOON string → MATLAB struct
+v = ctoon_decode(s);
+v.name    % 'Alice'
+v.age     % uint64(30)
+v.active  % true
+
+% File I/O
+ctoon_write(v, 'data.toon');
+v = ctoon_read('data.toon');</code></pre>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -521,7 +585,7 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
             </div>
             <div class="footer-tagline">
                 A high-performance C serialisation library for the TOON and JSON formats,
-                with idiomatic language bindings for C++, Python, and Go.
+                with idiomatic language bindings for C++, Python, Go, and MATLAB.
             </div>
             <div class="footer-copy">
                 &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
@@ -545,6 +609,9 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
                 <a class="footer-link" href="go/index.html">
                     <i class="fa-brands fa-golang"></i> Go reference
                 </a>
+                <a class="footer-link" href="matlab/index.html">
+                    <i class="fa-solid fa-square-root-variable"></i> MATLAB reference
+                </a>
                 <a class="footer-link" href="coverage/index.html">
                     <i class="fa-solid fa-chart-pie"></i> Coverage report
                     <span class="footer-link-badge">dev</span>
@@ -563,7 +630,7 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
 
     const state = {
         theme: 'dark',
-        lang:  'c',
+        lang:  'cli',
     };
 
     function setState(patch) {

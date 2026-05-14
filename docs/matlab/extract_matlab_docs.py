@@ -234,7 +234,11 @@ def doc_to_rst(doc: dict, stem: str) -> str:
 # ---------------------------------------------------------------------------
 
 def build_api_rst(docs: list, version: str) -> str:
-    """Build the top-level api.rst that includes all function RST files."""
+    """Build the top-level api.rst — inlines all function docs directly.
+
+    Uses inline content instead of ``.. include::`` directives so that
+    docutils can render the file standalone without resolving external files.
+    """
     lines = []
     lines.append('API Reference')
     lines.append('=============')
@@ -248,8 +252,11 @@ def build_api_rst(docs: list, version: str) -> str:
 
     for doc, stem in docs:
         lines.append('')
-        lines.append(f'.. include:: {stem}.rst')
+        lines.append('----')
         lines.append('')
+        # Inline the RST content directly
+        rst = doc_to_rst(doc, stem)
+        lines.append(rst)
 
     return '\n'.join(lines)
 
