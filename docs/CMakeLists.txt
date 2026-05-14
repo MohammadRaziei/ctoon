@@ -181,6 +181,7 @@ ctoon_add_section(
     NAME  matlab
     TITLE "MATLAB Binding"
     SOURCES
+        "${CTOON_DOCS_MATLAB_GEN}/index.rst:Overview"
         "${CTOON_DOCS_MATLAB_GEN}/installation.rst:Installation"
         "${CTOON_DOCS_MATLAB_GEN}/usage.rst:Usage"
         "${CTOON_DOCS_MATLAB_GEN}/api.rst:API Reference"
