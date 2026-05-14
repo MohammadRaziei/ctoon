@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-convert_page.py — CToon Markdown/RST → HTML page converter.
+convert_page.py — CToon Markdown → HTML page converter.
 
 Single page mode:
     python3 convert_page.py
-        --input     <source.md|source.rst>
+        --input     <source.md>
         --output    <out/index.html>
         --title     "Page Title"
         --nav-label "Short Label"
@@ -17,12 +17,12 @@ Section mode (multi-page):
     python3 convert_page.py --section
         --section-title  "CLI Reference"
         --section-dir    <out/cli/>
-        --section-pages  "index.md:Overview,installation.rst:Installation,..."
+        --section-pages  "index.md:Overview,installation.md:Installation,..."
         --template       <section.html.in>
         --css            <ctoon-docs.css>
         [--logo          <ctoon-sq.svg>]
         --version        "1.0.0"
-        --source-dir     <docs/>
+        --source-dir     <docs/>     # base dir for resolving md paths
 """
 
 import argparse
@@ -33,62 +33,18 @@ from pathlib import Path
 # ── Dependency check ──────────────────────────────────────────────────────────
 try:
     from markdown_it import MarkdownIt
+    from markdown_it.rules_block import fence
 except ImportError:
     print("ERROR: markdown-it-py is not installed.\n"
           "Run: pip install markdown-it-py", file=sys.stderr)
     sys.exit(1)
 
-
-# ── RST → HTML ────────────────────────────────────────────────────────────────
-def render_rst(rst_text: str) -> str:
-    """Convert RST to HTML using docutils, then apply ctoon code-wrap styling."""
-    try:
-        from docutils.core import publish_parts
-        from docutils.writers.html5_polyglot import Writer
-    except ImportError:
-        print("ERROR: docutils is not installed.\n"
-              "Run: pip install docutils", file=sys.stderr)
-        sys.exit(1)
-
-    parts = publish_parts(
-        source=rst_text,
-        writer=Writer(),
-        settings_overrides={
-            'initial_header_level': 1,
-            'syntax_highlight':     'none',
-            'smart_quotes':         True,
-            'halt_level':           5,        # don't die on warnings
-            'report_level':         5,
-            'embed_stylesheet':     False,
-            'stylesheet_path':      None,
-        },
-    )
-    html = parts['body']
-
-    # docutils wraps code blocks in <pre class="code ..."><span ...>
-    # Normalise to the same <pre><code class="language-X"> form so
-    # _wrap_code_blocks can handle them uniformly.
-    def _norm_rst_code(m):
-        cls   = m.group(1)          # e.g. "code bash" or "code literal-block"
-        inner = m.group(2)
-        # Strip any <span ...> tags docutils injects for syntax highlight
-        inner = re.sub(r'<span[^>]*>', '', inner)
-        inner = inner.replace('</span>', '')
-        # Detect language from class e.g. "code bash" → bash
-        lang_m = re.search(r'code\s+(\w+)', cls)
-        lang   = lang_m.group(1) if lang_m else 'plaintext'
-        if lang in ('literal-block', 'doctest'):
-            lang = 'plaintext'
-        return f'<pre><code class="language-{lang}">{inner}</code></pre>'
-
-    html = re.sub(
-        r'<pre class="([^"]*)">(.*?)</pre>',
-        _norm_rst_code,
-        html,
-        flags=re.DOTALL,
-    )
-
-    return _wrap_code_blocks(html)
+try:
+    import docutils.core
+    import docutils.writers.html4css1
+    _DOCUTILS_AVAILABLE = True
+except ImportError:
+    _DOCUTILS_AVAILABLE = False
 
 
 # ── Markdown → HTML ───────────────────────────────────────────────────────────
@@ -151,11 +107,77 @@ def _wrap_code_blocks(html: str) -> str:
     return pattern.sub(replacer, html)
 
 
-# ── Dispatcher ───────────────────────────────────────────────────────────────
-def render_content(source_path: Path) -> str:
-    """Render .md or .rst file to HTML body."""
-    text = source_path.read_text(encoding='utf-8')
-    if source_path.suffix.lower() == '.rst':
+# ── RST → HTML ───────────────────────────────────────────────────────────────
+def render_rst(rst_text: str) -> str:
+    """Convert RST to HTML using docutils, then apply ctoon code-wrap styling.
+
+    Uses html_body (not body) so section headings become h2/h3 elements
+    that the "On this page" sidebar JS can pick up.
+    initial_header_level=2 ensures subsections render as h2 (TOC-visible).
+    """
+    try:
+        from docutils.core import publish_parts
+        from docutils.writers.html5_polyglot import Writer
+        import html as _html_mod
+    except ImportError:
+        print("ERROR: docutils is not installed.\n"
+              "Run: pip install docutils", file=sys.stderr)
+        sys.exit(1)
+
+    parts = publish_parts(
+        source=rst_text,
+        writer=Writer(),
+        settings_overrides={
+            'initial_header_level': 2,   # subsections → h2 (visible to TOC JS)
+            'syntax_highlight':     'none',
+            'smart_quotes':         False,
+            'halt_level':           5,
+            'report_level':         5,
+            'embed_stylesheet':     False,
+            'stylesheet_path':      None,
+        },
+    )
+    # html_body includes h1 title + all sections; body alone omits them
+    html = parts['html_body']
+
+    # Remove outer <main ...> wrapper docutils adds
+    html = re.sub(r'<main[^>]*>\n?', '', html)
+    html = re.sub(r'\n?</main>\s*$', '', html)
+
+    # Normalise docutils code blocks:
+    #   <pre class="code matlab literal-block"><code>...</code></pre>
+    # → <pre><code class="language-matlab">...</code></pre>
+    # Also unescape HTML entities so highlight.js sees real source chars.
+    def _norm_rst_code(m):
+        cls   = m.group(1)
+        inner = m.group(2)
+        # Strip docutils syntax-highlight spans
+        inner = re.sub(r'<span[^>]*>', '', inner)
+        inner = inner.replace('</span>', '')
+        # Unescape entities (&#x27; → ') then re-escape only < > &
+        inner = _html_mod.unescape(inner)
+        inner = inner.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        # Detect language: "code matlab literal-block" → matlab
+        lang_m = re.search(r'code\s+([\w-]+)', cls)
+        lang   = lang_m.group(1) if lang_m else 'plaintext'
+        if lang in ('literal-block', 'doctest', 'block'):
+            lang = 'plaintext'
+        return f'<pre><code class="language-{lang}">{inner}</code></pre>'
+
+    html = re.sub(
+        r'<pre class="([^"]*)"[^>]*>\s*(?:<code>)?(.*?)(?:</code>)?\s*</pre>',
+        _norm_rst_code,
+        html,
+        flags=re.DOTALL,
+    )
+
+    return _wrap_code_blocks(html)
+
+
+# ── Source router — pick renderer based on file extension ─────────────────────
+def render_source(text: str, path: str) -> str:
+    """Render text to HTML; choose Markdown or RST based on file extension."""
+    if path.endswith('.rst'):
         return render_rst(text)
     return render_markdown(text)
 
@@ -195,7 +217,7 @@ def build_page(args):
     css          = Path(args.css).read_text(encoding='utf-8')
     logo_content = read_logo(args.logo)
 
-    body_html   = render_content(Path(args.input))
+    body_html   = render_source(md_text, args.input)
     breadcrumbs = make_breadcrumbs(args.nav_label)
 
     html = template
@@ -239,8 +261,8 @@ def build_section(args):
 
     # Build each page
     for i, (md_path, title, out_name) in enumerate(pages):
-        md_text   = md_path.read_text(encoding='utf-8')
-        body_html = render_content(md_path)
+        md_text  = md_path.read_text(encoding='utf-8')
+        body_html = render_source(md_text, str(md_path))
 
         # ── Sidebar nav ──────────────────────────────────────────────────────
         nav_items = []
@@ -301,7 +323,7 @@ def build_section(args):
         html = html.replace('@BODY_CONTENT@',    body_html)
         html = html.replace('@PREV_BTN@',        prev_btn)
         html = html.replace('@NEXT_BTN@',        next_btn)
-        html = html.replace('@FAVICON@',         '../../ctoon-sq.svg')
+        html = html.replace('@FAVICON@',         '../ctoon-sq.svg')
 
         out_path = section_dir / out_name
         out_path.write_text(html, encoding='utf-8')
