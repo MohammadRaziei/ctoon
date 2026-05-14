@@ -1,37 +1,49 @@
 MATLAB Binding
 ==============
 
-CToon MATLAB binding provides a MEX-based interface to the CToon C library,
-allowing you to encode and decode TOON-format data directly from MATLAB.
+The CToon MATLAB binding provides a MEX-based interface to the CToon C library,
+allowing MATLAB users to encode and decode TOON-format data natively.
+
+Overview
+--------
+
+The binding exposes four public functions:
 
 .. list-table::
-   :widths: 30 70
+   :header-rows: 1
+   :widths: 30 60
 
-   * - **Compatibility**
-     - MATLAB R2014b or newer — no toolboxes required
-   * - **Build**
-     - ``ctoon_build`` (manual) or ``buildtool mex`` (R2022b+)
-   * - **Functions**
-     - ``ctoon_encode``, ``ctoon_decode``, ``ctoon_read``, ``ctoon_write``
+   * - Function
+     - Description
+   * - ``ctoon_encode``
+     - Encode a MATLAB value to a TOON string
+   * - ``ctoon_decode``
+     - Decode a TOON string to a MATLAB value
+   * - ``ctoon_read``
+     - Read a ``.toon`` file into a MATLAB value
+   * - ``ctoon_write``
+     - Write a MATLAB value to a ``.toon`` file
 
 Quick start
 -----------
 
 .. code-block:: matlab
 
-   % Build and add to path (once)
+   % Install once
    cd src/bindings/matlab
    ctoon_install
 
-   % Encode
+   % Encode and decode
    s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30)));
-
-   % Decode
    v = ctoon_decode(s);
 
-Sections
---------
+   % File I/O
+   ctoon_write(v, 'config.toon');
+   v = ctoon_read('config.toon');
 
-- **Installation** — build requirements, CMake integration, self-contained export
-- **Usage** — type mapping, error handling, file I/O examples
-- **API Reference** — full docstring reference for all public functions
+Requirements
+------------
+
+- MATLAB R2014b or newer
+- A C compiler configured for MEX (``mex -setup C``)
+- MATLAB R2022b or newer for ``buildtool`` support
