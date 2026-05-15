@@ -14,8 +14,8 @@ function value = ctoon_read(filepath)
 %   Example:
 %     % Read a TOON config file
 %     cfg = ctoon_read('config.toon');
-%     cfg.host   % → 'localhost'
-%     cfg.port   % → uint64(8080)
+%     cfg.host   % -> 'localhost'
+%     cfg.port   % -> uint64(8080)
 %
 %     % Read from an absolute path
 %     data = ctoon_read('/data/records.toon');

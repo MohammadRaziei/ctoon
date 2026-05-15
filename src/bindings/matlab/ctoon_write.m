@@ -19,7 +19,7 @@ function ctoon_write(value, filepath)
 %
 %     % Round-trip check
 %     v = ctoon_read('config.toon');
-%     isequal(v.host, cfg.host)   % → true
+%     isequal(v.host, cfg.host)   % -> true
 %
 %   Errors:
 %     Throws ctoon:writeError when the file cannot be written.

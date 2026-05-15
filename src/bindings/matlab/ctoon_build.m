@@ -21,7 +21,7 @@
 %        BUILD_DIR='<bindir>'; MEX_SOURCES_PATH='<src>'; \
 %        MEX_INCLUDE_DIR='<inc>'; buildtool mex"
 %
-%   Interactive usage (no variables needed — paths resolved automatically):
+%   Interactive usage (no variables needed - paths resolved automatically):
 %
 %     buildtool mex
 %
@@ -97,7 +97,7 @@ if ~strcmp(here, buildDir)
             copyfile(src, fullfile(buildDir, wrappers{k}), 'f');
         end
     end
-    fprintf('  Wrappers copied  → %s\n', buildDir);
+    fprintf('  Wrappers copied  -> %s\n', buildDir);
 end
 
 fprintf('  Done.\n');

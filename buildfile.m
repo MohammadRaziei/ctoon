@@ -11,7 +11,7 @@ function plan = buildfile
 %       buildtool clean             % remove BUILD_DIR and COVERAGE_OUTPUT_DIR
 %       buildtool -tasks            % list all tasks
 %
-%   Global variables (optional — set before buildtool or via -batch):
+%   Global variables (optional - set before buildtool or via -batch):
 %
 %       global BUILD_DIR            output directory for MEX binary and wrappers
 %                                   (default: <repo>/build/matlab)
@@ -108,7 +108,7 @@ if ~isfolder(covHtmlDir), mkdir(covHtmlDir); end
 
 suite = testsuite(testDir);
 
-% ---- HTML report — CoverageReport available since R2019b ----------------
+% ---- HTML report - CoverageReport available since R2019b ----------------
 runner = matlab.unittest.TestRunner.withNoPlugins;
 runner.addPlugin(matlab.unittest.plugins.CodeCoveragePlugin.forFolder( ...
     buildDir, ...
@@ -120,7 +120,7 @@ end
 fprintf('  HTML report     -> %s
 ', fullfile(covHtmlDir, 'index.html'));
 
-% ---- lcov tracefile — CoverageResult available since R2024b -------------
+% ---- lcov tracefile - CoverageResult available since R2024b -------------
 try
     runner2 = matlab.unittest.TestRunner.withNoPlugins;
     runner2.addPlugin(matlab.unittest.plugins.CodeCoveragePlugin.forFolder( ...
