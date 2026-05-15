@@ -1,7 +1,7 @@
 # <a href="https://mohammadraziei.github.io/ctoon/"><img src="https://raw.githubusercontent.com/MohammadRaziei/ctoon/refs/heads/master/docs/images/ctoon-sq.svg" width="25" alt="CToon Logo"> CToon </a>
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/MohammadRaziei/ctoon/refs/heads/master/docs/images/ctoon-sq-ctoon.svg" width="360" alt="CToon Long Logo">
+<a href="https://mohammadraziei.github.io/ctoon/"><img src="https://raw.githubusercontent.com/MohammadRaziei/ctoon/refs/heads/master/docs/images/ctoon-sq-ctoon.svg" width="360" alt="CToon Long Logo"></a>
 </div>
 
 <div align="center">
