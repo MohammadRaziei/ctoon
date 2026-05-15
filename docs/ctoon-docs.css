@@ -297,9 +297,12 @@ pre {
     color: var(--code-fg);
 }
 
-/* highlight.js overrides */
+/* highlight.js overrides — prevent hljs theme from overriding code-wrap colours */
 .hljs { background: transparent !important; padding: 0 !important; font-size: inherit; line-height: inherit; }
-pre code.hljs { display: block; overflow-x: auto; }
+pre code.hljs { display: block; overflow-x: auto; background: transparent !important; }
+.code-wrap pre code { background: transparent !important; }
+/* docutils section elements — reset any inherited background */
+.page-content section { background: transparent; }
 
 /* ── Install note ─────────────────────────────────────── */
 .install-note {

@@ -144,6 +144,11 @@ def render_rst(rst_text: str) -> str:
     html = re.sub(r'<main[^>]*>\n?', '', html)
     html = re.sub(r'\n?</main>\s*$', '', html)
 
+    # Replace <section id="..."> with <div class="rst-section" id="...">
+    # so docutils section elements don't pick up unintended CSS/theme rules
+    html = re.sub(r'<section\b([^>]*)>', r'<div class="rst-section"\1>', html)
+    html = html.replace('</section>', '</div>')
+
     # Normalise docutils code blocks:
     #   <pre class="code matlab literal-block"><code>...</code></pre>
     # → <pre><code class="language-matlab">...</code></pre>
