@@ -47,45 +47,40 @@ if nargin < 2 || isempty(force)
     force = false;
 end
 
-% ---- check if MEX already exists -----------------------------------------
+% ---- compile if needed ---------------------------------------------------
 mexBinary = fullfile(buildDir, ['ctoon_mex.' mexext]);
 if isfile(mexBinary) && ~force
     fprintf('  ctoon_mex already built: %s\n', mexBinary);
-    fprintf('  Skipping compilation (use ctoon_build(dir, true) to force).\n');
-    return;
+    fprintf('  Skipping compilation (pass force=true to recompile).\n');
+else
+    mexGateway = fullfile(here, 'ctoon_mex.c');
+    ctoonSrc   = fullfile(mexSourcesPath, 'ctoon.c');
+
+    if ~isfile(mexGateway)
+        error('ctoon_build:notFound', 'ctoon_mex.c not found: %s', mexGateway);
+    end
+    if ~isfile(ctoonSrc)
+        error('ctoon_build:notFound', 'ctoon.c not found: %s', ctoonSrc);
+    end
+    if ~isfolder(mexIncludeDir)
+        error('ctoon_build:notFound', 'include dir not found: %s', mexIncludeDir);
+    end
+    if ~isfolder(buildDir)
+        mkdir(buildDir);
+    end
+
+    fprintf('  MEX_SOURCES_PATH : %s\n', mexSourcesPath);
+    fprintf('  MEX_INCLUDE_DIR  : %s\n', mexIncludeDir);
+    fprintf('  BUILD_DIR        : %s\n', buildDir);
+    fprintf('  Compiling ctoon_mex ...\n');
+
+    mex(mexGateway, ctoonSrc, ...
+        ['-I', mexIncludeDir], ...
+        '-outdir', buildDir,   ...
+        '-output', 'ctoon_mex');
 end
 
-% ---- validate sources ----------------------------------------------------
-mexGateway = fullfile(here, 'ctoon_mex.c');
-ctoonSrc   = fullfile(mexSourcesPath, 'ctoon.c');
-
-if ~isfile(mexGateway)
-    error('ctoon_build:notFound', 'ctoon_mex.c not found: %s', mexGateway);
-end
-if ~isfile(ctoonSrc)
-    error('ctoon_build:notFound', 'ctoon.c not found: %s', ctoonSrc);
-end
-if ~isfolder(mexIncludeDir)
-    error('ctoon_build:notFound', 'include dir not found: %s', mexIncludeDir);
-end
-
-% ---- create output dir if needed -----------------------------------------
-if ~isfolder(buildDir)
-    mkdir(buildDir);
-end
-
-% ---- compile -------------------------------------------------------------
-fprintf('  MEX_SOURCES_PATH : %s\n', mexSourcesPath);
-fprintf('  MEX_INCLUDE_DIR  : %s\n', mexIncludeDir);
-fprintf('  BUILD_DIR        : %s\n', buildDir);
-fprintf('  Compiling ctoon_mex ...\n');
-
-mex(mexGateway, ctoonSrc, ...
-    ['-I', mexIncludeDir], ...
-    '-outdir', buildDir,   ...
-    '-output', 'ctoon_mex');
-
-% ---- copy wrappers when buildDir differs from here -----------------------
+% ---- copy wrappers (skip existing) when buildDir differs from here -------
 if ~strcmp(here, buildDir)
     wrappers = { ...
         'ctoon_encode.m',  ...
@@ -95,11 +90,11 @@ if ~strcmp(here, buildDir)
     };
     for k = 1:numel(wrappers)
         src = fullfile(here, wrappers{k});
-        if isfile(src)
-            copyfile(src, fullfile(buildDir, wrappers{k}), 'f');
+        dst = fullfile(buildDir, wrappers{k});
+        if isfile(src) && ~isfile(dst)
+            copyfile(src, dst, 'f');
         end
     end
-    fprintf('  Wrappers copied  -> %s\n', buildDir);
 end
 
 fprintf('  Done.\n');
