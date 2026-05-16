@@ -7,12 +7,12 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CMake 3.19+](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)
 [![C](https://img.shields.io/badge/C-99-blue.svg)](https://en.cppreference.com/w/c)
 [![C++11](https://img.shields.io/badge/C++-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
 [![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://go.dev/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
-[![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-orange.svg)](https://www.mathworks.com/products/matlab.html)
-[![CMake 3.19+](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)
+[![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-blue.svg)](https://www.mathworks.com/products/matlab.html)
 
 **[Documentation](https://mohammadraziei.github.io/ctoon)**
 
