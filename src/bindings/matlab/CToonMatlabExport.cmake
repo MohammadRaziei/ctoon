@@ -74,18 +74,19 @@ endforeach()
 # ---------------------------------------------------------------------------
 file(READ "${EXPORT_DIR}/ctoon_build.m" _content)
 
+# In the export, ctoon.c and ctoon.h sit right next to ctoon_build.m
 string(REPLACE
-    "mexSourcesPath = fullfile(repoRoot, 'src');"
+    "mexSourcesPath = fullfile(here, '..', '..', '..', 'src');"
     "mexSourcesPath = here;"
     _content "${_content}")
 
 string(REPLACE
-    "mexIncludeDir = fullfile(repoRoot, 'include');"
-    "mexIncludeDir = here;"
+    "mexIncludeDir  = fullfile(here, '..', '..', '..', 'include');"
+    "mexIncludeDir  = here;"
     _content "${_content}")
 
 file(WRITE "${EXPORT_DIR}/ctoon_build.m" "${_content}")
-message(STATUS "  patched ctoon_build.m (default paths → export dir)")
+message(STATUS "  patched ctoon_build.m (source paths -> export dir)")
 
 # ---------------------------------------------------------------------------
 message(STATUS "CToonMatlabExport complete.")

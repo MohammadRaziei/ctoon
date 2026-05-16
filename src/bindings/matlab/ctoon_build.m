@@ -1,54 +1,58 @@
+function ctoon_build(buildDir, force)
 %CTOON_BUILD  Compile the CToon MEX gateway.
 %
 %   ctoon_build()
+%   ctoon_build(buildDir)
+%   ctoon_build(buildDir, force)
 %
-%   Compiles ctoon_mex.c into a MEX binary and places it in BUILD_DIR.
-%   Meant to be called from buildfile.m (mexTask) or directly from MATLAB.
+%   Compiles ctoon_mex.c into a MEX binary and places it in buildDir.
+%   If the MEX binary already exists and force is false, compilation is
+%   skipped and a message is printed.
 %
-%   Configurable via global variables (set before calling):
+%   Arguments:
+%     buildDir   output directory for MEX binary and .m wrappers.
+%                If omitted, uses global BUILD_DIR; if that is also
+%                empty, defaults to the directory of this file.
+%     force      logical scalar. true = always recompile even if the MEX
+%                binary already exists. Default: false.
 %
-%     global MEX_SOURCES_PATH   directory containing ctoon.c
-%                               (default: <repo>/src)
-%     global MEX_INCLUDE_DIR    directory containing ctoon.h
-%                               (default: <repo>/include)
-%     global BUILD_DIR          output directory for MEX binary and .m wrappers
-%                               (default: same directory as this file)
-%
-%   CMake / CI usage:
-%
-%     matlab -sd src/bindings/matlab -batch \
-%       "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR; \
-%        BUILD_DIR='<bindir>'; MEX_SOURCES_PATH='<src>'; \
-%        MEX_INCLUDE_DIR='<inc>'; buildtool mex"
-%
-%   Interactive usage (no variables needed - paths resolved automatically):
-%
-%     buildtool mex
+%   Examples:
+%     ctoon_build                    % skip if already built
+%     ctoon_build('/tmp/ctoon')      % skip if already built, custom dir
+%     ctoon_build([], true)          % force rebuild, default dir
+%     ctoon_build('/tmp/ctoon', true)% force rebuild, custom dir
 %
 %   See also: ctoon_install, buildfile.
 
-global MEX_SOURCES_PATH MEX_INCLUDE_DIR BUILD_DIR
+here = fileparts(mfilename('fullpath'));
 
-here     = fileparts(mfilename('fullpath'));
-repoRoot = fullfile(here, '..', '..', '..');
+% ---- source paths (patched by CToonMatlabExport.cmake on export) ---------
+mexSourcesPath = fullfile(here, '..', '..', '..', 'src');
+mexIncludeDir  = fullfile(here, '..', '..', '..', 'include');
 
-% ---- resolve paths -------------------------------------------------------
-if isempty(MEX_SOURCES_PATH)
-    mexSourcesPath = fullfile(repoRoot, 'src');
+% ---- resolve buildDir ----------------------------------------------------
+if nargin >= 1 && ~isempty(buildDir)
+    buildDir = strtrim(buildDir);
 else
-    mexSourcesPath = strtrim(MEX_SOURCES_PATH);
+    global BUILD_DIR
+    if ~isempty(BUILD_DIR)
+        buildDir = strtrim(BUILD_DIR);
+    else
+        buildDir = here;
+    end
 end
 
-if isempty(MEX_INCLUDE_DIR)
-    mexIncludeDir = fullfile(repoRoot, 'include');
-else
-    mexIncludeDir = strtrim(MEX_INCLUDE_DIR);
+% ---- resolve force -------------------------------------------------------
+if nargin < 2 || isempty(force)
+    force = false;
 end
 
-if isempty(BUILD_DIR)
-    buildDir = here;
-else
-    buildDir = strtrim(BUILD_DIR);
+% ---- check if MEX already exists -----------------------------------------
+mexBinary = fullfile(buildDir, ['ctoon_mex.' mexext]);
+if isfile(mexBinary) && ~force
+    fprintf('  ctoon_mex already built: %s\n', mexBinary);
+    fprintf('  Skipping compilation (use ctoon_build(dir, true) to force).\n');
+    return;
 end
 
 % ---- validate sources ----------------------------------------------------
@@ -88,8 +92,6 @@ if ~strcmp(here, buildDir)
         'ctoon_decode.m',  ...
         'ctoon_read.m',    ...
         'ctoon_write.m',   ...
-        'ctoon_build.m',   ...
-        'ctoon_install.m'  ...
     };
     for k = 1:numel(wrappers)
         src = fullfile(here, wrappers{k});
@@ -101,3 +103,4 @@ if ~strcmp(here, buildDir)
 end
 
 fprintf('  Done.\n');
+end
