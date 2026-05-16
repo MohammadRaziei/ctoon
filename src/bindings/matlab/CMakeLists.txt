@@ -16,15 +16,16 @@ find_package(Matlab COMPONENTS MX_LIBRARY MEX_COMPILER MAIN_PROGRAM QUIET)
 
 if(NOT Matlab_FOUND)
     message(WARNING
-        "MATLAB not found — skipping MEX binding.\n"
+        "MATLAB not found - skipping MEX binding.\n"
         "Set Matlab_ROOT_DIR or the MATLAB_DIR environment variable.")
     return()
 endif()
 
 message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
+set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
 
 # ---------------------------------------------------------------------------
-# MEX target — compiled by MATLAB Build Tool via buildtool
+# MEX target - compiled by MATLAB Build Tool via buildtool
 # ---------------------------------------------------------------------------
 # We declare a custom target (not matlab_add_mex) because the compiler is
 # driven by buildfile.m / ctoon_build.m, not by CMake's mex invocation.
@@ -33,7 +34,7 @@ message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
 
 add_custom_target(ctoon_build_mex ALL
     COMMAND ${CMAKE_COMMAND} -E echo "-- MATLAB buildtool mex..."
-    COMMAND ${Matlab_MAIN_PROGRAM}
+    COMMAND ${Matlab_EXECUTABLE}
              -sd "${CMAKE_CURRENT_SOURCE_DIR}"
              -batch
              "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR TEST_DIR; \

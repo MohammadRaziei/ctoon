@@ -72,21 +72,9 @@ endforeach()
 # Patch ctoon_build.m — replace repo-relative defaults with 'here'
 # In the export, ctoon.c and ctoon.h sit right next to ctoon_build.m
 # ---------------------------------------------------------------------------
-file(READ "${EXPORT_DIR}/ctoon_build.m" _content)
-
-# In the export, ctoon.c and ctoon.h sit right next to ctoon_build.m
-string(REPLACE
-    "mexSourcesPath = fullfile(here, '..', '..', '..', 'src');"
-    "mexSourcesPath = here;"
-    _content "${_content}")
-
-string(REPLACE
-    "mexIncludeDir  = fullfile(here, '..', '..', '..', 'include');"
-    "mexIncludeDir  = here;"
-    _content "${_content}")
-
-file(WRITE "${EXPORT_DIR}/ctoon_build.m" "${_content}")
-message(STATUS "  patched ctoon_build.m (source paths -> export dir)")
+# ctoon_build.m uses find_ctoon_sources() which automatically detects
+# whether ctoon.c/ctoon.h are next to the file (export layout) or in
+# src/ and include/ relative to the repo root. No patching needed.
 
 # ---------------------------------------------------------------------------
 message(STATUS "CToonMatlabExport complete.")

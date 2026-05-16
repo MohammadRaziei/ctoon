@@ -26,9 +26,17 @@ function ctoon_build(buildDir, force)
 
 here = fileparts(mfilename('fullpath'));
 
-% ---- source paths (patched by CToonMatlabExport.cmake on export) ---------
-mexSourcesPath = fullfile(here, '..', '..', '..', 'src');
-mexIncludeDir  = fullfile(here, '..', '..', '..', 'include');
+% ====================== Smart Source Detection ======================
+if isfile(fullfile(here, 'ctoon.c')) && isfile(fullfile(here, 'ctoon.h'))
+    mexSourcesPath = here;
+    mexIncludeDir  = here;
+    fprintf('  [Local] Using sources from: %s\n', here);
+else
+    mexSourcesPath = fullfile(here, '..', '..', '..', 'src');
+    mexIncludeDir  = fullfile(here, '..', '..', '..', 'include');
+    fprintf('  [Project] Using sources from project root.\n');
+end
+% ===================================================================
 
 % ---- resolve buildDir ----------------------------------------------------
 if nargin >= 1 && ~isempty(buildDir)
@@ -49,6 +57,7 @@ end
 
 % ---- compile if needed ---------------------------------------------------
 mexBinary = fullfile(buildDir, ['ctoon_mex.' mexext]);
+
 if isfile(mexBinary) && ~force
     fprintf('  ctoon_mex already built: %s\n', mexBinary);
     fprintf('  Skipping compilation (pass force=true to recompile).\n');
@@ -80,14 +89,9 @@ else
         '-output', 'ctoon_mex');
 end
 
-% ---- copy wrappers (skip existing) when buildDir differs from here -------
+% ---- copy wrappers (skip existing) ---------------------------------------
 if ~strcmp(here, buildDir)
-    wrappers = { ...
-        'ctoon_encode.m',  ...
-        'ctoon_decode.m',  ...
-        'ctoon_read.m',    ...
-        'ctoon_write.m',   ...
-    };
+    wrappers = {'ctoon_encode.m', 'ctoon_decode.m', 'ctoon_read.m', 'ctoon_write.m'};
     for k = 1:numel(wrappers)
         src = fullfile(here, wrappers{k});
         dst = fullfile(buildDir, wrappers{k});
