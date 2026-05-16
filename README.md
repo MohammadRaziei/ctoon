@@ -11,18 +11,21 @@
 [![C++11](https://img.shields.io/badge/C++-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
 [![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://go.dev/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-orange.svg)](https://www.mathworks.com/products/matlab.html)
 [![CMake 3.19+](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)
+
+**[Documentation](https://mohammadraziei.github.io/ctoon)**
 
 </div>
 
-The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30–60% token reduction versus JSON while remaining fully readable and structured.
+The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
-CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, and Go. The name reflects its foundation: **C** + **TOON**.
+CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, and MATLAB. The name reflects its foundation: **C** + **TOON**.
 
 ## Format Overview
 
 ```
-# JSON  (352 bytes)                  # TOON  (165 bytes, −53 %)
+# JSON  (352 bytes)                  # TOON  (165 bytes, -53 %)
 {                                    order:
   "order": {                           id: ORD-12345
     "id": "ORD-12345",                 status: completed
@@ -42,9 +45,9 @@ CToon is built on a high-performance C core and exposes the same logic through i
 
 ```bash
 cmake -B build && cmake --build build
-./build/ctoon data.json           # JSON  → TOON
-./build/ctoon data.toon           # TOON  → JSON
-cat data.json | ./build/ctoon     # stdin → TOON
+./build/ctoon data.json           # JSON  -> TOON
+./build/ctoon data.toon           # TOON  -> JSON
+cat data.json | ./build/ctoon     # stdin -> TOON
 ```
 
 ### C
@@ -90,20 +93,6 @@ mdoc.set_root(obj);
 obj.obj_put(mdoc.make_str("city"), mdoc.make_str("Tehran"));
 obj.obj_put(mdoc.make_str("pop"),  mdoc.make_uint(9'000'000));
 std::cout << mdoc.to_json(0).c_str() << "\n";  // {"city":"Tehran","pop":9000000}
-
-/* Parse JSON */
-auto jdoc = ctoon::document::from_json(R"({"x":1,"y":2})");
-std::cout << jdoc.root()["x"].get_uint() << "\n";  // 1
-
-/* Read / write flags */
-using rf = ctoon::read_flag;
-using wf = ctoon::write_flag;
-auto doc2 = ctoon::document::parse(src, rf::ALLOW_COMMENTS | rf::ALLOW_BOM);
-auto out  = doc2.write(
-    ctoon::write_options()
-        .with_flag(wf::LENGTH_MARKER | wf::NEWLINE_AT_END)
-        .with_delimiter(ctoon::delimiter::PIPE)
-        .with_indent(4));
 ```
 
 ### Python
@@ -115,28 +104,13 @@ import ctoon
 toon = ctoon.dumps({"name": "Alice", "age": 30})
 data = ctoon.loads(toon)
 
-# file I/O — accepts path strings or file-like objects
+# file I/O
 ctoon.dump(data, "out.toon")
 data = ctoon.load("out.toon")
-
-with open("out.toon", "w") as f:
-    ctoon.dump(data, f)
-
-with open("out.toon") as f:
-    data = ctoon.load(f)
 
 # JSON
 json_str = ctoon.dumps_json(data, indent=2)
 data     = ctoon.loads_json(json_str)
-ctoon.dump_json(data, "out.json")
-
-# flags (combinable with |)
-from ctoon import ReadFlag, WriteFlag, Delimiter
-toon = ctoon.dumps(data,
-                   indent=4,
-                   delimiter=Delimiter.PIPE,
-                   flags=WriteFlag.LENGTH_MARKER | WriteFlag.NEWLINE_AT_END)
-data = ctoon.loads(toon, flags=ReadFlag.ALLOW_COMMENTS | ReadFlag.ALLOW_BOM)
 ```
 
 ### Go
@@ -151,12 +125,43 @@ val,  _ := ctoon.Loads(toon)
 // file I/O
 ctoon.EncodeToFile(data, "out.toon", ctoon.DefaultEncodeOptions())
 val, _ = ctoon.DecodeFromFile("out.toon", ctoon.DefaultDecodeOptions())
-
-// JSON
-json, _ := ctoon.DumpsJSON(data, 2)
-val,  _ = ctoon.LoadsJSON(json)
-ctoon.DumpJSON(data, "out.json")
 ```
+
+### MATLAB
+
+```matlab
+% Install once (compiles MEX and adds to MATLAB path permanently)
+cd src/bindings/matlab
+ctoon_install
+
+% Encode a MATLAB value -> TOON string
+s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+
+% Decode TOON string -> MATLAB value
+v = ctoon_decode(s);
+v.name    % -> 'Alice'
+v.age     % -> uint64(30)
+v.active  % -> true
+
+% File I/O
+ctoon_write(v, 'config.toon');
+v = ctoon_read('config.toon');
+```
+
+MATLAB type mapping:
+
+| MATLAB | TOON |
+|--------|------|
+| `[]` | null |
+| `logical` | bool |
+| `double` scalar | real |
+| `int64` scalar | sint |
+| `uint64` scalar | uint |
+| `char` | str |
+| `cell` | array |
+| `struct` | object |
+
+Requires MATLAB R2014b+ and a C compiler configured for MEX (`mex -setup C`).
 
 ---
 
@@ -164,8 +169,8 @@ ctoon.DumpJSON(data, "out.json")
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target ctoon_test # Run C / C++ / python / Go tests
-cmake --build build -j$(nproc) --target ctoon_coverage # Get the coverage of C / C++ / python / Go tests.
+cmake --build build -j$(nproc) --target ctoon_test     # Run all tests
+cmake --build build -j$(nproc) --target ctoon_coverage # Generate coverage reports
 ```
 
 ### CMake options
@@ -174,17 +179,16 @@ cmake --build build -j$(nproc) --target ctoon_coverage # Get the coverage of C /
 |--------|---------|-------------|
 | `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
 | `CTOON_BUILD_PYTHON` | OFF | Build Python extension (nanobind) |
-| `CTOON_BUILD_DOCS` | OFF | Build documents |
+| `CTOON_BUILD_MATLAB` | OFF | Build MATLAB MEX binding |
+| `CTOON_BUILD_DOCS` | OFF | Build documentation |
 
-JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). The CLI uses it directly — no external JSON library required.
+JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). No external JSON library required.
 
 ### Python package
 
 ```bash
-pip install ctoon # build and install
+pip install ctoon
 ```
-
-No runtime requirements.
 
 ### Go module
 
@@ -194,19 +198,31 @@ go get github.com/mohammadraziei/ctoon
 
 Requires Go 1.21+. Uses CGo to call the C core.
 
+### MATLAB MEX
+
+```bash
+# Via CMake
+cmake -B build -DCTOON_BUILD_MATLAB=ON -DMatlab_ROOT_DIR=/path/to/matlab
+cmake --build build --target ctoon_mex
+
+# Or directly from MATLAB
+cd src/bindings/matlab
+ctoon_install        % compile + add to path permanently
+```
+
 ---
 
 ## CLI Reference
 
 ```bash
-# Encode  JSON → TOON
+# Encode  JSON -> TOON
 ctoon input.json
 ctoon input.json -o output.toon
 ctoon input.json --delimiter pipe      # comma (default), tab, pipe
-ctoon input.json --length-marker       # items[#3]: …
+ctoon input.json --length-marker       # items[#3]: ...
 ctoon input.json --stats               # show byte savings
 
-# Decode  TOON → JSON
+# Decode  TOON -> JSON
 ctoon input.toon
 ctoon input.toon -o output.json
 ctoon input.toon -i 4                  # 4-space JSON indent
@@ -254,9 +270,6 @@ char *ctoon_mut_write(const ctoon_mut_doc *doc, size_t *len);
 char *ctoon_doc_to_json(const ctoon_doc *doc, int indent,
                          ctoon_write_flag flags, const ctoon_alc *alc,
                          size_t *len, ctoon_write_err *err);
-char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc, int indent,
-                              ctoon_write_flag flags, const ctoon_alc *alc,
-                              size_t *len, ctoon_write_err *err);
 ```
 
 ### Access
@@ -269,18 +282,16 @@ void       ctoon_doc_free(ctoon_doc *doc);
 /* type checks */
 bool ctoon_is_null(ctoon_val *v);   bool ctoon_is_bool(ctoon_val *v);
 bool ctoon_is_true(ctoon_val *v);   bool ctoon_is_false(ctoon_val *v);
-bool ctoon_is_num(ctoon_val *v);    bool ctoon_is_uint(ctoon_val *v);
-bool ctoon_is_sint(ctoon_val *v);   bool ctoon_is_real(ctoon_val *v);
-bool ctoon_is_str(ctoon_val *v);    bool ctoon_is_arr(ctoon_val *v);
-bool ctoon_is_obj(ctoon_val *v);
+bool ctoon_is_uint(ctoon_val *v);   bool ctoon_is_sint(ctoon_val *v);
+bool ctoon_is_real(ctoon_val *v);   bool ctoon_is_str(ctoon_val *v);
+bool ctoon_is_arr(ctoon_val *v);    bool ctoon_is_obj(ctoon_val *v);
 
 /* getters */
-const char   *ctoon_get_str(ctoon_val *v);
-uint64_t      ctoon_get_uint(ctoon_val *v);
-int64_t       ctoon_get_sint(ctoon_val *v);
-double        ctoon_get_real(ctoon_val *v);
-bool          ctoon_get_bool(ctoon_val *v);
-size_t        ctoon_get_len(ctoon_val *v);
+const char *ctoon_get_str(ctoon_val *v);
+uint64_t    ctoon_get_uint(ctoon_val *v);
+int64_t     ctoon_get_sint(ctoon_val *v);
+double      ctoon_get_real(ctoon_val *v);
+bool        ctoon_get_bool(ctoon_val *v);
 
 /* array */
 size_t     ctoon_arr_size(ctoon_val *arr);
@@ -313,7 +324,6 @@ ctoon_mut_val *ctoon_mut_arr(ctoon_mut_doc *doc);
 ctoon_mut_val *ctoon_mut_obj(ctoon_mut_doc *doc);
 
 bool ctoon_mut_arr_append(ctoon_mut_val *arr, ctoon_mut_val *item);
-bool ctoon_mut_obj_add(ctoon_mut_val *obj, ctoon_mut_val *key, ctoon_mut_val *val);
 bool ctoon_mut_obj_put(ctoon_mut_val *obj, ctoon_mut_val *key, ctoon_mut_val *val);
 
 /* convert between immutable and mutable */
@@ -329,11 +339,9 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 |-----------|------|-------|
 | `ctoon_read` / `ctoon_read_json` | O(n) | n = input bytes |
 | `ctoon_write` / `ctoon_doc_to_json` | O(n) | zero extra copy for immutable doc |
-| `ctoon_mut_doc_to_json` | O(n) | one imut\_copy pass then serialise |
 | `ctoon_arr_get(arr, i)` | **O(1)** | direct index into flat arena |
 | `ctoon_obj_get(obj, key)` | O(k) | linear scan; k = key count |
-| `ctoon_doc_free` | O(chunks) ≈ O(1) | arena freed in one shot |
-| `ctoon_doc_mut_copy` | O(n) | deep copy |
+| `ctoon_doc_free` | O(chunks) ~= O(1) | arena freed in one shot |
 
 ---
 
@@ -341,9 +349,9 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 
 | Scenario | Safe? |
 |----------|-------|
-| Multiple threads reading different documents | ✅ |
-| Multiple threads reading the same document | ✅ |
-| Building a document from multiple threads | ❌ arena not thread-safe |
+| Multiple threads reading different documents | Yes |
+| Multiple threads reading the same document | Yes |
+| Building a document from multiple threads | No — arena not thread-safe |
 
 ---
 
@@ -353,8 +361,9 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 |-----------|-------------|
 | C core | C99, no dependencies |
 | C++ binding | C++11, header-only |
-| Python binding | Python 3.9+, nanobind ≥ 2.0, CMake 3.19+ |
+| Python binding | Python 3.9+, nanobind >= 2.0, CMake 3.19+ |
 | Go binding | Go 1.21+, CGo |
+| MATLAB binding | MATLAB R2014b+, C compiler for MEX |
 | CLI | C++17 |
 
 ---
