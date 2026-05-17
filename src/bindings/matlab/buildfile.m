@@ -156,9 +156,6 @@ if ~strcmpi(absBuildDir, here)
     end
 else
     % Case B: Build was performed in the root (here)
-    % We must ONLY delete the generated package and binaries
-    
-    % Delete +ctoon folder (this is our generated product)
     generatedPkg = fullfile(here, '+ctoon');
     if isfolder(generatedPkg)
         rmdir(generatedPkg, 's');
