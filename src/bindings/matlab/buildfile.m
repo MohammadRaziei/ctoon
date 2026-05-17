@@ -78,6 +78,8 @@ covLcovFile = fullfile(covDir, 'coverage.lcov');
 covHtmlDir  = fullfile(covDir, 'html');
 covMatFile  = fullfile(covDir, 'coverage.mat');
 
+addpath(char(buildDir)); % Ensure built package is on path for tests
+
 if ~isfolder(covDir), mkdir(covDir); end
 
 % Run Tests with Coverage Plugins
@@ -127,43 +129,18 @@ function cleanTask(~)
 %CLEAN  Deep clean build artifacts and reset settings.
 %
 %   DESCRIPTION:
-%     1. Removes the generated '+ctoon' package (from build or root).
-%     2. Deletes loose MEX binaries in the current directory.
-%     3. Removes the build directory from the MATLAB path.
-%     4. Resets configurations by deleting '.buildtool/'.
+%     1. Invokes ctoon_clean to remove packages and binaries.
+%     2. Deletes the .buildtool/ folder to reset config.ini to defaults.
 
 here = fileparts(mfilename('fullpath'));
-[buildDir, ~] = get_config_val('build_dir', here);
-absBuildDir = absolutepath(buildDir);
 
-% 0. Safety: Clear MEX from memory
-clear('mex');
+% 1. Get the current build directory from config
+[currentBuildDir, isDefault] = get_config_val('build_dir', here);
 
-% 1. Path Cleanup: Remove from MATLAB search path
-p = split(path, pathsep);
-if any(strcmpi(absBuildDir, p))
-    rmpath(absBuildDir);
-    savepath;
-    fprintf('  [Clean] Removed from MATLAB path: %s\n', absBuildDir);
-end
+% 2. Clean Artifacts
+ctoon_clean(currentBuildDir); % Clean custom dir
 
-% 2. Artifact Cleanup
-if ~strcmpi(absBuildDir, here)
-    % Case A: Build directory is a separate folder (e.g., 'build/')
-    if isfolder(absBuildDir)
-        rmdir(absBuildDir, 's');
-        fprintf('  [Clean] Deleted build directory: %s\n', absBuildDir);
-    end
-else
-    % Case B: Build was performed in the root (here)
-    generatedPkg = fullfile(here, '+ctoon');
-    if isfolder(generatedPkg)
-        rmdir(generatedPkg, 's');
-        fprintf('  [Clean] Deleted generated package: %s\n', generatedPkg);
-    end
-end
-
-% 3. Config Cleanup: Reset settings
+% 3. Reset Configuration (Task-specific responsibility)
 configFolder = fullfile(here, '.buildtool');
 if isfolder(configFolder)
     rmdir(configFolder, 's');
