@@ -3,17 +3,18 @@
  * @brief Internal MEX gateway for CToon — do NOT call directly from MATLAB.
  *
  * Use the public wrappers instead:
- *   ctoon_encode(value)          encode MATLAB value → TOON string
- *   ctoon_decode(str)            decode TOON string  → MATLAB value
- *   ctoon_read(filepath)         read   .toon file   → MATLAB value
- *   ctoon_write(value, path)     write  .toon file
+ *   ctoon.encode(value)           → encode MATLAB value to TOON string
+ *   ctoon.decode(str)             → decode TOON string to MATLAB value
+ *   ctoon.write(value, filepath)  → write value to .toon file
+ *   ctoon.read(filepath)          → read .toon file
+ *   ctoon.version                 → show/print version information
  *
- * Dispatch key (prhs[0], char):
- *   "encode"   prhs[1]=value              → plhs[0]=toon_str
- *   "decode"   prhs[1]=toon_str           → plhs[0]=value
- *   "read"     prhs[1]=filepath           → plhs[0]=value
- *   "write"    prhs[1]=value, prhs[2]=path
- *   "version"                             → plhs[0]=ver_str
+ * Dispatch keys (prhs[0] as char*):
+ *   "encode"     prhs[1]=value              → plhs[0]=toon_str
+ *   "decode"     prhs[1]=toon_str           → plhs[0]=value
+ *   "write"      prhs[1]=value, prhs[2]=path
+ *   "read"       prhs[1]=filepath           → plhs[0]=value
+ *   "version"                               → plhs[0]=version string
  *
  * MATLAB ↔ TOON type mapping:
  *   []            ↔  null
@@ -266,11 +267,21 @@ static void do_write(int nlhs, mxArray *plhs[],
 
 static void do_version(int nlhs, mxArray *plhs[],
                        int nrhs, const mxArray *prhs[]) {
+    if (nrhs > 0) {
+        mexErrMsgIdAndTxt("ctoon:version:tooManyArgs", 
+                          "ctoon.version takes no input arguments.");
+    }
+
     uint32_t v = ctoon_version();
     char buf[32];
     snprintf(buf, sizeof(buf), "%u.%u.%u",
              (v >> 16) & 0xFFu, (v >> 8) & 0xFFu, v & 0xFFu);
-    if (nlhs > 0) plhs[0] = mxCreateString(buf);
+
+    if (nlhs > 0) {
+        plhs[0] = mxCreateString(buf);
+    } else {
+        mexPrintf("CToon Native Engine: v%s\n", buf);
+    }
 }
 
 /* =========================================================================
@@ -281,8 +292,8 @@ void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[]) {
     if (nrhs < 1 || !mxIsChar(prhs[0]))
         mexErrMsgIdAndTxt("ctoon:badArg",
-            "Internal gateway — use ctoon_encode / ctoon_decode / "
-            "ctoon_read / ctoon_write instead.");
+            "Internal gateway — use public functions instead:\n"
+            "   ctoon.encode, ctoon.decode, ctoon.write, ctoon.read, ctoon.version");
 
     char *cmd = mxArrayToString(prhs[0]);
     if (!cmd)

@@ -158,11 +158,11 @@ function configTask(~, options)
 %
 %   SYNTAX:
 %     buildtool config                          % Show settings
-%     buildtool config(BuildDir='/tmp/out')     % Update BuildDir
+%     buildtool config(buildDir='/tmp/out')     % Update buildDir
 arguments
     ~
-    options.BuildDir (1,1) string = ""
-    options.CoverageOutputDir (1,1) string = ""
+    options.buildDir (1,1) string = ""
+    options.coverageOutputDir (1,1) string = ""
 end
 
 here = fileparts(mfilename('fullpath'));
@@ -170,11 +170,11 @@ iniFile = fullfile(here, '.buildtool', 'config.ini');
 ini = ini_read(iniFile);
 
 % Update values
-if options.BuildDir ~= ""
-    ini.build_dir = char(absolutepath(options.BuildDir));
+if options.buildDir ~= ""
+    ini.build_dir = char(absolutepath(options.buildDir));
 end
-if options.CoverageOutputDir ~= ""
-    ini.coverage_output_dir = char(absolutepath(options.CoverageOutputDir));
+if options.coverageOutputDir ~= ""
+    ini.coverage_output_dir = char(absolutepath(options.coverageOutputDir));
 end
 
 if ~isempty(fieldnames(options))
