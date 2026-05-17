@@ -267,7 +267,7 @@ static void do_write(int nlhs, mxArray *plhs[],
 
 static void do_version(int nlhs, mxArray *plhs[],
                        int nrhs, const mxArray *prhs[]) {
-    if (nrhs > 0) {
+    if (nrhs > 1) {
         mexErrMsgIdAndTxt("ctoon:version:tooManyArgs", 
                           "ctoon.version takes no input arguments.");
     }

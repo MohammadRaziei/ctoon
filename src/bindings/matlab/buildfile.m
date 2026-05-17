@@ -57,8 +57,9 @@ function buildTask(~, force)
 %     force (logical) - If true, re-compiles even if the binary exists.
 arguments
     ~
-    force (1,1) logical = false
+    force (1,1) = false
 end
+force = asLogical(force);
 here = fileparts(mfilename('fullpath'));
 [buildDir, ~] = get_config_val('build_dir', here);
 
@@ -112,45 +113,67 @@ function installTask(~, force, verify)
 %INSTALL  Build and permanently add CToon to MATLAB Path.
 arguments
     ~
-    force (1,1) logical = false
-    verify (1,1) logical = true
+    force (1,1) = false
+    verify (1,1) = true
 end
+force = asLogical(force);
+verify = asLogical(verify);
 here = fileparts(mfilename('fullpath'));
 [buildDir, ~] = get_config_val('build_dir', here);
 ctoon_install(char(buildDir), force, verify);
 end
 
 function cleanTask(~)
-%CLEAN  Remove build artifacts, cleanup path, and reset configurations.
+%CLEAN  Deep clean build artifacts and reset settings.
 %
 %   DESCRIPTION:
-%     1. Removes the Build directory from the disk.
-%     2. Removes the project from the MATLAB permanent Path.
-%     3. Deletes the '.buildtool' directory (resets all config.ini settings).
+%     1. Removes the generated '+ctoon' package (from build or root).
+%     2. Deletes loose MEX binaries in the current directory.
+%     3. Removes the build directory from the MATLAB path.
+%     4. Resets configurations by deleting '.buildtool/'.
 
 here = fileparts(mfilename('fullpath'));
 [buildDir, ~] = get_config_val('build_dir', here);
+absBuildDir = absolutepath(buildDir);
 
-% 1. Path Cleanup: Remove buildDir from MATLAB search path
+% 0. Safety: Clear MEX from memory
+clear('mex');
+
+% 1. Path Cleanup: Remove from MATLAB search path
 p = split(path, pathsep);
-if any(strcmpi(buildDir, p))
-    rmpath(buildDir);
+if any(strcmpi(absBuildDir, p))
+    rmpath(absBuildDir);
     savepath;
-    fprintf('  [Clean] Removed %s from MATLAB path.\n', buildDir);
+    fprintf('  [Clean] Removed from MATLAB path: %s\n', absBuildDir);
 end
 
-% 2. Artifact Cleanup: Delete the generated build/export folder
-if isfolder(buildDir) && ~strcmp(buildDir, here)
-    rmdir(buildDir, 's');
-    fprintf('  [Clean] Deleted build directory: %s\n', buildDir);
+% 2. Artifact Cleanup
+if ~strcmpi(absBuildDir, here)
+    % Case A: Build directory is a separate folder (e.g., 'build/')
+    if isfolder(absBuildDir)
+        rmdir(absBuildDir, 's');
+        fprintf('  [Clean] Deleted build directory: %s\n', absBuildDir);
+    end
+else
+    % Case B: Build was performed in the root (here)
+    % We must ONLY delete the generated package and binaries
+    
+    % Delete +ctoon folder (this is our generated product)
+    generatedPkg = fullfile(here, '+ctoon');
+    if isfolder(generatedPkg)
+        rmdir(generatedPkg, 's');
+        fprintf('  [Clean] Deleted generated package: %s\n', generatedPkg);
+    end
 end
 
-% 3. Config Cleanup: Delete the persistent configuration folder
+% 3. Config Cleanup: Reset settings
 configFolder = fullfile(here, '.buildtool');
 if isfolder(configFolder)
     rmdir(configFolder, 's');
-    fprintf('  [Clean] Deleted configuration folder (settings reset): %s\n', configFolder);
+    fprintf('  [Clean] Reset configurations (deleted .buildtool/)\n');
 end
+
+fprintf('  [Clean] Project is now in a fresh state.\n');
 end
 
 function configTask(~, options)
@@ -291,4 +314,19 @@ end
 
 % 3. Standardize system slashes
 absPath = strrep(strrep(absPath, '/', filesep), '\', filesep);
+end
+
+function out = asLogical(val)
+% ASLOGICAL  Convert string, numeric or logical to actual logical.
+%   Useful for buildtool tasks where CLI arguments arrive as strings.
+if islogical(val)
+    out = val;
+elseif isnumeric(val)
+    out = logical(val);
+elseif ischar(val) || isstring(val)
+    % Handles "true", "false", "1", "0" from CLI
+    out = strcmpi(val, "true") || val == "1";
+else
+    out = logical(val);
+end
 end
