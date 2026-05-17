@@ -60,7 +60,7 @@ fprintf('CToon added to MATLAB path permanently.\n');
 % ---- verify --------------------------------------------------------------
 if verify
     try
-        v = ctoon_decode(ctoon_encode(struct('x', 1.5)));
+        v = ctoon.decode(ctoon.encode(struct('x', 1.5)));
         assert(isstruct(v) && abs(double(v.x) - 1.5) < 1e-10);
         fprintf('CToon verification passed.\n');
     catch e

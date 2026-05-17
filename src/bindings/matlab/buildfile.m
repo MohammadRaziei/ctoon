@@ -1,60 +1,49 @@
 function plan = buildfile
 %BUILDFILE  MATLAB Build Tool plan for the CToon project.
 %
-%   This file defines a set of automated tasks for compiling, testing, 
-%   and installing the CToon MATLAB bindings. It uses the MATLAB Build 
-%   Tool (introduced in R2022b).
+%   This file defines automated tasks for compiling, testing, and 
+%   configuring the CToon MATLAB bindings. 
 %
 %   USAGE:
 %     buildtool <task>              % Run a specific task
 %     buildtool                     % Run the default task (build)
-%     buildtool -tasks              % List all available tasks
+%     buildtool config              % View/Update project configurations
 %
 %   TASKS:
-%     build      - Compiles MEX binary and prepares the +ctoon package.
-%     test       - Executes the unit test suite (requires tests/matlab).
-%     coverage   - Runs tests and generates a dark-themed coverage report.
-%     install    - Builds and permanently adds the package to MATLAB Path.
-%     clean      - Deletes build artifacts and removes paths.
-%     setting    - Configures persistent project settings (INI-based).
-%
-%   CONFIGURATION:
-%     Settings are persisted in '.buildtool/settings.ini'. You can view or
-%     change them using the 'setting' task. Global variables are no longer
-%     used to ensure thread-safety and persistence across sessions.
+%     build      - Compiles MEX and prepares the +ctoon package.
+%     test       - Executes the unit test suite.
+%     coverage   - Runs tests with a dark-themed HTML and LCOV report.
+%     install    - Builds and adds the package to the permanent MATLAB Path.
+%     clean      - Deletes build artifacts and removes directory from Path.
+%     config     - Manages persistent settings in .buildtool/config.ini.
 
 here = fileparts(mfilename('fullpath'));
 
 % ---- Configuration & Plan Initialization --------------------------------
 plan = buildplan(localfunctions);
 
-% Local path resolution
+% Resolve Directories
 repoRoot = fullfile(here, '..', '..', '..');
 testDir  = fullfile(repoRoot, 'tests', 'matlab');
-buildDir = get_setting('build_dir', here);
-covDir   = get_setting('coverage_output_dir', fullfile(buildDir, 'coverage'));
 
-% ---- Task Definitions & Dependencies ------------------------------------
+[buildDir, ~] = get_config_val('build_dir', here);
 
-% 1. Test Task: Depends on Build
+% ---- Task Dependencies --------------------------------------------------
+
+% 1. Test Task (requires tests folder)
 if isfolder(testDir) && ~isempty(dir(fullfile(testDir, 'test_*.m')))
     import matlab.buildtool.tasks.TestTask
     plan("test") = TestTask(testDir, SourceFiles=fullfile(buildDir, '+ctoon'));
     plan("test").Dependencies = "build";
     
-    % 2. Coverage Task: Runs after Test
+    % 2. Coverage Task
     plan("coverage").Dependencies = "test";
 end
 
-% 3. Install Task: Builds the latest before installing
 plan("install").Dependencies = "build";
-
-% 4. Clean & Setting: Independent tasks
 plan("clean").Dependencies   = {};
-plan("setting").Dependencies = {};
-
-% Default entry point
-plan.DefaultTasks = "build";
+plan("config").Dependencies  = {};
+plan.DefaultTasks            = "build";
 
 end
 
@@ -63,49 +52,26 @@ end
 % =========================================================================
 
 function buildTask(~, force)
-%BUILD  Compile the CToon MEX gateway and export the MATLAB package.
-%
-%   SYNTAX:
-%     buildtool build
-%     buildtool build(force=true)
-%
-%   DESCRIPTION:
-%     1. Locates the C source files (ctoon.c, ctoon_mex.c).
-%     2. Invokes the MEX compiler to generate the binary.
-%     3. Exports the +ctoon package to the designated build directory.
-%     4. Adds the build directory to the current MATLAB session path.
-%
+%BUILD  Compile CToon MEX gateway and export the package.
 %   ARGUMENTS:
 %     force (logical) - If true, re-compiles even if the binary exists.
-
 arguments
     ~
     force (1,1) logical = false
 end
-buildDir = get_setting('build_dir', fileparts(mfilename('fullpath')));
+here = fileparts(mfilename('fullpath'));
+[buildDir, ~] = get_config_val('build_dir', here);
+
 ctoon_build(char(buildDir), force);
 addpath(char(buildDir));
 end
 
-
 function coverageTask(~)
-%COVERAGE  Run unit tests and generate comprehensive coverage reports.
-%
-%   DESCRIPTION:
-%     This task executes all tests in the 'tests/matlab' directory and
-%     monitors code execution within the '+ctoon' package. 
-%     It produces two types of output:
-%       1. HTML Report: A visual, dark-themed report (scoverage.css hacked).
-%       2. LCOV File: A standard 'coverage.lcov' file for CI/CD integration.
-%
-%   OUTPUTS:
-%     - <buildDir>/coverage/html/index.html
-%     - <buildDir>/coverage/coverage.lcov
-
-here     = fileparts(mfilename('fullpath'));
-buildDir = get_setting('build_dir', here);
-covDir   = get_setting('coverage_output_dir', fullfile(buildDir, 'coverage'));
-testDir  = fullfile(here, '..', '..', '..', 'tests', 'matlab');
+%COVERAGE  Generate dark-themed HTML report and LCOV tracefile.
+here = fileparts(mfilename('fullpath'));
+[buildDir, ~] = get_config_val('build_dir', here);
+[covDir, ~]   = get_config_val('coverage_output_dir', fullfile(buildDir, 'coverage'));
+testDir       = fullfile(here, '..', '..', '..', 'tests', 'matlab');
 
 covLcovFile = fullfile(covDir, 'coverage.lcov');
 covHtmlDir  = fullfile(covDir, 'html');
@@ -113,100 +79,86 @@ covMatFile  = fullfile(covDir, 'coverage.mat');
 
 if ~isfolder(covDir), mkdir(covDir); end
 
-% Setup Test Runner with Coverage Plugins
+% Run Tests with Coverage Plugins
 suite = testsuite(testDir);
 runner = matlab.unittest.TestRunner.withNoPlugins;
 
-% Plugin for HTML report
+% HTML Report Plugin
 runner.addPlugin(matlab.unittest.plugins.CodeCoveragePlugin.forFolder( ...
     fullfile(buildDir, '+ctoon'), ...
     Producing=matlab.unittest.plugins.codecoverage.CoverageReport(covHtmlDir)));
 
-% Plugin for Raw Data (to generate LCOV)
+% Result Collection for LCOV
 runner.addPlugin(matlab.unittest.plugins.CodeCoveragePlugin.forFolder( ...
     fullfile(buildDir, '+ctoon'), ...
     Producing=matlab.unittest.plugins.codecoverage.CoverageResult(covMatFile)));
 
 results = runner.run(suite);
-if any([results.Failed]), error('coverageTask:failure', 'Tests failed.'); end
+if any([results.Failed]), error('Tests failed.'); end
 
-% Post-processing: Inject Dark Theme CSS
+% Post-Processing: Dark Theme & LCOV
 inject_dark_theme(covHtmlDir);
-
-% Post-processing: Generate LCOV from MATLAB results
 if isfile(covMatFile)
     data = load(covMatFile);
     generate_lcov(data.result, covLcovFile);
     delete(covMatFile);
 end
 
-fprintf('\n✅ Coverage Reports Generated:\n');
-fprintf('  🌐 HTML (Dark Mode): %s\n', fullfile(covHtmlDir, 'index.html'));
-fprintf('  📊 LCOV Tracefile:  %s\n', covLcovFile);
+fprintf('\n✅ Coverage Complete:\n  HTML (Dark Mode): %s\n  LCOV Tracefile:  %s\n', ...
+    fullfile(covHtmlDir, 'index.html'), covLcovFile);
 end
 
-
 function installTask(~, force, verify)
-%INSTALL  Compile and permanently install CToon to the MATLAB Path.
-%
-%   SYNTAX:
-%     buildtool install
-%     buildtool install(force=true)
-%
-%   DESCRIPTION:
-%     Runs the 'build' task and then uses 'savepath' to ensure the 
-%     package is available in future MATLAB sessions. It also runs
-%     a verification check to ensure the MEX is functional.
-
+%INSTALL  Build and permanently add CToon to MATLAB Path.
 arguments
     ~
     force (1,1) logical = false
     verify (1,1) logical = true
 end
-buildDir = get_setting('build_dir', fileparts(mfilename('fullpath')));
+here = fileparts(mfilename('fullpath'));
+[buildDir, ~] = get_config_val('build_dir', here);
 ctoon_install(char(buildDir), force, verify);
 end
 
-
 function cleanTask(~)
-%CLEAN  Remove build artifacts and purge project from MATLAB path.
+%CLEAN  Remove build artifacts, cleanup path, and reset configurations.
 %
 %   DESCRIPTION:
 %     1. Removes the Build directory from the disk.
-%     2. Removes the Coverage output directory.
-%     3. Detects if the Build directory is in the MATLAB path and removes 
-%        it permanently using 'rmpath' and 'savepath'.
+%     2. Removes the project from the MATLAB permanent Path.
+%     3. Deletes the '.buildtool' directory (resets all config.ini settings).
 
-here     = fileparts(mfilename('fullpath'));
-buildDir = get_setting('build_dir', here);
+here = fileparts(mfilename('fullpath'));
+[buildDir, ~] = get_config_val('build_dir', here);
 
-% Path Cleanup
+% 1. Path Cleanup: Remove buildDir from MATLAB search path
 p = split(path, pathsep);
 if any(strcmpi(buildDir, p))
     rmpath(buildDir);
     savepath;
-    fprintf('  [Clean] Removed build directory from MATLAB path.\n');
+    fprintf('  [Clean] Removed %s from MATLAB path.\n', buildDir);
 end
 
-% Disk Cleanup
+% 2. Artifact Cleanup: Delete the generated build/export folder
 if isfolder(buildDir) && ~strcmp(buildDir, here)
     rmdir(buildDir, 's');
-    fprintf('  [Clean] Deleted directory: %s\n', buildDir);
+    fprintf('  [Clean] Deleted build directory: %s\n', buildDir);
+end
+
+% 3. Config Cleanup: Delete the persistent configuration folder
+configFolder = fullfile(here, '.buildtool');
+if isfolder(configFolder)
+    rmdir(configFolder, 's');
+    fprintf('  [Clean] Deleted configuration folder (settings reset): %s\n', configFolder);
 end
 end
 
-
-function settingTask(~, options)
-%SETTING  Display or update persistent project configurations.
+function configTask(~, options)
+%CONFIG  View or update persistent project configurations.
 %
 %   SYNTAX:
-%     buildtool setting                          % View current config
-%     buildtool setting(BuildDir='/tmp/out')     % Update Build path
-%
-%   DESCRIPTION:
-%     Settings are saved in an INI file. Changes are persistent across 
-%     MATLAB restarts. Paths are automatically converted to absolute.
-
+%     buildtool config                          % Show settings
+%     buildtool config(BuildDir='/tmp/out')     % Update BuildDir
 arguments
     ~
     options.BuildDir (1,1) string = ""
@@ -214,10 +166,10 @@ arguments
 end
 
 here = fileparts(mfilename('fullpath'));
-iniFile = fullfile(here, '.buildtool', 'settings.ini');
+iniFile = fullfile(here, '.buildtool', 'config.ini');
 ini = ini_read(iniFile);
 
-% Update logic
+% Update values
 if options.BuildDir ~= ""
     ini.build_dir = char(absolutepath(options.BuildDir));
 end
@@ -227,33 +179,41 @@ end
 
 if ~isempty(fieldnames(options))
     ini_write(iniFile, ini);
-    fprintf('  [Settings] Updated configurations saved.\n');
+    fprintf('  [Config] Settings saved to %s\n', iniFile);
 end
 
-% Summary Display
-fprintf('\n--- CToon Project Settings ---\n');
-fprintf('  Build Directory:    %s\n', get_setting('build_dir', here));
-fprintf('  Coverage Directory: %s\n', get_setting('coverage_output_dir', 'default'));
-fprintf('  Settings File:      %s\n\n', iniFile);
+% Display with Default detection
+[bPath, bDef] = get_config_val('build_dir', here);
+[cPath, cDef] = get_config_val('coverage_output_dir', fullfile(bPath, 'coverage'));
+
+fprintf('\n--- CToon Project Configuration ---\n');
+if bDef, bSuffix = " (default)"; else, bSuffix = ""; end
+if cDef, cSuffix = " (default)"; else, cSuffix = ""; end
+
+fprintf('  build_dir           = %s%s\n', bPath, bSuffix);
+fprintf('  coverage_output_dir = %s%s\n', cPath, cSuffix);
+fprintf('  config_file         = %s\n\n', iniFile);
 end
 
 % =========================================================================
-% HELPER FUNCTIONS
+% HELPERS
 % =========================================================================
 
-function val = get_setting(key, default)
-% GET_SETTING  Retrieve a value from the persistent INI file.
+function [val, isDefault] = get_config_val(key, default)
+% Returns value and a boolean indicating if it's a default value.
 here = fileparts(mfilename('fullpath'));
-ini = ini_read(fullfile(here, '.buildtool', 'settings.ini'));
-if isfield(ini, key), val = ini.(key); else, val = default; end
+ini = ini_read(fullfile(here, '.buildtool', 'config.ini'));
+if isfield(ini, key)
+    val = ini.(key);
+    isDefault = false;
+else
+    val = default;
+    isDefault = true;
+end
 end
 
 function generate_lcov(covResult, outputFile)
-% GENERATE_LCOV  Convert MATLAB CoverageResult to standard LCOV format.
-%
-%   LCOV format is required for tools like Codecov or SonarQube.
-%   This function manually maps the MATLAB LineHitCount properties to 
-%   standard LCOV tracefile fields (SF, DA, LF, LH).
+% Manual LCOV generation for CI/CD compatibility.
 fid = fopen(outputFile, 'w');
 if fid == -1, return; end
 for i = 1:numel(covResult)
@@ -271,9 +231,7 @@ fclose(fid);
 end
 
 function inject_dark_theme(htmlDir)
-% INJECT_DARK_THEME  CSS Hack to turn the default HTML report dark.
-%
-%   Appends dark-mode CSS variables and overrides to 'scoverage.css'.
+% CSS Injection for Dark Mode Coverage Reports.
 cssFile = fullfile(htmlDir, 'scoverage.css');
 if isfile(cssFile)
     darkStyles = [ ...
@@ -294,7 +252,7 @@ end
 end
 
 function ini = ini_read(f)
-% INI_READ  Basic parser for [section] key=value files.
+% Basic INI parser.
 ini = struct(); if ~isfile(f), return; end
 lines = splitlines(fileread(f));
 for i = 1:numel(lines)
@@ -308,7 +266,7 @@ end
 end
 
 function ini_write(f, s)
-% INI_WRITE  Basic writer for project configurations.
+% Basic INI writer.
 d = fileparts(f); if ~isfolder(d), mkdir(d); end
 fid = fopen(f, 'w'); fprintf(fid, '[buildtool]\n');
 fns = fieldnames(s);
@@ -316,8 +274,21 @@ for i = 1:numel(fns), fprintf(fid, '%s = %s\n', fns{i}, s.(fns{i})); end
 fclose(fid);
 end
 
-function absPath = absolutepath(p)
-% ABSOLUTEPATH  Ensures cross-platform absolute path resolution.
-[s, info] = fileattrib(char(p));
-if s, absPath = info.Name; else, absPath = char(p); end
+function absPath = absolutepath(inputPath)
+% 1. Try to resolve directly via native file attributes
+[status, info] = fileattrib(char(inputPath));
+if status, absPath = info.Name; return; end
+
+% 2. Fallback if path doesn't exist on disk yet
+[parent, name, ext] = fileparts(char(inputPath));
+[pStatus, pInfo] = fileattrib(parent);
+
+if pStatus
+    absPath = fullfile(pInfo.Name, [name, ext]);
+else
+    absPath = fullfile(pwd, inputPath); % Ultimate fallback
+end
+
+% 3. Standardize system slashes
+absPath = strrep(strrep(absPath, '/', filesep), '\', filesep);
 end
