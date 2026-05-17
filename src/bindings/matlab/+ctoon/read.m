@@ -1,4 +1,4 @@
-function value = ctoon.read(filepath)
+function value = read(filepath)
 %READ  Read and decode a TOON file into a MATLAB value.
 %
 %   VALUE = READ(FILEPATH)

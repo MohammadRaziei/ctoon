@@ -1,4 +1,4 @@
-function str = ctoon.encode(value)
+function str = encode(value)
 %ENCODE  Encode a MATLAB value to a TOON-format string.
 %
 %   STR = ENCODE(VALUE)

@@ -1,4 +1,4 @@
-function value = ctoon.decode(str)
+function value = decode(str)
 %DECODE  Decode a TOON-format string into a MATLAB value.
 %
 %   VALUE = DECODE(STR)
