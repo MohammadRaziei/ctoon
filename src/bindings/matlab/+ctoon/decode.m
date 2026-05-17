@@ -1,7 +1,7 @@
-function value = ctoon_decode(str)
-%CTOON_DECODE  Decode a TOON-format string into a MATLAB value.
+function value = ctoon.decode(str)
+%DECODE  Decode a TOON-format string into a MATLAB value.
 %
-%   VALUE = CTOON_DECODE(STR)
+%   VALUE = DECODE(STR)
 %
 %   Parses the TOON character array STR and returns the corresponding
 %   MATLAB representation.
@@ -17,21 +17,21 @@ function value = ctoon_decode(str)
 %     object        -> struct      (scalar)
 %
 %   Example:
-%     v = ctoon_decode('{name:Alice,age:30,active:true}');
+%     v = ctoon.decode('{name:Alice,age:30,active:true}');
 %     v.name    % -> 'Alice'
 %     v.age     % -> uint64(30)
 %     v.active  % -> true
 %
-%     v = ctoon_decode('[1,2,3]');
+%     v = ctoon.decode('[1,2,3]');
 %     % -> {uint64(1); uint64(2); uint64(3)}
 %
 %   Errors:
 %     Throws ctoon:decodeError when STR is not valid TOON.
 %
-%   See also: CTOON_ENCODE, CTOON_READ, CTOON_DECODE_JSON.
+%   See also: ctoon.encode, ctoon.read, DECODE_JSON.
 
 if ~ischar(str) && ~isstring(str)
-    error('ctoon:badArg', 'ctoon_decode: input must be a character array or string.');
+    error('ctoon:badArg', 'ctoon.decode: input must be a character array or string.');
 end
 value = ctoon_mex('decode', char(str));
 end

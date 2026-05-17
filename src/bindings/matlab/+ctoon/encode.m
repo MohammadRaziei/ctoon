@@ -1,7 +1,7 @@
-function str = ctoon_encode(value)
-%CTOON_ENCODE  Encode a MATLAB value to a TOON-format string.
+function str = ctoon.encode(value)
+%ENCODE  Encode a MATLAB value to a TOON-format string.
 %
-%   STR = CTOON_ENCODE(VALUE)
+%   STR = ENCODE(VALUE)
 %
 %   Serialises VALUE into the TOON binary-text format and returns the
 %   result as a MATLAB character array.
@@ -17,13 +17,13 @@ function str = ctoon_encode(value)
 %     struct        -> object  (field names become keys)
 %
 %   Example:
-%     s = ctoon_encode(struct('name','Alice','age',30,'active',true));
+%     s = ctoon.encode(struct('name','Alice','age',30,'active',true));
 %     % s ≈ '{name:Alice,age:30,active:true}'
 %
-%     s = ctoon_encode({1.0, 'hello', false});
+%     s = ctoon.encode({1.0, 'hello', false});
 %     % s ≈ '[1,hello,false]'
 %
-%   See also: CTOON_DECODE, CTOON_WRITE, CTOON_ENCODE_JSON.
+%   See also: ctoon.decode, ctoon.write, ENCODE_JSON.
 
 str = ctoon_mex('encode', value);
 end
