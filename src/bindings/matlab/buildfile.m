@@ -180,11 +180,11 @@ ini     = ini_read(iniFile);
 % Apply updates
 changed = false;
 if options.BuildDir ~= ""
-    ini.build_dir = char(options.BuildDir);
+    ini.build_dir = char(absolutepath(options.BuildDir));
     changed = true;
 end
 if options.CoverageOutputDir ~= ""
-    ini.coverage_output_dir = char(options.CoverageOutputDir);
+    ini.coverage_output_dir = char(absolutepath(options.CoverageOutputDir));
     changed = true;
 end
 
@@ -266,4 +266,23 @@ if isfield(ini, iniKey) && ~isempty(ini.(iniKey))
 end
 % 3. default
 val = default;
+end
+
+function absPath = absolutepath(inputPath)
+% 1. Try to resolve directly via native file attributes
+[status, info] = fileattrib(char(inputPath));
+if status, absPath = info.Name; return; end
+
+% 2. Fallback if path doesn't exist on disk yet
+[parent, name, ext] = fileparts(char(inputPath));
+[pStatus, pInfo] = fileattrib(parent);
+
+if pStatus
+    absPath = fullfile(pInfo.Name, [name, ext]);
+else
+    absPath = fullfile(pwd, inputPath); % Ultimate fallback
+end
+
+% 3. Standardize system slashes
+absPath = strrep(strrep(absPath, '/', filesep), '\', filesep);
 end
