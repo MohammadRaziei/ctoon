@@ -17,7 +17,6 @@ function ctoon_clean(buildDir)
     if nargin < 1 || isempty(buildDir)
         buildDir = here;
     end
-    absBuildDir = resolve_path(buildDir);
 
     fprintf('  [Clean] Cleaning CToon artifacts...\n');
 
@@ -26,18 +25,18 @@ function ctoon_clean(buildDir)
 
     % 3. Path Management: Remove from MATLAB Path
     p = split(path, pathsep);
-    if any(strcmpi(absBuildDir, p))
-        rmpath(absBuildDir);
+    if any(strcmpi(buildDir, p))
+        rmpath(buildDir);
         savepath;
-        fprintf('  [Clean] Removed from Path: %s\n', absBuildDir);
+        fprintf('  [Clean] Removed from Path: %s\n', buildDir);
     end
 
     % 4. Artifact Removal
-    if ~strcmpi(absBuildDir, here)
+    if ~strcmpi(buildDir, here)
         % Case A: Separate build folder -> Delete the whole folder
-        if isfolder(absBuildDir)
-            rmdir(absBuildDir, 's');
-            fprintf('  [Clean] Deleted directory: %s\n', absBuildDir);
+        if isfolder(buildDir)
+            rmdir(buildDir, 's');
+            fprintf('  [Clean] Deleted directory: %s\n', buildDir);
         end
     else
         % Case B: Built in root -> Delete only generated files
@@ -48,9 +47,4 @@ function ctoon_clean(buildDir)
         end
     end
     fprintf('  [Clean] Artifacts cleared.\n');
-end
-
-function absPath = resolve_path(p)
-    [s, info] = fileattrib(char(p));
-    if s, absPath = info.Name; else, absPath = char(p); end
 end
