@@ -118,7 +118,7 @@ function coverageTask(~)
         warning('coverageTask:noData', 'No coverage data was captured.');
     end
 
-    fprintf('\n✅ Coverage Complete:\n  HTML (Dark Mode): %s\n  LCOV Tracefile:  %s\n', ...
+    fprintf('\n  [Coverage] Coverage Complete:\n  HTML (Dark Mode): %s\n  LCOV Tracefile:  %s\n', ...
         fullfile(covHtmlDir, 'index.html'), covLcovFile);
 end
 
@@ -223,7 +223,7 @@ end
 
 function generate_lcov_report(covResults, outputFile)
 % GENERATE_LCOV_REPORT  Robust LCOV generator for MATLAB R2024a+
-% This version uses dynamic field detection to avoid "Unrecognized method/property" errors.
+% This version handles the 'Line' table property found in R2024a.
     fid = fopen(outputFile, 'w');
     if fid == -1, return; end
     
@@ -231,39 +231,44 @@ function generate_lcov_report(covResults, outputFile)
         res = covResults(i);
         props = properties(res);
         
-        % --- 1. Find Filename (Case-insensitive search) ---
-        idx = find(strcmpi(props, 'Filename') | strcmpi(props, 'File') | strcmpi(props, 'Source'), 1);
-        if ~isempty(idx)
-            filePath = res.(props{idx});
+        % --- 1. Identify the File Path ---
+        idxFile = find(strcmpi(props, 'Filename') | strcmpi(props, 'File') | strcmpi(props, 'Source'), 1);
+        if ~isempty(idxFile)
+            filePath = res.(props{idxFile});
         else
-            filePath = 'unknown_file';
+            continue; % Skip if no file path found
         end
         
         fprintf(fid, 'TN:\nSF:%s\n', filePath);
         
-        % --- 2. Find Line Data (Search for LineData, Lines, or LineCoverage) ---
-        % In R2024a, the standard is usually 'LineData'
-        idxData = find(strcmpi(props, 'LineData') | strcmpi(props, 'LineCoverage') | strcmpi(props, 'Lines'), 1);
+        % --- 2. Identify and Process Line Data ---
+        % In R2024a, the property is usually named 'Line' and it's a table.
+        idxLine = find(strcmp(props, 'Line') | strcmpi(props, 'LineData') | strcmpi(props, 'LineCoverage'), 1);
         
-        if ~isempty(idxData)
-            lc = res.(props{idxData});
+        if ~isempty(idxLine)
+            lc = res.(props{idxLine});
             
-            % Each lc object (LineData) has: Line, Executable, HitCount
-            % We use dynamic access here too just in case
-            lns = lc.Line;
-            exe = lc.Executable;
-            hits = lc.HitCount;
-            
-            for j = 1:numel(lns)
-                if exe(j)
-                    % DA:<line_number>,<hit_count>
-                    fprintf(fid, 'DA:%d,%d\n', lns(j), hits(j));
+            % Check if 'lc' is a table or struct with required columns
+            % Requirements: Line, Executable, HitCount
+            try
+                % Dynamic access to columns (works if lc is a table or struct)
+                lns  = lc.Line;
+                exec = lc.Executable;
+                hits = lc.HitCount;
+                
+                % DA: LineNumber, HitCount
+                for j = 1:numel(lns)
+                    if exec(j)
+                        fprintf(fid, 'DA:%d,%d\n', lns(j), hits(j));
+                    end
                 end
+                
+                % LF: Lines Found (Executable), LH: Lines Hit
+                fprintf(fid, 'LF:%d\n', sum(exec));
+                fprintf(fid, 'LH:%d\n', sum(hits(exec) > 0));
+            catch
+                % If structure is unexpected, skip DA section for this file
             end
-            
-            % LF: Lines Found (Executable), LH: Lines Hit
-            fprintf(fid, 'LF:%d\n', sum(exe));
-            fprintf(fid, 'LH:%d\n', sum(hits(exe) > 0));
         end
         
         fprintf(fid, 'end_of_record\n');
