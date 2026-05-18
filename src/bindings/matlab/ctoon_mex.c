@@ -123,7 +123,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
 
     if (mxIsChar(mx)) {
         char *s = mxArrayToString(mx);
-        ctoon_mut_val *v = ctoon_mut_str(doc, s);
+        ctoon_mut_val *v = ctoon_mut_strcpy(doc, s);
         mxFree(s);
         return v;
     }
@@ -161,7 +161,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         for (int fi = 0; fi < nf; fi++) {
             const char *fname = mxGetFieldNameByNumber(mx, fi);
             ctoon_mut_obj_put(obj,
-                ctoon_mut_str(doc, fname),
+                ctoon_mut_strcpy(doc, fname),
                 mx_to_mut(doc, mxGetFieldByNumber(mx, 0, fi)));
         }
         return obj;
