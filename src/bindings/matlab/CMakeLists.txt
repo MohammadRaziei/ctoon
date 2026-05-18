@@ -2,76 +2,84 @@
 # CToon MATLAB MEX Binding
 # =============================================================================
 #
-# Responsibilities:
-#   - Compile ctoon_mex via MATLAB Build Tool (buildtool mex)
-#   - Install MEX binary + .m wrappers
-#   - Provide ctoon_matlab_export target (cmake/CToonMatlabExport.cmake)
+# Targets:
+#   ctoon_build_mex  (ALL) — compile MEX via FindMatlab, output to
+#                            ${CTOON_MATLAB_BINARY_DIR}/build/+ctoon/private/
+#                            then copy .m wrappers into +ctoon/
 #
-# Test and coverage targets live in tests/matlab/CMakeLists.txt.
+#   ctoon_matlab_export    — copy self-contained export tree to
+#                            ${CTOON_MATLAB_BINARY_DIR}/export/
+#
 # =============================================================================
 
 cmake_minimum_required(VERSION 3.19)
 
-find_package(Matlab COMPONENTS MX_LIBRARY MEX_COMPILER MAIN_PROGRAM QUIET)
+find_package(Matlab COMPONENTS MX_LIBRARY MEX_COMPILER QUIET)
 
 if(NOT Matlab_FOUND)
     message(WARNING
-        "MATLAB not found - skipping MEX binding.\n"
+        "MATLAB not found — skipping MEX binding.\n"
         "Set Matlab_ROOT_DIR or the MATLAB_DIR environment variable.")
     return()
 endif()
 
 message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
-set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
+
+set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/Matlab")
 
 # ---------------------------------------------------------------------------
-# MEX target - compiled by MATLAB Build Tool via buildtool
+# MEX target
 # ---------------------------------------------------------------------------
-# We declare a custom target (not matlab_add_mex) because the compiler is
-# driven by buildfile.m / ctoon_build.m, not by CMake's mex invocation.
-# This lets CI use the exact same build path as interactive MATLAB users.
+matlab_add_mex(
+    NAME        ctoon_build_mex
+    SRC         "${CMAKE_CURRENT_SOURCE_DIR}/ctoon_mex.c"
+                "${PROJECT_SOURCE_DIR}/src/ctoon.c"
+    OUTPUT_NAME ctoon_mex
+    NO_IMPLICIT_LINK_TO_MATLAB_LIBRARIES
+)
 
+target_include_directories(ctoon_build_mex PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-add_custom_target(ctoon_build_mex ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "-- MATLAB buildtool mex..."
-    COMMAND ${Matlab_EXECUTABLE}
-             -sd "${CMAKE_CURRENT_SOURCE_DIR}"
-             -batch
-             "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR TEST_DIR; \
-              BUILD_DIR='${CMAKE_BINARY_DIR}/matlab/build'; \
-              MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
-              MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
-              TEST_DIR='${PROJECT_SOURCE_DIR}/tests/matlab'; \
-              buildtool mex"
-    BYPRODUCTS
-        ${CMAKE_CURRENT_BINARY_DIR}/ctoon_mex.${Matlab_MEX_EXTENSION}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Compiling ctoon_build_mex via MATLAB Build Tool"
-    USES_TERMINAL
-    VERBATIM
-)   
+set_target_properties(ctoon_build_mex PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CTOON_MATLAB_BINARY_DIR}/build/+ctoon/private"
+    RUNTIME_OUTPUT_DIRECTORY "${CTOON_MATLAB_BINARY_DIR}/build/+ctoon/private"
+)
+
+add_custom_command(TARGET ctoon_build_mex PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CTOON_MATLAB_BINARY_DIR}/build/+ctoon/private"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon"
+            "${CTOON_MATLAB_BINARY_DIR}/build/+ctoon"
+    COMMENT "Creating +ctoon/private/ and copying .m wrappers..."
+)
 
 # ---------------------------------------------------------------------------
-# Install
+# Export target
 # ---------------------------------------------------------------------------
-# file(GLOB CTOON_MATLAB_WRAPPERS "${CMAKE_CURRENT_SOURCE_DIR}/*.m")
- 
-# install(FILES
-#         ${CMAKE_CURRENT_BINARY_DIR}/ctoon_mex.${Matlab_MEX_EXTENSION}
-#     DESTINATION matlab
-# )
-# install(FILES ${CTOON_MATLAB_WRAPPERS} DESTINATION matlab)
-# install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/ctoon_mex.c DESTINATION matlab/src)
- 
-# ---------------------------------------------------------------------------
-# Export target  (cmake -P src/bindings/matlab/CToonMatlabExport.cmake)
-# ---------------------------------------------------------------------------
+# Layout:
+#   Matlab/export/
+#     ctoon/          ← .m wrappers folder
+#     ctoon_mex.c
+#     ctoon_build.m
+#     ctoon_install.m
+#     ctoon_clean.m
+#     ctoon.c
+#     ctoon.h
 add_custom_target(ctoon_matlab_export
-    COMMAND ${CMAKE_COMMAND}
-            -DEXPORT_DIR=${CMAKE_BINARY_DIR}/matlab/export
-            -DMEX_SOURCES_PATH=${PROJECT_SOURCE_DIR}/src
-            -DMEX_INCLUDE_DIR=${PROJECT_SOURCE_DIR}/include
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/CToonMatlabExport.cmake
-    COMMENT "Exporting self-contained MATLAB binding → ${CMAKE_BINARY_DIR}/matlab"
-    USES_TERMINAL
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            "${CTOON_MATLAB_BINARY_DIR}/export"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon"
+            "${CTOON_MATLAB_BINARY_DIR}/export/ctoon"
+    COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon_build.m"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon_install.m"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon_clean.m"
+            "${CMAKE_CURRENT_SOURCE_DIR}/ctoon_mex.c"
+            "${PROJECT_SOURCE_DIR}/src/ctoon.c"
+            "${PROJECT_SOURCE_DIR}/include/ctoon.h"
+            "${CTOON_MATLAB_BINARY_DIR}/export"
+    COMMENT "Exporting self-contained MATLAB binding → ${CTOON_MATLAB_BINARY_DIR}/export"
+    VERBATIM
 )
