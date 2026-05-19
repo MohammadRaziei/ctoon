@@ -17,23 +17,17 @@ function plan = buildfile
 %     clean      - Deletes build artifacts and removes directory from Path.
 %     config     - Manages persistent settings in .buildtool/config.ini.
 
-here = fileparts(mfilename('fullpath'));
-
 % ---- Configuration & Plan Initialization --------------------------------
 plan = buildplan(localfunctions);
 
 % Resolve Directories
-repoRoot = fullfile(here, '..', '..', '..');
-testDir  = fullfile(repoRoot, 'tests', 'matlab');
-
-[buildDir, ~] = get_config_val('build_dir', here);
+here = fileparts(mfilename('fullpath'));
+testDir = fullfile(here, '..', '..', '..', 'tests', 'matlab');
 
 % ---- Task Dependencies --------------------------------------------------
 
-% 1. Test Task (requires tests folder)
-if isfolder(testDir) && ~isempty(dir(fullfile(testDir, 'test_*.m')))
-    import matlab.buildtool.tasks.TestTask
-    plan("test") = TestTask(testDir, SourceFiles=fullfile(buildDir, '+ctoon'));
+if ~isempty(dir(fullfile(testDir, 'matlab', 'test_*.m')))
+    % 1. Test Task 
     plan("test").Dependencies = "build";
     
     % 2. Coverage Task
@@ -65,6 +59,25 @@ function buildTask(~, force)
 
     ctoon_build(char(buildDir), force);
     addpath(char(buildDir));
+end
+
+function testTask(~)
+%TEST  Executes the unit test suite.
+    here = fileparts(mfilename('fullpath'));
+    [buildDir, ~] = get_config_val('build_dir', here);
+    testDir = fullfile(here, '..', '..', '..', 'tests', 'matlab');
+    
+    % Add the built package to path so tests can find ctoon.*
+    addpath(char(buildDir));
+    
+    suite  = testsuite(testDir);
+    runner = matlab.unittest.TestRunner.withTextOutput;
+    fprintf('  [Test] Running unit tests...\n');
+    results = runner.run(suite);
+    
+    if any([results.Failed])
+        error('testTask:testsFailed', 'Unit tests failed.');
+    end
 end
 
 function coverageTask(~)
