@@ -542,8 +542,9 @@ typedef union v64_uni { v64 v; u64 u; } v64_uni;
 #define byte_move_src(x) ((char *)tmp)[x] = ((const char *)src)[x];
 #define byte_move_dst(x) ((char *)dst)[x] = ((const char *)tmp)[x];
 
-/** Same as `memcpy(dst, src, 2)`, no overlap. */
-static_inline void byte_copy_2(void *dst, const void *src) {
+/** Same as `memcpy(dst, src, 2)`, no overlap. Callers must ensure both buffers are at least 2 bytes. */
+static_inline void byte_copy_2(void *dst, const void *src, usize dst_len, usize src_len) {
+    if (ctoon_unlikely(!dst || !src || dst_len < 2 || src_len < 2)) return;
 #if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
     memcpy(dst, src, 2);
 #else
@@ -551,8 +552,9 @@ static_inline void byte_copy_2(void *dst, const void *src) {
 #endif
 }
 
-/** Same as `memcpy(dst, src, 4)`, no overlap. */
-static_inline void byte_copy_4(void *dst, const void *src) {
+/** Same as `memcpy(dst, src, 4)`, no overlap. Callers must ensure both buffers are at least 4 bytes. */
+static_inline void byte_copy_4(void *dst, const void *src, usize dst_len, usize src_len) {
+    if (ctoon_unlikely(!dst || !src || dst_len < 4 || src_len < 4)) return;
 #if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
     memcpy(dst, src, 4);
 #else
@@ -560,8 +562,9 @@ static_inline void byte_copy_4(void *dst, const void *src) {
 #endif
 }
 
-/** Same as `memcpy(dst, src, 8)`, no overlap. */
-static_inline void byte_copy_8(void *dst, const void *src) {
+/** Same as `memcpy(dst, src, 8)`, no overlap. Callers must ensure both buffers are at least 8 bytes. */
+static_inline void byte_copy_8(void *dst, const void *src, usize dst_len, usize src_len) {
+    if (ctoon_unlikely(!dst || !src || dst_len < 8 || src_len < 8)) return;
 #if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
     memcpy(dst, src, 8);
 #else
@@ -569,8 +572,9 @@ static_inline void byte_copy_8(void *dst, const void *src) {
 #endif
 }
 
-/** Same as `memcpy(dst, src, 16)`, no overlap. */
-static_inline void byte_copy_16(void *dst, const void *src) {
+/** Same as `memcpy(dst, src, 16)`, no overlap. Callers must ensure both buffers are at least 16 bytes. */
+static_inline void byte_copy_16(void *dst, const void *src, usize dst_len, usize src_len) {
+    if (ctoon_unlikely(!dst || !src || dst_len < 16 || src_len < 16)) return;
 #if !CTOON_DISABLE_UNALIGNED_MEMORY_ACCESS
     memcpy(dst, src, 16);
 #else
