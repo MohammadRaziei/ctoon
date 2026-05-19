@@ -2,71 +2,50 @@
 # CToon MATLAB Tests + Coverage
 # =============================================================================
 #
-# Delegates to MATLAB Build Tool:
-#   buildtool test      → run tests + HTML coverage
-#   buildtool coverage  → run tests + HTML + lcov + Cobertura XML
-#
 # Targets:
-#   ctoon_test_matlab       hooks into ctoon_test
-#   ctoon_coverage_matlab   hooks into ctoon_coverage
+#   ctoon_test_matlab       run test suite, hooks into ctoon_test
+#   ctoon_coverage_matlab   run tests + Cobertura XML, hooks into ctoon_coverage
 # =============================================================================
+find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
-if(NOT Matlab_FOUND OR NOT TARGET ctoon_mex)
-    message(STATUS "MATLAB / ctoon_mex not available — skipping MATLAB tests.")
+if(NOT Matlab_FOUND OR NOT TARGET ctoon_build_mex)
+    message(STATUS "MATLAB / ctoon_build_mex not available — skipping MATLAB tests.")
     return()
 endif()
 
-
-set(_binding_src ${PROJECT_SOURCE_DIR}/src/bindings/matlab)
-set(_mex_bin     ${CMAKE_BINARY_DIR}/src/bindings/matlab)
-
-if(NOT EXISTS "${_binding_src}/buildfile.m")
-    message(STATUS "buildfile.m not found — MATLAB test targets skipped.")
-    return()
-endif()
-
-# ---------------------------------------------------------------------------
-# Common -batch prefix using -sd and pre-set workspace variables
-# ---------------------------------------------------------------------------
-set(_BT_VARS
-    "global BUILD_DIR MEX_SOURCES_PATH MEX_INCLUDE_DIR BUILD_COVERAGE_DIR TEST_DIR; \
-     BUILD_DIR='${_mex_bin}'; \
-     MEX_SOURCES_PATH='${PROJECT_SOURCE_DIR}/src'; \
-     MEX_INCLUDE_DIR='${PROJECT_SOURCE_DIR}/include'; \
-     BUILD_COVERAGE_DIR='${CTOON_COVERAGE_MATLAB_BINARY_DIR}'; \
-     TEST_DIR='${PROJECT_SOURCE_DIR}/tests/matlab'")
+set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/Matlab")
+set(CTOON_MATLAB_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/bindings/matlab")
+set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
 
 # ---------------------------------------------------------------------------
 # Test target
 # ---------------------------------------------------------------------------
+
 add_custom_target(ctoon_test_matlab
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Running MATLAB build tool: test..."
-    COMMAND ${Matlab_MAIN_PROGRAM}
-            -sd "${_binding_src}"
-            -batch "${_BT_VARS}; buildtool test"
-    WORKING_DIRECTORY ${_binding_src}
+    COMMAND ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}"
+            -batch "buildtool config(buildDir='${CTOON_MATLAB_BINARY_DIR}/build', coverageOutputDir='${CTOON_COVERAGE_MATLAB_BINARY_DIR}') test"
     USES_TERMINAL
+    VERBATIM
+    COMMENT "Running MATLAB tests..."
 )
-add_dependencies(ctoon_test_matlab ctoon_mex)
-add_dependencies(ctoon_test ctoon_test_matlab)
+add_dependencies(ctoon_test_matlab ctoon_build_mex)
+add_dependencies(ctoon_test        ctoon_test_matlab)
 
 add_test(NAME test_ctoon_matlab
-    COMMAND ${Matlab_MAIN_PROGRAM}
-            -sd "${_binding_src}"
-            -batch "${_BT_VARS}; buildtool test"
-    WORKING_DIRECTORY ${_binding_src}
+    COMMAND ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}"
+            -batch "buildtool config(buildDir='${CTOON_MATLAB_BINARY_DIR}/build', coverageOutputDir='${CTOON_COVERAGE_MATLAB_BINARY_DIR}') test"
 )
 
 # ---------------------------------------------------------------------------
 # Coverage target
 # ---------------------------------------------------------------------------
+
 add_custom_target(ctoon_coverage_matlab
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Running MATLAB build tool: coverage..."
-    COMMAND ${Matlab_MAIN_PROGRAM}
-            -sd "${_binding_src}"
-            -batch "${_BT_VARS}; buildtool coverage"
-    WORKING_DIRECTORY ${_binding_src}
+    COMMAND ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}" 
+            -batch "buildtool coverage"
     USES_TERMINAL
+    VERBATIM
+    COMMENT "Running MATLAB tests with coverage → ${CTOON_COVERAGE_MATLAB_BINARY_DIR}"
 )
-add_dependencies(ctoon_coverage_matlab ctoon_mex)
-add_dependencies(ctoon_coverage ctoon_coverage_matlab)
+add_dependencies(ctoon_coverage_matlab ctoon_build_mex)
+add_dependencies(ctoon_coverage        ctoon_coverage_matlab)
