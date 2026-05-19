@@ -134,18 +134,34 @@ val, _ = ctoon.DecodeFromFile("out.toon", ctoon.DefaultDecodeOptions())
 cd src/bindings/matlab
 ctoon_install
 
-% Encode a MATLAB value -> TOON string
-s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+% Versin / info
+ctoon.version
+v = ctoon.version
+[v, info] = ctoon.version
 
-% Decode TOON string -> MATLAB value
-v = ctoon_decode(s);
+% Encode / decode
+s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+v = ctoon.decode(s);
 v.name    % -> 'Alice'
 v.age     % -> uint64(30)
 v.active  % -> true
 
-% File I/O
-ctoon_write(v, 'config.toon');
-v = ctoon_read('config.toon');
+% Python-style aliases
+s = ctoon.dumps(v);
+v = ctoon.loads(s);
+
+% File I/O  (filename)
+ctoon.write(v, 'config.toon');
+v = ctoon.read('config.toon');
+
+% File I/O  (open fid)
+fid = fopen('config.toon', 'w');
+ctoon.dump(v, fid);
+fclose(fid);
+
+fid = fopen('config.toon', 'r');
+v = ctoon.load(fid);
+fclose(fid);
 ```
 
 MATLAB type mapping:
@@ -203,7 +219,7 @@ Requires Go 1.21+. Uses CGo to call the C core.
 ```bash
 # Via CMake
 cmake -B build -DCTOON_BUILD_MATLAB=ON -DMatlab_ROOT_DIR=/path/to/matlab
-cmake --build build --target ctoon_mex
+cmake --build build --target ctoon_build_mex
 
 # Or directly from MATLAB
 cd src/bindings/matlab
