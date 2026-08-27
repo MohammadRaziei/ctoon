@@ -7,6 +7,11 @@ add_executable(test_ctoon_cpp ${CTOON_TEST_SOURCES})
 
 target_include_directories(test_ctoon_cpp PRIVATE "${CTOON_TEST_SOURCE_DIR}")
 
+# Absolute path to the vendored toon-format/spec fixtures, used by
+# test_spec_conformance.cpp regardless of the test binary's working directory.
+target_compile_definitions(test_ctoon_cpp PRIVATE
+    CTOON_SPEC_FIXTURES_DIR="${CTOON_TEST_SOURCE_DIR}/data/toon-spec")
+
 # Link against ctoon C++ wrapper library
 target_link_libraries(test_ctoon_cpp PRIVATE ctoon::ctoonpp)
 

@@ -4786,6 +4786,15 @@ static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
             /* default: shortest round-trip representation */
             if (d == (double)(long long)d && d >= -1e15 && d <= 1e15) {
                 p = write_i64((i64)d, p);
+            } else if (d == floor(d) && fabs(d) < 1e21) {
+                /*
+                 * Integer-valued double outside the fast int64 path (e.g. 1e20).
+                 * Per spec §2: "If the fractional part is zero after
+                 * normalization, emit as an integer" for the whole canonical
+                 * range |n| < 1e21, not just values that fit in an i64.
+                 */
+                int n = snprintf((char *)p, 32, "%.0f", d);
+                p += (n > 0) ? (usize)n : 0;
             } else {
 #if !CTOON_DISABLE_FAST_FP_CONV
                 p = write_f64_ryu(d, p);
@@ -4803,45 +4812,55 @@ static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
 /*---- string writer ---------------------------------------------------------*/
 
 /*
- * Determine if a string needs quoting in a TOON context:
- * - is_key=true : quoting needed if contains ':', '[', '{', '"', '\\', '\n' '\r' '\t'
- *                 or starts/ends with space, or starts with "- "
- * - is_key=false: additionally quote if matches null/true/false/number,
- *                 or contains delimiter char, ']', '}'
+ * Determine if a string needs quoting in a TOON context, per spec §7.2
+ * (string values) and §7.3 (keys and header field names).
  *
  * Return true → must quote.
  */
 static_inline bool ctoon_write_str_needs_quote(ctoon_write_ctx *w, const char *s, usize len,
                                       bool is_key) {
-    if (len == 0) return true;
-    if (s[0] == ' ' || s[len-1] == ' ') return true;
-    if (len >= 2 && s[0] == '-' && s[1] == ' ') return true;
+    if (is_key) {
+        /* §7.3: unquoted key MUST match ^[A-Za-z_][A-Za-z0-9_.]*$ */
+        if (len == 0) return true;
+        u8 c0 = (u8)s[0];
+        if (!((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z') || c0 == '_'))
+            return true;
+        for (usize i = 1; i < len; i++) {
+            u8 c = (u8)s[i];
+            if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                  (c >= '0' && c <= '9') || c == '_' || c == '.'))
+                return true;
+        }
+        return false;
+    }
+
+    /* §7.2: value quoting rules */
+    if (len == 0) return true;                                  /* empty */
+    if (s[0] == ' ' || s[0] == '\t' ||
+        s[len-1] == ' ' || s[len-1] == '\t') return true;        /* leading/trailing ws */
+    if (s[0] == '-') return true;                                /* equals/starts with '-' */
+    if (s[0] == '#') return true;                                /* equals/starts with '#' */
 
     for (usize i = 0; i < len; i++) {
         u8 c = (u8)s[i];
-        if (c == '"' || c == '\\' || c == '\n' || c == '\r' || c == '\t')
-            return true;
-        if (is_key && (c == ':' || c == '[' || c == '{'))
-            return true;
-        if (!is_key && (c == (u8)w->delim || c == ':' ||
-                         c == '[' || c == ']' || c == '{' || c == '}'))
-            return true;
+        if (c < 0x20) return true;                               /* control chars */
+        if (c == '"' || c == '\\') return true;
+        if (c == ':' || c == '[' || c == ']' || c == '{' || c == '}') return true;
+        if (c == (u8)w->delim) return true;
         /* high-bit bytes: if ESCAPE_UNICODE flag is set we must quote */
         if (c >= 0x80 && w->esc_uni) return true;
     }
 
-    if (!is_key) {
-        /* quote if looks like null/true/false/number (would be mis-read) */
-        if (len == 4 && memcmp(s, "null",  4) == 0) return true;
-        if (len == 4 && memcmp(s, "true",  4) == 0) return true;
-        if (len == 5 && memcmp(s, "false", 5) == 0) return true;
-        /* number check */
-        if (len < 32) {
-            char tmp[32]; memcpy(tmp, s, len); tmp[len] = '\0';
-            char *end = NULL;
-            strtod(tmp, &end);
-            if (end == tmp + len) return true;
-        }
+    /* quote if looks like null/true/false/number (would be mis-read) */
+    if (len == 4 && memcmp(s, "null",  4) == 0) return true;
+    if (len == 4 && memcmp(s, "true",  4) == 0) return true;
+    if (len == 5 && memcmp(s, "false", 5) == 0) return true;
+    /* number check */
+    if (len < 32) {
+        char tmp[32]; memcpy(tmp, s, len); tmp[len] = '\0';
+        char *end = NULL;
+        strtod(tmp, &end);
+        if (end == tmp + len) return true;
     }
     return false;
 }
@@ -4886,8 +4905,8 @@ static_noinline bool ctoon_write_str(ctoon_write_ctx *w, const char *s, usize le
                     if (!ctoon_write_buf_reserve(w, 6)) return false;
                     w->buf[w->len++] = '\\'; w->buf[w->len++] = 'u';
                     w->buf[w->len++] = '0';  w->buf[w->len++] = '0';
-                    w->buf[w->len++] = "0123456789ABCDEF"[(c >> 4) & 0xF];
-                    w->buf[w->len++] = "0123456789ABCDEF"[c & 0xF];
+                    w->buf[w->len++] = "0123456789abcdef"[(c >> 4) & 0xF];
+                    w->buf[w->len++] = "0123456789abcdef"[c & 0xF];
                 } else if (c >= 0x80 && w->esc_uni) {
                     /* decode UTF-8 then emit \uXXXX */
                     u32 cp;
@@ -4901,14 +4920,14 @@ static_noinline bool ctoon_write_str(ctoon_write_ctx *w, const char *s, usize le
                     if (!ctoon_write_buf_reserve(w, 12)) return false;
                     if (cp <= 0xFFFF) {
                         w->len += (usize)snprintf((char*)w->buf+w->len, 8,
-                                                   "\\u%04X", (unsigned)cp);
+                                                   "\\u%04x", (unsigned)cp);
                     } else {
                         /* surrogate pair */
                         cp -= 0x10000;
                         u32 hi = 0xD800 + (cp >> 10);
                         u32 lo = 0xDC00 + (cp & 0x3FF);
                         w->len += (usize)snprintf((char*)w->buf+w->len, 14,
-                                                   "\\u%04X\\u%04X",
+                                                   "\\u%04x\\u%04x",
                                                    (unsigned)hi, (unsigned)lo);
                     }
                 } else {
@@ -4923,7 +4942,7 @@ static_noinline bool ctoon_write_str(ctoon_write_ctx *w, const char *s, usize le
 /*---- forward declarations --------------------------------------------------*/
 static bool ctoon_write_val(ctoon_write_ctx *w, const ctoon_val *val, int depth);
 static bool ctoon_write_obj(ctoon_write_ctx *w, const ctoon_val *obj, int depth);
-static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, int depth);
+static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, int depth, bool allow_tabular);
 
 /*---- container size helpers ------------------------------------------------*/
 
@@ -4984,6 +5003,17 @@ static bool ctoon_arr_is_tabular(const ctoon_val *arr) {
     return true;
 }
 
+/* True when every element of a (non-empty) array is a scalar (not ARR/OBJ). */
+static_inline bool ctoon_arr_all_prim(const ctoon_val *arr, usize count) {
+    const ctoon_val *it = ctoon_ctn_first_child(arr);
+    for (usize i = 0; i < count; i++) {
+        u8 t = unsafe_ctoon_get_type((void *)it);
+        if (t == CTOON_TYPE_ARR || t == CTOON_TYPE_OBJ) return false;
+        it = ctoon_val_next_sibling(it);
+    }
+    return true;
+}
+
 /*---- array bracket formatter -----------------------------------------------*/
 
 /*
@@ -5022,23 +5052,27 @@ static bool ctoon_write_arr_header(ctoon_write_ctx *w, const ctoon_val *arr, boo
         }
         if (!ctoon_write_char(w, '}')) return false;
     }
-    return ctoon_write_str_lit(w, ": ");
+    /*
+     * Only the inline primitive form ("key[N]: v1,v2") puts content on the
+     * same line, so only it gets a trailing space after the colon. Tabular
+     * ("key[N]{f..}:") and list ("key[N]:") forms put content on following
+     * lines and must not have a trailing space before the newline. An empty
+     * array reaching this point (list-item element, §9.4) has no inline
+     * content either.
+     */
+    bool inline_form = !tabular && count > 0 && ctoon_arr_all_prim(arr, count);
+    return ctoon_write_str_lit(w, inline_form ? ": " : ":");
 }
 
 /*---- array content writer --------------------------------------------------*/
 
-static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, int depth) {
+static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, int depth, bool allow_tabular) {
     usize count = ctoon_ctn_child_count(arr);
     if (count == 0) return true;
 
     /* check if all elements are primitives */
-    bool all_prim = true;
-    const ctoon_val *it = ctoon_ctn_first_child(arr);
-    for (usize i = 0; i < count && all_prim; i++) {
-        u8 t = unsafe_ctoon_get_type((void *)it);
-        if (t == CTOON_TYPE_ARR || t == CTOON_TYPE_OBJ) all_prim = false;
-        it = ctoon_val_next_sibling(it);
-    }
+    bool all_prim = ctoon_arr_all_prim(arr, count);
+    const ctoon_val *it;
 
     if (all_prim) {
         /* inline: v1,v2,v3 */
@@ -5051,8 +5085,14 @@ static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, in
         return true;
     }
 
-    /* tabular */
-    if (ctoon_arr_is_tabular(arr)) {
+    /*
+     * §9.4: a keyless fields-bearing header is valid only at the document
+     * root, so an array nested directly inside another array (a bare list
+     * item, not an object field) MUST use list form even when its elements
+     * would otherwise qualify for tabular form. allow_tabular=false forces
+     * that here regardless of ctoon_arr_is_tabular().
+     */
+    if (allow_tabular && ctoon_arr_is_tabular(arr)) {
         usize ncols = ctoon_ctn_child_count(ctoon_ctn_first_child(arr));
         if (!ctoon_write_char(w, '\n')) return false;
         const ctoon_val *row = ctoon_ctn_first_child(arr);
@@ -5076,37 +5116,59 @@ static bool ctoon_write_arr_content(ctoon_write_ctx *w, const ctoon_val *arr, in
     it = ctoon_ctn_first_child(arr);
     for (usize i = 0; i < count; i++) {
         if (!ctoon_write_indent(w, depth + 1)) return false;
-        if (!ctoon_write_str_lit(w, "- ")) return false;
+        if (!ctoon_write_char(w, '-')) return false;
         u8 t = unsafe_ctoon_get_type((void *)it);
         if (t == CTOON_TYPE_OBJ) {
-            /* object as list item: first field inline, rest indented */
+            /* object as list item: first field inline, rest indented.
+             * An empty object list item is a bare hyphen (no trailing
+             * space, no content). */
             usize nfields = ctoon_ctn_child_count(it);
-            const ctoon_val *kv = ctoon_ctn_first_child(it);
-            for (usize fi = 0; fi < nfields; fi++) {
-                if (fi > 0) {
-                    if (!ctoon_write_char(w, '\n')) return false;
-                    if (!ctoon_write_indent(w, depth + 2)) return false;
+            if (nfields > 0) {
+                if (!ctoon_write_char(w, ' ')) return false;
+                const ctoon_val *kv = ctoon_ctn_first_child(it);
+                for (usize fi = 0; fi < nfields; fi++) {
+                    if (fi > 0) {
+                        if (!ctoon_write_char(w, '\n')) return false;
+                        if (!ctoon_write_indent(w, depth + 2)) return false;
+                    }
+                    usize klen = unsafe_ctoon_get_len((void *)kv);
+                    if (!ctoon_write_str(w, kv->uni.str, klen, true)) return false;
+                    const ctoon_val *vv = ctoon_val_next_sibling(kv);
+                    u8 vt = unsafe_ctoon_get_type((void *)vv);
+                    if (vt == CTOON_TYPE_OBJ) {
+                        if (!ctoon_write_char(w, ':')) return false;
+                        if (ctoon_ctn_child_count(vv) > 0) {
+                            if (!ctoon_write_char(w, '\n')) return false;
+                            if (!ctoon_write_obj(w, vv, depth + 3)) return false;
+                        }
+                    } else if (vt == CTOON_TYPE_ARR) {
+                        usize alen = ctoon_ctn_child_count(vv);
+                        if (alen == 0) {
+                            /* §9.1: empty array as object field is "key: []" */
+                            if (!ctoon_write_str_lit(w, ": []")) return false;
+                        } else {
+                            bool tab = ctoon_arr_is_tabular(vv);
+                            if (!ctoon_write_arr_header(w, vv, tab)) return false;
+                            if (!ctoon_write_arr_content(w, vv, depth + 2, true)) return false;
+                        }
+                    } else {
+                        if (!ctoon_write_str_lit(w, ": ")) return false;
+                        if (!ctoon_write_val(w, vv, depth + 2)) return false;
+                    }
+                    kv = ctoon_val_next_sibling(vv);
                 }
-                usize klen = unsafe_ctoon_get_len((void *)kv);
-                if (!ctoon_write_str(w, kv->uni.str, klen, true)) return false;
-                const ctoon_val *vv = ctoon_val_next_sibling(kv);
-                u8 vt = unsafe_ctoon_get_type((void *)vv);
-                if (vt == CTOON_TYPE_OBJ) {
-                    if (!ctoon_write_char(w, ':')) return false;
-                    if (!ctoon_write_char(w, '\n')) return false;
-                    if (!ctoon_write_obj(w, vv, depth + 3)) return false;
-                } else if (vt == CTOON_TYPE_ARR) {
-                    bool tab = ctoon_arr_is_tabular(vv);
-                    if (!ctoon_write_arr_header(w, vv, tab)) return false;
-                    if (!ctoon_write_arr_content(w, vv, depth + 2)) return false;
-                } else {
-                    if (!ctoon_write_str_lit(w, ": ")) return false;
-                    if (!ctoon_write_val(w, vv, depth + 2)) return false;
-                }
-                kv = ctoon_val_next_sibling(vv);
             }
         } else {
-            if (!ctoon_write_val(w, it, depth + 1)) return false;
+            if (!ctoon_write_char(w, ' ')) return false;
+            u8 et = unsafe_ctoon_get_type((void *)it);
+            if (et == CTOON_TYPE_ARR) {
+                /* §9.4: a bare array list-item MUST use list form, never
+                 * tabular, even if its elements would otherwise qualify. */
+                if (!ctoon_write_arr_header(w, it, false)) return false;
+                if (!ctoon_write_arr_content(w, it, depth + 1, false)) return false;
+            } else {
+                if (!ctoon_write_val(w, it, depth + 1)) return false;
+            }
         }
         if (i + 1 < count && !ctoon_write_char(w, '\n')) return false;
         it = ctoon_val_next_sibling(it);
@@ -5129,13 +5191,23 @@ static bool ctoon_write_obj(ctoon_write_ctx *w, const ctoon_val *obj, int depth)
         u8 vt = unsafe_ctoon_get_type((void *)vv);
 
         if (vt == CTOON_TYPE_ARR) {
-            bool tab = ctoon_arr_is_tabular(vv);
-            if (!ctoon_write_arr_header(w, vv, tab)) return false;
-            if (!ctoon_write_arr_content(w, vv, depth)) return false;
+            usize alen = ctoon_ctn_child_count(vv);
+            if (alen == 0) {
+                /* §9.1: an empty array as an object field is "key: []". */
+                if (!ctoon_write_str_lit(w, ": []")) return false;
+            } else {
+                bool tab = ctoon_arr_is_tabular(vv);
+                if (!ctoon_write_arr_header(w, vv, tab)) return false;
+                if (!ctoon_write_arr_content(w, vv, depth, true)) return false;
+            }
         } else if (vt == CTOON_TYPE_OBJ) {
             if (!ctoon_write_char(w, ':')) return false;
-            if (!ctoon_write_char(w, '\n')) return false;
-            if (!ctoon_write_obj(w, vv, depth + 1)) return false;
+            if (ctoon_ctn_child_count(vv) > 0) {
+                /* non-empty nested object: fields follow at depth+1 */
+                if (!ctoon_write_char(w, '\n')) return false;
+                if (!ctoon_write_obj(w, vv, depth + 1)) return false;
+            }
+            /* empty nested object: bare "key:" with nothing after it */
         } else {
             if (!ctoon_write_str_lit(w, ": ")) return false;
             if (!ctoon_write_val(w, vv, depth)) return false;
@@ -5164,7 +5236,7 @@ static bool ctoon_write_val(ctoon_write_ctx *w, const ctoon_val *val, int depth)
         case CTOON_TYPE_ARR: {
             bool tab = ctoon_arr_is_tabular(val);
             if (!ctoon_write_arr_header(w, val, tab)) return false;
-            return ctoon_write_arr_content(w, val, depth);
+            return ctoon_write_arr_content(w, val, depth, true);
         }
         case CTOON_TYPE_OBJ:
             return ctoon_write_obj(w, val, depth);
@@ -5220,7 +5292,14 @@ static char *ctoon_write_to_buf(const ctoon_val *root,
     w.alc = alc_ptr ? *alc_ptr : CTOON_DEFAULT_ALC;
     ctoon_write_resolve_opts(&w, opts);
 
-    bool ok = ctoon_write_val(&w, root, 0);
+    bool ok;
+    if (unsafe_ctoon_get_type((void *)root) == CTOON_TYPE_ARR &&
+        ctoon_ctn_child_count(root) == 0) {
+        /* §9.1: an empty array at the root is the bare literal "[]". */
+        ok = ctoon_write_str_lit(&w, "[]");
+    } else {
+        ok = ctoon_write_val(&w, root, 0);
+    }
 
     if (ok && (w.flg & CTOON_WRITE_NEWLINE_AT_END))
         ok = ctoon_write_char(&w, '\n');
