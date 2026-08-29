@@ -574,6 +574,24 @@ public:
     static document parse(const string_view &toon, read_flag flags = read_flag::NOFLAG) {
         return parse(toon.data(), toon.size(), flags);
     }
+    /* Same as parse(), but with a custom indentSize (spec §12) — the
+     * number of spaces that count as one indentation level (default 2). */
+    static document parse_indent(const char *toon, std::size_t len, int indent_size,
+                           read_flag flags = read_flag::NOFLAG) {
+        ctoon_read_err err; std::memset(&err, 0, sizeof(err));
+        ctoon_doc *d = ctoon_read_opts_indent(const_cast<char *>(toon), len,
+                                               to_c(flags), indent_size, NULL, &err);
+        if (!d) throw parse_error(err);
+        return document(d);
+    }
+    static document parse_indent(const std::string &toon, int indent_size,
+                           read_flag flags = read_flag::NOFLAG) {
+        return parse_indent(toon.data(), toon.size(), indent_size, flags);
+    }
+    static document parse_indent(const string_view &toon, int indent_size,
+                           read_flag flags = read_flag::NOFLAG) {
+        return parse_indent(toon.data(), toon.size(), indent_size, flags);
+    }
     static document parse_file(const char *path, read_flag flags = read_flag::NOFLAG) {
         ctoon_read_err err; std::memset(&err, 0, sizeof(err));
         ctoon_doc *d = ctoon_read_file(path, to_c(flags), NULL, &err);

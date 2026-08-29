@@ -924,6 +924,26 @@ ctoon_api ctoon_doc *ctoon_read_opts(char *dat,
                                         ctoon_read_err *err);
 
 /**
+ Read TOON with options and a custom indent size (spec §12 "indentSize").
+
+ Same as `ctoon_read_opts()`, but lets the caller override the number of
+ spaces that count as one indentation level when decoding (default 2, and
+ what `ctoon_read_opts()` always uses). Pass `indent_size <= 0` to fall
+ back to the default of 2.
+
+ @param indent_size Spaces per indentation level. Must match how the
+    document being read was actually indented, or depths will be
+    computed incorrectly (or, in strict mode, indentation that isn't an
+    exact multiple of this value is rejected).
+ */
+ctoon_api ctoon_doc *ctoon_read_opts_indent(char *dat,
+                                        size_t len,
+                                        ctoon_read_flag flg,
+                                        int indent_size,
+                                        const ctoon_alc *alc,
+                                        ctoon_read_err *err);
+
+/**
  Read a TOON file.
 
  This function is thread-safe when:
