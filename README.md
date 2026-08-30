@@ -263,6 +263,9 @@ cat data.toon | ctoon -d -
 ctoon_doc *ctoon_read(const char *toon, size_t len, ctoon_read_flag flags);
 ctoon_doc *ctoon_read_opts(char *toon, size_t len, ctoon_read_flag flags,
                             const ctoon_alc *alc, ctoon_read_err *err);
+ctoon_doc *ctoon_read_opts_indent(char *toon, size_t len, ctoon_read_flag flags,
+                                   int indent_size, const ctoon_alc *alc,
+                                   ctoon_read_err *err);
 /* from file */
 ctoon_doc *ctoon_read_file(const char *path, ctoon_read_flag flags,
                             const ctoon_alc *alc, ctoon_read_err *err);
