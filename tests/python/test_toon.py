@@ -164,9 +164,10 @@ class TestDecode:
         assert data["name"] == "Alice"
         assert data["age"] == 30
 
-    def test_empty_string_raises(self):
-        with pytest.raises(Exception):
-            ctoon.loads("")
+    def test_empty_string_decodes_to_empty_object(self):
+        # Spec §5/§8: a zero-length TOON document is valid input and
+        # decodes as an empty object — it is NOT an error.
+        assert ctoon.loads("") == {}
 
     def test_single_field(self):
         assert ctoon.loads("key: value")["key"] == "value"

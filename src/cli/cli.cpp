@@ -303,9 +303,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (input.empty()) { std::cerr << "Error: Input is empty.\n"; return 1; }
-
     Operation op = detectOp(inputPath, input, forceEncode, forceDecode);
+
+    /* An empty TOON document is valid (spec §5/§8: decodes to {}), but an
+     * empty JSON document is not — only reject empty input when encoding. */
+    if (input.empty() && op == OP_ENCODE) {
+        std::cerr << "Error: Input is empty.\n";
+        return 1;
+    }
 
     ctoon_write_options enc_opts;
     memset(&enc_opts, 0, sizeof(enc_opts));

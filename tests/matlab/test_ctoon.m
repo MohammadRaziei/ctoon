@@ -201,9 +201,12 @@ end
 %  Error handling
 %% -------------------------------------------------------------------------
 
-function testDecodeInvalidToon(testCase)
-% Empty string produces CTOON_READ_ERROR_EMPTY_CONTENT
-verifyError(testCase, @() ctoon.decode(''), 'ctoon:decodeError');
+function testDecodeEmptyString(testCase)
+% Spec §5/§8: a zero-length TOON document is valid input and decodes as
+% an empty object — it is NOT an error.
+v = ctoon.decode('');
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, numel(fieldnames(v)), 0);
 end
 
 function testReadMissingFile(testCase)
