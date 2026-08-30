@@ -334,6 +334,9 @@ func DumpJSON(v interface{}, path string, indent int) error {
 
 // Loads is an alias for Decode with default options.
 func Loads(s string) (interface{}, error) {
+	if s == "" {
+		return nil, fmt.Errorf("ctoon: cannot decode empty input")
+	}
 	return Decode(s, DefaultDecodeOptions())
 }
 
