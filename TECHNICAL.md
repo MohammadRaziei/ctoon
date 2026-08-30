@@ -241,12 +241,39 @@ typedef struct {
 
 When a container closes, the parser:
 1. Pops its frame
-2. Computes `uni.ofs = (vp.cur - &vpool[val_idx]) * sizeof(ctoon_val)`
-3. Writes `count` into the tag's upper bits
+2. **For an OBJ with more than one child**: checks for duplicate keys among its *direct* children (§14.3 of the TOON spec) — in strict mode a duplicate key is a hard parse error; in non-strict mode, duplicates are resolved by last-write-wins, keeping only the final occurrence of each key *in its original position*. Resolution is an in-place compaction: earlier duplicate key/value blocks are removed by `memmove`-ing the surviving tail left over them, and `vp.cur` is rewound by the bytes reclaimed. This is safe *only* at this exact moment — the container being closed is always the most-recently-written region of the arena, so nothing outside `[val_idx, vp.cur)` can reference into the middle of a block being removed, and because `uni.ofs` values are self-relative (distance from a node to its own subtree's end), a uniform shift of that whole span preserves every offset already written inside it without adjustment.
+3. Computes `uni.ofs = (vp.cur - &vpool[val_idx]) * sizeof(ctoon_val)` (using the *post-compaction* `vp.cur` and the *post-compaction* child count)
+4. Writes the (possibly reduced) count into the tag's upper bits
 
 This is the moment the flat-arena "skip" offset is finalised.
 
-### 5.3 String Handling
+### 5.3 Tabular Header Field Trees
+
+A tabular or keyed-tabular array header (`key[N]{a,b,c}:` / `key[N:]{a,b}:`) doesn't parse its field list into a flat name array. Fields are parsed once into a small fixed-capacity arena of `ctoon_tab_field` nodes, linked by `first_child`/`next_sibling` indices:
+
+```c
+typedef struct {
+    const char *name;
+    size_t      name_len;
+    bool        is_group;      // true => nested field group "name{...}"
+    int         first_child;   // arena index, or -1 for a leaf
+    int         next_sibling;  // arena index, or -1 for "last in this list"
+} ctoon_tab_field;
+```
+
+A leaf field is one column; a group field (`customer{name,country}`) recurses arbitrarily deep, letting a single tabular row expand into a nested object per column. The header is walked once to build this tree; each row then re-walks the same tree depth-first, pulling one leaf value per column (via a running "is this the row's very last leaf" counter, since only the last leaf of a row stops at end-of-line rather than the active delimiter) and opening/closing a nested `OBJ` frame for every group node it passes through. Keyed-tabular rows (`entrykey: c1,c2,...`) use the identical tree-walk for their cell values — the only difference from plain tabular rows is that the row itself is a `key: value` pair (with its own duplicate-key handling per §5.2) rather than a bare array element.
+
+### 5.4 Header-Span Blank-Line Validation
+
+Per spec §12, a blank line is only a *structural* error when it falls strictly inside an already-started array/list/tabular/keyed-tabular scope; a blank line before the first row, or after the scope's last row (once nothing more continues it), is always fine. Since the parser can't know in advance whether a given row is the *last* one, this can't be decided by a simple "are we inside a scope" flag — it requires a bounded lookahead: skip forward past comment lines (removed unconditionally) and blank lines (tentatively), then check whether what follows still matches this scope's shape (same indentation depth, and for list items specifically, a `-` marker). If it does, and a blank line was skipped to get there, that's a strict-mode error (or silently tolerated in non-strict mode); if it doesn't, the skipped blank lines are left unconsumed for the enclosing (shallower) scope to evaluate on its own next turn. This lookahead is one shared routine used by list items, tabular rows, keyed-tabular rows, and a list-item object's own continuation fields — each just supplies its own target depth and "does this need a `-` marker" flag.
+
+One subtlety this interacts with: some sub-parses (an inline array `key[N]: a,b`, or the `[]` empty-array literal) leave the cursor sitting mid-line on their own not-yet-consumed line terminator, while others (list/tabular/keyed sub-forms) already advance the cursor to the start of the following line. Cursor *position* alone can't distinguish "my own unfinished line" from "a genuinely empty line with zero leading characters" — both look identical. Call sites that need to know which happened take an explicit `out_mid_line` flag from `ctoon_parse_array()` rather than inferring it from `ctoon_cur_at_eol()`.
+
+### 5.5 Configurable Indent Size
+
+`indentSize` (spec §12, default 2) is a decode-time parameter, not something inferred from the document. `ctoon_read_opts()` always decodes with the default; `ctoon_read_opts_indent()` takes an explicit `indent_size` and threads it into `ctoon_read_ctx.indent`, which every depth computation (`ctoon_cur_measure_indent`/`ctoon_cur_consume_indent`) divides leading-space counts by. In non-strict mode only, indentation that isn't an exact multiple of `indentSize` is still accepted (any remainder is swallowed as part of the same indentation rather than leaking into the following token), and a leading tab counts as one full indentation level on top of any complete space-multiples before it — both are implementation-defined leniencies the spec explicitly allows non-strict decoders to choose.
+
+### 5.6 String Handling
 
 Strings are **not copied** during parsing. The parser records a pointer (`uni.str`) directly into the input buffer and stores the byte length in the tag. Escape sequences are handled lazily — the `CTOON_SUBTYPE_NOESC` flag marks strings that require no unescaping, so `ctoon_get_str()` can return the pointer directly.
 
