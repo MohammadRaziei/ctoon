@@ -162,4 +162,3 @@ dist/
 *.slx  
 .buildtool/
 +ctoon
-tests/data/toon-spec/
