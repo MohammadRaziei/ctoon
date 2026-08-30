@@ -24,6 +24,10 @@ FetchContent_MakeAvailable(toon_format_spec)
 # toon_format_spec has no CMakeLists.txt of its own, so MakeAvailable only
 # populates toon_format_spec_SOURCE_DIR and does not add_subdirectory() it.
 
+# Promote to the parent (tests/) scope so tests/python's pytest invocation
+# can reuse this same checkout instead of fetching its own copy.
+set(CTOON_SPEC_FIXTURES_DIR "${toon_format_spec_SOURCE_DIR}/tests/fixtures" PARENT_SCOPE)
+
 # Absolute path to the fetched toon-format/spec fixtures, used by
 # test_spec_conformance.cpp regardless of the test binary's working directory.
 target_compile_definitions(test_ctoon_cpp PRIVATE

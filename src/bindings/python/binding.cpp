@@ -29,13 +29,23 @@ static ctoon::mut_value py_to_mutval(ctoon::mut_document &doc, nb::handle obj) {
         return doc.make_bool(nb::cast<bool>(obj));
     }
     if (nb::isinstance<nb::int_>(obj)) {
-        /* try uint first to preserve large positive values */
+        /* try uint64 first (to preserve large positive values), then
+         * int64, then fall back to a double for magnitudes beyond both —
+         * mirrors the core C library's own out-of-int64/uint64-range
+         * fallback for decoded numbers (spec §2: numbers outside the
+         * canonical integer range are still valid, just represented as
+         * a real). Previously the int64 fallback's own cast failure went
+         * uncaught here and surfaced as a raw std::bad_cast. */
         try {
             auto u = nb::cast<uint64_t>(obj);
             int64_t s = nb::cast<int64_t>(obj);
             return (s < 0) ? doc.make_sint(s) : doc.make_uint(u);
         } catch (...) {
-            return doc.make_sint(nb::cast<int64_t>(obj));
+            try {
+                return doc.make_sint(nb::cast<int64_t>(obj));
+            } catch (...) {
+                return doc.make_real(nb::cast<double>(obj));
+            }
         }
     }
     if (nb::isinstance<nb::float_>(obj)) {
@@ -215,12 +225,12 @@ NB_MODULE(ctoon_py, m) {
         .export_values();
 
     /* ------------------------------------------------------------------
-     * loads(s, *, flags=ReadFlag.NOFLAG) -> object
+     * loads(s, *, flags=ReadFlag.NOFLAG, indent=2) -> object
      *
      * Parse a TOON string or bytes object.
      * ------------------------------------------------------------------ */
     m.def("loads",
-        [](nb::object s, ctoon::read_flag flags) -> nb::object {
+        [](nb::object s, ctoon::read_flag flags, int indent) -> nb::object {
             std::string buf;
             if (nb::isinstance<nb::bytes>(s)) {
                 auto b = nb::cast<nb::bytes>(s);
@@ -228,23 +238,28 @@ NB_MODULE(ctoon_py, m) {
             } else {
                 buf = nb::cast<std::string>(s);
             }
-            auto doc = ctoon::document::parse(buf.data(), buf.size(), flags);
+            auto doc = (indent == 2)
+                ? ctoon::document::parse(buf.data(), buf.size(), flags)
+                : ctoon::document::parse_indent(buf.data(), buf.size(), indent, flags);
             return val_to_py(doc.root());
         },
         nb::arg("s"),
         nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        nb::arg("indent") = 2,
         "Parse a TOON string or bytes object. Returns a Python object.\n\n"
-        "    loads(s, flags=ReadFlag.NOFLAG) -> object");
+        "    loads(s, flags=ReadFlag.NOFLAG, indent=2) -> object\n\n"
+        "indent overrides indentSize (spec §12) — the number of spaces\n"
+        "that count as one indentation level when decoding (default 2).");
 
     /* ------------------------------------------------------------------
-     * load(fp, *, flags=ReadFlag.NOFLAG) -> object
+     * load(fp, *, flags=ReadFlag.NOFLAG, indent=2) -> object
      *
      * fp can be:
      *   - a str / bytes path  -> read the file from disk
      *   - a file-like object with .read() -> read from it
      * ------------------------------------------------------------------ */
     m.def("load",
-        [](nb::object fp, ctoon::read_flag flags) -> nb::object {
+        [](nb::object fp, ctoon::read_flag flags, int indent) -> nb::object {
             ctoon::document doc(nullptr);
             if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
                 /* path string */
@@ -253,14 +268,17 @@ NB_MODULE(ctoon_py, m) {
             } else {
                 /* file-like: call .read() */
                 std::string buf = read_filelike(fp);
-                doc = ctoon::document::parse(buf.data(), buf.size(), flags);
+                doc = (indent == 2)
+                    ? ctoon::document::parse(buf.data(), buf.size(), flags)
+                    : ctoon::document::parse_indent(buf.data(), buf.size(), indent, flags);
             }
             return val_to_py(doc.root());
         },
         nb::arg("fp"),
         nb::arg("flags") = ctoon::read_flag::NOFLAG,
+        nb::arg("indent") = 2,
         "Load TOON from a file path (str) or a file-like object with .read().\n\n"
-        "    load(fp, flags=ReadFlag.NOFLAG) -> object\n\n"
+        "    load(fp, flags=ReadFlag.NOFLAG, indent=2) -> object\n\n"
         "    with open('data.toon') as f:\n"
         "        obj = ctoon.load(f)\n"
         "    obj = ctoon.load('data.toon')");
@@ -283,7 +301,7 @@ NB_MODULE(ctoon_py, m) {
                     .with_flag(flags));
             return result.str();
         },
-        nb::arg("obj"),
+        nb::arg("obj").none(),
         nb::arg("indent")    = 2,
         nb::arg("delimiter") = ctoon::delimiter::COMMA,
         nb::arg("flags")     = ctoon::write_flag::NOFLAG,
@@ -319,7 +337,7 @@ NB_MODULE(ctoon_py, m) {
                 write_filelike(fp, doc.write(wo));
             }
         },
-        nb::arg("obj"),
+        nb::arg("obj").none(),
         nb::arg("fp"),
         nb::arg("indent")    = 2,
         nb::arg("delimiter") = ctoon::delimiter::COMMA,
@@ -380,7 +398,7 @@ NB_MODULE(ctoon_py, m) {
             doc.set_root(py_to_mutval(doc, obj));
             return doc.to_json(indent, flags).str();
         },
-        nb::arg("obj"),
+        nb::arg("obj").none(),
         nb::arg("indent") = 2,
         nb::arg("flags")  = ctoon::write_flag::NOFLAG,
         "Serialize a Python object to a JSON string.\n\n"
@@ -401,7 +419,7 @@ NB_MODULE(ctoon_py, m) {
                 write_filelike(fp, doc.to_json(indent, flags));
             }
         },
-        nb::arg("obj"),
+        nb::arg("obj").none(),
         nb::arg("fp"),
         nb::arg("indent") = 2,
         nb::arg("flags")  = ctoon::write_flag::NOFLAG,

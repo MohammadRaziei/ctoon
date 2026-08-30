@@ -21,11 +21,16 @@ if(TARGET ctoon_build_python)
                  COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}
                  WORKING_DIRECTORY ${CTOON_PYTHON_INSTALL_DIR}
         )
+        if(CTOON_SPEC_FIXTURES_DIR)
+            set_tests_properties(ctoon_python_tests PROPERTIES
+                ENVIRONMENT "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}")
+        endif()
 
         # In reality, we run pytest via the Python interpreter found above.
         add_custom_target(ctoon_test_python
             COMMAND ${CMAKE_COMMAND} -E echo "-- Running python tests..."
-            COMMAND ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMAND ${CMAKE_COMMAND} -E env "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+                    ${Python3_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}
             WORKING_DIRECTORY ${CTOON_PYTHON_INSTALL_DIR}
             USES_TERMINAL
         )
