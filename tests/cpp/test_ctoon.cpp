@@ -164,7 +164,7 @@ UTEST(ctoon_cpp_tests, test_mut_document) {
     root.obj_put(doc.make_str("active"), active);
     
     // Write to TOON
-    ctoon::write_result result = doc.write();
+    ctoon::write_result result = doc.to_string();
     std::string toon_str = result.str();
     ASSERT_FALSE(toon_str.empty());
 }
@@ -177,7 +177,7 @@ UTEST(ctoon_cpp_tests, test_write_options) {
     
     // Test default write_options
     ctoon::write_options wo;
-    ctoon::write_result result = doc.write(wo);
+    ctoon::write_result result = doc.to_string(wo);
     ASSERT_FALSE(result.str().empty());
     
     // Test builder pattern
@@ -186,7 +186,7 @@ UTEST(ctoon_cpp_tests, test_write_options) {
       .with_delimiter(ctoon::delimiter::TAB)
       .with_flag(ctoon::write_flag::NOFLAG);
     
-    ctoon::write_result result2 = doc.write(wo2);
+    ctoon::write_result result2 = doc.to_string(wo2);
     ASSERT_FALSE(result2.str().empty());
 }
 

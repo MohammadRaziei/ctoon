@@ -96,7 +96,7 @@ bool run_encode_fixture(const char *filename) {
 
         std::string got;
         try {
-            got = input.write(opts).str();
+            got = input.to_string(opts).str();
         } catch (const ctoon::error &e) {
             std::fprintf(stderr, "  [%s] '%.*s': unexpected throw: %s\n", filename,
                          (int)name.get_str().size(), name.get_str().data(), e.what());

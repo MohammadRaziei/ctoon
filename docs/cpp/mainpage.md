@@ -38,7 +38,7 @@ int main() {
     std::cout << root["age"].get_uint()        << "\n";  // 30
 
     // Serialise to TOON and JSON
-    std::cout << doc.write().c_str()    << "\n";
+    std::cout << doc.to_string().c_str()    << "\n";
     std::cout << doc.to_json(2).c_str() << "\n";
 
     // Build a document programmatically

@@ -334,7 +334,7 @@ public:
     }
 
     /* --- serialisation --- */
-    write_result write(const write_options &opts = write_options()) const {
+    write_result to_string(const write_options &opts = write_options()) const {
         ctoon_write_options co = opts.to_c();
         ctoon_write_err err; std::memset(&err, 0, sizeof(err));
         std::size_t len = 0;
@@ -638,7 +638,7 @@ public:
     }
 
     /* --- TOON serialisation --- */
-    write_result write(const write_options &opts = write_options()) const {
+    write_result to_string(const write_options &opts = write_options()) const {
         ctoon_write_options co = opts.to_c();
         ctoon_write_err err; std::memset(&err, 0, sizeof(err));
         std::size_t len = 0;
@@ -738,7 +738,7 @@ public:
     }
 
     /* --- TOON serialisation --- */
-    write_result write(const write_options &opts = write_options()) const {
+    write_result to_string(const write_options &opts = write_options()) const {
         ctoon_write_options co = opts.to_c();
         ctoon_write_err err; std::memset(&err, 0, sizeof(err));
         std::size_t len = 0;
@@ -803,8 +803,8 @@ inline document parse_file(const char *path, read_flag flags = read_flag::NOFLAG
     return document::parse_file(path, flags);
 }
 inline mut_document make_document() { return mut_document::create(); }
-inline write_result write(const document    &d, const write_options &o = write_options()) { return d.write(o); }
-inline write_result write(const mut_document &d, const write_options &o = write_options()) { return d.write(o); }
+inline write_result to_string(const document    &d, const write_options &o = write_options()) { return d.to_string(o); }
+inline write_result to_string(const mut_document &d, const write_options &o = write_options()) { return d.to_string(o); }
 
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 inline document from_json(const char *json, std::size_t len, read_flag flags = read_flag::NOFLAG) {

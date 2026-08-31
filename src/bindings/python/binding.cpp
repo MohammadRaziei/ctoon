@@ -294,7 +294,7 @@ NB_MODULE(ctoon_py, m) {
            ctoon::write_flag flags) -> std::string {
             auto doc  = ctoon::mut_document::create();
             doc.set_root(py_to_mutval(doc, obj));
-            auto result = doc.write(
+            auto result = doc.to_string(
                 ctoon::write_options()
                     .with_indent(indent)
                     .with_delimiter(delim)
@@ -334,7 +334,7 @@ NB_MODULE(ctoon_py, m) {
                 std::string path = nb::cast<std::string>(fp);
                 doc.write_file(path.c_str(), wo);
             } else {
-                write_filelike(fp, doc.write(wo));
+                write_filelike(fp, doc.to_string(wo));
             }
         },
         nb::arg("obj").none(),

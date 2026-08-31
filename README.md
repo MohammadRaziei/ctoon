@@ -83,7 +83,7 @@ std::cout << root["name"].get_str().str() << "\n";  // Alice
 std::cout << root["age"].get_uint()        << "\n";  // 30
 
 /* Serialise */
-std::cout << doc.write().c_str()    << "\n";  // TOON
+std::cout << doc.to_string().c_str()    << "\n";  // TOON
 std::cout << doc.to_json(2).c_str() << "\n";  // JSON
 
 /* Build a mutable document */
