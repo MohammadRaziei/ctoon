@@ -63,6 +63,13 @@ jobs:
         MACOSX_DEPLOYMENT_TARGET: "10.13"
         CIBW_ARCHS_MACOS: universal2
 #          CIBW_ARCHS_WINDOWS: auto ARM64
+        # 3.9-3.11: normal per-version build (nanobind has no stable-ABI
+        # support below 3.12, it silently builds a regular extension there).
+        # 3.12: built once, tagged cp312-abi3 via SKBUILD_WHEEL_PY_API, and
+        # that single wheel covers every newer interpreter too - so 3.13+
+        # is skipped here to avoid building a redundant duplicate wheel.
+        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+        CIBW_ENVIRONMENT_CP312: "SKBUILD_WHEEL_PY_API=cp312"
          # Disable building PyPy wheels on all platforms
         CIBW_SKIP: pp*
 #         CIBW_PRERELEASE_PYTHONS: true

@@ -1,7 +1,14 @@
 # Development.Module only requires Python.h (no libpython needed).
 # This is correct for extension modules and works in manylinux environments
 # where libpython is intentionally absent.
-find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+# Development.SABIModule is additionally needed for nanobind's STABLE_ABI
+# (abi3) mode: without the Python::SABIModule target it exposes, nanobind
+# silently falls back to a normal per-version build with no error.
+# OPTIONAL_COMPONENTS so this doesn't break configuration on Python < 3.12,
+# where the limited-API SABI library isn't available anyway.
+find_package(Python COMPONENTS Interpreter Development.Module
+    OPTIONAL_COMPONENTS Development.SABIModule
+    REQUIRED)
 
 if(DEFINED SKBUILD)
 
@@ -13,8 +20,12 @@ if(DEFINED SKBUILD)
 
     # Create the Python extension module
     # Note: The module name here ('ctoon_py') should match the NB_MODULE name in binding.cpp
+    # STABLE_ABI builds against Python's limited API (abi3), producing a single
+    # wheel compatible with all supported CPython versions from the floor below.
+    # NB: nanobind's stable-ABI support requires Python >= 3.12, and is mutually
+    # exclusive with FREE_THREADED (free-threaded builds have no stable ABI yet).
     nanobind_add_module(ctoon_py
-        FREE_THREADED   # declare GIL requirement; nanobind handles PyModule_SetGIL
+        STABLE_ABI
         ${BINDING_SOURCE_FILE}
     )
 
