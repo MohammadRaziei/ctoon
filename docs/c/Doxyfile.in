@@ -15,10 +15,12 @@ EXTRACT_STATIC         = YES
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
 
-INPUT                  = @PROJECT_SOURCE_DIR@/include
+INPUT                  = @PROJECT_SOURCE_DIR@/docs/c/mainpage.md \
+                          @PROJECT_SOURCE_DIR@/include
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h
 RECURSIVE              = NO
+USE_MDFILE_AS_MAINPAGE = @PROJECT_SOURCE_DIR@/docs/c/mainpage.md
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *.c
 EXAMPLE_RECURSIVE      = NO

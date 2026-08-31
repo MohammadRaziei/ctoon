@@ -37,6 +37,7 @@ if(DOXYGEN_FOUND)
             ${CTOON_DOCS_C_DIR}/CreateDocs.cmake
             ${CTOON_DOCS_C_DIR}/footer.html.in
             ${CTOON_DOCS_C_DIR}/Doxyfile.in
+            ${CTOON_DOCS_C_DIR}/mainpage.md
         COMMENT "Generating C API documentation with Doxygen"
         VERBATIM
     )
@@ -72,6 +73,7 @@ if(DOXYGEN_FOUND)
             ${CTOON_DOCS_CPP_DIR}/CreateDocs.cmake
             ${CTOON_DOCS_CPP_DIR}/footer.html.in
             ${CTOON_DOCS_CPP_DIR}/Doxyfile.in
+            ${CTOON_DOCS_CPP_DIR}/mainpage.md
         COMMENT "Generating C++ API documentation with Doxygen"
         VERBATIM
     )

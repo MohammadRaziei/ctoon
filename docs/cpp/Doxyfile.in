@@ -13,10 +13,12 @@ EXTRACT_STATIC         = NO
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
 
-INPUT                  = @PROJECT_SOURCE_DIR@/src/bindings/cpp
+INPUT                  = @PROJECT_SOURCE_DIR@/docs/cpp/mainpage.md \
+                          @PROJECT_SOURCE_DIR@/src/bindings/cpp
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h *.hpp *.hxx
 RECURSIVE              = NO
+USE_MDFILE_AS_MAINPAGE = @PROJECT_SOURCE_DIR@/docs/cpp/mainpage.md
 # ctoon.hpp #includes the plain C header — INCLUDE_PATH lets Doxygen resolve
 # it for the include graph without pulling its C API into these C++ docs
 # (that lives in docs/c/ instead).

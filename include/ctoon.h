@@ -931,10 +931,25 @@ ctoon_api ctoon_doc *ctoon_read_opts(char *dat,
  what `ctoon_read_opts()` always uses). Pass `indent_size <= 0` to fall
  back to the default of 2.
 
+ @param dat The TOON data (UTF-8 without BOM), null-terminator is not required.
+    If this parameter is NULL, the function will fail and return NULL.
+    The `dat` will not be modified without the flag `CTOON_READ_INSITU`, so you
+    can pass a `const char *` string and case it to `char *` if you don't use
+    the `CTOON_READ_INSITU` flag.
+ @param len The length of TOON data in bytes.
+    If this parameter is 0, the function will fail and return NULL.
+ @param flg The TOON read options.
+    Multiple options can be combined with `|` operator. 0 means no options.
  @param indent_size Spaces per indentation level. Must match how the
     document being read was actually indented, or depths will be
     computed incorrectly (or, in strict mode, indentation that isn't an
     exact multiple of this value is rejected).
+ @param alc The memory allocator used by TOON reader.
+    Pass NULL to use the libc's default allocator.
+ @param err A pointer to receive error information.
+    Pass NULL if you don't need error information.
+ @return A new TOON document, or NULL if an error occurs.
+    When it's no longer needed, it should be freed with `ctoon_doc_free()`.
  */
 ctoon_api ctoon_doc *ctoon_read_opts_indent(char *dat,
                                         size_t len,
@@ -1221,7 +1236,7 @@ static const ctoon_write_flag CTOON_WRITE_NEWLINE_AT_END          = 1 << 7;
 /** Array value delimiter used during encoding. */
 typedef enum ctoon_delimiter {
     CTOON_DELIMITER_COMMA = 0, /**< , (default) */
-    CTOON_DELIMITER_TAB,       /**< \t            */
+    CTOON_DELIMITER_TAB,       /**< \\t            */
     CTOON_DELIMITER_PIPE       /**< |             */
 } ctoon_delimiter;
 
