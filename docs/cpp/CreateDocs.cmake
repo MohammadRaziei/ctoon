@@ -22,7 +22,11 @@ execute_process(
 
 if(NOT AWESOME_CSS_DIR OR NOT EXISTS "${AWESOME_CSS_DIR}/doxygen-awesome.css")
     message(WARNING "doxygen-awesome-css not found - C++ docs will use default theme")
-    set(AWESOME_CSS_DIR "")
+    set(AWESOME_HTML_STYLESHEET "")
+    set(AWESOME_HTML_EXTRA_STYLESHEET "")
+else()
+    set(AWESOME_HTML_STYLESHEET "${AWESOME_CSS_DIR}/doxygen-awesome.css")
+    set(AWESOME_HTML_EXTRA_STYLESHEET "${AWESOME_CSS_DIR}/doxygen-awesome-sidebar-only.css")
 endif()
 
 # ── Variables ─────────────────────────────────────────────────

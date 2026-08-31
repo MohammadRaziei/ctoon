@@ -13,11 +13,12 @@ EXTRACT_STATIC         = NO
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
 
-INPUT                  = @PROJECT_SOURCE_DIR@/includes
+INPUT                  = @PROJECT_SOURCE_DIR@/include \
+                          @PROJECT_SOURCE_DIR@/src/bindings/cpp
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h *.hpp *.hxx
 RECURSIVE              = NO
-EXAMPLE_PATH           = @PROJECT_SOURCE_DIR@/examples
+EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       = *.cpp
 EXAMPLE_RECURSIVE      = NO
 
@@ -30,8 +31,8 @@ ALPHABETICAL_INDEX     = YES
 GENERATE_HTML          = YES
 HTML_OUTPUT            = html
 HTML_FILE_EXTENSION    = .html
-HTML_STYLESHEET        = @AWESOME_CSS_DIR@/doxygen-awesome.css
-HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css
+HTML_STYLESHEET        = @AWESOME_HTML_STYLESHEET@
+HTML_EXTRA_STYLESHEET  = @AWESOME_HTML_EXTRA_STYLESHEET@
 HTML_TIMESTAMP         = YES
 GENERATE_TREEVIEW      = YES
 SEARCHENGINE           = YES
