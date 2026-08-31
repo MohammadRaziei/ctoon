@@ -5,11 +5,49 @@ cmake_minimum_required(VERSION 3.19)
 
 set(CTOON_DOCS_OUT ${CMAKE_CURRENT_BINARY_DIR}/out)
 
+set(CTOON_DOCS_C_DIR ${CMAKE_CURRENT_SOURCE_DIR}/c)
+set(CTOON_DOCS_C_OUT ${CTOON_DOCS_OUT}/c)
+
 set(CTOON_DOCS_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cpp)
 set(CTOON_DOCS_CPP_OUT ${CTOON_DOCS_OUT}/cpp)
 
 set(CTOON_DOCS_PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/python)
 set(CTOON_DOCS_PYTHON_OUT ${CTOON_DOCS_OUT}/python)
+
+
+# ── C Documentation (Doxygen) ─────────────────────────────────
+
+find_package(Doxygen)
+
+if(DOXYGEN_FOUND)
+    set(CTOON_DOCS_C_HTML ${CTOON_DOCS_C_OUT}/html/index.html)
+
+    add_custom_command(
+        OUTPUT ${CTOON_DOCS_C_HTML}
+        COMMAND ${CMAKE_COMMAND}
+            -DPROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+            -DPROJECT_VERSION=${PROJECT_VERSION}
+            -DOUTPUT_DIR=${CTOON_DOCS_C_OUT}
+            -DDOXYGEN_EXECUTABLE=${DOXYGEN_EXECUTABLE}
+            -DFOOTER_IN=${CTOON_DOCS_C_DIR}/footer.html.in
+            -DDOXYFILE_IN=${CTOON_DOCS_C_DIR}/Doxyfile.in
+            -DLOGO_SRC=${PROJECT_SOURCE_DIR}/docs/images/ctoon-theme.svg
+            -P ${CTOON_DOCS_C_DIR}/CreateDocs.cmake
+        DEPENDS
+            ${CTOON_DOCS_C_DIR}/CreateDocs.cmake
+            ${CTOON_DOCS_C_DIR}/footer.html.in
+            ${CTOON_DOCS_C_DIR}/Doxyfile.in
+        COMMENT "Generating C API documentation with Doxygen"
+        VERBATIM
+    )
+
+    add_custom_target(ctoon_docs_c DEPENDS ${CTOON_DOCS_C_HTML})
+else()
+    message(WARNING "Doxygen not found - C documentation will not be generated")
+    add_custom_target(ctoon_docs_c
+        COMMAND ${CMAKE_COMMAND} -E echo "Skipping C docs: Doxygen not found"
+    )
+endif()
 
 
 # ── C++ Documentation (Doxygen) ───────────────────────────────
@@ -198,7 +236,7 @@ add_custom_target(ctoon_docs
     COMMENT "Building all documentation"
 )
 
-add_dependencies(ctoon_docs ctoon_docs_cpp ctoon_docs_python ctoon_docs_index ctoon_docs_matlab)
+add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_index ctoon_docs_matlab)
 ctoon_finalize_pages(ctoon_docs)
 
 

@@ -1,7 +1,7 @@
 <div class="footer">
   <div class="footer-content">
     <p>
-      <strong>$projectname v$projectnumber</strong> - A C++ TOON/JSON serialization library
+      <strong>$projectname v$projectnumber</strong> - A C99 TOON/JSON serialization library
     </p>
     <p>
       &copy; 2024-present Mohammad Raziei -

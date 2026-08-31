@@ -60,6 +60,13 @@ cmake.define.CTOON_BUILD_TESTS = "OFF"
 cmake.define.CTOON_BUILD_DOCS = "OFF"
 cmake.define.CTOON_BUILD_EXAMPLES = "OFF"
 
+# NOTE: wheel.py-api ("cp312", abi3 tag) is intentionally NOT set here.
+# nanobind's linked-mode STABLE_ABI only takes effect on Python >= 3.12
+# (silently falls back to a normal per-version build below that), so a
+# single global py-api would mistag the 3.9/3.10/3.11 wheels as abi3 when
+# they are not. It's set per-build instead: CIBW_ENVIRONMENT_CP312 (etc.)
+# in .github/workflows/wheels.yml enables it only for 3.12+ builds.
+
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"

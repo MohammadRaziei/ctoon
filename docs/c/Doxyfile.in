@@ -1,28 +1,26 @@
-# Doxyfile - C++ API Documentation for CToon
+# Doxyfile - C API Documentation for CToon
 
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "CToon C++"
+PROJECT_NAME           = "CToon C"
 PROJECT_NUMBER         = @PROJECT_VERSION@
-PROJECT_BRIEF          = "A C++ TOON/JSON serialization library"
-OUTPUT_DIRECTORY       = @CTOON_DOCS_CPP_OUT@
+PROJECT_BRIEF          = "A C99 TOON/JSON serialization library"
+OUTPUT_DIRECTORY       = @CTOON_DOCS_C_OUT@
 OUTPUT_LANGUAGE        = English
+
+OPTIMIZE_OUTPUT_FOR_C  = YES
 
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = NO
-EXTRACT_STATIC         = NO
+EXTRACT_STATIC         = YES
 HIDE_UNDOC_MEMBERS     = NO
 HIDE_UNDOC_CLASSES     = NO
 
-INPUT                  = @PROJECT_SOURCE_DIR@/src/bindings/cpp
+INPUT                  = @PROJECT_SOURCE_DIR@/include
 INPUT_ENCODING         = UTF-8
-FILE_PATTERNS          = *.h *.hpp *.hxx
+FILE_PATTERNS          = *.h
 RECURSIVE              = NO
-# ctoon.hpp #includes the plain C header — INCLUDE_PATH lets Doxygen resolve
-# it for the include graph without pulling its C API into these C++ docs
-# (that lives in docs/c/ instead).
-INCLUDE_PATH           = @PROJECT_SOURCE_DIR@/include
 EXAMPLE_PATH           =
-EXAMPLE_PATTERNS       = *.cpp
+EXAMPLE_PATTERNS       = *.c
 EXAMPLE_RECURSIVE      = NO
 
 SOURCE_BROWSER         = YES
