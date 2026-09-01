@@ -247,6 +247,25 @@ class TestRoundtrip:
         result = self._rt(orig)
         assert abs(result["f"] - 1.5) < 1e-9
 
+    def test_keyed_tabular_escaped_keys(self):
+        # Regression test: an object whose values are uniform enough to
+        # trigger the writer's compact "keyed tabular" format (one field
+        # in common, e.g. `properties[N:]{type}:`) used to fail to
+        # round-trip when a key needed escaping (quotes, backslashes,
+        # control characters) — the reader's lookahead scan for "does
+        # this line have an unquoted colon" didn't skip the character
+        # after a backslash, so an escaped quote inside the key flipped
+        # its quote-tracking state and made it miss the real colon.
+        orig = {"properties": {
+            "foo\nbar": {"type": "number"},
+            "foo\"bar": {"type": "number"},
+            "foo\\bar": {"type": "number"},
+            "foo\rbar": {"type": "number"},
+            "foo\tbar": {"type": "number"},
+            "foo\fbar": {"type": "number"},
+        }}
+        assert self._rt(orig) == orig
+
 
 # ---------------------------------------------------------------------------
 # Test: File I/O  (path strings)

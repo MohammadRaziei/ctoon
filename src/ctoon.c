@@ -3692,6 +3692,7 @@ static bool ctoon_parse_keyed_tab_rows(ctoon_read_ctx *c, int depth, long expect
             const u8 *p = c->cur;
             bool in_q = false, has_colon = false;
             while (p < c->eof && *p != '\n' && *p != '\r') {
+                if (in_q && *p == '\\' && p + 1 < c->eof) { p += 2; continue; }
                 if (*p == '"') { in_q = !in_q; }
                 else if (*p == ':' && !in_q) { has_colon = true; break; }
                 p++;
