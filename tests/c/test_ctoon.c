@@ -339,6 +339,57 @@ UTEST(ctoon_tests, test_toon_to_json_roundtrip) {
 #endif /* CTOON_ENABLE_JSON */
 
 /* =========================================================================
+ * Regression: keyed-tabular entries with keys needing escaping
+ * ========================================================================= */
+
+/* An object whose values are uniform enough to trigger the writer's compact
+ * "keyed tabular" format (one field in common, e.g. `properties[N:]{type}:`)
+ * used to fail to round-trip when a key needed escaping (quotes,
+ * backslashes, control characters) — the reader's lookahead scan for "does
+ * this line have an unquoted colon" didn't skip the character after a
+ * backslash, so an escaped quote inside the key flipped its quote-tracking
+ * state and made it miss the real colon. */
+UTEST(ctoon_tests, test_keyed_tabular_escaped_keys_roundtrip) {
+    ctoon_mut_doc *doc = ctoon_mut_doc_new(NULL);
+    ASSERT_TRUE(doc != NULL);
+
+    ctoon_mut_val *root = ctoon_mut_obj(doc);
+    ctoon_mut_val *props = ctoon_mut_obj_add_obj(doc, root, "properties");
+    ASSERT_TRUE(props != NULL);
+
+    const char *keys[] = {
+        "foo\nbar", "foo\"bar", "foo\\bar", "foo\rbar", "foo\tbar", "foo\fbar"
+    };
+    size_t nkeys = sizeof(keys) / sizeof(keys[0]);
+    for (size_t i = 0; i < nkeys; i++) {
+        ctoon_mut_val *entry = ctoon_mut_obj_add_obj(doc, props, keys[i]);
+        ASSERT_TRUE(entry != NULL);
+        ASSERT_TRUE(ctoon_mut_obj_add_str(doc, entry, "type", "number"));
+    }
+    ctoon_mut_doc_set_root(doc, root);
+
+    size_t len = 0;
+    char *toon = ctoon_mut_write(doc, &len);
+    ASSERT_TRUE(toon != NULL);
+
+    ctoon_doc *parsed = ctoon_read(toon, len, CTOON_READ_NOFLAG);
+    ASSERT_TRUE(parsed != NULL); /* used to fail: "expected ':' after keyed tabular entry key" */
+
+    ctoon_val *pval = ctoon_obj_get(ctoon_doc_get_root(parsed), "properties");
+    ASSERT_TRUE(pval != NULL);
+    ASSERT_EQ((int)nkeys, (int)ctoon_obj_size(pval));
+    for (size_t i = 0; i < nkeys; i++) {
+        ctoon_val *entry = ctoon_obj_get(pval, keys[i]);
+        ASSERT_TRUE(entry != NULL);
+        ASSERT_STREQ("number", ctoon_get_str(ctoon_obj_get(entry, "type")));
+    }
+
+    free(toon);
+    ctoon_doc_free(parsed);
+    ctoon_mut_doc_free(doc);
+}
+
+/* =========================================================================
  * Iterator API
  * ========================================================================= */
 

@@ -8,14 +8,43 @@ as a subdirectory to get the `ctoon::ctoon` / `ctoon::ctoonpp` targets.
 
 ## Running
 
+**Prerequisites:** CMake ≥ 3.19, a C/C++ compiler, and internet access on
+the first configure (it fetches the corpus — two shallow git clones,
+a few MB total — and pulls the repo root in as a subdirectory).
+Python3 and a Go toolchain are picked up automatically if present; nothing
+else needs to be pre-installed by hand (see
+[Toolchain detection](#toolchain-detection)).
+
 ```bash
 cmake -S benchmarks -B build-bench -DCMAKE_BUILD_TYPE=Release
 cmake --build build-bench --target ctoon_benchmark
 ```
 
-That builds and runs every benchmark whose language toolchain is present on
-the machine (see [Toolchain detection](#toolchain-detection) below). To run
-just one language:
+The first `cmake -S ... -B ...` configure step does the one-time work:
+fetches the corpus, builds the root `ctoon` library, and detects which
+language toolchains are on this machine. The `cmake --build` step actually
+compiles and **runs** every benchmark whose toolchain was found, printing
+straight to the terminal — nothing is written to a file. Re-running the
+build command re-runs everything again (custom targets always re-execute);
+there's no need to reconfigure unless a source file changes or you want to
+refresh the corpus.
+
+Expect output like this per language (numbers vary by machine):
+
+```
+CToon C Benchmark
+Corpus: 462 files, 3.56 MB (JSON)
+
+Operation        Throughput       Docs/sec   Success              Total time
+JSON -> TOON      249.62 MB/s          32390      100%    0.2853 s  (x20 reps)
+TOON -> JSON      147.67 MB/s          29538      100%    0.3128 s  (x20 reps)
+
+vs TOONc (TOON -> JSON only — TOONc has no JSON parser or TOON writer)
+Files TOONc's parser can safely handle: 455/462 (98%)
+TOON -> JSON       67.11 MB/s          13643      100%    0.6670 s  (x20 reps)
+```
+
+To run just one language instead of everything:
 
 ```bash
 cmake --build build-bench --target ctoon_benchmark_c
@@ -25,6 +54,13 @@ cmake --build build-bench --target ctoon_benchmark_go
 cmake --build build-bench --target ctoon_benchmark_go_vs_gotoon
 cmake --build build-bench --target ctoon_benchmark_go_vs_toongo   # needs Go >= 1.23
 cmake --build build-bench --target ctoon_benchmark_matlab
+```
+
+To start over from a clean slate (re-fetch the corpus, rebuild everything):
+
+```bash
+rm -rf build-bench
+cmake -S benchmarks -B build-bench -DCMAKE_BUILD_TYPE=Release
 ```
 
 ## Layout
