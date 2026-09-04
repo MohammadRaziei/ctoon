@@ -490,7 +490,7 @@ extern "C" {
 #define CTOON_VERSION_MINOR 5
 
 /** The patch version of ctoon. */
-#define CTOON_VERSION_PATCH 2
+#define CTOON_VERSION_PATCH 0
 
 #define CTOON_VERSION_ENCODE(maj,min,pat) (((maj)*10000)+((min)*100)+(pat))
 #define CTOON_VERSION \

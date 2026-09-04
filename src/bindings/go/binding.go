@@ -20,6 +20,7 @@ package binding
 #cgo LDFLAGS: -lm
 
 #include "ctoon.c"
+#include "bridge.h"
 #include <stdlib.h>
 #include <string.h>
 */
@@ -104,41 +105,98 @@ func DefaultDecodeOptions() DecodeOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Bridge wrappers — one CGo call per document (see bridge.h)
+// ---------------------------------------------------------------------------
+
+// bridgeEncode serialises v to TOON or JSON via a single CGo call: the Go
+// value tree is built into a tape (pure Go, see tape.go), and bridge.c
+// parses that tape into a ctoon_mut_val tree and writes the output
+// natively, without any further FFI crossings.
+func bridgeEncode(v interface{}, asJSON bool, indent int, writeFlag uint32, delimiter uint32) (string, error) {
+	tape, err := encodeTape(nil, v)
+	if err != nil {
+		return "", err
+	}
+
+	var cAsJSON C.int
+	if asJSON {
+		cAsJSON = 1
+	}
+
+	var tapePtr *C.uint8_t
+	if len(tape) > 0 {
+		tapePtr = (*C.uint8_t)(unsafe.Pointer(&tape[0]))
+	}
+
+	var outData *C.char
+	var outLen C.size_t
+	var outErr *C.char
+
+	ok := C.ctoon_go_bridge_encode(
+		tapePtr, C.size_t(len(tape)),
+		cAsJSON, C.int(indent), C.uint32_t(writeFlag), C.uint32_t(delimiter),
+		&outData, &outLen, &outErr,
+	)
+	if ok == 0 {
+		msg := "ctoon: encode error"
+		if outErr != nil {
+			msg = C.GoString(outErr)
+			C.ctoon_go_bridge_free(unsafe.Pointer(outErr))
+		}
+		return "", fmt.Errorf(msg)
+	}
+	defer C.ctoon_go_bridge_free(unsafe.Pointer(outData))
+	return C.GoStringN(outData, C.int(outLen)), nil
+}
+
+// bridgeDecode parses TOON or JSON via a single CGo call: bridge.c parses
+// the input and walks the resulting ctoon_val tree into a tape natively,
+// which is then decoded into Go maps/slices/etc. in pure Go.
+func bridgeDecode(s string, asJSON bool, readFlag uint32) (interface{}, error) {
+	var cAsJSON C.int
+	if asJSON {
+		cAsJSON = 1
+	}
+
+	// readOnlyCStr points into Go's own (immutable) string memory — the
+	// in-situ flag must never reach the C side here, same reasoning as
+	// insituBit's doc comment above.
+	safeFlag := uint32(C.ctoon_read_flag(readFlag) &^ insituBit)
+
+	var outTape *C.uint8_t
+	var outTapeLen C.size_t
+	var outErr *C.char
+
+	ok := C.ctoon_go_bridge_decode(
+		readOnlyCStr(s), C.size_t(len(s)),
+		cAsJSON, C.uint32_t(safeFlag),
+		&outTape, &outTapeLen, &outErr,
+	)
+	if ok == 0 {
+		msg := "ctoon: decode error"
+		if outErr != nil {
+			msg = C.GoString(outErr)
+			C.ctoon_go_bridge_free(unsafe.Pointer(outErr))
+		}
+		return nil, fmt.Errorf(msg)
+	}
+	defer C.ctoon_go_bridge_free(unsafe.Pointer(outTape))
+
+	tapeBytes := C.GoBytes(unsafe.Pointer(outTape), C.int(outTapeLen))
+	r := &tapeReader{buf: tapeBytes}
+	return r.decode()
+}
+
+// ---------------------------------------------------------------------------
 // Encode  (Go value → TOON string)
 // ---------------------------------------------------------------------------
 
 // Encode serialises a Go value to a TOON-formatted string.
+// Indent is a no-op for TOON output (matches the previous implementation:
+// ctoon_write_options has no indent field — TOON's indentation is fixed by
+// the spec, unlike JSON's).
 func Encode(v interface{}, opts EncodeOptions) (string, error) {
-	doc := C.ctoon_mut_doc_new(nil)
-	if doc == nil {
-		return "", fmt.Errorf("ctoon: failed to create mutable document")
-	}
-	defer C.ctoon_mut_doc_free(doc)
-
-	root, err := goToMutVal(doc, v)
-	if err != nil {
-		return "", err
-	}
-	C.ctoon_mut_doc_set_root(doc, root)
-
-	wopts := C.ctoon_write_options{
-		flag:      C.ctoon_write_flag(opts.Flag),
-		delimiter: C.ctoon_delimiter(opts.Delimiter),
-	}
-	var outLen C.size_t
-	var werr C.ctoon_write_err
-	// signature: (doc, opts, alc, len*, err*) → char*
-	raw := C.ctoon_mut_write_opts(doc, &wopts, nil, &outLen, &werr)
-	if raw == nil {
-		msg := "ctoon: write error"
-		if werr.msg != nil {
-			msg = C.GoString(werr.msg)
-		}
-		return "", fmt.Errorf("%s (code %d)", msg, werr.code)
-	}
-	defer C.free(unsafe.Pointer(raw))
-
-	return C.GoStringN(raw, C.int(outLen)), nil
+	return bridgeEncode(v, false, opts.Indent, uint32(opts.Flag), uint32(opts.Delimiter))
 }
 
 // Decode parses a TOON string and returns the equivalent Go value.
@@ -175,20 +233,7 @@ func readOnlyCStr(s string) *C.char {
 const insituBit C.ctoon_read_flag = 1 << 0
 
 func Decode(s string, opts DecodeOptions) (interface{}, error) {
-	var rerr C.ctoon_read_err
-	flag := C.ctoon_read_flag(opts.Flag) &^ insituBit
-	// signature: (dat, len, flag, alc*, err*) → doc*
-	doc := C.ctoon_read_opts(readOnlyCStr(s), C.size_t(len(s)), flag, nil, &rerr)
-	if doc == nil {
-		msg := "ctoon: parse error"
-		if rerr.msg != nil {
-			msg = C.GoString(rerr.msg)
-		}
-		return nil, fmt.Errorf("%s (pos %d, code %d)", msg, rerr.pos, rerr.code)
-	}
-	defer C.ctoon_doc_free(doc)
-
-	return valToGo(C.ctoon_doc_get_root(doc)), nil
+	return bridgeDecode(s, false, uint32(opts.Flag))
 }
 
 // EncodeToFile serialises v and writes the TOON output to path.
@@ -250,48 +295,12 @@ func DecodeFromFile(path string, opts DecodeOptions) (interface{}, error) {
 
 // LoadsJSON parses a JSON string into a Go value (uses ctoon's JSON reader).
 func LoadsJSON(json string) (interface{}, error) {
-	var rerr C.ctoon_read_err
-	doc := C.ctoon_read_json(readOnlyCStr(json), C.size_t(len(json)), C.ctoon_read_flag(ReadNoFlag), nil, &rerr)
-	if doc == nil {
-		msg := "ctoon: JSON parse error"
-		if rerr.msg != nil {
-			msg = C.GoString(rerr.msg)
-		}
-		return nil, fmt.Errorf("%s (pos %d, code %d)", msg, rerr.pos, rerr.code)
-	}
-	defer C.ctoon_doc_free(doc)
-
-	return valToGo(C.ctoon_doc_get_root(doc)), nil
+	return bridgeDecode(json, true, uint32(ReadNoFlag))
 }
 
 // DumpsJSON serialises a Go value to a JSON string.
 func DumpsJSON(v interface{}, indent int) (string, error) {
-	doc := C.ctoon_mut_doc_new(nil)
-	if doc == nil {
-		return "", fmt.Errorf("ctoon: failed to create mutable document")
-	}
-	defer C.ctoon_mut_doc_free(doc)
-
-	root, err := goToMutVal(doc, v)
-	if err != nil {
-		return "", err
-	}
-	C.ctoon_mut_doc_set_root(doc, root)
-
-	var outLen C.size_t
-	var werr C.ctoon_write_err
-	// signature: (doc, indent, flags, alc, len*, err*) → char*
-	raw := C.ctoon_mut_doc_to_json(doc, C.int(indent), C.ctoon_write_flag(WriteNoFlag), nil, &outLen, &werr)
-	if raw == nil {
-		msg := "ctoon: JSON write error"
-		if werr.msg != nil {
-			msg = C.GoString(werr.msg)
-		}
-		return "", fmt.Errorf("%s (code %d)", msg, werr.code)
-	}
-	defer C.free(unsafe.Pointer(raw))
-
-	return C.GoStringN(raw, C.int(outLen)), nil
+	return bridgeEncode(v, true, indent, uint32(WriteNoFlag), 0)
 }
 
 // LoadJSON reads a JSON file and returns the Go value.
