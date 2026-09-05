@@ -629,6 +629,63 @@ func TestAliases(t *testing.T) {
 	}
 }
 
+func TestMarshalUnmarshal(t *testing.T) {
+	data, err := ctoon.Marshal(map[string]interface{}{"name": "Alice", "age": int64(30)})
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var m map[string]interface{}
+	if err := ctoon.Unmarshal(data, &m); err != nil {
+		t.Fatalf("Unmarshal into *map[string]interface{}: %v", err)
+	}
+	if m["name"] != "Alice" {
+		t.Errorf("got name=%v, want Alice", m["name"])
+	}
+
+	var s string
+	strData, _ := ctoon.Marshal("hello")
+	if err := ctoon.Unmarshal(strData, &s); err != nil || s != "hello" {
+		t.Errorf("Unmarshal into *string: got %q, err=%v", s, err)
+	}
+
+	var n int
+	numData, _ := ctoon.Marshal(int64(42))
+	if err := ctoon.Unmarshal(numData, &n); err != nil || n != 42 {
+		t.Errorf("Unmarshal into *int: got %d, err=%v", n, err)
+	}
+
+	// A non-pointer target must error, not silently no-op.
+	var notPtr interface{}
+	if err := ctoon.Unmarshal(data, notPtr); err == nil {
+		t.Error("Unmarshal into a non-pointer should return an error")
+	}
+
+	// An arbitrary struct target isn't supported (no field-tag reflection,
+	// unlike encoding/json) — must fail clearly rather than leave the
+	// struct silently unfilled.
+	type Person struct{ Name string }
+	var p Person
+	if err := ctoon.Unmarshal(data, &p); err == nil {
+		t.Error("Unmarshal into an arbitrary struct should return an error, not silently succeed")
+	}
+}
+
+func TestJSONMarshalUnmarshal(t *testing.T) {
+	data, err := ctoon.JSONMarshal(map[string]interface{}{"x": int64(1)})
+	if err != nil {
+		t.Fatalf("JSONMarshal: %v", err)
+	}
+
+	var m map[string]interface{}
+	if err := ctoon.JSONUnmarshal(data, &m); err != nil {
+		t.Fatalf("JSONUnmarshal: %v", err)
+	}
+	if m["x"] != uint64(1) {
+		t.Errorf("got x=%#v, want uint64(1)", m["x"])
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Section 9 – Options
 // ---------------------------------------------------------------------------

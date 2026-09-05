@@ -115,6 +115,32 @@ var LoadsToon = binding.LoadsToon
 var DumpsToon = binding.DumpsToon
 
 // ---------------------------------------------------------------------------
+// encoding/json-signature-compatible aliases
+// ---------------------------------------------------------------------------
+
+// Marshal serialises v to TOON-formatted bytes. Same signature as
+// encoding/json.Marshal — for anyone reaching for the stdlib-idiomatic
+// name out of habit. Loads/Dumps remain the primary API (kept consistent
+// with every other ctoon binding's naming); this is a thin wrapper, not
+// a separate implementation. Does not support struct reflection/tags —
+// see binding.Marshal's doc comment for exactly what's supported.
+var Marshal = binding.Marshal
+
+// Unmarshal parses TOON-formatted bytes into the value pointed to by v.
+// Same signature as encoding/json.Unmarshal.
+var Unmarshal = binding.Unmarshal
+
+// JSONMarshal serialises v to JSON-formatted bytes via ctoon's JSON writer.
+// Same signature as encoding/json.Marshal. Named with the JSON prefix
+// (not Marshal*JSON*) to avoid colliding in spirit with Go's
+// json.Marshaler interface method name.
+var JSONMarshal = binding.JSONMarshal
+
+// JSONUnmarshal parses JSON-formatted bytes via ctoon's JSON reader into
+// the value pointed to by v. Same signature as encoding/json.Unmarshal.
+var JSONUnmarshal = binding.JSONUnmarshal
+
+// ---------------------------------------------------------------------------
 // JSON helpers
 // ---------------------------------------------------------------------------
 
