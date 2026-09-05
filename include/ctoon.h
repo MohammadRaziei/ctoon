@@ -487,7 +487,7 @@ extern "C" {
 #define CTOON_VERSION_MAJOR 0
 
 /** The minor version of ctoon. */
-#define CTOON_VERSION_MINOR 5
+#define CTOON_VERSION_MINOR 6
 
 /** The patch version of ctoon. */
 #define CTOON_VERSION_PATCH 0
