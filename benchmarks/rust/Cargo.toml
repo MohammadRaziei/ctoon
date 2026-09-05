@@ -1,0 +1,14 @@
+[package]
+name = "ctoon-bench-rust"
+version = "0.1.0"
+edition = "2021"
+
+# toon-rust reserves the "toon-format" crate name on crates.io
+# (default-features off: skips its CLI/TUI deps, which pull in a lot we
+# don't need for a benchmark).
+[dependencies]
+toon-format = { version = "0.5.0", default-features = false }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3

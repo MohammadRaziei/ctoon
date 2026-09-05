@@ -1,19 +1,17 @@
-add_executable(bench_ctoon_c bench_ctoon.c)
-target_link_libraries(bench_ctoon_c PRIVATE ctoon::ctoon)
-target_compile_definitions(bench_ctoon_c PRIVATE
-    CTOON_BENCH_MANIFEST="${CTOON_BENCH_MANIFEST}")
+# ── ctoon (fetched from GitHub, same as every other library here) ────────
+include(FetchContent)
+FetchContent_Declare(
+    ctoon
+    GIT_REPOSITORY ${CTOON_GITHUB_URL}
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(ctoon)
 
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(bench_ctoon_c PRIVATE -O3)
-endif()
-
-# ── Competitor: TOONc (github.com/UsboKirishima/TOONc) ─────────────────
+# ── TOONc (github.com/UsboKirishima/TOONc) ────────────────────────────────
 # Plain Makefile project, no CMakeLists.txt of its own — FetchContent just
 # populates the source (MakeAvailable skips add_subdirectory() when there's
-# no top-level CMakeLists.txt to add), and we build the one .c file
-# directly. TOONc only implements TOON -> JSON (it has no JSON parser and
-# no TOON writer), so that's the only direction it's compared on.
-include(FetchContent)
+# no top-level CMakeLists.txt), and we build the one .c file directly.
 FetchContent_Declare(
     toonc
     GIT_REPOSITORY https://github.com/UsboKirishima/TOONc.git
@@ -28,13 +26,20 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(toonc_upstream PRIVATE -O3 -w) # -w: not our warnings to fix
 endif()
 
-target_link_libraries(bench_ctoon_c PRIVATE toonc_upstream)
-target_compile_definitions(bench_ctoon_c PRIVATE CTOON_BENCH_HAVE_TOONC=1)
+add_executable(bench_c bench.c)
+target_link_libraries(bench_c PRIVATE ctoon::ctoon toonc_upstream)
+target_compile_definitions(bench_c PRIVATE
+    CTOON_BENCH_MANIFEST="${CTOON_BENCH_MANIFEST}"
+    CTOON_BENCH_RESULTS_JSON="${CTOON_BENCH_RESULTS_DIR}/c.json")
 
-add_custom_target(ctoon_benchmark_c
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(bench_c PRIVATE -O3)
+endif()
+
+add_custom_target(ctoon_benchmarks_c
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running C benchmark..."
-    COMMAND $<TARGET_FILE:bench_ctoon_c>
-    DEPENDS bench_ctoon_c
+    COMMAND $<TARGET_FILE:bench_c>
+    DEPENDS bench_c
     USES_TERMINAL
 )
-add_dependencies(ctoon_benchmark ctoon_benchmark_c)
+add_dependencies(ctoon_benchmarks ctoon_benchmarks_c)

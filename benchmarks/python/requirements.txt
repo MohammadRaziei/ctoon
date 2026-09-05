@@ -1,12 +1,5 @@
-# Dependencies for benchmarks/python/bench_ctoon.py itself.
-# ctoon is NOT listed here — CMake installs it separately, in editable mode,
-# from the repository root (so the benchmark always exercises the code
-# currently checked out, not whatever's on PyPI).
+# Harness-only dependencies. ctoon and toon_format are installed directly
+# from their GitHub repos by CMakeLists.txt (git+https), not listed here —
+# same treatment for every library benchmarked, nothing local.
 tabulate>=0.9
-
-# Competitors, benchmarked on the exact same corpus for comparison:
-#
-# toon-format is installed from GitHub HEAD, not PyPI: the published 0.1.0
-# wheel is a pre-alpha stub where encode() and decode() both raise
-# NotImplementedError. See InstallDeps.cmake.
-toons>=0.7          # community, Rust backend (github.com/alesanfra/toons) — prebuilt wheel
+toons>=0.7   # community, Rust backend (github.com/alesanfra/toons) — prebuilt wheel on PyPI

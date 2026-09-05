@@ -1,161 +1,129 @@
 # CToon Benchmarks
 
-Throughput benchmarks for every CToon binding: C, C++, Python, Go, and
-MATLAB. This is a **standalone** CMake project — it is not built as part of
-the main `ctoon` build and the root `CMakeLists.txt` does not know it
-exists. It links the other way around: this project pulls the repo root in
-as a subdirectory to get the `ctoon::ctoon` / `ctoon::ctoonpp` targets.
+Throughput benchmarks for every CToon binding — C, C++, Python, Go,
+MATLAB — plus Rust, where ctoon has no binding yet but the ecosystem's own
+implementation is benchmarked anyway. Every language runs alongside every
+maintained competing implementation that exists for that language. This
+project has **no relationship to the repository root**, not even for
+ctoon itself: every language fetches ctoon the exact same way it fetches
+any competitor, from `https://github.com/mohammadraziei/ctoon.git`
+(C/C++), `go get github.com/mohammadraziei/ctoon` (Go), or
+`pip install git+https://github.com/mohammadraziei/ctoon.git` (Python).
+**ctoon is never a special case here** — it's one more row in the same
+results table as gotoon, toon-go, or TOONc.
 
 ## Running
 
-**Prerequisites:** CMake ≥ 3.19, a C/C++ compiler, and internet access on
-the first configure (it fetches the corpus — two shallow git clones,
-a few MB total — and pulls the repo root in as a subdirectory).
-Python3 and a Go toolchain are picked up automatically if present; nothing
-else needs to be pre-installed by hand (see
-[Toolchain detection](#toolchain-detection)).
+`benchmarks/` is a self-contained world of its own — nothing here reads
+or references anything outside this folder, so you `cd` into it first and
+run everything from there:
 
 ```bash
-cmake -S benchmarks -B build-bench -DCMAKE_BUILD_TYPE=Release
-cmake --build build-bench --target ctoon_benchmark
+cd benchmarks
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release
+cmake --build build-bench --target ctoon_benchmarks
 ```
 
-The first `cmake -S ... -B ...` configure step does the one-time work:
-fetches the corpus, builds the root `ctoon` library, and detects which
-language toolchains are on this machine. The `cmake --build` step actually
-compiles and **runs** every benchmark whose toolchain was found, printing
-straight to the terminal — nothing is written to a file. Re-running the
-build command re-runs everything again (custom targets always re-execute);
-there's no need to reconfigure unless a source file changes or you want to
-refresh the corpus.
-
-Expect output like this per language (numbers vary by machine):
-
-```
-CToon C Benchmark
-Corpus: 462 files, 3.56 MB (JSON)
-
-Operation        Throughput       Docs/sec   Success              Total time
-JSON -> TOON      249.62 MB/s          32390      100%    0.2853 s  (x20 reps)
-TOON -> JSON      147.67 MB/s          29538      100%    0.3128 s  (x20 reps)
-
-vs TOONc (TOON -> JSON only — TOONc has no JSON parser or TOON writer)
-Files TOONc's parser can safely handle: 455/462 (98%)
-TOON -> JSON       67.11 MB/s          13643      100%    0.6670 s  (x20 reps)
-```
-
-To run just one language instead of everything:
+That fetches every dependency (the corpus, and every language's own
+libraries) and runs every benchmark whose language toolchain is present.
+To run just one language:
 
 ```bash
-cmake --build build-bench --target ctoon_benchmark_c
-cmake --build build-bench --target ctoon_benchmark_cpp
-cmake --build build-bench --target ctoon_benchmark_python
-cmake --build build-bench --target ctoon_benchmark_go
-cmake --build build-bench --target ctoon_benchmark_go_vs_gotoon
-cmake --build build-bench --target ctoon_benchmark_go_vs_toongo   # needs Go >= 1.23
-cmake --build build-bench --target ctoon_benchmark_matlab
+cmake --build build-bench --target ctoon_benchmarks_c
+cmake --build build-bench --target ctoon_benchmarks_cpp
+cmake --build build-bench --target ctoon_benchmarks_python
+cmake --build build-bench --target ctoon_benchmarks_go
+cmake --build build-bench --target ctoon_benchmarks_rust
+cmake --build build-bench --target ctoon_benchmarks_matlab
 ```
 
-To start over from a clean slate (re-fetch the corpus, rebuild everything):
+Each one prints a results table and writes a JSON file to
+`build-bench/results/<language>.json`:
 
-```bash
-rm -rf build-bench
-cmake -S benchmarks -B build-bench -DCMAKE_BUILD_TYPE=Release
+```json
+{
+  "language": "python",
+  "corpus": {"files": 462, "bytes": 3567890},
+  "results": [
+    {"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 87.0,
+     "docs_per_sec": 12345.0, "success_rate": 1.0, "total_time_s": 1.23},
+    ...
+  ]
+}
 ```
+
+The JSON files are kept **separate per language** rather than merged —
+each language tests a different set of libraries and has its own corpus
+loading overhead, so there's no meaningful single "language-agnostic"
+number to combine them into.
 
 ## Layout
 
-Mirrors `tests/`, one folder per language:
+Mirrors `tests/`, one folder per language — each fetches its own
+dependencies (including ctoon) and defines a `ctoon_benchmarks_<lang>`
+target:
 
 ```
 benchmarks/
-  CMakeLists.txt        orchestrator: fetches the corpus, builds the manifest,
-                         pulls in the repo root, adds each language below
-  c/                     bench_ctoon.c        (ctoon::ctoon)
-  cpp/                    bench_ctoon.cpp     (ctoon::ctoonpp)
-  python/                 bench_ctoon.py + requirements.txt
-  go/                     bench_ctoon.go      (module github.com/mohammadraziei/ctoon)
-  matlab/                 bench_ctoon.m       (+ctoon MEX binding)
+  CMakeLists.txt   orchestrator: fetches the corpus, detects toolchains,
+                   adds each language below if its toolchain is present
+  c/               bench.c        — ctoon, TOONc
+  cpp/             bench.cpp      — ctoon (no competitor exists)
+  python/          bench.py       — ctoon, toon_format, toons
+  go/              bench.go       — ctoon, gotoon, toon-go
+  rust/            main.rs        — toon-rust (no ctoon Rust binding exists yet)
+  matlab/          bench.m        — ctoon (no competitor exists)
 ```
 
 ## Methodology
 
-Every language benchmark follows the exact same steps, over the exact same
-corpus (a shared manifest file, generated once by the top-level
-`CMakeLists.txt`, so every language reads the identical set of files):
+Every language benchmark follows the same steps over the same corpus (a
+shared manifest file generated once by the top-level `CMakeLists.txt`):
 
 1. **Load** every file in the corpus into memory. Not timed.
-2. **Pre-pass**: convert each JSON file to TOON once, to have TOON input
-   ready for step 4. Not timed.
-3. **Timed — JSON → TOON**: repeatedly parse JSON and re-serialise to TOON,
-   `x20` over the whole corpus.
-4. **Timed — TOON → JSON**: repeatedly parse the TOON text produced in step
-   2 and re-serialise to JSON, `x20` over the whole corpus.
-5. **Report**: throughput in MB/s (of the bytes actually read by that
-   specific operation — JSON bytes for step 3, TOON bytes for step 4) and
-   documents/second.
+2. **Pre-pass**: convert each JSON file to TOON once with ctoon (the only
+   library in most of these benchmarks with its own JSON parser), to have
+   TOON input ready for step 4. Not timed.
+3. **Timed — json_to_toon**: repeatedly parse JSON and re-serialise to
+   TOON, `x20` over the whole corpus.
+4. **Timed — toon_to_json**: repeatedly parse the TOON text from step 2
+   and re-serialise to JSON, `x20` over the whole corpus.
+5. **Report**: throughput in MB/s (of bytes actually read by *successful*
+   conversions only) and documents/second, plus a success rate.
 
-Files that fail to round-trip (e.g. a JSON document whose root is a bare
-scalar, which some corpora include as edge cases) are skipped and don't
-count toward either total.
-
-This is **not universally** a benchmark against competing libraries — but
-where a maintained competitor exists for a binding we ship, it's included:
-
-- **C** vs [TOONc](https://github.com/UsboKirishima/TOONc) — TOON → JSON
-  only (TOONc has no JSON parser and no TOON writer of its own).
-- **Python** vs [toon-format](https://github.com/toon-format/toon-python)
-  (official) and [toons](https://github.com/alesanfra/toons) (community,
-  Rust backend) — both directions.
-- **Go** vs [toon-go](https://github.com/toon-format/toon-go) (official,
-  requires Go ≥ 1.23 — see below) and
-  [gotoon](https://github.com/alpkeskin/gotoon) (community, encode-only —
-  it has no decoder).
-- **C++** has no competitor at all — we're the reference implementation
-  for that binding — so it exists purely to track the C++ wrapper's own
-  overhead over the raw C API across changes.
-- **MATLAB** has no listed competitor either.
-
-A competitor that fails to round-trip part of the corpus is not silently
-given an inflated number: every result reports a **success rate**
-(successful ops ÷ attempted ops), and throughput is computed only from the
-bytes of files that actually succeeded. Some of these failures are
-genuine, verified parser incompatibilities — e.g. `toon-go`'s decoder
-rejects valid TOON output that ctoon itself round-trips correctly, and
-`TOONc`'s parser crashes outright on part of the corpus rather than
-failing gracefully (isolated in the C benchmark with a per-file
-fork-and-probe pass so one crash doesn't take down the whole run).
+A library that fails to round-trip part of the corpus does not get an
+inflated throughput number — see each language's own findings on this:
+`TOONc`'s parser crashes on part of the corpus (isolated with a per-file
+fork-and-probe pass in the C benchmark so one crash doesn't take the whole
+run down), and `toon-go`'s decoder rejects TOON output that ctoon itself
+round-trips correctly.
 
 ## Corpus
 
-Three sources, combined into one manifest:
-
-- **`tests/data/*.json`** — the project's own curated samples, including the
-  well-known `twitter.json` (~620 KB, deeply nested, realistic shape).
-- **[toon-format/spec](https://github.com/toon-format/spec)** fixtures — the
-  same pinned checkout `tests/cpp` uses for spec-conformance testing. Small,
-  varied JSON shapes that intentionally cover the format's edge cases.
+- **[toon-format/spec](https://github.com/toon-format/spec)** fixtures —
+  small, varied JSON shapes intentionally covering the format's edge cases.
 - **[JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite)**
-  — ~540 real-world JSON files (not synthetic data generated for this
-  benchmark), used as the primary "JSON → TOON" conversion corpus as
-  requested. Deeply nested schemas and test-case arrays give a realistic
-  mix of object/array/scalar shapes.
+  — ~450 real-world JSON files (not synthetic data generated for this
+  benchmark), the primary corpus.
 
-Both external repos are fetched via CMake's `FetchContent` (shallow clones,
-pinned where reproducibility matters) — nothing is vendored into this repo.
+Both are fetched via `FetchContent` (shallow clones) — nothing is vendored
+into this repo.
 
 ## Toolchain detection
 
 A language is **skipped with a warning** only when its toolchain itself
-isn't found (no Go compiler, no MATLAB installation, etc.) — mirroring how
-`tests/` already handles Go and MATLAB. The `toon-go` comparison
-specifically needs Go ≥ 1.23 (a requirement from that library, not from
-ctoon's own Go binding, which only needs 1.21) — if the `go` found on
-`PATH` is older, that one comparison is skipped with a warning while the
-base Go benchmark and the `gotoon` comparison (which has no such floor)
-still run normally.
+isn't found (no Go compiler, no MATLAB installation, etc.) — or, for Go
+and Rust specifically, when the version found is too old:
 
-If the toolchain **is** present but a per-language dependency is missing
-(e.g. the `tabulate` pip package, or the local `ctoon` package not yet
-installed), it's installed automatically rather than skipped — see
-`python/InstallDeps.cmake`.
+- The single Go `go.mod` here tests ctoon, gotoon, and toon-go together as
+  peers (no separate `vs_*` subdirectory), and toon-go needs Go ≥ 1.23.
+- `toon-rust` (crates.io `toon-format` 0.5.0) uses a standard-library
+  integer method stabilized in **Rust 1.87** — checked with both an
+  older published version (`0.1.0`, confirmed to be an unimplemented
+  placeholder — the crate reserved its name early) and the git `HEAD`,
+  neither avoids this; it's a genuine requirement of the only functional
+  release, not a git-vs-crates.io difference.
+
+Everything else — a Python venv, `pip install`, `go get`, `cargo build`,
+CMake `FetchContent` — happens inside that language's own
+`CMakeLists.txt` once the toolchain is confirmed present.

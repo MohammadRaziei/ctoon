@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
-"""CToon Python benchmark — vs. competing implementations.
+"""CToon Python benchmark.
 
-Same methodology as every other language benchmark in this repo (see
-benchmarks/README.md), so the numbers line up with the C, C++, and Go
-results for the same corpus:
+Every implementation here — ctoon included — is one more peer entry,
+installed from its own source (GitHub or PyPI), tested the same way. No
+"ctoon vs X" framing: one shared results table, one row per
+(library, operation) pair.
 
+Methodology (same across every language benchmark in this repo):
   1. Load every file in the corpus manifest into memory (untimed).
   2. Untimed pre-pass: convert each JSON file to TOON once (with ctoon).
-  3. Timed "JSON -> TOON": repeatedly parse JSON and re-serialise to TOON.
-  4. Timed "TOON -> JSON": repeatedly parse the TOON text from step 2 and
+  3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to TOON.
+  4. Timed "toon_to_json": repeatedly parse the TOON text from step 2 and
      re-serialise to JSON.
-  5. Report throughput (MB/s of the bytes actually read by that operation)
-     and documents/sec.
+  5. Report throughput (MB/s of bytes actually read by successful
+     conversions only) and documents/sec.
 
-Runs against every implementation importable in the environment:
-  - ctoon              (this repo)
-  - toon_format        github.com/toon-format/toon-python (official, pure Python)
-  - toons              github.com/alesanfra/toons (community, Rust backend)
+Implementations:
+  - ctoon        this project (github.com/mohammadraziei/ctoon)
+  - toon_format  github.com/toon-format/toon-python (official)
+  - toons        github.com/alesanfra/toons (community, Rust backend)
 """
 import argparse
 import json
@@ -57,7 +59,6 @@ def load_corpus(manifest_path):
 
 
 def bench_json_to_toon(files, json_to_toon_fn):
-    """json_to_toon_fn(json_text) -> toon string."""
     t0 = time.perf_counter()
     ops = 0
     bytes_done = 0
@@ -73,7 +74,6 @@ def bench_json_to_toon(files, json_to_toon_fn):
 
 
 def bench_toon_to_json(files, toon_to_json_fn):
-    """toon_to_json_fn(toon_text) -> json string."""
     t0 = time.perf_counter()
     ops = 0
     bytes_done = 0
@@ -93,6 +93,7 @@ def bench_toon_to_json(files, toon_to_json_fn):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("manifest")
+    parser.add_argument("results_json")
     args = parser.parse_args()
 
     files = load_corpus(args.manifest)
@@ -102,47 +103,50 @@ def main():
 
     total_json_bytes = sum(len(f["json"].encode("utf-8")) for f in files)
 
-    print("CToon Python Benchmark — vs. competing implementations")
-    print(f"Corpus: {len(files)} files, {total_json_bytes / 1e6:.2f} MB (JSON)")
-    libs = ["ctoon (this repo)"]
-    if toon_format:
-        libs.append("toon_format (official, pure Python)")
-    if toons:
-        libs.append("toons (community, Rust backend)")
-    print("Implementations: " + ", ".join(libs) + "\n")
+    print("CToon Benchmarks — Python")
+    print(f"Corpus: {len(files)} files, {total_json_bytes / 1e6:.2f} MB (JSON)\n")
 
-    # ── Untimed pre-pass: TOON text with ctoon, shared as decode input ──
-    total_toon_bytes = 0
+    # Untimed pre-pass: TOON text with ctoon, shared decode input for all
     for f in files:
         try:
             data = json.loads(f["json"])
             f["toon"] = ctoon.dumps(data)
-            total_toon_bytes += len(f["toon"].encode("utf-8"))
         except Exception:
             pass
 
     rows = []
+    results = []
 
     def add_rows(name, json_to_toon_fn, toon_to_json_fn):
         t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn)
-        rate_enc = f"{100 * ops_enc / (len(files) * REPEATS):.0f}%"
         rows.append([
-            name, "JSON -> TOON",
+            name, "json_to_toon",
             f"{bytes_enc / t_enc / 1e6:.2f} MB/s" if ops_enc else "n/a",
             f"{ops_enc / t_enc:.0f}",
-            rate_enc,
+            f"{100 * ops_enc / (len(files) * REPEATS):.0f}%",
             f"{t_enc:.4f} s",
         ])
+        results.append({
+            "library": name, "operation": "json_to_toon",
+            "throughput_mb_s": (bytes_enc / t_enc / 1e6) if ops_enc else 0.0,
+            "docs_per_sec": ops_enc / t_enc, "success_rate": ops_enc / (len(files) * REPEATS),
+            "total_time_s": t_enc,
+        })
 
         t_dec, ops_dec, bytes_dec = bench_toon_to_json(files, toon_to_json_fn)
-        rate_dec = f"{100 * ops_dec / (len(files) * REPEATS):.0f}%"
         rows.append([
-            name, "TOON -> JSON",
+            name, "toon_to_json",
             f"{bytes_dec / t_dec / 1e6:.2f} MB/s" if ops_dec else "n/a",
             f"{ops_dec / t_dec:.0f}",
-            rate_dec,
+            f"{100 * ops_dec / (len(files) * REPEATS):.0f}%",
             f"{t_dec:.4f} s",
         ])
+        results.append({
+            "library": name, "operation": "toon_to_json",
+            "throughput_mb_s": (bytes_dec / t_dec / 1e6) if ops_dec else 0.0,
+            "docs_per_sec": ops_dec / t_dec, "success_rate": ops_dec / (len(files) * REPEATS),
+            "total_time_s": t_dec,
+        })
 
     add_rows(
         "ctoon",
@@ -168,10 +172,18 @@ def main():
     if tabulate:
         print(tabulate(rows, headers=headers))
     else:
-        fmt = "{:<14} {:<14} {:>12} {:>10} {:>8} {:>24}"
+        fmt = "{:<12} {:<14} {:>12} {:>10} {:>8} {:>24}"
         print(fmt.format(*headers))
         for row in rows:
             print(fmt.format(*row))
+
+    with open(args.results_json, "w") as f:
+        json.dump({
+            "language": "python",
+            "corpus": {"files": len(files), "bytes": total_json_bytes},
+            "results": results,
+        }, f, indent=2)
+    print(f"\nResults written to {args.results_json}")
 
     return 0
 

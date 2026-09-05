@@ -1,0 +1,13 @@
+# CMake out-of-source build directories (venvs, results/, corpus manifest,
+# fetched sources, and everything else all land inside these — none of it
+# touches the source tree except what's listed below).
+/build/
+/build-*/
+
+# cargo builds in-source (CMakeLists.txt runs it with WORKING_DIRECTORY
+# set to benchmarks/rust) — this is the one build artifact that isn't
+# already contained in an ignored build directory above.
+rust/target/
+
+# OS/editor cruft
+.DS_Store
