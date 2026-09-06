@@ -5,9 +5,9 @@ function bench(manifestPath, resultsJsonPath)
 %   it follows the same methodology, corpus, and JSON output schema as
 %   every other language benchmark here.
 %
-%   Must be run with the MATLAB start directory (-sd) set to
-%   src/bindings/matlab of the fetched ctoon checkout, so ctoon.dumps /
-%   ctoon.loads resolve.
+%   The +ctoon/ package (built by the ctoon_build_mex CMake target) must
+%   already be on the MATLAB path before calling this — see
+%   benchmarks/matlab/CMakeLists.txt for the addpath call that does it.
 
     repeats = 20;
 
@@ -99,6 +99,25 @@ function bench(manifestPath, resultsJsonPath)
     end
     tB = toc;
     results{end+1} = record('ctoon', 'toon_to_json', bytesB, opsB, tB, numel(files) * repeats, repeats); %#ok<AGROW>
+
+    % -- ctoon: roundtrip (json -> toon -> parse toon -> json, chained) --
+    tic;
+    opsC = 0; bytesC = 0;
+    for r = 1:repeats
+        for i = 1:numel(files)
+            try
+                val = jsondecode(files(i).json);
+                toon = ctoon.dumps(val);
+                val2 = ctoon.loads(toon);
+                jsonencode(val2);
+                opsC = opsC + 1;
+                bytesC = bytesC + numel(files(i).json);
+            catch
+            end
+        end
+    end
+    tC = toc;
+    results{end+1} = record('ctoon', 'roundtrip', bytesC, opsC, tC, numel(files) * repeats, repeats); %#ok<AGROW>
 
     write_results_json(resultsJsonPath, numel(files), totalJSONBytes, results);
 end

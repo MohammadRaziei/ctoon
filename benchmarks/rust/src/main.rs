@@ -133,6 +133,27 @@ fn main() {
     }
     results.push(record("toon-rust", "toon_to_json", bytes2, ops2, t0.elapsed().as_secs_f64(), files.len() as u64 * REPEATS as u64));
 
+    // roundtrip: json -> toon -> (parse toon) -> json, chained as one
+    // operation per file rather than the two legs above run separately.
+    let mut ops3 = 0u64;
+    let mut bytes3 = 0f64;
+    let t0 = Instant::now();
+    for _ in 0..REPEATS {
+        for f in &files {
+            if let Ok(val) = serde_json::from_str::<Value>(&f.json) {
+                if let Ok(toon) = encode_default(&val) {
+                    if let Ok(val2) = decode_default::<Value>(&toon) {
+                        if serde_json::to_string(&val2).is_ok() {
+                            ops3 += 1;
+                            bytes3 += f.json.len() as f64;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    results.push(record("toon-rust", "roundtrip", bytes3, ops3, t0.elapsed().as_secs_f64(), files.len() as u64 * REPEATS as u64));
+
     // Write results JSON
     let mut out = String::new();
     out.push_str("{\n  \"language\": \"rust\",\n");

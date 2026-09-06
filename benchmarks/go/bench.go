@@ -169,6 +169,33 @@ func main() {
 	}
 	record("ctoon", "toon_to_json", bytesB, opsB, time.Since(t0).Seconds(), len(files)*repeats)
 
+	// ctoon roundtrip: json -> toon -> (parse toon) -> json, chained as
+	// one operation per file rather than the two legs above run separately.
+	var opsRT int
+	var bytesRT float64
+	t0 = time.Now()
+	for r := 0; r < repeats; r++ {
+		for _, f := range files {
+			val, err := ctoon.LoadsJSON(f.json)
+			if err != nil {
+				continue
+			}
+			toon, err := ctoon.Dumps(val)
+			if err != nil {
+				continue
+			}
+			val2, err := ctoon.Loads(toon)
+			if err != nil {
+				continue
+			}
+			if _, err := ctoon.DumpsJSON(val2, 2); err == nil {
+				opsRT++
+				bytesRT += float64(len(f.json))
+			}
+		}
+	}
+	record("ctoon", "roundtrip", bytesRT, opsRT, time.Since(t0).Seconds(), len(files)*repeats)
+
 	// ── gotoon (encode-only: no decoder) ──
 	var opsC int
 	var bytesC float64
@@ -222,6 +249,33 @@ func main() {
 		}
 	}
 	record("toon-go", "toon_to_json", bytesE, opsE, time.Since(t0).Seconds(), len(files)*repeats)
+
+	// toon-go roundtrip: json -> toon -> (parse toon) -> json, chained as
+	// one operation per file.
+	var opsF int
+	var bytesF float64
+	t0 = time.Now()
+	for r := 0; r < repeats; r++ {
+		for _, f := range files {
+			var val interface{}
+			if err := json.Unmarshal([]byte(f.json), &val); err != nil {
+				continue
+			}
+			toon, err := toongo.MarshalString(val)
+			if err != nil {
+				continue
+			}
+			val2, err := toongo.DecodeString(toon)
+			if err != nil {
+				continue
+			}
+			if _, err := json.Marshal(val2); err == nil {
+				opsF++
+				bytesF += float64(len(f.json))
+			}
+		}
+	}
+	record("toon-go", "roundtrip", bytesF, opsF, time.Since(t0).Seconds(), len(files)*repeats)
 
 	// ── write results JSON ──
 	out := struct {

@@ -1,10 +1,12 @@
-set(VENV_DIR ${CMAKE_CURRENT_BINARY_DIR}/venv)
+cmake_path(SET VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/venv")
+cmake_path(ABSOLUTE_PATH VENV_DIR NORMALIZE)
+
 if(WIN32)
-    set(VENV_PYTHON ${VENV_DIR}/Scripts/python.exe)
-    set(VENV_PIP ${VENV_DIR}/Scripts/pip.exe)
+    cmake_path(APPEND VENV_DIR "Scripts" "python.exe" OUTPUT_VARIABLE VENV_PYTHON)
+    cmake_path(APPEND VENV_DIR "Scripts" "pip.exe" OUTPUT_VARIABLE VENV_PIP)
 else()
-    set(VENV_PYTHON ${VENV_DIR}/bin/python)
-    set(VENV_PIP ${VENV_DIR}/bin/pip)
+    cmake_path(APPEND VENV_DIR "bin" "python" OUTPUT_VARIABLE VENV_PYTHON)
+    cmake_path(APPEND VENV_DIR "bin" "pip" OUTPUT_VARIABLE VENV_PIP)
 endif()
 
 # A real venv (not the system Python) — installs ctoon and toon_format

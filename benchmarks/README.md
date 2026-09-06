@@ -87,9 +87,23 @@ shared manifest file generated once by the top-level `CMakeLists.txt`):
 3. **Timed — json_to_toon**: repeatedly parse JSON and re-serialise to
    TOON, `x20` over the whole corpus.
 4. **Timed — toon_to_json**: repeatedly parse the TOON text from step 2
-   and re-serialise to JSON, `x20` over the whole corpus.
-5. **Report**: throughput in MB/s (of bytes actually read by *successful*
+   (ctoon's own output) and re-serialise to JSON, `x20` over the whole
+   corpus. This measures **interop** with ctoon's specific TOON output.
+5. **Timed — roundtrip**: parse JSON → encode TOON → parse that same
+   TOON → encode JSON, all four steps chained as **one** operation per
+   file using each library's *own* encoder and decoder together — not
+   the two legs above run separately, and not cross-library. This
+   measures a library's **self-consistency**: can it read back what it
+   itself just wrote.
+6. **Report**: throughput in MB/s (of bytes actually read by *successful*
    conversions only) and documents/second, plus a success rate.
+
+Because step 4 and step 5 test different things, a library can legitimately
+score very differently on each — e.g. `toon-go`'s decoder rejects a good
+chunk of *ctoon's* TOON output (low `toon_to_json` success rate) while
+happily reading back its *own* encoder's output almost every time (high
+`roundtrip` success rate). That's not a contradiction; it's the two
+metrics doing their jobs.
 
 A library that fails to round-trip part of the corpus does not get an
 inflated throughput number — see each language's own findings on this:

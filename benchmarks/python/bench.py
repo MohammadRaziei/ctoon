@@ -73,6 +73,23 @@ def bench_json_to_toon(files, json_to_toon_fn):
     return time.perf_counter() - t0, ops, bytes_done
 
 
+def bench_roundtrip(files, roundtrip_fn):
+    """roundtrip_fn(json_text) -> json string, chaining json->toon->json
+    as one operation per file rather than running the two legs separately."""
+    t0 = time.perf_counter()
+    ops = 0
+    bytes_done = 0
+    for _ in range(REPEATS):
+        for f in files:
+            try:
+                roundtrip_fn(f["json"])
+                ops += 1
+                bytes_done += len(f["json"].encode("utf-8"))
+            except Exception:
+                pass
+    return time.perf_counter() - t0, ops, bytes_done
+
+
 def bench_toon_to_json(files, toon_to_json_fn):
     t0 = time.perf_counter()
     ops = 0
@@ -117,7 +134,7 @@ def main():
     rows = []
     results = []
 
-    def add_rows(name, json_to_toon_fn, toon_to_json_fn):
+    def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
         t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn)
         rows.append([
             name, "json_to_toon",
@@ -148,10 +165,26 @@ def main():
             "total_time_s": t_dec,
         })
 
+        t_rt, ops_rt, bytes_rt = bench_roundtrip(files, roundtrip_fn)
+        rows.append([
+            name, "roundtrip",
+            f"{bytes_rt / t_rt / 1e6:.2f} MB/s" if ops_rt else "n/a",
+            f"{ops_rt / t_rt:.0f}",
+            f"{100 * ops_rt / (len(files) * REPEATS):.0f}%",
+            f"{t_rt:.4f} s",
+        ])
+        results.append({
+            "library": name, "operation": "roundtrip",
+            "throughput_mb_s": (bytes_rt / t_rt / 1e6) if ops_rt else 0.0,
+            "docs_per_sec": ops_rt / t_rt, "success_rate": ops_rt / (len(files) * REPEATS),
+            "total_time_s": t_rt,
+        })
+
     add_rows(
         "ctoon",
         lambda text: ctoon.dumps(json.loads(text)),
         lambda text: ctoon.dumps_json(ctoon.loads(text), indent=2),
+        lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2),
     )
 
     if toon_format:
@@ -159,6 +192,7 @@ def main():
             "toon_format",
             lambda text: toon_format.encode(json.loads(text)),
             lambda text: json.dumps(toon_format.decode(text), indent=2),
+            lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2),
         )
 
     if toons:
@@ -166,6 +200,7 @@ def main():
             "toons",
             lambda text: toons.dumps(json.loads(text)),
             lambda text: toons.to_json(text, indent=2),
+            lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2),
         )
 
     headers = ["Library", "Operation", "Throughput", "Docs/sec", "Success", f"Total time (x{REPEATS} reps)"]

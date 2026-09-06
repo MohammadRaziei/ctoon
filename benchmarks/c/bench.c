@@ -140,6 +140,30 @@ static void bench_ctoon(bench_file *files, size_t n) {
         }
     }
     record("ctoon", "toon_to_json", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
+
+    /* roundtrip: json -> toon -> (parse toon) -> json, chained as one
+       operation per file rather than the two legs above run separately. */
+    ops = 0; bytes = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (size_t i = 0; i < n; i++) {
+            ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, NULL);
+            if (!doc1) continue;
+            size_t tlen = 0;
+            char *toon = ctoon_write(doc1, &tlen);
+            ctoon_doc_free(doc1);
+            if (!toon) continue;
+
+            ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
+            free(toon);
+            if (!doc2) continue;
+            size_t jlen = 0;
+            char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, NULL);
+            ctoon_doc_free(doc2);
+            if (json) { free(json); ops++; bytes += (double)files[i].len; }
+        }
+    }
+    record("ctoon", "roundtrip", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
 }
 
 static void bench_toonc(bench_file *files, size_t n, size_t pre_ok) {

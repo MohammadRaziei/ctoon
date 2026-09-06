@@ -173,6 +173,27 @@ int main() {
     record("ctoon", "toon_to_json", bytes_b, ops_b, now_seconds() - t0,
            static_cast<long>(files.size()) * CTOON_BENCH_REPEATS);
 
+    // roundtrip: json -> toon -> (parse toon) -> json, chained as one
+    // operation per file rather than the two legs above run separately.
+    long ops_c = 0; double bytes_c = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (const auto &f : files) {
+            try {
+                auto doc1 = ctoon::document::from_json(f.json);
+                std::string toon = doc1.to_string().str();
+                auto doc2 = ctoon::document::parse(toon);
+                auto result = doc2.to_json(2);
+                (void)result.size();
+                ops_c++;
+                bytes_c += static_cast<double>(f.json.size());
+            } catch (const ctoon::error &) {
+            }
+        }
+    }
+    record("ctoon", "roundtrip", bytes_c, ops_c, now_seconds() - t0,
+           static_cast<long>(files.size()) * CTOON_BENCH_REPEATS);
+
     write_results_json(files.size(), total_json_bytes);
     return 0;
 }

@@ -9,5 +9,9 @@
 # already contained in an ignored build directory above.
 rust/target/
 
+# `go build .` / `go run .` compiled binaries, if ever built in-source
+# during manual testing (go.mod's module name, as an exact filename).
+go/ctoonbenchgo
+
 # OS/editor cruft
 .DS_Store
