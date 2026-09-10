@@ -1,0 +1,16 @@
+.{
+    .name = .ctoon,
+    .version = "0.6.1",
+    .minimum_zig_version = "0.13.0",
+    .fingerprint = 0x5a3c9f0e1b7d2a44,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "shim.c",
+        "README.md",
+    },
+    // No dependencies — matches ctoon's own zero-dependency C core, and
+    // the same call the Rust binding's Cargo.toml makes.
+    .dependencies = .{},
+}

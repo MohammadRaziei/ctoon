@@ -20,7 +20,7 @@
 
 The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
-CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, and MATLAB. The name reflects its foundation: **C** + **TOON**.
+CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, Rust, Zig, and MATLAB. The name reflects its foundation: **C** + **TOON**.
 
 ## Format Overview
 
@@ -382,6 +382,8 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 | C++ binding | C++11, header-only |
 | Python binding | Python 3.9+, nanobind >= 2.0, CMake 3.19+ |
 | Go binding | Go 1.21+, CGo |
+| Rust binding | Rust 1.70+ |
+| Zig binding | Zig 0.13+ |
 | MATLAB binding | MATLAB R2014b+, C compiler for MEX |
 | CLI | C++17 |
 

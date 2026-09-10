@@ -1,0 +1,76 @@
+// Build script for the Zig bindings to ctoon.
+//
+// Compiles the C core directly into this binding — the same approach the
+// Rust binding's build.rs and the Go binding's cgo preamble take. No CMake
+// step is required: `zig build test` (or `zig build` from a downstream
+// project that depends on this as a module) is fully self-contained.
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+
+    // src/bindings/zig -> repo root is three levels up.
+    const repo_root = "../../..";
+    const include_dir = repo_root ++ "/include";
+    const src_dir = repo_root ++ "/src";
+    const ctoon_c = repo_root ++ "/src/ctoon.c";
+
+    const ctoon_lib = b.addStaticLibrary(.{
+        .name = "ctoon",
+        .target = target,
+        .optimize = optimize,
+    });
+    ctoon_lib.linkLibC();
+    ctoon_lib.addIncludePath(b.path(include_dir));
+    ctoon_lib.addIncludePath(b.path(src_dir));
+    ctoon_lib.addCSourceFile(.{
+        .file = b.path(ctoon_c),
+        .flags = &.{"-DCTOON_ENABLE_JSON=1"},
+    });
+    // shim.c gives the `static inline` parts of ctoon.h's API (tree
+    // inspection, mutable-document building) real extern linkage, under
+    // their `ctoon_rs_`-prefixed names — see shim.c's header comment.
+    // Same file the Rust binding uses (src/bindings/rust/shim.c).
+    ctoon_lib.addCSourceFile(.{
+        .file = b.path("shim.c"),
+        .flags = &.{"-DCTOON_ENABLE_JSON=1"},
+    });
+    ctoon_lib.installHeadersDirectory(b.path(include_dir), "", .{});
+
+    // Public module: `const ctoon = @import("ctoon");`
+    const ctoon_module = b.addModule("ctoon", .{
+        .root_source_file = b.path("src/ctoon.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    ctoon_module.addIncludePath(b.path(include_dir));
+    ctoon_module.linkLibrary(ctoon_lib);
+
+    // `zig build test` — unit tests in src/ctoon.zig plus the shared
+    // cross-binding integration test in tests/zig/integration_test.zig
+    // (mirrors tests/rust/integration_test.rs, tests/go, etc).
+    const unit_tests = b.addTest(.{
+        .root_source_file = b.path("src/ctoon.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    unit_tests.linkLibrary(ctoon_lib);
+    unit_tests.addIncludePath(b.path(include_dir));
+
+    const integration_tests = b.addTest(.{
+        .root_source_file = b.path(repo_root ++ "/tests/zig/integration_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    integration_tests.linkLibrary(ctoon_lib);
+    integration_tests.addIncludePath(b.path(include_dir));
+    integration_tests.root_module.addImport("ctoon", ctoon_module);
+
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+
+    const test_step = b.step("test", "Run ctoon Zig binding tests");
+    test_step.dependOn(&run_unit_tests.step);
+    test_step.dependOn(&run_integration_tests.step);
+}

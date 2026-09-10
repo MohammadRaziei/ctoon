@@ -31,6 +31,7 @@ add_subdirectory(${CTOON_TEST_SOURCE_DIR}/cpp)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/python)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/go)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/rust)
+add_subdirectory(${CTOON_TEST_SOURCE_DIR}/zig)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/matlab)
 
 if(TARGET ctoon_coverage_c AND TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
