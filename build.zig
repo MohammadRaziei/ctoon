@@ -10,6 +10,14 @@
 // Rust binding's build.rs and the Go binding's cgo preamble take. No CMake
 // step is required: `zig build test` (or `zig build` from a downstream
 // project that depends on this as a module) is fully self-contained.
+//
+// Plain `zig build` (no step name) additionally installs the compiled
+// static library and headers under zig-out/ — see .github/workflows/zig.yml,
+// which cross-compiles that for a release the same way wheels.yml builds
+// platform wheels: Zig has no central *binary* package registry the way
+// PyPI or crates.io do (Zig packages are fetched as source, by URL+hash),
+// so a prebuilt zig-out/ tarball attached to the GitHub release is the
+// closest equivalent for people who don't want to build ctoon.c themselves.
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
@@ -43,6 +51,7 @@ pub fn build(b: *std.Build) void {
         .flags = &.{"-DCTOON_ENABLE_JSON=1"},
     });
     ctoon_lib.installHeadersDirectory(b.path(include_dir), "", .{});
+    b.installArtifact(ctoon_lib);
 
     // Public module: `const ctoon = @import("ctoon");`
     const ctoon_module = b.addModule("ctoon", .{

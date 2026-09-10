@@ -1,0 +1,88 @@
+name: zig build & test
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'build.zig'
+      - 'build.zig.zon'
+      - 'src/bindings/zig/**'
+      - 'src/ctoon.c'
+      - 'include/ctoon.h'
+      - 'tests/zig/**'
+      - '.github/workflows/zig.yml'
+
+env:
+  FORCE_COLOR: 3
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Setup Zig
+      uses: mlugg/setup-zig@v2
+      with:
+        version: "0.13.0"
+
+    - name: zig build test
+      run: zig build test --summary all
+
+  # Zig has no central *binary* package registry the way PyPI (wheels) or
+  # crates.io do — a Zig package is fetched as source (URL+hash) by
+  # consumers, who compile it themselves via build.zig. So instead of a
+  # "publish" step, this cross-compiles the static library + headers for
+  # a handful of common targets and attaches the tarballs to the GitHub
+  # release, for anyone who'd rather not build ctoon.c themselves — the
+  # closest equivalent to wheels.yml's per-platform wheel artifacts.
+  build_release_libs:
+    name: Build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-linux-gnu
+          - aarch64-linux-gnu
+          - x86_64-macos
+          - aarch64-macos
+          - x86_64-windows-gnu
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Setup Zig
+      uses: mlugg/setup-zig@v2
+      with:
+        version: "0.13.0"
+
+    - name: Cross-compile static library
+      run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseFast
+
+    - name: Package
+      run: |
+        mkdir -p dist
+        tar -czf dist/ctoon-zig-${{ matrix.target }}.tar.gz -C zig-out .
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: zig-lib-${{ matrix.target }}
+        path: dist/*.tar.gz
+        overwrite: true

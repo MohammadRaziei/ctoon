@@ -61,6 +61,10 @@ jobs:
     uses: ./.github/workflows/crates.yml
     needs: [init]
 
+  zig:
+    uses: ./.github/workflows/zig.yml
+    needs: [init]
+
 
   release-wheels:
     needs: [wheel,init]
@@ -125,6 +129,30 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish --locked
+
+  release-zig:
+    needs: [zig, init]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: zig-lib-*
+          path: dist
+          merge-multiple: true
+
+      - name: List dist directory
+        run: ls -la dist
+
+      - name: create release body
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.init.outputs.release_name }}
+          name: ${{ needs.init.outputs.release_name }}
+          draft: false
+          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: dist/*
 
 
   deploy-pages:
