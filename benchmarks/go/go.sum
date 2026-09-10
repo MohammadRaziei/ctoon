@@ -1,6 +1,6 @@
 github.com/alpkeskin/gotoon v0.1.1 h1:GQOVwMfWKINnfEA6slrXHJaJYDwnUFmrPlXOtnuja1w=
 github.com/alpkeskin/gotoon v0.1.1/go.mod h1:XRTz8RM4tz8M2nB37MNRN8rHF4YgeYd8nIXmoU0B0+M=
-github.com/mohammadraziei/ctoon v0.6.0 h1:nPIxDTMnMQHqk63kxC56J3NsNIa0huJISTCVsgdHzOM=
-github.com/mohammadraziei/ctoon v0.6.0/go.mod h1:n06E3yCc/FumDNByfeFG7oXphA3c08HsE5AuTbd5iw8=
+github.com/mohammadraziei/ctoon v0.6.1-0.20260906134954-5cd42df37786 h1:/1ha465eb0rDhdlZ0sHG4viI2h3UZ+KswznNjUjiGXs=
+github.com/mohammadraziei/ctoon v0.6.1-0.20260906134954-5cd42df37786/go.mod h1:n06E3yCc/FumDNByfeFG7oXphA3c08HsE5AuTbd5iw8=
 github.com/toon-format/toon-go v0.0.0-20251202084852-7ca0e27c4e8c h1:D8lDFovBMZywze1eh9iwMLcYor5f11mHBocLhO7cBe8=
 github.com/toon-format/toon-go v0.0.0-20251202084852-7ca0e27c4e8c/go.mod h1:j/BOnpF2ihnz4lELs99h9mwGJBx/zdleOUCnLLRPCsc=

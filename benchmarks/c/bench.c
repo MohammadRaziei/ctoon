@@ -13,7 +13,11 @@
  *      input ready for the decode benchmark.
  *   3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to TOON.
  *   4. Timed "toon_to_json": repeatedly parse TOON and re-serialise to JSON.
- *   5. Report throughput — MB/s of bytes actually processed by
+ *      Measures interop with ctoon's specific TOON output.
+ *   5. Timed "roundtrip": json -> toon -> parse toon -> json, chained as
+ *      one operation, using ctoon's own encoder/decoder together.
+ *      Measures self-consistency, not interop.
+ *   6. Report throughput — MB/s of bytes actually processed by
  *      *successful* conversions only — and documents/sec, plus success
  *      rate, so a library that fails part of the corpus doesn't get an
  *      inflated number.
@@ -23,6 +27,12 @@
  * robust against everything ctoon emits (it crashes on part of the
  * corpus), so each file is first probed in a forked child before being
  * included in the timed run — see bench_toonc().
+ *
+ * If CTOON_BENCH_LOG_FILE is defined (non-empty), one line per failure is
+ * written there — only for the first repeat of each timed phase (and the
+ * untimed pre-pass), not all 20. Real error messages are captured where
+ * ctoon's API provides one; TOONc's API doesn't return one at all, so its
+ * log lines just note that parsing failed.
  */
 
 #define _POSIX_C_SOURCE 200809L /* for open_memstream, used for TOONc */
@@ -68,6 +78,14 @@ typedef struct {
 
 static bench_result g_results[16];
 static int g_result_count = 0;
+static FILE *g_log = NULL;
+
+static void log_fail(const char *library, const char *operation,
+                      const char *path, const char *err_msg) {
+    if (!g_log) return;
+    fprintf(g_log, "[%s] [%s] FILE: %s ERROR: %s\n",
+            library, operation, path, err_msg ? err_msg : "(no error detail available)");
+}
 
 static void record(const char *library, const char *operation,
                     double bytes, long ops, double seconds, long attempted) {
@@ -116,11 +134,13 @@ static void bench_ctoon(bench_file *files, size_t n) {
     double t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
-            ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, NULL);
-            if (!doc) continue;
+            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+            ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
+            if (!doc) { if (rep == 0) log_fail("ctoon", "json_to_toon", files[i].path, rerr.msg); continue; }
             size_t len = 0;
             char *toon = ctoon_write(doc, &len);
             if (toon) { free(toon); ops++; bytes += (double)files[i].len; }
+            else if (rep == 0) log_fail("ctoon", "json_to_toon", files[i].path, "ctoon_write failed");
             ctoon_doc_free(doc);
         }
     }
@@ -131,11 +151,14 @@ static void bench_ctoon(bench_file *files, size_t n) {
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
             if (!files[i].toon) continue;
+            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
             ctoon_doc *doc = ctoon_read(files[i].toon, files[i].toon_len, 0);
-            if (!doc) continue;
+            if (!doc) { if (rep == 0) log_fail("ctoon", "toon_to_json", files[i].path, "ctoon_read failed"); continue; }
             size_t len = 0;
-            char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, NULL);
+            ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+            char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
             if (json) { free(json); ops++; bytes += (double)files[i].toon_len; }
+            else if (rep == 0) log_fail("ctoon", "toon_to_json", files[i].path, werr.msg);
             ctoon_doc_free(doc);
         }
     }
@@ -147,20 +170,23 @@ static void bench_ctoon(bench_file *files, size_t n) {
     t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
-            ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, NULL);
-            if (!doc1) continue;
+            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+            ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
+            if (!doc1) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, rerr.msg); continue; }
             size_t tlen = 0;
             char *toon = ctoon_write(doc1, &tlen);
             ctoon_doc_free(doc1);
-            if (!toon) continue;
+            if (!toon) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_write failed"); continue; }
 
             ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
             free(toon);
-            if (!doc2) continue;
+            if (!doc2) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_read failed"); continue; }
             size_t jlen = 0;
-            char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, NULL);
+            ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+            char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
             ctoon_doc_free(doc2);
             if (json) { free(json); ops++; bytes += (double)files[i].len; }
+            else if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, werr.msg);
         }
     }
     record("ctoon", "roundtrip", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
@@ -201,6 +227,15 @@ static void bench_toonc(bench_file *files, size_t n, size_t pre_ok) {
             if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
                 safe[i] = 1;
                 safe_count++;
+            } else if (g_log) {
+                /* Restore stdio just long enough to write the log line;
+                   TOONc's API gives no error message, only pass/fail. */
+                dup2(saved_stdout, STDOUT_FILENO);
+                dup2(saved_stderr, STDERR_FILENO);
+                log_fail("TOONc", "toon_to_json", files[i].path,
+                         WIFSIGNALED(status) ? "parser crashed (signal)" : "parser rejected input");
+                dup2(devnull, STDOUT_FILENO);
+                dup2(devnull, STDERR_FILENO);
             }
         }
     }
@@ -262,7 +297,12 @@ static void write_results_json(size_t n_files, size_t total_json_bytes) {
     printf("\nResults written to %s\n", CTOON_BENCH_RESULTS_JSON);
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+    if (argc >= 2 && argv[1][0] != '\0') {
+        g_log = fopen(argv[1], "w");
+        if (!g_log) fprintf(stderr, "warning: could not open log file %s\n", argv[1]);
+    }
+
     FILE *mf = fopen(CTOON_BENCH_MANIFEST, "r");
     if (!mf) {
         fprintf(stderr, "Cannot open manifest: %s\n", CTOON_BENCH_MANIFEST);
@@ -309,12 +349,13 @@ int main(void) {
        it's the only library here that can also parse JSON. */
     size_t pre_ok = 0;
     for (size_t i = 0; i < n; i++) {
-        ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, NULL);
-        if (!doc) continue;
+        ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+        ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
+        if (!doc) { log_fail("ctoon", "pre_pass", files[i].path, rerr.msg); continue; }
         size_t len = 0;
         char *toon = ctoon_write(doc, &len);
         ctoon_doc_free(doc);
-        if (!toon) continue;
+        if (!toon) { log_fail("ctoon", "pre_pass", files[i].path, "ctoon_write failed"); continue; }
         files[i].toon = toon;
         files[i].toon_len = len;
         pre_ok++;
@@ -328,6 +369,11 @@ int main(void) {
     bench_toonc(files, n, pre_ok);
 
     write_results_json(n, total_json_bytes);
+
+    if (g_log) {
+        fclose(g_log);
+        printf("Debug log written to %s\n", argv[1]);
+    }
 
     for (size_t i = 0; i < n; i++) {
         free(files[i].path);

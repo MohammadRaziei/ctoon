@@ -24,10 +24,16 @@ add_custom_target(ctoon_benchmarks_python_venv
     USES_TERMINAL
 )
 
+if(CTOON_BENCH_LOG_DEBUG)
+    set(CTOON_PY_LOG_ARG ${CTOON_BENCH_LOGS_DIR}/python.log)
+else()
+    set(CTOON_PY_LOG_ARG "")
+endif()
+
 add_custom_target(ctoon_benchmarks_python
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Python benchmark..."
     COMMAND ${VENV_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/bench.py
-            ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/python.json
+            ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/python.json ${CTOON_PY_LOG_ARG}
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_python ctoon_benchmarks_python_venv)

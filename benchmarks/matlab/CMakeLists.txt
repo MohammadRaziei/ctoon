@@ -24,10 +24,16 @@ endif()
 set(CTOON_MATLAB_BUILD_DIR "${CMAKE_BINARY_DIR}/Matlab/build")
 set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
 
+if(CTOON_BENCH_LOG_DEBUG)
+    set(CTOON_MATLAB_LOG_ARG "'${CTOON_BENCH_LOGS_DIR}/matlab.log'")
+else()
+    set(CTOON_MATLAB_LOG_ARG "''")
+endif()
+
 add_custom_target(ctoon_benchmarks_matlab
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running MATLAB benchmark..."
     COMMAND ${Matlab_EXECUTABLE} -sd "${CMAKE_CURRENT_SOURCE_DIR}"
-            -batch "addpath('${CTOON_MATLAB_BUILD_DIR}'); addpath('${CMAKE_CURRENT_SOURCE_DIR}'); bench('${CTOON_BENCH_MANIFEST}', '${CTOON_BENCH_RESULTS_DIR}/matlab.json')"
+            -batch "addpath('${CTOON_MATLAB_BUILD_DIR}'); addpath('${CMAKE_CURRENT_SOURCE_DIR}'); bench('${CTOON_BENCH_MANIFEST}', '${CTOON_BENCH_RESULTS_DIR}/matlab.json', ${CTOON_MATLAB_LOG_ARG})"
     USES_TERMINAL
     VERBATIM
     COMMENT "Running MATLAB benchmark..."

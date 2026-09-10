@@ -1,0 +1,8 @@
+{
+  "name": "ctoon-bench-node",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@toon-format/toon": "^4.1.1"
+  }
+}

@@ -17,6 +17,10 @@ Makefile
 *.exp
 *.lib
 
+# Rust build artifacts
+target/
+Cargo.lock
+
 # CMake
 CMakeUserPresets.json
 !CMakeLists.txt

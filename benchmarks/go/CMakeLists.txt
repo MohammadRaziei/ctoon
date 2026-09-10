@@ -16,10 +16,16 @@ add_custom_target(ctoon_benchmarks_go_deps
     USES_TERMINAL
 )
 
+if(CTOON_BENCH_LOG_DEBUG)
+    set(CTOON_GO_LOG_ARG ${CTOON_BENCH_LOGS_DIR}/go.log)
+else()
+    set(CTOON_GO_LOG_ARG "")
+endif()
+
 add_custom_target(ctoon_benchmarks_go
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Go benchmark..."
     COMMAND ${CTOON_BENCH_GO_ENV} ${GO_EXECUTABLE} run .
-            ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/go.json
+            ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/go.json ${CTOON_GO_LOG_ARG}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     USES_TERMINAL
 )

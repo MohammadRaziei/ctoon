@@ -49,6 +49,18 @@ set(CTOON_GITHUB_URL "https://github.com/mohammadraziei/ctoon.git")
 set(CTOON_BENCH_RESULTS_DIR ${CTOON_BENCH_BINARY_DIR}/results)
 file(MAKE_DIRECTORY ${CTOON_BENCH_RESULTS_DIR})
 
+# When ON, every language benchmark writes a per-file diagnostic log
+# (which files failed, and why, for each library/operation) into
+# build-bench/logs/<language>.log — off by default since it's extra I/O
+# and only useful when actively investigating a success-rate anomaly.
+option(CTOON_BENCH_LOG_DEBUG
+    "Write per-file diagnostic logs (which files failed and why) to build-bench/logs/" OFF)
+set(CTOON_BENCH_LOGS_DIR ${CTOON_BENCH_BINARY_DIR}/logs)
+if(CTOON_BENCH_LOG_DEBUG)
+    file(MAKE_DIRECTORY ${CTOON_BENCH_LOGS_DIR})
+    message(STATUS "CToon benchmarks: debug logging ON -> ${CTOON_BENCH_LOGS_DIR}")
+endif()
+
 # ── Corpus: fetch real-world JSON to benchmark against ────────────────────
 include(FetchContent)
 
@@ -102,6 +114,8 @@ find_package(Python3 COMPONENTS Interpreter)
 find_program(GO_EXECUTABLE go)
 find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
+find_program(NODE_EXECUTABLE node)
+find_program(NPM_EXECUTABLE npm)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
 add_custom_target(ctoon_benchmarks
@@ -167,4 +181,11 @@ if(CARGO_EXECUTABLE AND RUSTC_EXECUTABLE)
 else()
     message(WARNING "Rust toolchain (cargo/rustc) not found — Rust benchmark "
                      "skipped. Install Rust >= 1.87 and make sure 'cargo' is on PATH.")
+endif()
+
+if(NODE_EXECUTABLE AND NPM_EXECUTABLE)
+    add_subdirectory(node)
+else()
+    message(WARNING "Node.js toolchain (node/npm) not found — Node.js benchmark "
+                     "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
 endif()

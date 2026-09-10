@@ -1,0 +1,27 @@
+[package]
+name = "ctoon"
+version = "0.5.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Rust bindings for CToon — a high-performance, zero-dependency C99 TOON/JSON serialization library"
+license = "MIT"
+repository = "https://github.com/mohammadraziei/ctoon"
+readme = "README.md"
+keywords = ["toon", "json", "serialization", "ffi"]
+categories = ["encoding", "api-bindings"]
+
+[dependencies]
+# None — matches ctoon's own zero-dependency C core. See src/value.rs for
+# why: a native Value enum, not serde_json, is the value type here (the
+# same dynamic-data approach the Python binding takes with dict/list,
+# not a derive-macro/struct-mapping layer).
+
+[build-dependencies]
+cc = "1"
+
+[[test]]
+name = "integration"
+path = "../../../tests/rust/integration_test.rs"
+
+[profile.release]
+opt-level = 3

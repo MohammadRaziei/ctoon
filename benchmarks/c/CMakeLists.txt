@@ -36,9 +36,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(bench_c PRIVATE -O3)
 endif()
 
+if(CTOON_BENCH_LOG_DEBUG)
+    set(CTOON_C_LOG_ARG "${CTOON_BENCH_LOGS_DIR}/c.log")
+else()
+    set(CTOON_C_LOG_ARG "")
+endif()
+
 add_custom_target(ctoon_benchmarks_c
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running C benchmark..."
-    COMMAND $<TARGET_FILE:bench_c>
+    COMMAND $<TARGET_FILE:bench_c> "${CTOON_C_LOG_ARG}"
     DEPENDS bench_c
     USES_TERMINAL
 )

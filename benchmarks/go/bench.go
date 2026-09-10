@@ -10,8 +10,13 @@
 //  2. Untimed pre-pass: convert each JSON file to TOON once (with ctoon).
 //  3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to TOON.
 //  4. Timed "toon_to_json": repeatedly parse the TOON text from step 2 and
-//     re-serialise to JSON.
-//  5. Report throughput (MB/s of bytes actually read by successful
+//     re-serialise to JSON. Measures interop with ctoon's specific output.
+//  5. Timed "roundtrip": json -> toon -> parse toon -> json, all four
+//     steps chained as one operation using each library's own
+//     encoder/decoder together. Measures self-consistency, not interop —
+//     see the top-level README for why a library's toon_to_json and
+//     roundtrip success rates can legitimately differ a lot.
+//  6. Report throughput (MB/s of bytes actually read by successful
 //     conversions only) and documents/sec.
 //
 // Implementations:
@@ -20,6 +25,10 @@
 //   - toon-go  github.com/toon-format/toon-go (official; requires Go >= 1.23,
 //              which is why this whole module's go.mod floor is 1.23 too —
 //              no separate "vs" subdirectory to work around it)
+//
+// If a log file path is given (4th CLI arg), one line per failure is
+// written there — only for the first repeat of each timed phase (and the
+// untimed pre-pass), not all 20 repeats.
 package main
 
 import (
@@ -43,15 +52,23 @@ type benchFile struct {
 }
 
 type result struct {
-	Library        string  `json:"library"`
-	Operation      string  `json:"operation"`
-	ThroughputMBs  float64 `json:"throughput_mb_s"`
-	DocsPerSec     float64 `json:"docs_per_sec"`
-	SuccessRate    float64 `json:"success_rate"`
-	TotalTimeS     float64 `json:"total_time_s"`
+	Library       string  `json:"library"`
+	Operation     string  `json:"operation"`
+	ThroughputMBs float64 `json:"throughput_mb_s"`
+	DocsPerSec    float64 `json:"docs_per_sec"`
+	SuccessRate   float64 `json:"success_rate"`
+	TotalTimeS    float64 `json:"total_time_s"`
 }
 
 var results []result
+var logFile *os.File
+
+func logFail(library, operation, path string, err error) {
+	if logFile == nil {
+		return
+	}
+	fmt.Fprintf(logFile, "[%s] [%s] FILE: %s ERROR: %v\n", library, operation, path, err)
+}
 
 func loadCorpus(manifestPath string) ([]*benchFile, error) {
 	mf, err := os.Open(manifestPath)
@@ -97,10 +114,19 @@ func record(library, operation string, bytes float64, ops int, seconds float64, 
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "usage: bench <manifest> <results.json>")
+		fmt.Fprintln(os.Stderr, "usage: bench <manifest> <results.json> [log_file]")
 		os.Exit(1)
 	}
 	manifestPath, resultsPath := os.Args[1], os.Args[2]
+	if len(os.Args) >= 4 && os.Args[3] != "" {
+		var err error
+		logFile, err = os.Create(os.Args[3])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not open log file %s: %v\n", os.Args[3], err)
+		} else {
+			defer logFile.Close()
+		}
+	}
 
 	files, err := loadCorpus(manifestPath)
 	if err != nil || len(files) == 0 {
@@ -123,10 +149,12 @@ func main() {
 	for _, f := range files {
 		val, err := ctoon.LoadsJSON(f.json)
 		if err != nil {
+			logFail("ctoon", "pre_pass", f.path, err)
 			continue
 		}
 		toon, err := ctoon.Dumps(val)
 		if err != nil {
+			logFail("ctoon", "pre_pass", f.path, err)
 			continue
 		}
 		f.toon = toon
@@ -141,11 +169,16 @@ func main() {
 		for _, f := range files {
 			val, err := ctoon.LoadsJSON(f.json)
 			if err != nil {
+				if r == 0 {
+					logFail("ctoon", "json_to_toon", f.path, err)
+				}
 				continue
 			}
 			if _, err := ctoon.Dumps(val); err == nil {
 				opsA++
 				bytesA += float64(len(f.json))
+			} else if r == 0 {
+				logFail("ctoon", "json_to_toon", f.path, err)
 			}
 		}
 	}
@@ -159,11 +192,16 @@ func main() {
 			}
 			val, err := ctoon.Loads(f.toon)
 			if err != nil {
+				if r == 0 {
+					logFail("ctoon", "toon_to_json", f.path, err)
+				}
 				continue
 			}
 			if _, err := ctoon.DumpsJSON(val, 2); err == nil {
 				opsB++
 				bytesB += float64(len(f.toon))
+			} else if r == 0 {
+				logFail("ctoon", "toon_to_json", f.path, err)
 			}
 		}
 	}
@@ -178,19 +216,30 @@ func main() {
 		for _, f := range files {
 			val, err := ctoon.LoadsJSON(f.json)
 			if err != nil {
+				if r == 0 {
+					logFail("ctoon", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			toon, err := ctoon.Dumps(val)
 			if err != nil {
+				if r == 0 {
+					logFail("ctoon", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			val2, err := ctoon.Loads(toon)
 			if err != nil {
+				if r == 0 {
+					logFail("ctoon", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			if _, err := ctoon.DumpsJSON(val2, 2); err == nil {
 				opsRT++
 				bytesRT += float64(len(f.json))
+			} else if r == 0 {
+				logFail("ctoon", "roundtrip", f.path, err)
 			}
 		}
 	}
@@ -204,11 +253,16 @@ func main() {
 		for _, f := range files {
 			var val interface{}
 			if err := json.Unmarshal([]byte(f.json), &val); err != nil {
+				if r == 0 {
+					logFail("gotoon", "json_to_toon", f.path, err)
+				}
 				continue
 			}
 			if _, err := gotoon.Encode(val); err == nil {
 				opsC++
 				bytesC += float64(len(f.json))
+			} else if r == 0 {
+				logFail("gotoon", "json_to_toon", f.path, err)
 			}
 		}
 	}
@@ -222,11 +276,16 @@ func main() {
 		for _, f := range files {
 			var val interface{}
 			if err := json.Unmarshal([]byte(f.json), &val); err != nil {
+				if r == 0 {
+					logFail("toon-go", "json_to_toon", f.path, err)
+				}
 				continue
 			}
 			if _, err := toongo.MarshalString(val); err == nil {
 				opsD++
 				bytesD += float64(len(f.json))
+			} else if r == 0 {
+				logFail("toon-go", "json_to_toon", f.path, err)
 			}
 		}
 	}
@@ -240,11 +299,16 @@ func main() {
 			}
 			val, err := toongo.DecodeString(f.toon)
 			if err != nil {
+				if r == 0 {
+					logFail("toon-go", "toon_to_json", f.path, err)
+				}
 				continue
 			}
 			if _, err := json.Marshal(val); err == nil {
 				opsE++
 				bytesE += float64(len(f.toon))
+			} else if r == 0 {
+				logFail("toon-go", "toon_to_json", f.path, err)
 			}
 		}
 	}
@@ -259,19 +323,30 @@ func main() {
 		for _, f := range files {
 			var val interface{}
 			if err := json.Unmarshal([]byte(f.json), &val); err != nil {
+				if r == 0 {
+					logFail("toon-go", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			toon, err := toongo.MarshalString(val)
 			if err != nil {
+				if r == 0 {
+					logFail("toon-go", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			val2, err := toongo.DecodeString(toon)
 			if err != nil {
+				if r == 0 {
+					logFail("toon-go", "roundtrip", f.path, err)
+				}
 				continue
 			}
 			if _, err := json.Marshal(val2); err == nil {
 				opsF++
 				bytesF += float64(len(f.json))
+			} else if r == 0 {
+				logFail("toon-go", "roundtrip", f.path, err)
 			}
 		}
 	}
@@ -303,4 +378,7 @@ func main() {
 		return
 	}
 	fmt.Printf("\nResults written to %s\n", resultsPath)
+	if logFile != nil {
+		fmt.Printf("Debug log written to %s\n", os.Args[3])
+	}
 }

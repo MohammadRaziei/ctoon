@@ -11,14 +11,24 @@ Methodology (same across every language benchmark in this repo):
   2. Untimed pre-pass: convert each JSON file to TOON once (with ctoon).
   3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to TOON.
   4. Timed "toon_to_json": repeatedly parse the TOON text from step 2 and
-     re-serialise to JSON.
-  5. Report throughput (MB/s of bytes actually read by successful
+     re-serialise to JSON. Measures interop with ctoon's specific output.
+  5. Timed "roundtrip": json -> toon -> parse toon -> json, all four steps
+     chained as one operation using each library's own encoder/decoder
+     together. Measures self-consistency, not interop — see the top-level
+     README for why a library's toon_to_json and roundtrip success rates
+     can legitimately differ a lot.
+  6. Report throughput (MB/s of bytes actually read by successful
      conversions only) and documents/sec.
 
 Implementations:
   - ctoon        this project (github.com/mohammadraziei/ctoon)
   - toon_format  github.com/toon-format/toon-python (official)
   - toons        github.com/alesanfra/toons (community, Rust backend)
+
+If a log file path is given, one line per failure (which file, which
+library/operation, and the caught exception) is written there — only for
+the first repeat of each timed phase (and the untimed pre-pass), not all
+20 repeats.
 """
 import argparse
 import json
@@ -58,43 +68,33 @@ def load_corpus(manifest_path):
     return files
 
 
-def bench_json_to_toon(files, json_to_toon_fn):
+def log_fail(log_file, library, operation, path, exc):
+    if log_file is None:
+        return
+    log_file.write(f"[{library}] [{operation}] FILE: {path} ERROR: {exc}\n")
+
+
+def bench_json_to_toon(files, json_to_toon_fn, log_file, library):
     t0 = time.perf_counter()
     ops = 0
     bytes_done = 0
-    for _ in range(REPEATS):
+    for rep in range(REPEATS):
         for f in files:
             try:
                 json_to_toon_fn(f["json"])
                 ops += 1
                 bytes_done += len(f["json"].encode("utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                if rep == 0:
+                    log_fail(log_file, library, "json_to_toon", f["path"], e)
     return time.perf_counter() - t0, ops, bytes_done
 
 
-def bench_roundtrip(files, roundtrip_fn):
-    """roundtrip_fn(json_text) -> json string, chaining json->toon->json
-    as one operation per file rather than running the two legs separately."""
+def bench_toon_to_json(files, toon_to_json_fn, log_file, library):
     t0 = time.perf_counter()
     ops = 0
     bytes_done = 0
-    for _ in range(REPEATS):
-        for f in files:
-            try:
-                roundtrip_fn(f["json"])
-                ops += 1
-                bytes_done += len(f["json"].encode("utf-8"))
-            except Exception:
-                pass
-    return time.perf_counter() - t0, ops, bytes_done
-
-
-def bench_toon_to_json(files, toon_to_json_fn):
-    t0 = time.perf_counter()
-    ops = 0
-    bytes_done = 0
-    for _ in range(REPEATS):
+    for rep in range(REPEATS):
         for f in files:
             if not f["toon"]:
                 continue
@@ -102,8 +102,27 @@ def bench_toon_to_json(files, toon_to_json_fn):
                 toon_to_json_fn(f["toon"])
                 ops += 1
                 bytes_done += len(f["toon"].encode("utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                if rep == 0:
+                    log_fail(log_file, library, "toon_to_json", f["path"], e)
+    return time.perf_counter() - t0, ops, bytes_done
+
+
+def bench_roundtrip(files, roundtrip_fn, log_file, library):
+    """roundtrip_fn(json_text) -> json string, chaining json->toon->json
+    as one operation per file rather than running the two legs separately."""
+    t0 = time.perf_counter()
+    ops = 0
+    bytes_done = 0
+    for rep in range(REPEATS):
+        for f in files:
+            try:
+                roundtrip_fn(f["json"])
+                ops += 1
+                bytes_done += len(f["json"].encode("utf-8"))
+            except Exception as e:
+                if rep == 0:
+                    log_fail(log_file, library, "roundtrip", f["path"], e)
     return time.perf_counter() - t0, ops, bytes_done
 
 
@@ -111,6 +130,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("manifest")
     parser.add_argument("results_json")
+    parser.add_argument("log_file", nargs="?", default=None,
+                         help="optional: write per-file failure diagnostics here")
     args = parser.parse_args()
 
     files = load_corpus(args.manifest)
@@ -123,19 +144,21 @@ def main():
     print("CToon Benchmarks — Python")
     print(f"Corpus: {len(files)} files, {total_json_bytes / 1e6:.2f} MB (JSON)\n")
 
+    log_file = open(args.log_file, "w") if args.log_file else None
+
     # Untimed pre-pass: TOON text with ctoon, shared decode input for all
     for f in files:
         try:
             data = json.loads(f["json"])
             f["toon"] = ctoon.dumps(data)
-        except Exception:
-            pass
+        except Exception as e:
+            log_fail(log_file, "ctoon", "pre_pass", f["path"], e)
 
     rows = []
     results = []
 
     def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
-        t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn)
+        t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn, log_file, name)
         rows.append([
             name, "json_to_toon",
             f"{bytes_enc / t_enc / 1e6:.2f} MB/s" if ops_enc else "n/a",
@@ -150,7 +173,7 @@ def main():
             "total_time_s": t_enc,
         })
 
-        t_dec, ops_dec, bytes_dec = bench_toon_to_json(files, toon_to_json_fn)
+        t_dec, ops_dec, bytes_dec = bench_toon_to_json(files, toon_to_json_fn, log_file, name)
         rows.append([
             name, "toon_to_json",
             f"{bytes_dec / t_dec / 1e6:.2f} MB/s" if ops_dec else "n/a",
@@ -165,7 +188,7 @@ def main():
             "total_time_s": t_dec,
         })
 
-        t_rt, ops_rt, bytes_rt = bench_roundtrip(files, roundtrip_fn)
+        t_rt, ops_rt, bytes_rt = bench_roundtrip(files, roundtrip_fn, log_file, name)
         rows.append([
             name, "roundtrip",
             f"{bytes_rt / t_rt / 1e6:.2f} MB/s" if ops_rt else "n/a",
@@ -219,6 +242,10 @@ def main():
             "results": results,
         }, f, indent=2)
     print(f"\nResults written to {args.results_json}")
+
+    if log_file:
+        log_file.close()
+        print(f"Debug log written to {args.log_file}")
 
     return 0
 

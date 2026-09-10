@@ -1,4 +1,4 @@
-function bench(manifestPath, resultsJsonPath)
+function bench(manifestPath, resultsJsonPath, logPath)
 %BENCH  CToon MATLAB benchmark.
 %
 %   No competing MATLAB implementation exists, so this is a solo run — but
@@ -8,6 +8,23 @@ function bench(manifestPath, resultsJsonPath)
 %   The +ctoon/ package (built by the ctoon_build_mex CMake target) must
 %   already be on the MATLAB path before calling this — see
 %   benchmarks/matlab/CMakeLists.txt for the addpath call that does it.
+%
+%   BENCH(manifestPath, resultsJsonPath, logPath) additionally writes a
+%   per-file diagnostic log (which files failed, and the caught error
+%   message) to logPath — one line per failure, logged only during the
+%   untimed pre-pass and the first repeat of each timed phase, not all 20
+%   repeats. Pass '' or omit logPath to disable this (the default).
+
+    if nargin < 3
+        logPath = '';
+    end
+    logFid = -1;
+    if ~isempty(logPath)
+        logFid = fopen(logPath, 'w');
+        if logFid == -1
+            fprintf('warning: could not open log file %s\n', logPath);
+        end
+    end
 
     repeats = 20;
 
@@ -59,7 +76,8 @@ function bench(manifestPath, resultsJsonPath)
         try
             val = jsondecode(files(i).json);
             files(i).toon = ctoon.dumps(val);
-        catch
+        catch err
+            logFail(logFid, 'ctoon', 'pre_pass', files(i).path, err);
         end
     end
 
@@ -73,7 +91,10 @@ function bench(manifestPath, resultsJsonPath)
                 ctoon.dumps(val);
                 opsA = opsA + 1;
                 bytesA = bytesA + numel(files(i).json);
-            catch
+            catch err
+                if r == 1
+                    logFail(logFid, 'ctoon', 'json_to_toon', files(i).path, err);
+                end
             end
         end
     end
@@ -93,7 +114,10 @@ function bench(manifestPath, resultsJsonPath)
                 jsonencode(val);
                 opsB = opsB + 1;
                 bytesB = bytesB + numel(files(i).toon);
-            catch
+            catch err
+                if r == 1
+                    logFail(logFid, 'ctoon', 'toon_to_json', files(i).path, err);
+                end
             end
         end
     end
@@ -112,7 +136,10 @@ function bench(manifestPath, resultsJsonPath)
                 jsonencode(val2);
                 opsC = opsC + 1;
                 bytesC = bytesC + numel(files(i).json);
-            catch
+            catch err
+                if r == 1
+                    logFail(logFid, 'ctoon', 'roundtrip', files(i).path, err);
+                end
             end
         end
     end
@@ -120,6 +147,18 @@ function bench(manifestPath, resultsJsonPath)
     results{end+1} = record('ctoon', 'roundtrip', bytesC, opsC, tC, numel(files) * repeats, repeats); %#ok<AGROW>
 
     write_results_json(resultsJsonPath, numel(files), totalJSONBytes, results);
+
+    if logFid ~= -1
+        fclose(logFid);
+        fprintf('Debug log written to %s\n', logPath);
+    end
+end
+
+function logFail(logFid, library, operation, path, err)
+    if logFid == -1
+        return;
+    end
+    fprintf(logFid, '[%s] [%s] FILE: %s ERROR: %s\n', library, operation, path, err.message);
 end
 
 function r = record(library, operation, bytes, ops, seconds, attempted, repeats)
