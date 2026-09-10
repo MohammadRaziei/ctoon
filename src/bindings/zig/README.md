@@ -39,12 +39,14 @@ test "roundtrip" {
 
 ## How it's built
 
-`build.zig` compiles ctoon's C core (`src/ctoon.c`) directly into a
-static library and links it into a public `ctoon` module — the same
-approach the Rust binding's `build.rs` and the Go binding's cgo preamble
-take. `zig build test` is fully self-contained; no separate build step
-or CMake invocation is required to build or test this binding on its
-own.
+`build.zig`/`build.zig.zon` live at the repo root (like `Cargo.toml` and
+`pyproject.toml`) — but this binding's own source and shim stay under
+their designated location, `src/bindings/zig/`. `build.zig` compiles
+ctoon's C core (`src/ctoon.c`) directly into a static library and links
+it into a public `ctoon` module — the same approach the Rust binding's
+`build.rs` and the Go binding's cgo preamble take. `zig build test` is
+fully self-contained from the repo root; no separate build step or
+CMake invocation is required.
 
 Most of ctoon's C API is `static inline` in `ctoon.h` (meant for code
 that `#include`s the header directly), which produces no
@@ -56,7 +58,7 @@ comment for details.
 
 ## Using it as a dependency
 
-From a downstream `build.zig.zon`, point at this directory (or a Git
+From a downstream `build.zig.zon`, point at the repo root (or a Git
 ref of it) and import the module:
 
 ```zig
@@ -71,7 +73,8 @@ tests live under the repository's centralized `tests/zig/` folder rather
 than inside this binding's own directory, keeping every language's tests
 under one root location — `build.zig`'s `test` step points there
 directly, same spirit as the Rust binding's `Cargo.toml` `[[test]] path`.
-Run everything with `zig build test` from this directory, or via
+`build.zig` itself lives at the repo root, so run everything with
+`zig build test` from the repo root, not from this directory — or via
 `ctest`/`cmake --build . --target ctoon_test_zig` from the repository's
 top-level build (see `tests/zig/CMakeLists.txt`).
 

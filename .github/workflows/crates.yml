@@ -1,0 +1,56 @@
+name: rust build crate
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'Cargo.toml'
+      - 'src/bindings/rust/**'
+      - 'src/ctoon.c'
+      - 'include/ctoon.h'
+      - 'tests/rust/**'
+      - '.github/workflows/crates.yml'
+
+env:
+  FORCE_COLOR: 3
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package_crate:
+    name: Package & verify crate
+    runs-on: ubuntu-latest
+    # Cargo.toml lives at the repo root (like pyproject.toml) — only the
+    # binding's own source under src/bindings/rust/ and the shared C core
+    # it compiles against are designated-location files; the manifest
+    # itself is not.
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Run tests
+      run: cargo test --workspace --all-features
+
+    # `cargo package` builds the .crate tarball and, like `cargo publish`,
+    # verifies it (recompiles from the packaged files only) without
+    # actually uploading anything — the crates.io analogue of
+    # `pipx run build --sdist` + `twine check` in wheels.yml.
+    - name: Package crate (build + verify)
+      run: cargo package --locked
+
+    - name: Check metadata
+      run: cargo publish --dry-run --locked
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: crate-package
+        path: target/package/*.crate
+        overwrite: true

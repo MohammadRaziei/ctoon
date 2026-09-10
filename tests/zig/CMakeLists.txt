@@ -4,13 +4,13 @@
 # Mirrors the pattern used by tests/rust/CMakeLists.txt. The integration
 # test file lives at tests/zig/integration_test.zig (this directory) rather
 # than inside src/bindings/zig, so every language's tests stay under one
-# root tests/ folder; src/bindings/zig/build.zig points its "test" step at
-# this file directly (no package-manager fetch step needed, same spirit as
-# Cargo's [[test]] path in the Rust binding).
+# root tests/ folder; build.zig (at the repo root, like Cargo.toml) points
+# its "test" step at this file directly (no package-manager fetch step
+# needed, same spirit as Cargo's [[test]] path in the Rust binding).
 # Requires Zig >= 0.13 on PATH.
 # ---------------------------------------------------------------------------
 
-set(CTOON_ZIG_BINDING_DIR ${PROJECT_SOURCE_DIR}/src/bindings/zig)
+set(CTOON_ZIG_PROJECT_ROOT ${PROJECT_SOURCE_DIR})
 
 # ── Locate Zig toolchain ─────────────────────────────────────────────────────
 find_program(ZIG_EXECUTABLE zig)
@@ -32,7 +32,7 @@ message(STATUS "Found Zig: ${ZIG_VERSION_OUTPUT}")
 add_test(
     NAME ctoon_zig_tests
     COMMAND ${ZIG_EXECUTABLE} build test
-    WORKING_DIRECTORY ${CTOON_ZIG_BINDING_DIR}
+    WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
 )
 set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
 
@@ -40,7 +40,7 @@ set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
 add_custom_target(ctoon_test_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig tests..."
     COMMAND ${ZIG_EXECUTABLE} build test
-    WORKING_DIRECTORY ${CTOON_ZIG_BINDING_DIR}
+    WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
     USES_TERMINAL
 )
 

@@ -3,12 +3,17 @@
     .version = "0.6.1",
     .minimum_zig_version = "0.13.0",
     .fingerprint = 0x5a3c9f0e1b7d2a44,
+    // Lives at the repo root (like Cargo.toml/pyproject.toml). Only the
+    // files a downstream `zig build` actually needs are listed — the
+    // binding's own source under src/bindings/zig/, plus the shared C
+    // core it compiles against.
     .paths = .{
         "build.zig",
         "build.zig.zon",
-        "src",
-        "shim.c",
-        "README.md",
+        "src/bindings/zig",
+        "src/ctoon.c",
+        "include/ctoon.h",
+        "LICENSE",
     },
     // No dependencies — matches ctoon's own zero-dependency C core, and
     // the same call the Rust binding's Cargo.toml makes.

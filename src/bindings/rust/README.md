@@ -42,5 +42,6 @@ comment for details.
 Unit tests live alongside the source (`src/lib.rs`). Integration tests
 live under the repository's centralized `tests/rust/` folder rather than
 this crate's own `tests/` directory, keeping every language's tests under
-one root location — `Cargo.toml`'s `[[test]] path` points there. Run
-everything with `cargo test` from this directory.
+one root location — `Cargo.toml`'s `[[test]] path` points there. `Cargo.toml`
+itself lives at the repo root (like `pyproject.toml`), so run everything
+with `cargo test` from the repo root, not from this directory.

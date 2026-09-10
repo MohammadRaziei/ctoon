@@ -1,0 +1,51 @@
+[package]
+name = "ctoon"
+version = "0.5.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Rust bindings for CToon — a high-performance, zero-dependency C99 TOON/JSON serialization library"
+license = "MIT"
+repository = "https://github.com/mohammadraziei/ctoon"
+readme = "src/bindings/rust/README.md"
+keywords = ["toon", "json", "serialization", "ffi"]
+categories = ["encoding", "api-bindings"]
+build = "src/bindings/rust/build.rs"
+# Lives at the repo root (like pyproject.toml) so `cargo build`/`cargo test`
+# work from the repo root the same way `pip install .` does, but the
+# binding's own source, build script, and shim stay under their designated
+# location, src/bindings/rust/ (mirrors go.mod at the root + the actual Go
+# binding sources under src/bindings/go/, and MATLAB's the one exception —
+# see src/bindings/matlab's own root layout).
+#
+# Only the files a published crate actually needs — the crate's own
+# sources plus the shared C core it compiles against — are packaged;
+# everything else (other bindings, docs, CI, benchmarks, etc.) is left out.
+include = [
+    "Cargo.toml",
+    "src/bindings/rust/**",
+    "src/ctoon.c",
+    "include/ctoon.h",
+    "tests/rust/integration_test.rs",
+    "LICENSE",
+]
+
+[lib]
+name = "ctoon"
+path = "src/bindings/rust/src/lib.rs"
+
+[dependencies]
+# None — matches ctoon's own zero-dependency C core. See
+# src/bindings/rust/src/value.rs for why: a native Value enum, not
+# serde_json, is the value type here (the same dynamic-data approach the
+# Python binding takes with dict/list, not a derive-macro/struct-mapping
+# layer).
+
+[build-dependencies]
+cc = "1"
+
+[[test]]
+name = "integration"
+path = "tests/rust/integration_test.rs"
+
+[profile.release]
+opt-level = 3
