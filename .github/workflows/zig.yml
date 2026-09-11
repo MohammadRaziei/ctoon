@@ -1,4 +1,4 @@
-name: zig build & test
+name: zig release libs
 
 on:
   workflow_dispatch:
@@ -11,7 +11,6 @@ on:
       - 'src/bindings/zig/**'
       - 'src/ctoon.c'
       - 'include/ctoon.h'
-      - 'tests/zig/**'
       - '.github/workflows/zig.yml'
 
 env:
@@ -21,40 +20,21 @@ concurrency:
   group: zig-${{ github.ref }}
   cancel-in-progress: true
 
+# Testing the Zig binding itself is not this workflow's job — it happens
+# in cmake.yml's build-and-test matrix (ubuntu/macos/windows) alongside
+# every other language, the same way Python and Rust are tested there,
+# via `ctest` picking up tests/zig/CMakeLists.txt's `zig build test`.
+# A second, standalone 3-OS test job here would just duplicate that.
+#
+# Zig has no central *binary* package registry the way PyPI (wheels) or
+# crates.io do — a Zig package is fetched as source (URL+hash) by
+# consumers, who compile it themselves via build.zig. So instead of a
+# "publish" step, this workflow's only job is to cross-compile the
+# static library + headers for a handful of common targets and attach
+# the tarballs to the GitHub release, for anyone who'd rather not build
+# ctoon.c themselves — the closest equivalent to wheels.yml's per-platform
+# wheel artifacts.
 jobs:
-  test:
-    name: Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # macos-latest (arm64/macOS 14) is pinned to macos-13 here: Zig
-        # 0.13.0's own build-runner fails to link against libc/libSystem
-        # on the newer arm64 GitHub runner images (a known Zig 0.13 SDK
-        # detection bug, unrelated to ctoon's own code) — macos-13
-        # (Intel) doesn't hit it.
-        os: [ubuntu-latest, macos-13, windows-latest]
-
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: false
-
-    - name: Setup Zig
-      uses: mlugg/setup-zig@v2
-      with:
-        version: "0.13.0"
-
-    - name: zig build test
-      run: zig build test --summary all
-
-  # Zig has no central *binary* package registry the way PyPI (wheels) or
-  # crates.io do — a Zig package is fetched as source (URL+hash) by
-  # consumers, who compile it themselves via build.zig. So instead of a
-  # "publish" step, this cross-compiles the static library + headers for
-  # a handful of common targets and attaches the tarballs to the GitHub
-  # release, for anyone who'd rather not build ctoon.c themselves — the
-  # closest equivalent to wheels.yml's per-platform wheel artifacts.
   build_release_libs:
     name: Build ${{ matrix.target }}
     runs-on: ubuntu-latest
