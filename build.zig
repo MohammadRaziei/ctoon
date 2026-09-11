@@ -40,7 +40,14 @@ pub fn build(b: *std.Build) void {
     ctoon_lib.addIncludePath(b.path(src_dir));
     ctoon_lib.addCSourceFile(.{
         .file = b.path(ctoon_c),
-        .flags = &.{"-DCTOON_ENABLE_JSON=1"},
+        // -fno-sanitize=undefined: Zig's C frontend enables UBSan traps by
+        // default for C sources in Debug/ReleaseSafe, which the other
+        // bindings' build systems (CMake, cc-rs, cgo) don't turn on for
+        // this same ctoon.c. Without this flag, `zig build test` SIGILLs
+        // inside otherwise-correct, widely-exercised code (e.g.
+        // ctoon_write_indent's pointer-at-end-of-buffer arithmetic) that
+        // every other binding compiles and runs fine.
+        .flags = &.{ "-DCTOON_ENABLE_JSON=1", "-fno-sanitize=undefined" },
     });
     // shim.c gives the `static inline` parts of ctoon.h's API (tree
     // inspection, mutable-document building) real extern linkage, under
@@ -48,7 +55,7 @@ pub fn build(b: *std.Build) void {
     // Same file the Rust binding uses (src/bindings/rust/shim.c).
     ctoon_lib.addCSourceFile(.{
         .file = b.path(shim_c),
-        .flags = &.{"-DCTOON_ENABLE_JSON=1"},
+        .flags = &.{ "-DCTOON_ENABLE_JSON=1", "-fno-sanitize=undefined" },
     });
     ctoon_lib.installHeadersDirectory(b.path(include_dir), "", .{});
     b.installArtifact(ctoon_lib);

@@ -10,6 +10,11 @@
 //! ctoon's own C implementation (`loadsJson`/`dumpsJson`) — this module
 //! has no JSON (or any other) dependency at all.
 //!
+//! Every `Value` owns its string memory: `.str` payloads and object keys
+//! are freed by `deinit`, so build them with `gpa.dupe`, not string
+//! literals, if you intend to call `deinit` on the result (values
+//! returned by `loads`/`loadsJson` are always heap-owned this way).
+//!
 //! ```zig
 //! const std = @import("std");
 //! const ctoon = @import("ctoon");
@@ -18,7 +23,7 @@
 //!     const gpa = std.testing.allocator;
 //!     var obj = ctoon.Value{ .object = std.ArrayList(ctoon.Field).init(gpa) };
 //!     defer obj.deinit(gpa);
-//!     try obj.object.append(.{ .key = "name", .value = .{ .str = "Alice" } });
+//!     try obj.object.append(.{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
 //!
 //!     const toon = try ctoon.dumps(gpa, obj);
 //!     defer gpa.free(toon);
@@ -181,14 +186,23 @@ pub const Value = union(enum) {
     array: std.ArrayList(Value),
     object: std.ArrayList(Field),
 
+    /// Frees this value's owned memory, recursively. Every string this
+    /// module hands back — `.str` payloads and object keys alike — is
+    /// gpa-owned (parsed values are duped off the C buffer in `getStr`;
+    /// hand-built ones should likewise be `gpa.dupe`d, not string
+    /// literals, if you intend to `deinit` them — see the module docs).
     pub fn deinit(self: *Value, gpa: Allocator) void {
         switch (self.*) {
+            .str => |s| gpa.free(s),
             .array => |*a| {
                 for (a.items) |*item| item.deinit(gpa);
                 a.deinit();
             },
             .object => |*o| {
-                for (o.items) |*field| field.value.deinit(gpa);
+                for (o.items) |*field| {
+                    gpa.free(field.key);
+                    field.value.deinit(gpa);
+                }
                 o.deinit();
             },
             else => {},
@@ -452,16 +466,16 @@ test "roundtrip basic" {
 
     var fields = try std.ArrayList(Field).initCapacity(gpa, 3);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "name", .value = .{ .str = "Alice" } });
-    try fields.append(.{ .key = "age", .value = .{ .sint = 30 } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "age"), .value = .{ .sint = 30 } });
 
     var tags = try std.ArrayList(Value).initCapacity(gpa, 2);
-    try tags.append(.{ .str = "a" });
-    try tags.append(.{ .str = "b" });
-    try fields.append(.{ .key = "tags", .value = .{ .array = tags } });
+    try tags.append(.{ .str = try gpa.dupe(u8, "a") });
+    try tags.append(.{ .str = try gpa.dupe(u8, "b") });
+    try fields.append(.{ .key = try gpa.dupe(u8, "tags"), .value = .{ .array = tags } });
 
     const toon = try dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -487,11 +501,11 @@ test "json interop" {
 
     var fields = try std.ArrayList(Field).initCapacity(gpa, 2);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "x", .value = .{ .sint = 1 } });
-    try fields.append(.{ .key = "y", .value = .{ .array = arr } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "x"), .value = .{ .sint = 1 } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "y"), .value = .{ .array = arr } });
 
     const j = try dumpsJson(gpa, .{ .object = fields }, 2);
     defer gpa.free(j);
@@ -516,10 +530,10 @@ test "empty string value" {
 
     var fields = try std.ArrayList(Field).initCapacity(gpa, 1);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "k", .value = .{ .str = "" } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "k"), .value = .{ .str = try gpa.dupe(u8, "") } });
 
     const toon = try dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);

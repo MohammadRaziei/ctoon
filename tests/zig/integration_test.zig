@@ -21,11 +21,11 @@ test "dumps basic object" {
     const gpa = testing.allocator;
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "name", .value = .{ .str = "Alice" } });
-    try fields.append(.{ .key = "age", .value = .{ .uint = 30 } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "age"), .value = .{ .uint = 30 } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -61,27 +61,27 @@ test "roundtrip nested" {
     const gpa = testing.allocator;
 
     var item_a = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try item_a.append(.{ .key = "sku", .value = .{ .str = "A" } });
-    try item_a.append(.{ .key = "qty", .value = .{ .uint = 2 } });
+    try item_a.append(.{ .key = try gpa.dupe(u8, "sku"), .value = .{ .str = try gpa.dupe(u8, "A") } });
+    try item_a.append(.{ .key = try gpa.dupe(u8, "qty"), .value = .{ .uint = 2 } });
 
     var item_b = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try item_b.append(.{ .key = "sku", .value = .{ .str = "B" } });
-    try item_b.append(.{ .key = "qty", .value = .{ .uint = 1 } });
+    try item_b.append(.{ .key = try gpa.dupe(u8, "sku"), .value = .{ .str = try gpa.dupe(u8, "B") } });
+    try item_b.append(.{ .key = try gpa.dupe(u8, "qty"), .value = .{ .uint = 1 } });
 
     var items = try std.ArrayList(ctoon.Value).initCapacity(gpa, 2);
     try items.append(.{ .object = item_a });
     try items.append(.{ .object = item_b });
 
     var order = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try order.append(.{ .key = "id", .value = .{ .str = "ORD-1" } });
-    try order.append(.{ .key = "items", .value = .{ .array = items } });
+    try order.append(.{ .key = try gpa.dupe(u8, "id"), .value = .{ .str = try gpa.dupe(u8, "ORD-1") } });
+    try order.append(.{ .key = try gpa.dupe(u8, "items"), .value = .{ .array = items } });
 
     var root = try std.ArrayList(ctoon.Field).initCapacity(gpa, 1);
     defer {
-        for (root.items) |*f| f.value.deinit(gpa);
+        for (root.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         root.deinit();
     }
-    try root.append(.{ .key = "order", .value = .{ .object = order } });
+    try root.append(.{ .key = try gpa.dupe(u8, "order"), .value = .{ .object = order } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = root });
     defer gpa.free(toon);
@@ -121,12 +121,12 @@ test "null and bool" {
     const gpa = testing.allocator;
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 3);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "a", .value = .null });
-    try fields.append(.{ .key = "b", .value = .{ .boolean = true } });
-    try fields.append(.{ .key = "c", .value = .{ .boolean = false } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "a"), .value = .null });
+    try fields.append(.{ .key = try gpa.dupe(u8, "b"), .value = .{ .boolean = true } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "c"), .value = .{ .boolean = false } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -143,11 +143,11 @@ test "negative and float" {
     const gpa = testing.allocator;
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
     defer {
-        for (fields.items) |*f| f.value.deinit(gpa);
+        for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
         fields.deinit();
     }
-    try fields.append(.{ .key = "neg", .value = .{ .sint = -42 } });
-    try fields.append(.{ .key = "pi", .value = .{ .real = 3.14 } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "neg"), .value = .{ .sint = -42 } });
+    try fields.append(.{ .key = try gpa.dupe(u8, "pi"), .value = .{ .real = 3.14 } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
