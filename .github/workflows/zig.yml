@@ -28,7 +28,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # macos-latest (arm64/macOS 14) is pinned to macos-13 here: Zig
+        # 0.13.0's own build-runner fails to link against libc/libSystem
+        # on the newer arm64 GitHub runner images (a known Zig 0.13 SDK
+        # detection bug, unrelated to ctoon's own code) — macos-13
+        # (Intel) doesn't hit it.
+        os: [ubuntu-latest, macos-13, windows-latest]
 
     steps:
     - uses: actions/checkout@v6
