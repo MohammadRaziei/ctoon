@@ -27,6 +27,14 @@ HEADER_PATH = "include/ctoon.h"
 PREFIX = "CTOON_"
 HEADER_ABS_PATH = Path(__file__).parent / HEADER_PATH
 
+# Manifests that can't read the version from the header dynamically the
+# way pyproject.toml does (scikit-build-core's regex metadata provider) —
+# Cargo and Zig's package manager both require a static string literal in
+# the manifest itself. Kept in sync here instead: each write_version()
+# call below also rewrites these.
+CARGO_TOML_ABS_PATH = Path(__file__).parent / "Cargo.toml"
+ZON_ABS_PATH = Path(__file__).parent / "build.zig.zon"
+
 # ============================================================
 # Utilities
 # ============================================================
@@ -62,6 +70,35 @@ def write_version(version, text):
         return f"#define {PREFIX}VERSION_{name} {version[name]}"
     new_text = re.sub(VERSION_PATTERN, repl, text)
     HEADER_ABS_PATH.write_text(new_text)
+    sync_manifest_versions(version_str(version))
+
+def sync_manifest_versions(v):
+    """Keep Cargo.toml's and build.zig.zon's version string literals in
+    sync with the header. Unlike pyproject.toml, neither manifest format
+    supports reading the version dynamically from another file at
+    build/publish time, so this rewrite is the only way to keep them
+    from drifting apart."""
+    if CARGO_TOML_ABS_PATH.exists():
+        text = CARGO_TOML_ABS_PATH.read_text()
+        new_text = re.sub(
+            r'(?m)^version = "[^"]*"',
+            f'version = "{v}"',
+            text,
+            count=1,
+        )
+        if new_text != text:
+            CARGO_TOML_ABS_PATH.write_text(new_text)
+
+    if ZON_ABS_PATH.exists():
+        text = ZON_ABS_PATH.read_text()
+        new_text = re.sub(
+            r'\.version = "[^"]*",',
+            f'.version = "{v}",',
+            text,
+            count=1,
+        )
+        if new_text != text:
+            ZON_ABS_PATH.write_text(new_text)
 
 def version_str(v):
     return f"{v['MAJOR']}.{v['MINOR']}.{v['PATCH']}"
