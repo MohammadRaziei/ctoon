@@ -22,10 +22,10 @@ test "dumps basic object" {
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
     defer {
         for (fields.items) |*f| f.value.deinit(gpa);
-        fields.deinit(gpa);
+        fields.deinit();
     }
-    try fields.append(gpa, .{ .key = "name", .value = .{ .str = "Alice" } });
-    try fields.append(gpa, .{ .key = "age", .value = .{ .uint = 30 } });
+    try fields.append(.{ .key = "name", .value = .{ .str = "Alice" } });
+    try fields.append(.{ .key = "age", .value = .{ .uint = 30 } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -38,11 +38,11 @@ test "roundtrip array" {
     var arr = try std.ArrayList(ctoon.Value).initCapacity(gpa, 3);
     defer {
         for (arr.items) |*item| item.deinit(gpa);
-        arr.deinit(gpa);
+        arr.deinit();
     }
-    try arr.append(gpa, .{ .uint = 1 });
-    try arr.append(gpa, .{ .uint = 2 });
-    try arr.append(gpa, .{ .uint = 3 });
+    try arr.append(.{ .uint = 1 });
+    try arr.append(.{ .uint = 2 });
+    try arr.append(.{ .uint = 3 });
 
     const toon = try ctoon.dumps(gpa, .{ .array = arr });
     defer gpa.free(toon);
@@ -61,27 +61,27 @@ test "roundtrip nested" {
     const gpa = testing.allocator;
 
     var item_a = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try item_a.append(gpa, .{ .key = "sku", .value = .{ .str = "A" } });
-    try item_a.append(gpa, .{ .key = "qty", .value = .{ .uint = 2 } });
+    try item_a.append(.{ .key = "sku", .value = .{ .str = "A" } });
+    try item_a.append(.{ .key = "qty", .value = .{ .uint = 2 } });
 
     var item_b = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try item_b.append(gpa, .{ .key = "sku", .value = .{ .str = "B" } });
-    try item_b.append(gpa, .{ .key = "qty", .value = .{ .uint = 1 } });
+    try item_b.append(.{ .key = "sku", .value = .{ .str = "B" } });
+    try item_b.append(.{ .key = "qty", .value = .{ .uint = 1 } });
 
     var items = try std.ArrayList(ctoon.Value).initCapacity(gpa, 2);
-    try items.append(gpa, .{ .object = item_a });
-    try items.append(gpa, .{ .object = item_b });
+    try items.append(.{ .object = item_a });
+    try items.append(.{ .object = item_b });
 
     var order = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
-    try order.append(gpa, .{ .key = "id", .value = .{ .str = "ORD-1" } });
-    try order.append(gpa, .{ .key = "items", .value = .{ .array = items } });
+    try order.append(.{ .key = "id", .value = .{ .str = "ORD-1" } });
+    try order.append(.{ .key = "items", .value = .{ .array = items } });
 
     var root = try std.ArrayList(ctoon.Field).initCapacity(gpa, 1);
     defer {
         for (root.items) |*f| f.value.deinit(gpa);
-        root.deinit(gpa);
+        root.deinit();
     }
-    try root.append(gpa, .{ .key = "order", .value = .{ .object = order } });
+    try root.append(.{ .key = "order", .value = .{ .object = order } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = root });
     defer gpa.free(toon);
@@ -122,11 +122,11 @@ test "null and bool" {
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 3);
     defer {
         for (fields.items) |*f| f.value.deinit(gpa);
-        fields.deinit(gpa);
+        fields.deinit();
     }
-    try fields.append(gpa, .{ .key = "a", .value = .null });
-    try fields.append(gpa, .{ .key = "b", .value = .{ .boolean = true } });
-    try fields.append(gpa, .{ .key = "c", .value = .{ .boolean = false } });
+    try fields.append(.{ .key = "a", .value = .null });
+    try fields.append(.{ .key = "b", .value = .{ .boolean = true } });
+    try fields.append(.{ .key = "c", .value = .{ .boolean = false } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -144,10 +144,10 @@ test "negative and float" {
     var fields = try std.ArrayList(ctoon.Field).initCapacity(gpa, 2);
     defer {
         for (fields.items) |*f| f.value.deinit(gpa);
-        fields.deinit(gpa);
+        fields.deinit();
     }
-    try fields.append(gpa, .{ .key = "neg", .value = .{ .sint = -42 } });
-    try fields.append(gpa, .{ .key = "pi", .value = .{ .real = 3.14 } });
+    try fields.append(.{ .key = "neg", .value = .{ .sint = -42 } });
+    try fields.append(.{ .key = "pi", .value = .{ .real = 3.14 } });
 
     const toon = try ctoon.dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
