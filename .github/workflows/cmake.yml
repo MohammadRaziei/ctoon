@@ -97,6 +97,9 @@ jobs:
     - name: Install python deps
       run: pip install -r requirements-dev.txt
 
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+
     - name: Configure CMake
       run: |
         cmake -B build \
