@@ -1,14 +1,17 @@
 // Build script for the Zig bindings to ctoon.
 //
-// Targets Zig 0.15.2. Written against that version's build API, which
-// changed from 0.13 in one structural way that matters here: a Compile
-// step (library/executable/test) no longer takes root_source_file,
-// target, and optimize directly — those live on a *Module* now, built
-// with b.createModule() and passed in as .root_module. Everything else
-// (addCSourceFile, addIncludePath, linkLibrary, installHeadersDirectory,
-// ...) is still called the same way, directly on the resulting Compile
-// step, since Compile forwards those calls to its root_module internally.
-// addStaticLibrary was replaced by addLibrary(.{ .linkage = .static }).
+// Targets Zig 0.16.0. Two structural changes from 0.13 matter here:
+//   1. (0.14+) A Compile step (library/executable/test) no longer takes
+//      root_source_file, target, and optimize directly — those live on
+//      a *Module* now, built with b.createModule() and passed in as
+//      .root_module. addStaticLibrary was replaced by
+//      addLibrary(.{ .linkage = .static }).
+//   2. (0.16) Compile's convenience wrappers that used to forward to its
+//      root_module — addIncludePath, addCSourceFile, linkLibrary — were
+//      removed. Those must be called on `<compile>.root_module` directly
+//      now, not on the Compile step itself. installHeadersDirectory and
+//      installArtifact are unaffected — those are genuinely install-step
+//      (not module) operations.
 //
 // Lives at the repo root (like Cargo.toml and pyproject.toml) so
 // `zig build test` works from the repo root the same way `cargo test`
@@ -49,9 +52,9 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         }),
     });
-    ctoon_lib.addIncludePath(b.path(include_dir));
-    ctoon_lib.addIncludePath(b.path(src_dir));
-    ctoon_lib.addCSourceFile(.{
+    ctoon_lib.root_module.addIncludePath(b.path(include_dir));
+    ctoon_lib.root_module.addIncludePath(b.path(src_dir));
+    ctoon_lib.root_module.addCSourceFile(.{
         .file = b.path(ctoon_c),
         // -fno-sanitize=undefined: Zig's C frontend enables UBSan traps by
         // default for C sources in Debug/ReleaseSafe, which the other
@@ -66,7 +69,7 @@ pub fn build(b: *std.Build) void {
     // inspection, mutable-document building) real extern linkage, under
     // their `ctoon_rs_`-prefixed names — see shim.c's header comment.
     // Same file the Rust binding uses (src/bindings/rust/shim.c).
-    ctoon_lib.addCSourceFile(.{
+    ctoon_lib.root_module.addCSourceFile(.{
         .file = b.path(shim_c),
         .flags = &.{ "-DCTOON_ENABLE_JSON=1", "-fno-sanitize=undefined" },
     });
@@ -93,8 +96,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    unit_tests.linkLibrary(ctoon_lib);
-    unit_tests.addIncludePath(b.path(include_dir));
+    unit_tests.root_module.linkLibrary(ctoon_lib);
+    unit_tests.root_module.addIncludePath(b.path(include_dir));
 
     const integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -103,8 +106,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    integration_tests.linkLibrary(ctoon_lib);
-    integration_tests.addIncludePath(b.path(include_dir));
+    integration_tests.root_module.linkLibrary(ctoon_lib);
+    integration_tests.root_module.addIncludePath(b.path(include_dir));
     integration_tests.root_module.addImport("ctoon", ctoon_module);
 
     const run_unit_tests = b.addRunArtifact(unit_tests);

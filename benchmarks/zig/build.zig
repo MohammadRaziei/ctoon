@@ -2,9 +2,8 @@
 // root's own build.zig; fetches ctoon and toon-zig as real dependencies
 // (see build.zig.zon) the same way this directory's Go/Rust benchmarks
 // fetch their own peers from their own package ecosystems. Targets Zig
-// 0.15.2 — see the repo root's build.zig for a note on what changed
-// from 0.13 (root_source_file/target/optimize now live on a Module,
-// passed in as root_module).
+// 0.16.0 — see the repo root's build.zig for notes on what changed from
+// 0.13 across the 0.14/0.16 build-system API.
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
