@@ -14,6 +14,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/zig.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
     <link rel="stylesheet" href="ctoon-docs.css">
 </head>
 <body>
@@ -42,12 +44,12 @@
 <div class="hero">
     <div class="hero-eyebrow">
         <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        C · C++ · Python · Go · MATLAB
+        C · C++ · Python · Go · Rust · Zig · MATLAB
     </div>
     <h1>CToon Documentation</h1>
     <p class="hero-desc">
         A high-performance serialisation library for the TOON format — a compact, human-readable alternative to JSON.
-        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, and Go.
+        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, Go, Rust, and Zig.
     </p>
     <div class="hero-stats">
         <div class="hero-stat">
@@ -56,7 +58,7 @@
         </div>
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num">5</div>
+            <div class="hero-stat-num">7</div>
             <div class="hero-stat-label">Language bindings</div>
         </div>
         <div class="hero-stat-div"></div>
@@ -97,6 +99,12 @@
             </button>
             <button class="tab-btn" data-tab="docs-go" onclick="switchTab('docs','go')">
                 <i class="fa-brands fa-golang"></i> Go
+            </button>
+            <button class="tab-btn" data-tab="docs-rust" onclick="switchTab('docs','rust')">
+                <i class="fa-brands fa-rust"></i> Rust
+            </button>
+            <button class="tab-btn" data-tab="docs-zig" onclick="switchTab('docs','zig')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Zig
             </button>
             <button class="tab-btn" data-tab="docs-matlab" onclick="switchTab('docs','matlab')">
                 <i class="fa-solid fa-square-root-variable"></i> MATLAB
@@ -159,6 +167,34 @@
             </div>
         </div>
 
+        <div class="tab-content" id="docs-rust">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">Rust API <span class="card-badge">Rust 1.70+</span></div>
+                    <p class="doc-card-desc">Safe wrapper around the C core with a dependency-free <code>Value</code> enum (no <code>serde_json</code> required). Covers <code>loads</code>, <code>dumps</code>, <code>loads_json</code>, <code>dumps_json</code>, and <code>Error</code>. Compiles <code>ctoon.c</code> directly via a <code>build.rs</code> — no separate C library install needed.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with rustdoc</span></div>
+                    <a href="rust/doc/ctoon/index.html" class="doc-card-btn">Open Rust Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="docs-zig">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">Zig API <span class="card-badge">Zig 0.16.0+</span></div>
+                    <p class="doc-card-desc">Dependency-free wrapper around the C core with a tagged-union <code>Value</code> type. Covers <code>loads</code>, <code>dumps</code>, <code>loadsJson</code>, <code>dumpsJson</code>, and <code>lastError</code>. Compiles <code>ctoon.c</code> directly via <code>build.zig</code> — no CMake step needed to build or test it on its own.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Written in Markdown</span></div>
+                    <a href="zig/index.html" class="doc-card-btn">Open Zig Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
         <div class="tab-content active" id="docs-cli">
             <div class="doc-card-inner">
                 <div class="doc-card-icon">
@@ -215,6 +251,12 @@
             </button>
             <button class="tab-btn" data-tab="install-go" onclick="switchTab('install','go')">
                 <i class="fa-brands fa-golang"></i> Go
+            </button>
+            <button class="tab-btn" data-tab="install-rust" onclick="switchTab('install','rust')">
+                <i class="fa-brands fa-rust"></i> Rust
+            </button>
+            <button class="tab-btn" data-tab="install-zig" onclick="switchTab('install','zig')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Zig
             </button>
             <button class="tab-btn" data-tab="install-matlab" onclick="switchTab('install','matlab')">
                 <i class="fa-solid fa-square-root-variable"></i> MATLAB
@@ -294,6 +336,33 @@ target_link_libraries(my_app PRIVATE ctoon::ctoonpp)</code></pre>
             </div>
         </div>
 
+        <div class="tab-content" id="install-rust">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">toml</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-toml">[dependencies]
+ctoon = { git = "https://github.com/mohammadraziei/ctoon.git" }</code></pre>
+            </div>
+            <div class="install-note">
+                Requires Rust 1.70+. No runtime dependencies — <code>build.rs</code> compiles <code>ctoon.c</code> directly into the crate, so no separate C library install is needed. A C compiler must be available on the build host.
+            </div>
+        </div>
+
+        <div class="tab-content" id="install-zig">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-bash">zig fetch --save git+https://github.com/mohammadraziei/ctoon.git</code></pre>
+            </div>
+            <div class="install-note">
+                Requires Zig 0.16.0+. Then import the module in your <code>build.zig</code>: <code>exe.root_module.addImport("ctoon", ctoon_dep.module("ctoon"))</code>. No separate C library install needed — <code>build.zig</code> compiles <code>ctoon.c</code> directly.
+            </div>
+        </div>
+
         <div class="tab-content active" id="install-cli">
             <div class="section-label" style="margin-bottom:1rem">Option 1 — pip <span style="font-size:0.75rem;color:var(--fg2);text-transform:none;letter-spacing:0">(recommended)</span></div>
             <div class="code-wrap">
@@ -368,6 +437,12 @@ ctoon_install</code></pre>
             </button>
             <button class="tab-btn" data-tab="example-go" onclick="switchTab('example','go')">
                 <i class="fa-brands fa-golang"></i> Go
+            </button>
+            <button class="tab-btn" data-tab="example-rust" onclick="switchTab('example','rust')">
+                <i class="fa-brands fa-rust"></i> Rust
+            </button>
+            <button class="tab-btn" data-tab="example-zig" onclick="switchTab('example','zig')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Zig
             </button>
             <button class="tab-btn" data-tab="example-matlab" onclick="switchTab('example','matlab')">
                 <i class="fa-solid fa-square-root-variable"></i> MATLAB
@@ -519,6 +594,64 @@ func main() {
             </div>
         </div>
 
+        <div class="tab-content" id="example-rust">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">rust</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-rust">use ctoon::{loads, dumps, loads_json, dumps_json, Value};
+
+fn main() -&gt; ctoon::Result&lt;()&gt; {
+    // Decode ← TOON
+    let val = loads("name: Alice\nage: 30")?;
+    println!("{}", val["name"].as_str().unwrap()); // Alice
+
+    // Encode → TOON
+    let toon = dumps(&amp;val)?;
+    println!("{toon}");
+
+    // JSON interop
+    let json = dumps_json(&amp;val, 2)?;
+    let back: Value = loads_json(&amp;json)?;
+    println!("{}", back["age"].as_u64().unwrap()); // 30
+
+    Ok(())
+}</code></pre>
+            </div>
+        </div>
+
+        <div class="tab-content" id="example-zig">
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">zig</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-zig">const std = @import("std");
+const ctoon = @import("ctoon");
+
+pub fn main() !void {
+    const gpa = std.heap.page_allocator;
+
+    // Decode ← TOON
+    var val = try ctoon.loads(gpa, "name: Alice\nage: 30");
+    defer val.deinit(gpa);
+    std.debug.print("{s}\n", .{val.get("name").?.asStr().?}); // Alice
+
+    // Encode → TOON
+    const toon = try ctoon.dumps(gpa, val);
+    defer gpa.free(toon);
+
+    // JSON interop
+    const json = try ctoon.dumpsJson(gpa, val, 2);
+    defer gpa.free(json);
+    var back = try ctoon.loadsJson(gpa, json);
+    defer back.deinit(gpa);
+    std.debug.print("{}\n", .{back.get("age").?.asU64().?}); // 30
+}</code></pre>
+            </div>
+        </div>
+
         <div class="tab-content active" id="example-cli">
             <div class="code-wrap">
                 <div class="code-label">
@@ -585,7 +718,7 @@ v = ctoon_read('data.toon');</code></pre>
             </div>
             <div class="footer-tagline">
                 A high-performance C serialisation library for the TOON and JSON formats,
-                with idiomatic language bindings for C++, Python, Go, and MATLAB.
+                with idiomatic language bindings for C++, Python, Go, Rust, Zig, and MATLAB.
             </div>
             <div class="footer-copy">
                 &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
@@ -608,6 +741,12 @@ v = ctoon_read('data.toon');</code></pre>
                 </a>
                 <a class="footer-link" href="go/index.html">
                     <i class="fa-brands fa-golang"></i> Go reference
+                </a>
+                <a class="footer-link" href="rust/doc/ctoon/index.html">
+                    <i class="fa-brands fa-rust"></i> Rust reference
+                </a>
+                <a class="footer-link" href="zig/index.html">
+                    <i class="fa-solid fa-file-lines"></i> Zig reference
                 </a>
                 <a class="footer-link" href="matlab/index.html">
                     <i class="fa-solid fa-square-root-variable"></i> MATLAB reference

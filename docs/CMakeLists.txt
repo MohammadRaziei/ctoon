@@ -131,6 +131,41 @@ else()
 endif()
 
 
+# ── Rust Documentation (rustdoc via `cargo doc`) ───────────────
+
+find_program(CARGO_EXECUTABLE cargo)
+
+if(CARGO_EXECUTABLE)
+    set(CTOON_DOCS_RUST_OUT ${CTOON_DOCS_OUT}/rust)
+    set(CTOON_DOCS_RUST_HTML ${CTOON_DOCS_RUST_OUT}/doc/ctoon/index.html)
+
+    # Runs from the repo root (where Cargo.toml lives, like pyproject.toml)
+    # rather than src/bindings/rust/ — see that Cargo.toml's own comment
+    # for why. --target-dir redirects rustdoc's output straight into the
+    # docs tree instead of the repo's own target/.
+    add_custom_command(
+        OUTPUT ${CTOON_DOCS_RUST_HTML}
+        COMMAND ${CARGO_EXECUTABLE} doc --no-deps --target-dir ${CTOON_DOCS_RUST_OUT}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        DEPENDS
+            ${PROJECT_SOURCE_DIR}/Cargo.toml
+            ${PROJECT_SOURCE_DIR}/src/bindings/rust/src/lib.rs
+            ${PROJECT_SOURCE_DIR}/src/bindings/rust/src/value.rs
+            ${PROJECT_SOURCE_DIR}/src/bindings/rust/src/error.rs
+            ${PROJECT_SOURCE_DIR}/src/bindings/rust/src/ffi.rs
+        COMMENT "Generating Rust API documentation with rustdoc"
+        VERBATIM
+    )
+
+    add_custom_target(ctoon_docs_rust DEPENDS ${CTOON_DOCS_RUST_HTML})
+else()
+    message(WARNING "cargo not found - Rust documentation will not be generated")
+    add_custom_target(ctoon_docs_rust
+        COMMAND ${CMAKE_COMMAND} -E echo "Skipping Rust docs: cargo not found"
+    )
+endif()
+
+
 # ── Route Index Page ──────────────────────────────────────────
 
 set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
@@ -176,6 +211,21 @@ ctoon_add_section(
         "cli/installation.md:Installation"
         "cli/options.md:Options"
         "cli/examples.md:Examples"
+)
+
+# ── Zig Documentation (hand-written Markdown) ──────────────────
+# Zig's own autodoc tooling is still unstable/in-flux across recent
+# releases, so — like the CLI section above — this is hand-written
+# Markdown rather than generated from source, until that changes.
+
+ctoon_add_section(
+    NAME  zig
+    TITLE "Zig Binding"
+    SOURCES
+        "zig/index.md:Overview"
+        "zig/installation.md:Installation"
+        "zig/usage.md:Usage"
+        "zig/api.md:API Reference"
 )
 
 
@@ -238,7 +288,7 @@ add_custom_target(ctoon_docs
     COMMENT "Building all documentation"
 )
 
-add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_index ctoon_docs_matlab)
+add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_rust ctoon_docs_index ctoon_docs_matlab)
 ctoon_finalize_pages(ctoon_docs)
 
 
