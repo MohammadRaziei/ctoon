@@ -2,7 +2,7 @@
     .name = .ctoon_bench_zig,
     .version = "0.1.0",
     .minimum_zig_version = "0.15.2",
-    .fingerprint = 0x7b1e4a2c9d6f0381,
+    .fingerprint = 0x0,
     .paths = .{
         "build.zig",
         "build.zig.zon",
