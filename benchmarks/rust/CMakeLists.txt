@@ -1,8 +1,9 @@
-# toon-rust (fetched via Cargo's own git dependency, in Cargo.toml) is
-# built with `cargo build --release`; no ctoon Rust binding exists yet
-# (see main.rs), so there's nothing else for this project to fetch here.
+# Both dependencies — ctoon included — are fetched by Cargo itself from
+# their real GitHub/crates.io homes (see Cargo.toml), the same way every
+# other language benchmark fetches its own dependencies. Built with
+# `cargo build --release`; nothing else for this project to fetch here.
 add_custom_target(ctoon_benchmarks_rust
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Building Rust benchmark, this fetches toon-rust from GitHub..."
+    COMMAND ${CMAKE_COMMAND} -E echo "-- Building Rust benchmark, this fetches ctoon + toon-rust from GitHub/crates.io..."
     COMMAND ${CARGO_EXECUTABLE} build --release --quiet
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Rust benchmark..."
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/target/release/ctoon-bench-rust

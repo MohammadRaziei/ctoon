@@ -21,9 +21,9 @@
 //!
 //! test "roundtrip" {
 //!     const gpa = std.testing.allocator;
-//!     var obj = ctoon.Value{ .object = std.ArrayList(ctoon.Field).init(gpa) };
+//!     var obj = ctoon.Value{ .object = .empty };
 //!     defer obj.deinit(gpa);
-//!     try obj.object.append(.{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
+//!     try obj.object.append(gpa, .{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
 //!
 //!     const toon = try ctoon.dumps(gpa, obj);
 //!     defer gpa.free(toon);
@@ -196,14 +196,14 @@ pub const Value = union(enum) {
             .str => |s| gpa.free(s),
             .array => |*a| {
                 for (a.items) |*item| item.deinit(gpa);
-                a.deinit();
+                a.deinit(gpa);
             },
             .object => |*o| {
                 for (o.items) |*field| {
                     gpa.free(field.key);
                     field.value.deinit(gpa);
                 }
-                o.deinit();
+                o.deinit(gpa);
             },
             else => {},
         }
@@ -313,11 +313,11 @@ fn valToValue(gpa: Allocator, v: ?*c.val) Error!Value {
             var arr = try std.ArrayList(Value).initCapacity(gpa, n);
             errdefer {
                 for (arr.items) |*item| item.deinit(gpa);
-                arr.deinit();
+                arr.deinit(gpa);
             }
             var i: usize = 0;
             while (i < n) : (i += 1) {
-                try arr.append(try valToValue(gpa, c.ctoon_rs_arr_get(ptr, i)));
+                try arr.append(gpa, try valToValue(gpa, c.ctoon_rs_arr_get(ptr, i)));
             }
             break :blk .{ .array = arr };
         },
@@ -326,14 +326,14 @@ fn valToValue(gpa: Allocator, v: ?*c.val) Error!Value {
             var obj = try std.ArrayList(Field).initCapacity(gpa, n);
             errdefer {
                 for (obj.items) |*field| field.value.deinit(gpa);
-                obj.deinit();
+                obj.deinit(gpa);
             }
             var iter: c.obj_iter = undefined;
             _ = c.ctoon_rs_obj_iter_init(ptr, &iter);
             while (c.ctoon_rs_obj_iter_has_next(&iter)) {
                 const key_val = c.ctoon_rs_obj_iter_next(&iter) orelse break;
                 const field_val = try valToValue(gpa, c.ctoon_rs_obj_iter_get_val(key_val));
-                try obj.append(.{ .key = try getStr(gpa, key_val), .value = field_val });
+                try obj.append(gpa, .{ .key = try getStr(gpa, key_val), .value = field_val });
             }
             break :blk .{ .object = obj };
         },
@@ -467,15 +467,15 @@ test "roundtrip basic" {
     var fields = try std.ArrayList(Field).initCapacity(gpa, 3);
     defer {
         for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
-        fields.deinit();
+        fields.deinit(gpa);
     }
-    try fields.append(.{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
-    try fields.append(.{ .key = try gpa.dupe(u8, "age"), .value = .{ .sint = 30 } });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "name"), .value = .{ .str = try gpa.dupe(u8, "Alice") } });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "age"), .value = .{ .sint = 30 } });
 
     var tags = try std.ArrayList(Value).initCapacity(gpa, 2);
-    try tags.append(.{ .str = try gpa.dupe(u8, "a") });
-    try tags.append(.{ .str = try gpa.dupe(u8, "b") });
-    try fields.append(.{ .key = try gpa.dupe(u8, "tags"), .value = .{ .array = tags } });
+    try tags.append(gpa, .{ .str = try gpa.dupe(u8, "a") });
+    try tags.append(gpa, .{ .str = try gpa.dupe(u8, "b") });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "tags"), .value = .{ .array = tags } });
 
     const toon = try dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);
@@ -495,17 +495,17 @@ test "json interop" {
     const gpa = std.testing.allocator;
 
     var arr = try std.ArrayList(Value).initCapacity(gpa, 3);
-    try arr.append(.{ .sint = 1 });
-    try arr.append(.{ .sint = 2 });
-    try arr.append(.{ .sint = 3 });
+    try arr.append(gpa, .{ .sint = 1 });
+    try arr.append(gpa, .{ .sint = 2 });
+    try arr.append(gpa, .{ .sint = 3 });
 
     var fields = try std.ArrayList(Field).initCapacity(gpa, 2);
     defer {
         for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
-        fields.deinit();
+        fields.deinit(gpa);
     }
-    try fields.append(.{ .key = try gpa.dupe(u8, "x"), .value = .{ .sint = 1 } });
-    try fields.append(.{ .key = try gpa.dupe(u8, "y"), .value = .{ .array = arr } });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "x"), .value = .{ .sint = 1 } });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "y"), .value = .{ .array = arr } });
 
     const j = try dumpsJson(gpa, .{ .object = fields }, 2);
     defer gpa.free(j);
@@ -531,9 +531,9 @@ test "empty string value" {
     var fields = try std.ArrayList(Field).initCapacity(gpa, 1);
     defer {
         for (fields.items) |*f| { gpa.free(f.key); f.value.deinit(gpa); }
-        fields.deinit();
+        fields.deinit(gpa);
     }
-    try fields.append(.{ .key = try gpa.dupe(u8, "k"), .value = .{ .str = try gpa.dupe(u8, "") } });
+    try fields.append(gpa, .{ .key = try gpa.dupe(u8, "k"), .value = .{ .str = try gpa.dupe(u8, "") } });
 
     const toon = try dumps(gpa, .{ .object = fields });
     defer gpa.free(toon);

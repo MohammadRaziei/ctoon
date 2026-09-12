@@ -6,7 +6,8 @@ cmake_minimum_required(VERSION 3.19)
 # This has NO relationship to the repository root — not even for ctoon
 # itself. Every language folder fetches ctoon the exact same way it fetches
 # any competitor: from https://github.com/mohammadraziei/ctoon.git (C/C++),
-# `go get github.com/mohammadraziei/ctoon` (Go), or
+# `go get github.com/mohammadraziei/ctoon` (Go), a git dependency in
+# Cargo.toml (Rust), `zig fetch --save` (Zig), or
 # `pip install git+https://github.com/mohammadraziei/ctoon.git` (Python).
 # ctoon is never a special case here — it's benchmarked exactly like
 # gotoon, toon-go, or TOONc: one more entry in the same results table.
@@ -18,10 +19,10 @@ cmake_minimum_required(VERSION 3.19)
 #   cmake --build build-bench --target ctoon_benchmarks
 #
 # Layout mirrors tests/: one folder per language (c, cpp, python, go,
-# matlab), each with its own CMakeLists.txt that fetches its own
-# dependencies and defines a ctoon_benchmarks_<lang> target. A language is
-# skipped with a warning only when its toolchain isn't found — see
-# "Toolchain detection" below.
+# rust, zig, matlab), each with its own CMakeLists.txt that fetches its
+# own dependencies and defines a ctoon_benchmarks_<lang> target. A
+# language is skipped with a warning only when its toolchain isn't found
+# — see "Toolchain detection" below.
 # ==============================================================================
 
 project(CToonBenchmarks LANGUAGES C CXX)
@@ -114,6 +115,7 @@ find_package(Python3 COMPONENTS Interpreter)
 find_program(GO_EXECUTABLE go)
 find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
+find_program(ZIG_EXECUTABLE zig)
 find_program(NODE_EXECUTABLE node)
 find_program(NPM_EXECUTABLE npm)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
@@ -188,4 +190,11 @@ if(NODE_EXECUTABLE AND NPM_EXECUTABLE)
 else()
     message(WARNING "Node.js toolchain (node/npm) not found — Node.js benchmark "
                      "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
+endif()
+
+if(ZIG_EXECUTABLE)
+    add_subdirectory(zig)
+else()
+    message(WARNING "Zig toolchain not found — Zig benchmark skipped. "
+                     "Install Zig >= 0.15.2 and make sure 'zig' is on PATH.")
 endif()

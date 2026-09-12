@@ -383,7 +383,7 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 | Python binding | Python 3.9+, nanobind >= 2.0, CMake 3.19+ |
 | Go binding | Go 1.21+, CGo |
 | Rust binding | Rust 1.70+ |
-| Zig binding | Zig 0.13+ |
+| Zig binding | Zig 0.15.2+ |
 | MATLAB binding | MATLAB R2014b+, C compiler for MEX |
 | CLI | C++17 |
 

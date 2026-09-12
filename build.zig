@@ -1,5 +1,15 @@
 // Build script for the Zig bindings to ctoon.
 //
+// Targets Zig 0.15.2. Written against that version's build API, which
+// changed from 0.13 in one structural way that matters here: a Compile
+// step (library/executable/test) no longer takes root_source_file,
+// target, and optimize directly — those live on a *Module* now, built
+// with b.createModule() and passed in as .root_module. Everything else
+// (addCSourceFile, addIncludePath, linkLibrary, installHeadersDirectory,
+// ...) is still called the same way, directly on the resulting Compile
+// step, since Compile forwards those calls to its root_module internally.
+// addStaticLibrary was replaced by addLibrary(.{ .linkage = .static }).
+//
 // Lives at the repo root (like Cargo.toml and pyproject.toml) so
 // `zig build test` works from the repo root the same way `cargo test`
 // and `pip install .` do — but the binding's own source and shim stay
@@ -30,12 +40,15 @@ pub fn build(b: *std.Build) void {
     const binding_dir = "src/bindings/zig";
     const shim_c = binding_dir ++ "/shim.c";
 
-    const ctoon_lib = b.addStaticLibrary(.{
+    const ctoon_lib = b.addLibrary(.{
         .name = "ctoon",
-        .target = target,
-        .optimize = optimize,
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
-    ctoon_lib.linkLibC();
     ctoon_lib.addIncludePath(b.path(include_dir));
     ctoon_lib.addIncludePath(b.path(src_dir));
     ctoon_lib.addCSourceFile(.{
@@ -74,17 +87,21 @@ pub fn build(b: *std.Build) void {
     // tests/zig/integration_test.zig (mirrors tests/rust, tests/go, etc,
     // all likewise centralized under the repo-root tests/ folder).
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path(binding_dir ++ "/src/ctoon.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(binding_dir ++ "/src/ctoon.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     unit_tests.linkLibrary(ctoon_lib);
     unit_tests.addIncludePath(b.path(include_dir));
 
     const integration_tests = b.addTest(.{
-        .root_source_file = b.path("tests/zig/integration_test.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig/integration_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
     integration_tests.linkLibrary(ctoon_lib);
     integration_tests.addIncludePath(b.path(include_dir));

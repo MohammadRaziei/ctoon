@@ -1,16 +1,16 @@
 # CToon Benchmarks
 
 Throughput benchmarks for every CToon binding — C, C++, Python, Go,
-MATLAB — plus Rust, where ctoon has no binding yet but the ecosystem's own
-implementation is benchmarked anyway. Every language runs alongside every
-maintained competing implementation that exists for that language. This
-project has **no relationship to the repository root**, not even for
-ctoon itself: every language fetches ctoon the exact same way it fetches
-any competitor, from `https://github.com/mohammadraziei/ctoon.git`
-(C/C++), `go get github.com/mohammadraziei/ctoon` (Go), or
-`pip install git+https://github.com/mohammadraziei/ctoon.git` (Python).
+Rust, Zig, MATLAB. Every language runs alongside every maintained
+competing implementation that exists for that language. This project
+has **no relationship to the repository root**, not even for ctoon
+itself: every language fetches ctoon the exact same way it fetches any
+competitor, from `https://github.com/mohammadraziei/ctoon.git` (C/C++),
+`go get github.com/mohammadraziei/ctoon` (Go), a git dependency in
+`Cargo.toml` (Rust), `zig fetch --save` (Zig), or `pip install
+git+https://github.com/mohammadraziei/ctoon.git` (Python).
 **ctoon is never a special case here** — it's one more row in the same
-results table as gotoon, toon-go, or TOONc.
+results table as gotoon, toon-go, toon-rust, or toon-zig.
 
 ## Running
 
@@ -34,6 +34,7 @@ cmake --build build-bench --target ctoon_benchmarks_cpp
 cmake --build build-bench --target ctoon_benchmarks_python
 cmake --build build-bench --target ctoon_benchmarks_go
 cmake --build build-bench --target ctoon_benchmarks_rust
+cmake --build build-bench --target ctoon_benchmarks_zig
 cmake --build build-bench --target ctoon_benchmarks_matlab
 ```
 
@@ -71,7 +72,8 @@ benchmarks/
   cpp/             bench.cpp      — ctoon (no competitor exists)
   python/          bench.py       — ctoon, toon_format, toons
   go/              bench.go       — ctoon, gotoon, toon-go
-  rust/            main.rs        — toon-rust (no ctoon Rust binding exists yet)
+  rust/            main.rs        — ctoon, toon-rust
+  zig/             main.zig       — ctoon, toon-zig
   matlab/          bench.m        — ctoon (no competitor exists)
 ```
 
@@ -137,7 +139,11 @@ and Rust specifically, when the version found is too old:
   placeholder — the crate reserved its name early) and the git `HEAD`,
   neither avoids this; it's a genuine requirement of the only functional
   release, not a git-vs-crates.io difference.
+- `toon-zig` requires **Zig 0.15.2** — pinned as this workspace's own
+  `minimum_zig_version` too, since a single `zig build` compiles both
+  ctoon's Zig binding and toon-zig together; there's no way to run two
+  Zig language-version APIs in one build.
 
 Everything else — a Python venv, `pip install`, `go get`, `cargo build`,
-CMake `FetchContent` — happens inside that language's own
-`CMakeLists.txt` once the toolchain is confirmed present.
+`zig fetch --save`, CMake `FetchContent` — happens inside that language's
+own `CMakeLists.txt` once the toolchain is confirmed present.

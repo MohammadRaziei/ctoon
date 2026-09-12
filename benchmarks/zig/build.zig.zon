@@ -1,0 +1,27 @@
+.{
+    .name = .ctoon_bench_zig,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.15.2",
+    .fingerprint = 0x7b1e4a2c9d6f0381,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+    .dependencies = .{
+        // Pinned directly, same as toon-zig's own README recommends —
+        // no fetch step needed for this one.
+        .toon = .{
+            .url = "https://github.com/LatentEvals/toon-zig/archive/refs/tags/v0.1.3.tar.gz",
+            .hash = "toon-0.1.3-1wXXCUBCAQAszySx8OsCtALWeXjee4KNU9M7s0hH4WNN",
+        },
+        // Left empty here on purpose: `zig fetch --save
+        // git+https://github.com/mohammadraziei/ctoon.git` populates this
+        // with the `ctoon` entry (name + content hash) automatically — see
+        // this directory's CMakeLists.txt, which runs that fetch before
+        // every build so the hash always matches ctoon's current master,
+        // the same way the Go benchmark's `go get`/`go mod tidy` step
+        // keeps go.mod/go.sum current instead of committing a fixed
+        // version.
+    },
+}
