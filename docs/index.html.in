@@ -14,8 +14,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/matlab.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/zig.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
+    <!-- Zig isn't bundled with core highlight.js; this is the grammar
+         listed for Zig in highlight.js's own SUPPORTED_LANGUAGES.md
+         third-party table (github.com/fwx5618177/highlightjs-zig).
+         Served via jsDelivr's generic npm CDN since it isn't on cdnjs. -->
+    <script src="https://cdn.jsdelivr.net/npm/highlightjs-zig/dist/zig.min.js"></script>
     <link rel="stylesheet" href="ctoon-docs.css">
 </head>
 <body>
