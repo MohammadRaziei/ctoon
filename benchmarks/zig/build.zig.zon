@@ -1,7 +1,7 @@
 .{
     .name = .ctoon_bench_zig,
     .version = "0.1.0",
-    .minimum_zig_version = "0.15.2",
+    .minimum_zig_version = "0.16.0",
     .fingerprint = 0x0,
     .paths = .{
         "build.zig",

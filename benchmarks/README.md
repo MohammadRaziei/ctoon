@@ -139,7 +139,7 @@ and Rust specifically, when the version found is too old:
   placeholder — the crate reserved its name early) and the git `HEAD`,
   neither avoids this; it's a genuine requirement of the only functional
   release, not a git-vs-crates.io difference.
-- `toon-zig` requires **Zig 0.15.2** — pinned as this workspace's own
+- `toon-zig` requires **Zig 0.16.0** — pinned as this workspace's own
   `minimum_zig_version` too, since a single `zig build` compiles both
   ctoon's Zig binding and toon-zig together; there's no way to run two
   Zig language-version APIs in one build.

@@ -196,5 +196,5 @@ if(ZIG_EXECUTABLE)
     add_subdirectory(zig)
 else()
     message(WARNING "Zig toolchain not found — Zig benchmark skipped. "
-                     "Install Zig >= 0.15.2 and make sure 'zig' is on PATH.")
+                     "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
 endif()

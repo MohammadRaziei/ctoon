@@ -7,7 +7,7 @@
 # root tests/ folder; build.zig (at the repo root, like Cargo.toml) points
 # its "test" step at this file directly (no package-manager fetch step
 # needed, same spirit as Cargo's [[test]] path in the Rust binding).
-# Requires Zig >= 0.15.2 on PATH.
+# Requires Zig >= 0.16.0 on PATH.
 # ---------------------------------------------------------------------------
 
 set(CTOON_ZIG_PROJECT_ROOT ${PROJECT_SOURCE_DIR})
@@ -17,7 +17,7 @@ find_program(ZIG_EXECUTABLE zig)
 
 if(NOT ZIG_EXECUTABLE)
     message(WARNING "Zig toolchain not found. Zig tests will be skipped.")
-    message(WARNING "Install Zig >= 0.15.2 and make sure 'zig' is on PATH.")
+    message(WARNING "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
     return()
 endif()
 

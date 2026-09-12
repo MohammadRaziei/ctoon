@@ -80,4 +80,4 @@ top-level build (see `tests/zig/CMakeLists.txt`).
 
 ## Requirements
 
-Zig 0.15.2 or newer.
+Zig 0.16.0 or newer.
