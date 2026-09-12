@@ -10,14 +10,7 @@ jobs:
   build-and-test:
     strategy:
       matrix:
-        # macos-latest (arm64/macOS 14) is pinned to macos-13 here: Zig's
-        # own build-runner fails to link against libc/libSystem on the
-        # newer arm64 GitHub runner images (a known Zig SDK-detection
-        # bug, unrelated to ctoon's own code — same issue already worked
-        # around in zig.yml's test matrix) — macos-13 (Intel) doesn't
-        # hit it. This affects the whole matrix, not just Zig, since
-        # every language here shares one job/matrix.
-        os: [ubuntu-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
     
@@ -42,6 +35,19 @@ jobs:
       uses: mlugg/setup-zig@v2
       with:
         version: "0.15.2"
+
+    - name: Fix Xcode SDK selection (macOS)
+      if: runner.os == 'macOS'
+      # Zig's own build-runner (the process that runs build.zig itself)
+      # links against libSystem/libdispatch dynamically at build time.
+      # On GitHub's arm64 macOS images, the active developer directory
+      # sometimes doesn't resolve to a full Xcode install with those
+      # libraries visible, and Zig's build-runner fails with a wall of
+      # "undefined symbol" errors (_dispatch_semaphore_create, _fork,
+      # _exit, ...) that have nothing to do with ctoon's own code.
+      # Explicitly selecting the full Xcode install (always present on
+      # these images) fixes SDK/library resolution.
+      run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
     - name: Build Project
       uses: threeal/cmake-action@v2.1.0
