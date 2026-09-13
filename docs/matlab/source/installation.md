@@ -52,5 +52,5 @@ target machine.
 ## Verify
 
 ```matlab
-ctoon_encode(struct('hello', 'world'))
+ctoon.encode(struct('hello', 'world'))
 ```

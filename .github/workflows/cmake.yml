@@ -144,7 +144,15 @@ jobs:
 
     - name: Install python dependencies
       run: pip install -r requirements-dev.txt
-    
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: llvm-tools-preview
+
+    - name: Install cargo-llvm-cov
+      uses: taiki-e/install-action@cargo-llvm-cov
+
     - name: Install coverage tools
       run: |
         sudo apt-get update

@@ -45,3 +45,77 @@ add_custom_target(ctoon_test_rust
 )
 
 add_dependencies(ctoon_test ctoon_test_rust)
+
+# ── ctoon_coverage_rust custom target ────────────────────────────────────────
+# Uses cargo-llvm-cov (https://github.com/taiki-e/cargo-llvm-cov), which
+# outputs lcov natively — unlike Go's `go tool cover` output, no format
+# conversion script is needed here (compare tests/go/CMakeLists.txt's
+# GoToLcov.cmake step).
+set(CTOON_COVERAGE_RUST_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/rust)
+
+execute_process(
+    COMMAND ${CARGO_EXECUTABLE} llvm-cov --version
+    OUTPUT_QUIET
+    ERROR_QUIET
+    RESULT_VARIABLE CARGO_LLVM_COV_CHECK
+)
+
+if(CARGO_LLVM_COV_CHECK EQUAL 0)
+    file(MAKE_DIRECTORY ${CTOON_COVERAGE_RUST_BINARY_DIR})
+
+    add_custom_target(ctoon_coverage_rust
+        COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_RUST_BINARY_DIR}/html
+        COMMAND ${CMAKE_COMMAND} -E make_directory   ${CTOON_COVERAGE_RUST_BINARY_DIR}/html
+
+        # lcov output (for merge with C/C++/Python/Go) — reruns the test
+        # suite under instrumentation; a second run below does the same
+        # for the HTML report, since cargo-llvm-cov doesn't emit both
+        # report formats from a single invocation.
+        COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Rust coverage (lcov)..."
+        COMMAND ${CARGO_EXECUTABLE} llvm-cov --lcov
+                    --output-path ${CTOON_COVERAGE_RUST_BINARY_DIR}/coverage.lcov
+        COMMAND ${CMAKE_COMMAND}
+                    -DSOURCE_PATH=${PROJECT_SOURCE_DIR}/
+                    -DCOV_FILE=${CTOON_COVERAGE_RUST_BINARY_DIR}/coverage.lcov
+                    -P ${PROJECT_SOURCE_DIR}/cmake/FixLCovPaths.cmake
+
+        # HTML report
+        COMMAND ${CMAKE_COMMAND} -E echo "-- Generating HTML report..."
+        COMMAND ${CARGO_EXECUTABLE} llvm-cov --html
+                    --output-dir ${CTOON_COVERAGE_RUST_BINARY_DIR}/html-raw
+
+        # cargo-llvm-cov's --html writes to <dir>/html/index.html itself;
+        # flatten that one level so the layout matches every other
+        # language's coverage dir (<lang>/html/index.html).
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${CTOON_COVERAGE_RUST_BINARY_DIR}/html-raw/html
+                    ${CTOON_COVERAGE_RUST_BINARY_DIR}/html
+        COMMAND ${CMAKE_COMMAND} -E remove_directory
+                    ${CTOON_COVERAGE_RUST_BINARY_DIR}/html-raw
+
+        COMMAND ${CMAKE_COMMAND} -E echo
+                "-- HTML entry point: ${CTOON_COVERAGE_RUST_BINARY_DIR}/html/index.html"
+
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        USES_TERMINAL
+    )
+
+    add_dependencies(ctoon_coverage_rust ctoon_test_rust)
+    add_dependencies(ctoon_coverage ctoon_coverage_rust)
+
+    add_custom_command(TARGET ctoon_coverage_rust POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DIFRAME_SRC="html/index.html"
+            -DSECTION_TITLE="Rust%20Bindings"
+            -DLOGO_SVG="${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg"
+            -DPROJECT_NAME="${PROJECT_NAME}"
+            -DOUTPUT_DIR="${CTOON_COVERAGE_RUST_BINARY_DIR}"
+            -P "${PROJECT_SOURCE_DIR}/cmake/GenerateIframe.cmake"
+        COMMENT "Generating iframe wrapper for Rust coverage report"
+        WORKING_DIRECTORY ${CTOON_TEST_SOURCE_DIR}
+    )
+else()
+    message(WARNING "cargo-llvm-cov not found; Rust coverage target will be skipped. "
+                     "Install with: cargo install cargo-llvm-cov "
+                     "(also needs 'rustup component add llvm-tools-preview').")
+endif()

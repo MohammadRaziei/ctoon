@@ -15,13 +15,13 @@ The binding exposes four public functions:
 
    * - Function
      - Description
-   * - ``ctoon_encode``
+   * - ``ctoon.encode``
      - Encode a MATLAB value to a TOON string
-   * - ``ctoon_decode``
+   * - ``ctoon.decode``
      - Decode a TOON string to a MATLAB value
-   * - ``ctoon_read``
+   * - ``ctoon.read``
      - Read a ``.toon`` file into a MATLAB value
-   * - ``ctoon_write``
+   * - ``ctoon.write``
      - Write a MATLAB value to a ``.toon`` file
 
 Quick start
@@ -34,12 +34,12 @@ Quick start
    ctoon_install
 
    % Encode and decode
-   s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30)));
-   v = ctoon_decode(s);
+   s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30)));
+   v = ctoon.decode(s);
 
    % File I/O
-   ctoon_write(v, 'config.toon');
-   v = ctoon_read('config.toon');
+   ctoon.write(v, 'config.toon');
+   v = ctoon.read('config.toon');
 
 Requirements
 ------------

@@ -220,7 +220,7 @@
                 </div>
                 <div class="doc-card-body">
                     <div class="doc-card-title">MATLAB API <span class="card-badge">R2014b+</span></div>
-                    <p class="doc-card-desc">MEX-based binding for the CToon C library. Documents <code>ctoon_encode</code>, <code>ctoon_decode</code>, <code>ctoon_read</code>, and <code>ctoon_write</code>. Works with any MATLAB R2014b or newer — no toolboxes required. Build with <code>ctoon_build</code> or via CMake.</p>
+                    <p class="doc-card-desc">MEX-based binding for the CToon C library. Documents <code>ctoon.encode</code>, <code>ctoon.decode</code>, <code>ctoon.read</code>, and <code>ctoon.write</code> (plus Python-style aliases <code>ctoon.dumps</code>/<code>ctoon.loads</code>). Works with any MATLAB R2014b or newer — no toolboxes required. Build with <code>ctoon_build</code> or via CMake.</p>
                     <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Generated from .m docstrings</span></div>
                     <a href="matlab/index.html" class="doc-card-btn">Open MATLAB Reference <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
@@ -691,20 +691,24 @@ ctoon -d input.toon   # force decode  TOON → JSON</code></pre>
                     <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
                 </div>
                 <pre><code class="language-matlab">% Encode a MATLAB struct → TOON string
-s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
 % name: Alice
 % age: 30
 % active: true
 
 % Decode TOON string → MATLAB struct
-v = ctoon_decode(s);
+v = ctoon.decode(s);
 v.name    % 'Alice'
 v.age     % uint64(30)
 v.active  % true
 
 % File I/O
-ctoon_write(v, 'data.toon');
-v = ctoon_read('data.toon');</code></pre>
+ctoon.write(v, 'data.toon');
+v = ctoon.read('data.toon');
+
+% Python-style aliases
+s = ctoon.dumps(v);   % same as ctoon.encode
+v = ctoon.loads(s);   % same as ctoon.decode</code></pre>
             </div>
         </div>
     </div>

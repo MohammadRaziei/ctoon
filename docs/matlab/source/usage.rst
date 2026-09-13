@@ -7,10 +7,10 @@ Encoding and decoding
 .. code-block:: matlab
 
    % Encode a MATLAB struct to a TOON string
-   s = ctoon_encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+   s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
 
    % Decode back
-   v = ctoon_decode(s);
+   v = ctoon.decode(s);
    v.name    % → 'Alice'
    v.age     % → uint64(30)
    v.active  % → true
@@ -23,10 +23,10 @@ File I/O
    % Write
    cfg.host = 'localhost';
    cfg.port = uint64(8080);
-   ctoon_write(cfg, 'config.toon');
+   ctoon.write(cfg, 'config.toon');
 
    % Read
-   cfg = ctoon_read('config.toon');
+   cfg = ctoon.read('config.toon');
 
 Type mapping
 ------------
@@ -67,7 +67,7 @@ All functions throw MATLAB errors with structured identifiers:
 .. code-block:: matlab
 
    try
-       v = ctoon_decode('bad input');
+       v = ctoon.decode('bad input');
    catch e
        e.identifier   % → 'ctoon:decodeError'
        e.message

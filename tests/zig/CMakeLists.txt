@@ -46,3 +46,14 @@ add_custom_target(ctoon_test_zig
 )
 
 add_dependencies(ctoon_test ctoon_test_zig)
+
+# ── ctoon_coverage_zig — not implemented ─────────────────────────────────────
+# Deliberately absent for now: Zig's own coverage tooling (kcov-based, via
+# `zig build test --test-coverage` on some setups) is still too immature/
+# unstable across Zig versions to build a reliable CMake target around it —
+# unlike Go and Rust, which each have one well-established, stable tool
+# (`go tool cover`, `cargo-llvm-cov`). Revisit once Zig's native coverage
+# support stabilizes. This is the same slot ctoon_coverage_go and
+# ctoon_coverage_rust fill in their own tests/<lang>/CMakeLists.txt — see
+# tests/CMakeLists.txt's merge/dashboard logic for how a future
+# ctoon_coverage_zig target would plug in the same way.
