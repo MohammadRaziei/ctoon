@@ -2,7 +2,7 @@
 CTOON_ASCII_ART
 
   CToon — C implementation of the TOON serialisation format
-  with idiomatic bindings for C++, Python, and Go.
+  with idiomatic bindings for C++, Python, Go, Rust, Zig, and MATLAB.
 
   Author  : Mohammad Raziei
   Email   : mohammadraziei1375@gmail.com
