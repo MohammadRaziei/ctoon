@@ -71,7 +71,7 @@ if(CARGO_LLVM_COV_CHECK EQUAL 0)
         # suite under instrumentation; a second run below does the same
         # for the HTML report, since cargo-llvm-cov doesn't emit both
         # report formats from a single invocation.
-        COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Rust coverage (lcov)..."
+        COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Rust coverage as lcov..."
         COMMAND ${CARGO_EXECUTABLE} llvm-cov --lcov
                     --output-path ${CTOON_COVERAGE_RUST_BINARY_DIR}/coverage.lcov
         COMMAND ${CMAKE_COMMAND}
