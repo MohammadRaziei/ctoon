@@ -3,9 +3,26 @@ file(GLOB CTOON_TEST_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/test_*.cpp
 )
 
-add_executable(test_ctoon_cpp ${CTOON_TEST_SOURCES})
+# Compile ctoon.c directly as one of this executable's own sources instead
+# of linking ctoon::ctoonpp (which, despite being header-only itself,
+# transitively links the shared, uninstrumented ctoon::ctoon library — see
+# tests/c/CMakeLists.txt's identical fix for the full reasoning). This way
+# the --coverage flags below reach ctoon.c's own object file without
+# touching the shared library target at all.
+add_executable(test_ctoon_cpp
+    ${CTOON_TEST_SOURCES}
+    ${PROJECT_SOURCE_DIR}/src/ctoon.c
+)
 
-target_include_directories(test_ctoon_cpp PRIVATE "${CTOON_TEST_SOURCE_DIR}")
+target_include_directories(test_ctoon_cpp PRIVATE
+    "${CTOON_TEST_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/include"
+)
+
+target_compile_definitions(test_ctoon_cpp PRIVATE
+    CTOON_ENABLE_JSON=1
+    CTOON_VERSION_NUMBER=${PROJECT_VERSION}
+)
 
 # toon-format/spec isn't part of this project — its test fixtures are only
 # used (read-only) by test_spec_conformance.cpp to check ctoon against the
@@ -33,8 +50,13 @@ set(CTOON_SPEC_FIXTURES_DIR "${toon_format_spec_SOURCE_DIR}/tests/fixtures" PARE
 target_compile_definitions(test_ctoon_cpp PRIVATE
     CTOON_SPEC_FIXTURES_DIR="${toon_format_spec_SOURCE_DIR}/tests/fixtures")
 
-# Link against ctoon C++ wrapper library
-target_link_libraries(test_ctoon_cpp PRIVATE ctoon::ctoonpp)
+# The C++ wrapper itself is header-only (ctoon::ctoonpp is an INTERFACE
+# library) — add its include directory directly instead of linking the
+# target, since linking it would transitively pull in ctoon::ctoon (see
+# above).
+target_include_directories(test_ctoon_cpp PRIVATE
+    "${PROJECT_SOURCE_DIR}/src/bindings/cpp"
+)
 
 add_test(NAME test_ctoon_cpp COMMAND $<TARGET_FILE:test_ctoon_cpp>)
 
@@ -48,7 +70,9 @@ add_dependencies(ctoon_test ctoon_test_cpp)
 
 
 if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-    # Enable coverage flags for the test executable
+    # Enable coverage flags for the test executable — this now reaches
+    # ctoon.c too, since it's compiled directly into this target (see
+    # above), not linked in from the shared, uninstrumented library.
     target_compile_options(test_ctoon_cpp PRIVATE -O0 -g --coverage)
     target_link_options(test_ctoon_cpp PRIVATE --coverage)
 

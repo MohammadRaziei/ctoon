@@ -3,14 +3,26 @@ file(GLOB CTOON_TEST_SOURCES_C CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c
 )
 
-add_executable(test_ctoon_c ${CTOON_TEST_SOURCES_C} ${CTOON_TEST_SOURCE_DIR}/utest/utest_main.cxx)
-
-target_include_directories(test_ctoon_c PRIVATE 
-    "${CTOON_TEST_SOURCE_DIR}"
+# Compile ctoon.c directly as one of this executable's own sources instead
+# of linking the shared ctoon::ctoon library target. This is what lets the
+# --coverage flags below (or any other flag applied to test_ctoon_c) reach
+# ctoon.c's own object file — the shared library target itself is never
+# touched, so nothing here can leak into any other consumer (Python's
+# nanobind build, the C++ tests, a release build, etc).
+add_executable(test_ctoon_c
+    ${CTOON_TEST_SOURCES_C}
+    ${CTOON_TEST_SOURCE_DIR}/utest/utest_main.cxx
+    ${PROJECT_SOURCE_DIR}/src/ctoon.c
 )
 
-# Link against ctoon library
-target_link_libraries(test_ctoon_c PRIVATE ctoon::ctoon)
+target_include_directories(test_ctoon_c PRIVATE
+    "${CTOON_TEST_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR}/include"
+)
+
+target_compile_definitions(test_ctoon_c PRIVATE
+    CTOON_ENABLE_JSON=1
+)
 
 add_test(NAME test_ctoon_c COMMAND $<TARGET_FILE:test_ctoon_c>)
 
@@ -24,15 +36,11 @@ add_dependencies(ctoon_test ctoon_test_c)
 
 
 if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-    # Enable coverage flags for the test executable
+    # Enable coverage flags for the test executable — this now reaches
+    # ctoon.c too, since it's compiled directly into this target (see
+    # above), not linked in from the shared, uninstrumented library.
     target_compile_options(test_ctoon_c PRIVATE -O0 -g --coverage)
     target_link_options(test_ctoon_c PRIVATE --coverage)
-    
-    # Also add coverage to ctoon library for this test
-    set_target_properties(test_ctoon_c PROPERTIES
-        COMPILE_OPTIONS "--coverage"
-        LINK_OPTIONS "--coverage"
-    )
 
     # Create coverage binary directory for C tests
     set(CTOON_COVERAGE_C_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/c)
