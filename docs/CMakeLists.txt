@@ -135,6 +135,9 @@ endif()
 
 find_program(CARGO_EXECUTABLE cargo)
 
+ctoon_require_lang(CTOON_BUILD_RUST CARGO_EXECUTABLE "Rust"
+    "Install Rust >= 1.70 and make sure 'cargo' is on PATH.")
+
 if(CARGO_EXECUTABLE)
     set(CTOON_DOCS_RUST_OUT ${CTOON_DOCS_OUT}/rust)
     set(CTOON_DOCS_RUST_HTML ${CTOON_DOCS_RUST_OUT}/doc/ctoon/index.html)
@@ -159,7 +162,6 @@ if(CARGO_EXECUTABLE)
 
     add_custom_target(ctoon_docs_rust DEPENDS ${CTOON_DOCS_RUST_HTML})
 else()
-    message(WARNING "cargo not found - Rust documentation will not be generated")
     add_custom_target(ctoon_docs_rust
         COMMAND ${CMAKE_COMMAND} -E echo "Skipping Rust docs: cargo not found"
     )

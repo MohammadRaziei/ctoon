@@ -13,10 +13,25 @@ rust/target/
 # during manual testing (go.mod's module name, as an exact filename).
 go/ctoonbenchgo
 
+# go.sum is a pure derived checksum lockfile — like Rust's Cargo.lock
+# (deleted, not committed, for the same reason), it gets rewritten by
+# `go mod tidy` on every run since the deps-fetch target always re-pins
+# ctoon/gotoon/toon-go to their current @master/@main. go.mod itself
+# stays tracked — that's the module manifest (module path, Go version),
+# not a lockfile; removing it would break `go get` on a fresh clone.
+go/go.sum
+
 # zig builds in-source (CMakeLists.txt runs it with WORKING_DIRECTORY
 # set to benchmarks/zig) — same reasoning as rust/target/ above.
 zig/.zig-cache/
 zig/zig-out/
+# Zig 0.16's local package cache fallback, created alongside
+# build.zig.zon by `zig fetch`/`zig build` when run in this directory.
+zig/zig-pkg/
+
+# npm installs in-source (CMakeLists.txt runs it with WORKING_DIRECTORY
+# set to benchmarks/node) — same reasoning as rust/target/ above.
+node/node_modules/
 
 # OS/editor cruft
 .DS_Store

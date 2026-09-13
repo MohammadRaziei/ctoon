@@ -11,9 +11,10 @@ set(CTOON_GO_MODULE_DIR      ${PROJECT_SOURCE_DIR}/src/bindings/go)
 # ── Locate Go toolchain ──────────────────────────────────────────────────────
 find_program(GO_EXECUTABLE go)
 
+ctoon_require_lang(CTOON_BUILD_GO GO_EXECUTABLE "Go"
+    "Install Go >= 1.21 and make sure 'go' is on PATH.")
+
 if(NOT GO_EXECUTABLE)
-    message(WARNING "Go toolchain not found. Go tests will be skipped.")
-    message(WARNING "Install Go >= 1.21 and make sure 'go' is on PATH.")
     return()
 endif()
 

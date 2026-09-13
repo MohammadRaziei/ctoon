@@ -15,9 +15,10 @@ set(CTOON_ZIG_PROJECT_ROOT ${PROJECT_SOURCE_DIR})
 # ── Locate Zig toolchain ─────────────────────────────────────────────────────
 find_program(ZIG_EXECUTABLE zig)
 
+ctoon_require_lang(CTOON_BUILD_ZIG ZIG_EXECUTABLE "Zig"
+    "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
+
 if(NOT ZIG_EXECUTABLE)
-    message(WARNING "Zig toolchain not found. Zig tests will be skipped.")
-    message(WARNING "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
     return()
 endif()
 

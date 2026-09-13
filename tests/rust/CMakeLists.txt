@@ -3,8 +3,8 @@
 # ---------------------------------------------------------------------------
 # Mirrors the pattern used by tests/go/CMakeLists.txt. The actual test file
 # lives at tests/rust/integration_test.rs (this directory) rather than in
-# Cargo's usual in-crate `tests/` folder — src/bindings/rust/Cargo.toml
-# points `[[test]] path` there, keeping every language's tests under one
+# Cargo's usual in-crate `tests/` folder — the root Cargo.toml's
+# `[[test]] path` points there, keeping every language's tests under one
 # root `tests/` folder.
 # Requires Rust >= 1.70 (this crate's declared rust-version) on PATH.
 # ---------------------------------------------------------------------------
@@ -14,9 +14,10 @@ set(CTOON_RUST_CRATE_DIR ${PROJECT_SOURCE_DIR}/src/bindings/rust)
 # ── Locate Rust toolchain ────────────────────────────────────────────────────
 find_program(CARGO_EXECUTABLE cargo)
 
+ctoon_require_lang(CTOON_BUILD_RUST CARGO_EXECUTABLE "Rust"
+    "Install Rust >= 1.70 and make sure 'cargo' is on PATH.")
+
 if(NOT CARGO_EXECUTABLE)
-    message(WARNING "Rust toolchain not found. Rust tests will be skipped.")
-    message(WARNING "Install Rust >= 1.70 and make sure 'cargo' is on PATH.")
     return()
 endif()
 

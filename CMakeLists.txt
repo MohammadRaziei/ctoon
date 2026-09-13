@@ -27,6 +27,24 @@ option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_PYTHON "Build Python" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
 
+# Self-building language bindings (Go, Rust, Zig, MATLAB): each has its
+# own external toolchain and is never compiled by this project's own
+# CMake graph the way Python is — these flags don't turn on a build step
+# here, they tell tests/, docs/, and src/bindings/matlab (each of which
+# detects these toolchains independently) that a missing toolchain
+# should be a hard error instead of a silent skip. See
+# cmake/CtoonLangGuard.cmake. This is the main ctoon project only —
+# benchmarks/ is a fully standalone CMake project and always
+# warn-and-skips regardless, since its whole point is running whatever
+# it can find.
+option(CTOON_BUILD_ALL_LANGS "Require every language binding's toolchain (error, don't skip, if any is missing)" OFF)
+option(CTOON_BUILD_GO "Require the Go toolchain" OFF)
+option(CTOON_BUILD_RUST "Require the Rust toolchain" OFF)
+option(CTOON_BUILD_ZIG "Require the Zig toolchain" OFF)
+option(CTOON_BUILD_MATLAB "Require the MATLAB toolchain" OFF)
+
+include(CtoonLangGuard)
+
 
 set(CTOON_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 

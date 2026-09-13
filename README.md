@@ -195,8 +195,23 @@ cmake --build build -j$(nproc) --target ctoon_coverage # Generate coverage repor
 |--------|---------|-------------|
 | `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
 | `CTOON_BUILD_PYTHON` | OFF | Build Python extension (nanobind) |
-| `CTOON_BUILD_MATLAB` | OFF | Build MATLAB MEX binding |
 | `CTOON_BUILD_DOCS` | OFF | Build documentation |
+| `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain (Go, Rust, Zig, MATLAB) — error instead of skip if any is missing |
+| `CTOON_BUILD_GO` | OFF | Require the Go toolchain (error instead of skip if missing) |
+| `CTOON_BUILD_RUST` | OFF | Require the Rust toolchain (error instead of skip if missing) |
+| `CTOON_BUILD_ZIG` | OFF | Require the Zig toolchain (error instead of skip if missing) |
+| `CTOON_BUILD_MATLAB` | OFF | Require the MATLAB toolchain (error instead of skip if missing) |
+
+Go, Rust, Zig, and MATLAB each compile themselves with their own external
+toolchain (`go build`, `cargo`, `zig build`, MEX) rather than through this
+project's own CMake graph — the `CTOON_BUILD_<LANG>` flags above don't
+turn on a build step, they change what happens when `tests/` or `docs/`
+detect that toolchain is missing: silently skip that language (the
+default, useful on a machine with only some toolchains installed), or
+fail the configure step outright once you've explicitly opted in.
+(`benchmarks/` is a separate, standalone CMake project and always
+warn-and-skips regardless — its whole point is running whatever it can
+find, see `benchmarks/README.md`.)
 
 JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). No external JSON library required.
 
