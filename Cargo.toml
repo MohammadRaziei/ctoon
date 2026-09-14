@@ -1,6 +1,6 @@
 [package]
 name = "ctoon"
-version = "0.6.2"
+version = "0.7.0"
 edition = "2021"
 rust-version = "1.70"
 description = "Rust bindings for CToon — a high-performance, zero-dependency C99 TOON/JSON serialization library"
