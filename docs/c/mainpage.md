@@ -44,7 +44,7 @@ int main(void) {
     char *toon = ctoon_write(doc, &len);
     free(toon);
 
-    /* Export as JSON (CTOON_ENABLE_JSON=1, default) */
+    /* Export as JSON (on by default; define CTOON_DISABLE_JSON to turn off) */
     char *json = ctoon_doc_to_json(doc, 2,
                      CTOON_WRITE_NOFLAG, NULL, &len, NULL);
     printf("%s\n", json);

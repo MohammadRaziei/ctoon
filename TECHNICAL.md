@@ -339,7 +339,7 @@ The immutable document is **fully thread-safe for concurrent reads** — it is n
 
 ## 9. JSON Interop
 
-When `CTOON_ENABLE_JSON=1` (default), CToon embeds a JSON reader and writer:
+When JSON support is enabled (on by default — define `CTOON_DISABLE_JSON` to turn it off), CToon embeds a JSON reader and writer:
 
 - **`ctoon_read_json()`** parses JSON directly into the same flat-arena immutable format — the resulting `ctoon_doc` is indistinguishable from a TOON-parsed document.
 - **`ctoon_doc_to_json()`** serialises an immutable doc to JSON in a single O(n) pass using `cj_doc_write`, which understands the flat-arena layout and `uni.ofs` skip offsets.

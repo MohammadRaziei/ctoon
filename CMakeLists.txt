@@ -62,10 +62,6 @@ target_include_directories(ctoon
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/sources
 )
 
-target_compile_definitions(ctoon PUBLIC
-    CTOON_ENABLE_JSON=1
-)
-
 
 # C++ wrapper library (header-only interface)
 add_library(ctoonpp INTERFACE)
@@ -79,7 +75,6 @@ target_link_libraries(ctoonpp INTERFACE ctoon::ctoon)
 
 target_compile_definitions(ctoonpp INTERFACE
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
-    CTOON_ENABLE_JSON=1
 )
 
 # Compiler options
@@ -99,7 +94,6 @@ target_include_directories(ctoon_cli PRIVATE
     ${PROJECT_SOURCE_DIR}/src/bindings/cpp
     ${PROJECT_SOURCE_DIR}/src/cli
 )
-target_compile_definitions(ctoon_cli PRIVATE CTOON_ENABLE_JSON=1)
 target_link_libraries(ctoon_cli PRIVATE ctoon::ctoon)
 set_target_properties(ctoon_cli PROPERTIES OUTPUT_NAME ctoon)
 

@@ -66,7 +66,7 @@ char *toon = ctoon_write(doc, &len);     /* caller must free() */
 free(toon);
 ctoon_doc_free(doc);
 
-/* JSON output (requires CTOON_ENABLE_JSON=1, on by default) */
+/* JSON output (on by default; define CTOON_DISABLE_JSON to turn off) */
 char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, NULL);
 free(json);
 ```
@@ -213,7 +213,7 @@ fail the configure step outright once you've explicitly opted in.
 warn-and-skips regardless — its whole point is running whatever it can
 find, see `benchmarks/README.md`.)
 
-JSON support is **on by default** (`CTOON_ENABLE_JSON=1`). No external JSON library required.
+JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off. No external JSON library required.
 
 ### Python package
 

@@ -20,10 +20,6 @@ target_include_directories(test_ctoon_c PRIVATE
     "${PROJECT_SOURCE_DIR}/include"
 )
 
-target_compile_definitions(test_ctoon_c PRIVATE
-    CTOON_ENABLE_JSON=1
-)
-
 add_test(NAME test_ctoon_c COMMAND $<TARGET_FILE:test_ctoon_c>)
 
 add_custom_target(ctoon_test_c

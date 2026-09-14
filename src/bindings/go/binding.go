@@ -16,7 +16,7 @@
 package binding
 
 /*
-#cgo CFLAGS: -I../../../include -I../../../src -DCTOON_ENABLE_JSON=1
+#cgo CFLAGS: -I../../../include -I../../../src
 #cgo LDFLAGS: -lm
 
 #include "ctoon.c"

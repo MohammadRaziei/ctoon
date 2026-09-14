@@ -20,7 +20,6 @@ fn main() {
         .file(&shim_file)
         .include(&include_dir)
         .include(&src_dir)
-        .define("CTOON_ENABLE_JSON", "1")
         .opt_level(3)
         .warnings(false) // not our warnings to fix — same call ctoon's other bindings make
         .compile("ctoon");

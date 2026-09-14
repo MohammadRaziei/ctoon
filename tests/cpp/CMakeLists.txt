@@ -20,7 +20,6 @@ target_include_directories(test_ctoon_cpp PRIVATE
 )
 
 target_compile_definitions(test_ctoon_cpp PRIVATE
-    CTOON_ENABLE_JSON=1
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
 )
 

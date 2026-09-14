@@ -1,6 +1,6 @@
 .{
     .name = .ctoon,
-    .version = "0.6.2",
+    .version = "0.6.1",
     .minimum_zig_version = "0.16.0",
     // Required top-level field as of Zig 0.14+ (package identity for the
     // fetch cache) — top 16 bits are the package ID (must be nonzero),

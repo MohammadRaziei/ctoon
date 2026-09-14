@@ -63,7 +63,7 @@ pub fn build(b: *std.Build) void {
         // inside otherwise-correct, widely-exercised code (e.g.
         // ctoon_write_indent's pointer-at-end-of-buffer arithmetic) that
         // every other binding compiles and runs fine.
-        .flags = &.{ "-DCTOON_ENABLE_JSON=1", "-fno-sanitize=undefined" },
+        .flags = &.{"-fno-sanitize=undefined"},
     });
     // shim.c gives the `static inline` parts of ctoon.h's API (tree
     // inspection, mutable-document building) real extern linkage, under
@@ -71,7 +71,7 @@ pub fn build(b: *std.Build) void {
     // Same file the Rust binding uses (src/bindings/rust/shim.c).
     ctoon_lib.root_module.addCSourceFile(.{
         .file = b.path(shim_c),
-        .flags = &.{ "-DCTOON_ENABLE_JSON=1", "-fno-sanitize=undefined" },
+        .flags = &.{"-fno-sanitize=undefined"},
     });
     ctoon_lib.installHeadersDirectory(b.path(include_dir), "", .{});
     b.installArtifact(ctoon_lib);

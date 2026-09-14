@@ -79,10 +79,12 @@
 #endif
 
 /*
- Define as 1 to enable the JSON reader and writer.
- This enables ctoon_read_json*, ctoon_write_json* functions.
+ JSON support (ctoon_read_json*, ctoon_write_json* functions) is on by
+ default. Define CTOON_DISABLE_JSON (to anything, or nothing at all —
+ only its presence is checked) to turn it off.
  */
-#ifndef CTOON_ENABLE_JSON
+#ifndef CTOON_DISABLE_JSON
+#define CTOON_ENABLE_JSON 1
 #endif
 
 /*
