@@ -2,7 +2,7 @@
     .name = .ctoon_bench_zig,
     .version = "0.1.0",
     .minimum_zig_version = "0.16.0",
-    .fingerprint = 0x0,
+    .fingerprint = 0xf57f2b90b97a0962,
     .paths = .{
         "build.zig",
         "build.zig.zon",
@@ -23,5 +23,9 @@
         // the same way the Go benchmark's `go get`/`go mod tidy` step
         // keeps go.mod/go.sum current instead of committing a fixed
         // version.
+        .ctoon = .{
+            .url = "git+https://github.com/mohammadraziei/ctoon.git#d13913f5953556525d019475cea8a446d84d206d",
+            .hash = "ctoon-0.7.0-0jwRE3BkCgBv-KIsxsO5zukDewoqDTVsfL1ybtDu1IFc",
+        },
     },
 }
