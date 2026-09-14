@@ -24,6 +24,22 @@ let back = ctoon::loads(&toon).unwrap();
 assert_eq!(back["name"].as_str(), Some("Alice"));
 ```
 
+## Write options
+
+`dumps`/`dumps_json` use sane defaults (indent 2, comma delimiter, no
+extra flags). For control over indent, array [`Delimiter`](https://docs.rs/ctoon)
+(comma/tab/pipe), or `CTOON_WRITE_*` flags (Unicode/slash escaping,
+NaN/Infinity handling, TOON length markers, ...), use `dumps_opts`/
+`dumps_json_opts` with a [`WriteOptions`]:
+
+```rust
+use ctoon::{dumps_opts, Delimiter, WriteOptions};
+
+let nums = ctoon::Value::Array(vec![1i64.into(), 2i64.into(), 3i64.into()]);
+let toon = dumps_opts(&nums, &WriteOptions { delimiter: Delimiter::Pipe, ..Default::default() }).unwrap();
+// toon now uses `|` instead of the default `,` between array values
+```
+
 ## How it's built
 
 `build.rs` compiles ctoon's C core (`src/ctoon.c`) directly into this

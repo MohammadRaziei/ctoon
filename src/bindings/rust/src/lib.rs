@@ -27,9 +27,11 @@
 
 mod error;
 mod ffi;
+mod options;
 mod value;
 
 pub use error::Error;
+pub use options::{flags, Delimiter, WriteOptions};
 pub use value::Value;
 
 use ffi::*;
@@ -213,6 +215,13 @@ pub fn loads(s: &str) -> Result<Value, Error> {
 
 /// Serialises a [`Value`] to a TOON-formatted string.
 pub fn dumps(v: &Value) -> Result<String, Error> {
+    dumps_opts(v, &WriteOptions::default())
+}
+
+/// Serialises a [`Value`] to a TOON-formatted string with custom
+/// [`WriteOptions`] (indent, [`Delimiter`], and `CTOON_WRITE_*` flags —
+/// see the [`flags`] module).
+pub fn dumps_opts(v: &Value, opts: &WriteOptions) -> Result<String, Error> {
     unsafe {
         let doc = ctoon_mut_doc_new(std::ptr::null());
         if doc.is_null() {
@@ -227,9 +236,10 @@ pub fn dumps(v: &Value) -> Result<String, Error> {
         };
         ctoon_rs_mut_doc_set_root(doc, root);
 
+        let ffi_opts = opts.to_ffi();
         let mut len: usize = 0;
         let mut err: ctoon_write_err = std::mem::zeroed();
-        let raw = ctoon_mut_write_opts(doc, std::ptr::null(), std::ptr::null(), &mut len, &mut err);
+        let raw = ctoon_mut_write_opts(doc, &ffi_opts, std::ptr::null(), &mut len, &mut err);
         ctoon_mut_doc_free(doc);
 
         if raw.is_null() {
@@ -269,6 +279,13 @@ pub fn loads_json(s: &str) -> Result<Value, Error> {
 
 /// Serialises a [`Value`] to a JSON string using ctoon's own JSON writer.
 pub fn dumps_json(v: &Value, indent: i32) -> Result<String, Error> {
+    dumps_json_opts(v, indent, flags::NOFLAG)
+}
+
+/// Serialises a [`Value`] to a JSON string with custom `CTOON_WRITE_*`
+/// flags (see the [`flags`] module) — [`Delimiter`] has no effect on
+/// JSON output, so there's no `WriteOptions` overload here.
+pub fn dumps_json_opts(v: &Value, indent: i32, write_flags: u32) -> Result<String, Error> {
     unsafe {
         let doc = ctoon_mut_doc_new(std::ptr::null());
         if doc.is_null() {
@@ -285,7 +302,7 @@ pub fn dumps_json(v: &Value, indent: i32) -> Result<String, Error> {
 
         let mut len: usize = 0;
         let mut err: ctoon_write_err = std::mem::zeroed();
-        let raw = ctoon_write_json_mut(doc, indent, CTOON_WRITE_NOFLAG, std::ptr::null(), &mut len, &mut err);
+        let raw = ctoon_write_json_mut(doc, indent, write_flags, std::ptr::null(), &mut len, &mut err);
         ctoon_mut_doc_free(doc);
 
         if raw.is_null() {
@@ -362,5 +379,48 @@ mod tests {
         let v = Value::Object(vec![("name".into(), "Bob".into())]);
         assert_eq!(v["name"].as_str(), Some("Bob"));
         assert_eq!(v["missing"], Value::Null);
+    }
+
+    #[test]
+    fn write_options_delimiter() {
+        let v = Value::Object(vec![(
+            "nums".into(),
+            Value::Array(vec![Value::Uint(1), Value::Uint(2), Value::Uint(3)]),
+        )]);
+
+        let comma = dumps_opts(&v, &WriteOptions::default()).unwrap();
+        assert!(comma.contains("1,2,3"));
+
+        let piped = dumps_opts(
+            &v,
+            &WriteOptions { delimiter: Delimiter::Pipe, ..Default::default() },
+        )
+        .unwrap();
+        assert!(piped.contains("1|2|3"));
+
+        let tabbed = dumps_opts(
+            &v,
+            &WriteOptions { delimiter: Delimiter::Tab, ..Default::default() },
+        )
+        .unwrap();
+        assert!(tabbed.contains("1\t2\t3"));
+
+        // Round-trips regardless of delimiter — the reader accepts all
+        // three, this crate just controls which one the writer emits.
+        assert_eq!(loads(&piped).unwrap(), v);
+        assert_eq!(loads(&tabbed).unwrap(), v);
+    }
+
+    #[test]
+    fn write_options_flags_and_indent() {
+        let v = Value::Object(vec![("k".into(), "v".into())]);
+
+        let minified = dumps_opts(&v, &WriteOptions { indent: 0, ..Default::default() }).unwrap();
+        let indented = dumps_opts(&v, &WriteOptions { indent: 4, ..Default::default() }).unwrap();
+        assert!(minified.len() <= indented.len());
+
+        // dumps_json_opts: flags reach the JSON writer too.
+        let json = dumps_json_opts(&v, 0, flags::NOFLAG).unwrap();
+        assert_eq!(loads_json(&json).unwrap(), v);
     }
 }

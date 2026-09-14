@@ -42,7 +42,26 @@ pub struct ctoon_alc {
 pub type ctoon_type = u8;
 pub type ctoon_read_flag = u32;
 pub type ctoon_write_flag = u32;
-pub type ctoon_delimiter = c_int;
+
+/// Array value delimiter used during encoding — mirrors C's
+/// `ctoon_delimiter` enum exactly (`repr(C)`, same discriminant values).
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ctoon_delimiter {
+    CTOON_DELIMITER_COMMA = 0,
+    CTOON_DELIMITER_TAB = 1,
+    CTOON_DELIMITER_PIPE = 2,
+}
+
+/// Mirrors C's `ctoon_write_options` struct exactly (`repr(C)`, same
+/// field order: flag, delimiter, indent) — see ctoon.h.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct ctoon_write_options {
+    pub flag: ctoon_write_flag,
+    pub delimiter: ctoon_delimiter,
+    pub indent: c_int,
+}
 
 pub const CTOON_TYPE_NULL: ctoon_type = 2;
 pub const CTOON_TYPE_BOOL: ctoon_type = 3;
@@ -52,7 +71,6 @@ pub const CTOON_TYPE_ARR: ctoon_type = 6;
 pub const CTOON_TYPE_OBJ: ctoon_type = 7;
 
 pub const CTOON_READ_NOFLAG: ctoon_read_flag = 0;
-pub const CTOON_WRITE_NOFLAG: ctoon_write_flag = 0;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -100,7 +118,7 @@ extern "C" {
 
     pub fn ctoon_mut_write_opts(
         doc: *const ctoon_mut_doc,
-        opts: *const std::os::raw::c_void, // NULL always passed — see lib.rs
+        opts: *const ctoon_write_options,
         alc: *const ctoon_alc,
         len: *mut usize,
         err: *mut ctoon_write_err,
