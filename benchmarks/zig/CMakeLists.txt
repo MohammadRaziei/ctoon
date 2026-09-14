@@ -17,7 +17,7 @@ endif()
 
 add_custom_target(ctoon_benchmarks_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig benchmark..."
-    COMMAND ${ZIG_EXECUTABLE} build -Doptimize=ReleaseFast run --
+    COMMAND ${ZIG_EXECUTABLE} build --release=fast run --
             ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/zig.json ${CTOON_ZIG_LOG_ARG}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     USES_TERMINAL

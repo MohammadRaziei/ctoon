@@ -59,7 +59,7 @@ jobs:
         version: "0.16.0"
 
     - name: Cross-compile static library
-      run: zig build -Dtarget=${{ matrix.target }} -Doptimize=ReleaseFast
+      run: zig build -Dtarget=${{ matrix.target }} --release=fast
 
     - name: Package
       run: |

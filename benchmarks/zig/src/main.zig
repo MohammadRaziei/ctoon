@@ -10,8 +10,8 @@
 // fetches its peers here: as build.zig.zon dependencies (see this
 // directory's build.zig.zon) — not local paths, even though this repo's
 // root is right above us; see this directory's CMakeLists.txt for why.
-// toon-zig requires Zig 0.15.2, which is why ctoon's own Zig binding and
-// this whole workspace are pinned to that version too — a single
+// toon-zig requires Zig 0.15.2+, which is why ctoon's own Zig binding
+// and this whole workspace are pinned to 0.16.0 too — a single
 // `zig build` can only use one Zig language-version API.
 //
 // Methodology (same across every language benchmark in this repo):
@@ -30,11 +30,16 @@
 //      conversions only) and documents/sec.
 //
 // Memory: this is a short-lived benchmark process, not a library, so it
-// uses one arena for the whole run and never frees anything
-// individually — simpler and irrelevant to the numbers being measured.
-// toon-zig's own ParseResult and std.json's Parsed(T) each carry their
-// own internal arena regardless (per their own docs) — nesting those
-// inside our outer arena is harmless, just an extra layer.
+// uses `init.arena` (Zig 0.16's "Juicy Main" — see main()'s signature)
+// for the whole run and never frees anything individually — simpler and
+// irrelevant to the numbers being measured. toon-zig's own ParseResult
+// and std.json's Parsed(T) each carry their own internal arena
+// regardless (per their own docs) — nesting those inside our outer
+// arena is harmless, just an extra layer.
+//
+// I/O: Zig 0.16 replaced std.fs with std.Io.Dir/std.Io.File, both of
+// which take an explicit `io: std.Io` handle on every call (init.io,
+// from "Juicy Main") — see https://ziglang.org/download/0.16.0/release-notes.html.
 
 const std = @import("std");
 const ctoon = @import("ctoon");
@@ -57,13 +62,14 @@ const Result = struct {
     total_time_s: f64,
 };
 
-var log_file: ?std.fs.File = null;
+var io: std.Io = undefined;
+var log_file: ?std.Io.File = null;
 
 fn logFail(library: []const u8, operation: []const u8, path: []const u8, err: anyerror) void {
     const f = log_file orelse return;
     var buf: [1024]u8 = undefined;
     const line = std.fmt.bufPrint(&buf, "[{s}] [{s}] FILE: {s} ERROR: {}\n", .{ library, operation, path, err }) catch return;
-    f.writeAll(line) catch {};
+    f.writeAll(io, line) catch {};
 }
 
 fn record(gpa: std.mem.Allocator, results: *std.ArrayList(Result), library: []const u8, operation: []const u8, bytes: f64, ops: u64, seconds: f64, attempted: u64) !void {
@@ -82,8 +88,8 @@ fn record(gpa: std.mem.Allocator, results: *std.ArrayList(Result), library: []co
 }
 
 /// Serialises a std.json.Value to a freshly allocated JSON string, using
-/// 0.15's Writer-based std.json.Stringify (the free-function
-/// std.json.stringify was removed in this version).
+/// 0.15+'s Writer-based std.json.Stringify (the free-function
+/// std.json.stringify was removed).
 fn jsonToString(gpa: std.mem.Allocator, value: std.json.Value) ![]u8 {
     var aw: std.Io.Writer.Allocating = .init(gpa);
     defer aw.deinit();
@@ -92,12 +98,11 @@ fn jsonToString(gpa: std.mem.Allocator, value: std.json.Value) ![]u8 {
     return gpa.dupe(u8, aw.written());
 }
 
-pub fn main() !void {
-    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena_state.deinit();
-    const gpa = arena_state.allocator();
+pub fn main(init: std.process.Init) !void {
+    io = init.io;
+    const gpa = init.arena.allocator();
 
-    const args = try std.process.argsAlloc(gpa);
+    const args = try init.minimal.args.toSlice(gpa);
     if (args.len < 3) {
         std.debug.print("usage: bench <manifest> <results.json> [log_file]\n", .{});
         std.process.exit(1);
@@ -105,14 +110,14 @@ pub fn main() !void {
     const manifest_path = args[1];
     const results_path = args[2];
     if (args.len >= 4 and args[3].len > 0) {
-        log_file = std.fs.cwd().createFile(args[3], .{}) catch |err| blk: {
+        log_file = std.Io.Dir.cwd().createFile(io, args[3], .{}) catch |err| blk: {
             std.debug.print("warning: could not open log file {s}: {}\n", .{ args[3], err });
             break :blk null;
         };
     }
-    defer if (log_file) |f| f.close();
+    defer if (log_file) |f| f.close(io);
 
-    const manifest_text = std.fs.cwd().readFileAlloc(gpa, manifest_path, 64 * 1024 * 1024) catch |err| {
+    const manifest_text = std.Io.Dir.cwd().readFileAlloc(io, manifest_path, gpa, .limited(64 * 1024 * 1024)) catch |err| {
         std.debug.print("Cannot open manifest: {s} ({})\n", .{ manifest_path, err });
         std.process.exit(1);
     };
@@ -122,7 +127,7 @@ pub fn main() !void {
     while (lines.next()) |raw_line| {
         const path = std.mem.trim(u8, raw_line, " \t\r");
         if (path.len == 0) continue;
-        const json = std.fs.cwd().readFileAlloc(gpa, path, 64 * 1024 * 1024) catch continue;
+        const json = std.Io.Dir.cwd().readFileAlloc(io, path, gpa, .limited(64 * 1024 * 1024)) catch continue;
         try files.append(gpa, .{ .path = path, .json = json });
     }
     if (files.items.len == 0) {
@@ -333,7 +338,7 @@ pub fn main() !void {
     }
     try w.print("  ]\n}}\n", .{});
 
-    std.fs.cwd().writeFile(.{ .sub_path = results_path, .data = aw.written() }) catch |err| {
+    std.Io.Dir.cwd().writeFile(io, .{ .sub_path = results_path, .data = aw.written() }) catch |err| {
         std.debug.print("warning: could not write {s}: {}\n", .{ results_path, err });
         return;
     };
