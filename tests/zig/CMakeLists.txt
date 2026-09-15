@@ -38,6 +38,7 @@ message(STATUS "Found Zig: ${ZIG_VERSION_OUTPUT}")
 # default (CMAKE_C_IMPLICIT_LINK_DIRECTORIES) and hand each of those to
 # zig via --search-prefix. No-op on setups that don't need it.
 set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
+set(CTOON_ZIG_LIB_PATH_LIST "")
 foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # zig's --search-prefix requires every path given to actually exist
     # as a directory — GCC's own implicit-link-directory list routinely
@@ -46,13 +47,20 @@ foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # out before handing the list to zig.
     if(IS_DIRECTORY "${_dir}")
         list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+        list(APPEND CTOON_ZIG_LIB_PATH_LIST "${_dir}")
     endif()
 endforeach()
+# Belt-and-suspenders: also set LD_LIBRARY_PATH to the same list, in case
+# --search-prefix and LD_LIBRARY_PATH aren't both honored the same way
+# in every zig/lld version — whichever one actually gets picked up is
+# enough. Harmless to set when unneeded.
+string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
 
 # ── CTest integration ────────────────────────────────────────────────────────
 add_test(
     NAME ctoon_zig_tests
-    COMMAND ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
+    COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
 )
 set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
@@ -60,7 +68,8 @@ set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
 # ── ctoon_test_zig custom target ─────────────────────────────────────────────
 add_custom_target(ctoon_test_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig tests..."
-    COMMAND ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
+    COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
     USES_TERMINAL
 )

@@ -26,6 +26,7 @@ endif()
 # detection) and hand each of those to zig via --search-prefix. No-op on
 # setups that don't need it (e.g. /lib64 already resolves correctly).
 set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
+set(CTOON_ZIG_LIB_PATH_LIST "")
 foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # zig's --search-prefix requires every path given to actually exist
     # as a directory — GCC's own implicit-link-directory list routinely
@@ -34,12 +35,19 @@ foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # out before handing the list to zig.
     if(IS_DIRECTORY "${_dir}")
         list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+        list(APPEND CTOON_ZIG_LIB_PATH_LIST "${_dir}")
     endif()
 endforeach()
+# Belt-and-suspenders: also set LD_LIBRARY_PATH to the same list, in case
+# --search-prefix and LD_LIBRARY_PATH aren't both honored the same way
+# in every zig/lld version — whichever one actually gets picked up is
+# enough. Harmless to set when unneeded.
+string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
 
 add_custom_target(ctoon_benchmarks_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig benchmark..."
-    COMMAND ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} --release=fast run --
+    COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} --release=fast run --
             ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/zig.json ${CTOON_ZIG_LOG_ARG}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     USES_TERMINAL
