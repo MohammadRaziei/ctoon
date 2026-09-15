@@ -27,7 +27,14 @@ endif()
 # setups that don't need it (e.g. /lib64 already resolves correctly).
 set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
 foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
-    list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+    # zig's --search-prefix requires every path given to actually exist
+    # as a directory — GCC's own implicit-link-directory list routinely
+    # includes paths that don't exist on disk (this is normal for GCC;
+    # it's an optional search list, not a guarantee), so filter those
+    # out before handing the list to zig.
+    if(IS_DIRECTORY "${_dir}")
+        list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+    endif()
 endforeach()
 
 add_custom_target(ctoon_benchmarks_zig
