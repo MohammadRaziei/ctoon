@@ -1,18 +1,21 @@
 // CToon Benchmark — Zig.
 //
-// Peers: ctoon (this project) and toon-zig
-// (github.com/LatentEvals/toon-zig), the only pure-Zig TOON
-// implementation found at the time this was written. Still one shared
-// results table / JSON schema as every other language benchmark here —
-// see benchmarks/go/bench.go for the reference version of this comment.
+// ctoon (this project) only for now. toon-zig
+// (github.com/LatentEvals/toon-zig) is the only pure-Zig TOON peer
+// found, but doesn't compile under Zig 0.16 yet — an upstream issue,
+// not something to patch around here; see build.zig's comment for the
+// specifics. Once it's fixed upstream, re-add it here the same way it
+// was removed: a `toon_dep`/`addImport("toon", ...)` pair in build.zig,
+// and json_to_toon/toon_to_json/roundtrip legs calling `toon.stringify`/
+// `toon.parse` alongside ctoon's own, using `std.json.Value` as the
+// shared decode type — kept as one shared results table / JSON schema,
+// same as every other language benchmark here; see
+// benchmarks/go/bench.go for the reference version of this comment.
 //
-// Both dependencies are fetched the same way every other language
-// fetches its peers here: as build.zig.zon dependencies (see this
-// directory's build.zig.zon) — not local paths, even though this repo's
-// root is right above us; see this directory's CMakeLists.txt for why.
-// toon-zig requires Zig 0.15.2+, which is why ctoon's own Zig binding
-// and this whole workspace are pinned to 0.16.0 too — a single
-// `zig build` can only use one Zig language-version API.
+// ctoon is fetched the same way every other language fetches its peers
+// here: as a build.zig.zon dependency (see this directory's
+// build.zig.zon) — not a local path, even though this repo's root is
+// right above us; see this directory's CMakeLists.txt for why.
 //
 // Methodology (same across every language benchmark in this repo):
 //   1. Load every file in the corpus manifest into memory (untimed).
@@ -32,10 +35,7 @@
 // Memory: this is a short-lived benchmark process, not a library, so it
 // uses `init.arena` (Zig 0.16's "Juicy Main" — see main()'s signature)
 // for the whole run and never frees anything individually — simpler and
-// irrelevant to the numbers being measured. toon-zig's own ParseResult
-// and std.json's Parsed(T) each carry their own internal arena
-// regardless (per their own docs) — nesting those inside our outer
-// arena is harmless, just an extra layer.
+// irrelevant to the numbers being measured.
 //
 // I/O: Zig 0.16 replaced std.fs with std.Io.Dir/std.Io.File, both of
 // which take an explicit `io: std.Io` handle on every call (init.io,
@@ -43,7 +43,6 @@
 
 const std = @import("std");
 const ctoon = @import("ctoon");
-const toon = @import("toon");
 
 const repeats: u32 = 20;
 
@@ -85,17 +84,6 @@ fn record(gpa: std.mem.Allocator, results: *std.ArrayList(Result), library: []co
         .success_rate = success_rate,
         .total_time_s = seconds,
     });
-}
-
-/// Serialises a std.json.Value to a freshly allocated JSON string, using
-/// 0.15+'s Writer-based std.json.Stringify (the free-function
-/// std.json.stringify was removed).
-fn jsonToString(gpa: std.mem.Allocator, value: std.json.Value) ![]u8 {
-    var aw: std.Io.Writer.Allocating = .init(gpa);
-    defer aw.deinit();
-    var stringifier: std.json.Stringify = .{ .writer = &aw.writer, .options = .{} };
-    try stringifier.write(value);
-    return gpa.dupe(u8, aw.written());
 }
 
 pub fn main(init: std.process.Init) !void {
@@ -234,93 +222,6 @@ pub fn main(init: std.process.Init) !void {
         }
         const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "ctoon", "roundtrip", bytes, ops, seconds, total);
-    }
-
-    // ── toon-zig ──
-    {
-        var ops: u64 = 0;
-        var bytes: f64 = 0;
-        const timer_start = std.Io.Clock.awake.now(io);
-        var r: u32 = 0;
-        while (r < repeats) : (r += 1) {
-            for (files.items) |f| {
-                var parsed = std.json.parseFromSlice(std.json.Value, gpa, f.json, .{}) catch |err| {
-                    if (r == 0) logFail("toon-zig", "json_to_toon", f.path, err);
-                    continue;
-                };
-                defer parsed.deinit();
-                if (toon.stringify(gpa, parsed.value, .{})) |out| {
-                    gpa.free(out);
-                    ops += 1;
-                    bytes += @floatFromInt(f.json.len);
-                } else |err| {
-                    if (r == 0) logFail("toon-zig", "json_to_toon", f.path, err);
-                }
-            }
-        }
-        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
-        try record(gpa, &results, "toon-zig", "json_to_toon", bytes, ops, seconds, total);
-    }
-
-    {
-        var ops: u64 = 0;
-        var bytes: f64 = 0;
-        const timer_start = std.Io.Clock.awake.now(io);
-        var r: u32 = 0;
-        while (r < repeats) : (r += 1) {
-            for (files.items) |f| {
-                const toon_text = f.toon orelse continue;
-                var result = toon.parse(gpa, toon_text, .{}) catch |err| {
-                    if (r == 0) logFail("toon-zig", "toon_to_json", f.path, err);
-                    continue;
-                };
-                defer result.deinit();
-                if (jsonToString(gpa, result.value)) |out| {
-                    gpa.free(out);
-                    ops += 1;
-                    bytes += @floatFromInt(toon_text.len);
-                } else |err| {
-                    if (r == 0) logFail("toon-zig", "toon_to_json", f.path, err);
-                }
-            }
-        }
-        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
-        try record(gpa, &results, "toon-zig", "toon_to_json", bytes, ops, seconds, total);
-    }
-
-    {
-        var ops: u64 = 0;
-        var bytes: f64 = 0;
-        const timer_start = std.Io.Clock.awake.now(io);
-        var r: u32 = 0;
-        while (r < repeats) : (r += 1) {
-            for (files.items) |f| {
-                var parsed = std.json.parseFromSlice(std.json.Value, gpa, f.json, .{}) catch |err| {
-                    if (r == 0) logFail("toon-zig", "roundtrip", f.path, err);
-                    continue;
-                };
-                defer parsed.deinit();
-                const toon_text = toon.stringify(gpa, parsed.value, .{}) catch |err| {
-                    if (r == 0) logFail("toon-zig", "roundtrip", f.path, err);
-                    continue;
-                };
-                defer gpa.free(toon_text);
-                var result2 = toon.parse(gpa, toon_text, .{}) catch |err| {
-                    if (r == 0) logFail("toon-zig", "roundtrip", f.path, err);
-                    continue;
-                };
-                defer result2.deinit();
-                if (jsonToString(gpa, result2.value)) |out| {
-                    gpa.free(out);
-                    ops += 1;
-                    bytes += @floatFromInt(f.json.len);
-                } else |err| {
-                    if (r == 0) logFail("toon-zig", "roundtrip", f.path, err);
-                }
-            }
-        }
-        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
-        try record(gpa, &results, "toon-zig", "roundtrip", bytes, ops, seconds, total);
     }
 
     // ── write results JSON ──

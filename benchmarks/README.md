@@ -10,7 +10,8 @@ competitor, from `https://github.com/mohammadraziei/ctoon.git` (C/C++),
 `Cargo.toml` (Rust), `zig fetch --save` (Zig), or `pip install
 git+https://github.com/mohammadraziei/ctoon.git` (Python).
 **ctoon is never a special case here** — it's one more row in the same
-results table as gotoon, toon-go, toon-rust, or toon-zig.
+results table as gotoon, toon-go, or toon-rust (Zig has no peer
+currently benchmarked — see Layout below).
 
 ## Running
 
@@ -73,7 +74,7 @@ benchmarks/
   python/          bench.py       — ctoon, toon_format, toons
   go/              bench.go       — ctoon, gotoon, toon-go
   rust/            main.rs        — ctoon, toon-rust
-  zig/             main.zig       — ctoon, toon-zig
+  zig/             main.zig       — ctoon (toon-zig doesn't compile on Zig 0.16 yet)
   matlab/          bench.m        — ctoon (no competitor exists)
 ```
 
@@ -139,10 +140,11 @@ and Rust specifically, when the version found is too old:
   placeholder — the crate reserved its name early) and the git `HEAD`,
   neither avoids this; it's a genuine requirement of the only functional
   release, not a git-vs-crates.io difference.
-- `toon-zig` requires **Zig 0.16.0** — pinned as this workspace's own
-  `minimum_zig_version` too, since a single `zig build` compiles both
-  ctoon's Zig binding and toon-zig together; there's no way to run two
-  Zig language-version APIs in one build.
+- `toon-zig` is not currently benchmarked: its decoder calls
+  `std.json.ObjectMap.init(allocator)`, the pre-0.16 single-arg form
+  that Zig 0.16's ArrayHashMap-based `ObjectMap` no longer accepts —
+  an upstream compatibility gap, not something patched around here.
+  Revisit once upstream supports 0.16; see `benchmarks/zig/build.zig`.
 
 Everything else — a Python venv, `pip install`, `go get`, `cargo build`,
 `zig fetch --save`, CMake `FetchContent` — happens inside that language's
