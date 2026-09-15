@@ -69,7 +69,7 @@ fn logFail(library: []const u8, operation: []const u8, path: []const u8, err: an
     const f = log_file orelse return;
     var buf: [1024]u8 = undefined;
     const line = std.fmt.bufPrint(&buf, "[{s}] [{s}] FILE: {s} ERROR: {}\n", .{ library, operation, path, err }) catch return;
-    f.writeAll(io, line) catch {};
+    f.writeStreamingAll(io, line) catch {};
 }
 
 fn record(gpa: std.mem.Allocator, results: *std.ArrayList(Result), library: []const u8, operation: []const u8, bytes: f64, ops: u64, seconds: f64, attempted: u64) !void {
@@ -161,7 +161,7 @@ pub fn main(init: std.process.Init) !void {
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -177,14 +177,14 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "ctoon", "json_to_toon", bytes, ops, seconds, total);
     }
 
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -201,14 +201,14 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "ctoon", "toon_to_json", bytes, ops, seconds, total);
     }
 
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -232,7 +232,7 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "ctoon", "roundtrip", bytes, ops, seconds, total);
     }
 
@@ -240,7 +240,7 @@ pub fn main(init: std.process.Init) !void {
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -258,14 +258,14 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "toon-zig", "json_to_toon", bytes, ops, seconds, total);
     }
 
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -284,14 +284,14 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "toon-zig", "toon_to_json", bytes, ops, seconds, total);
     }
 
     {
         var ops: u64 = 0;
         var bytes: f64 = 0;
-        var timer = try std.time.Timer.start();
+        const timer_start = std.Io.Clock.awake.now(io);
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
@@ -319,7 +319,7 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
         }
-        const seconds = @as(f64, @floatFromInt(timer.read())) / 1e9;
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "toon-zig", "roundtrip", bytes, ops, seconds, total);
     }
 
