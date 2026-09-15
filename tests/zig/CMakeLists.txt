@@ -29,10 +29,23 @@ execute_process(
 )
 message(STATUS "Found Zig: ${ZIG_VERSION_OUTPUT}")
 
+# On some Linux setups (notably Debian/Ubuntu multiarch layouts, and
+# some WSL/conda environments), Zig's bundled lld linker looks for libc
+# pieces (libm.so.6, etc.) under /lib64 by default and doesn't find them
+# if the system instead keeps them under a triplet directory like
+# /usr/lib/x86_64-linux-gnu. Rather than assume any particular layout,
+# ask the C compiler CMake already found where IT looks for libraries by
+# default (CMAKE_C_IMPLICIT_LINK_DIRECTORIES) and hand each of those to
+# zig via --search-prefix. No-op on setups that don't need it.
+set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
+foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
+    list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+endforeach()
+
 # ── CTest integration ────────────────────────────────────────────────────────
 add_test(
     NAME ctoon_zig_tests
-    COMMAND ${ZIG_EXECUTABLE} build test
+    COMMAND ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
 )
 set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
@@ -40,7 +53,7 @@ set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
 # ── ctoon_test_zig custom target ─────────────────────────────────────────────
 add_custom_target(ctoon_test_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig tests..."
-    COMMAND ${ZIG_EXECUTABLE} build test
+    COMMAND ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
     USES_TERMINAL
 )
