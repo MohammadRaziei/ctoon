@@ -61,11 +61,32 @@ execute_process(
 get_filename_component(CTOON_ZIG_CRT_DIR "${CTOON_ZIG_CRT1_PATH}" DIRECTORY)
 
 set(CTOON_ZIG_LIBC_FILE ${CMAKE_CURRENT_BINARY_DIR}/zig-libc.txt)
-if(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES AND CTOON_ZIG_CRT_DIR)
-    list(GET CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES 0 CTOON_ZIG_INCLUDE_DIR)
+# CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES's first entry is typically GCC's
+# own internal include dir (freestanding headers like stddef.h, not
+# libc headers like stdio.h/stdlib.h) — blindly taking index 0 points
+# zig at a dir that's missing the actual libc headers. Search the list
+# instead: the real libc include_dir is the one literally named
+# ".../usr/include" (or "/usr/include" itself), and sys_include_dir is
+# that same directory's target-triplet subdir (e.g.
+# /usr/include/x86_64-linux-gnu) if one is present in the list,
+# otherwise the same as include_dir.
+set(CTOON_ZIG_INCLUDE_DIR "")
+set(CTOON_ZIG_SYS_INCLUDE_DIR "")
+foreach(_dir IN LISTS CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+    if(_dir MATCHES "/usr/include$")
+        set(CTOON_ZIG_INCLUDE_DIR "${_dir}")
+    elseif(_dir MATCHES "/usr/include/[^/]*-linux-gnu$")
+        set(CTOON_ZIG_SYS_INCLUDE_DIR "${_dir}")
+    endif()
+endforeach()
+if(NOT CTOON_ZIG_SYS_INCLUDE_DIR)
+    set(CTOON_ZIG_SYS_INCLUDE_DIR "${CTOON_ZIG_INCLUDE_DIR}")
+endif()
+
+if(CTOON_ZIG_INCLUDE_DIR AND CTOON_ZIG_CRT_DIR)
     file(WRITE ${CTOON_ZIG_LIBC_FILE}
 "include_dir=${CTOON_ZIG_INCLUDE_DIR}
-sys_include_dir=${CTOON_ZIG_INCLUDE_DIR}
+sys_include_dir=${CTOON_ZIG_SYS_INCLUDE_DIR}
 crt_dir=${CTOON_ZIG_CRT_DIR}
 msvc_lib_dir=
 kernel32_lib_dir=
@@ -73,9 +94,9 @@ gcc_dir=
 ")
     set(CTOON_ZIG_LIBC_ARGS --libc ${CTOON_ZIG_LIBC_FILE})
 else()
-    # Couldn't resolve crt1.o / implicit include dirs (unusual compiler
-    # setup) — fall back to search-prefix-only behavior rather than
-    # writing a broken libc.txt that would hard-fail the build.
+    # Couldn't find a real /usr/include entry or crt1.o (unusual
+    # compiler setup) — fall back to search-prefix-only behavior rather
+    # than writing a broken libc.txt that would hard-fail the build.
     set(CTOON_ZIG_LIBC_ARGS "")
 endif()
 
