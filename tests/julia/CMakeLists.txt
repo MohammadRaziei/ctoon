@@ -94,7 +94,7 @@ if(JULIA_COVERAGE_CHECK EQUAL 0)
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR} --code-coverage=user
                     ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl ${CTOON_JULIA_BINDING_DIR}
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/run_coverage_report.jl ${CTOON_COVERAGE_JULIA_BINARY_DIR}/coverage.lcov
+                    ${CMAKE_CURRENT_SOURCE_DIR}/run_coverage_report.jl ${CTOON_COVERAGE_JULIA_BINARY_DIR}/coverage.lcov ${CTOON_JULIA_BINDING_DIR}
 
         COMMAND ${CMAKE_COMMAND}
                     -DSOURCE_PATH=${PROJECT_SOURCE_DIR}/
