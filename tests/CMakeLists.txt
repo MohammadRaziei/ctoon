@@ -34,6 +34,7 @@ add_subdirectory(${CTOON_TEST_SOURCE_DIR}/go)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/rust)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/zig)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/matlab)
+add_subdirectory(${CTOON_TEST_SOURCE_DIR}/julia)
 
 if(TARGET ctoon_coverage_c AND TARGET ctoon_coverage_cpp AND TARGET ctoon_coverage_python)
     if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)

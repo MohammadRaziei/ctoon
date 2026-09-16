@@ -1,0 +1,7 @@
+name = "CToon"
+uuid = "7c8e6b1a-0c1e-4a9e-9c3e-c1000ffee001" # placeholder — regenerate with `using UUIDs; uuid4()`
+authors = ["mohammadraziei"]
+version = "0.0.1"
+
+[compat]
+julia = "1.6"
