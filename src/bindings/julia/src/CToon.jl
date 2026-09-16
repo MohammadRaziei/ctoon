@@ -57,16 +57,19 @@ data: `Dict{String,Any}` for objects, `Vector{Any}` for arrays, `String`,
 `Int64`/`Float64`, `Bool`, or `nothing`.
 """
 function parse(str::AbstractString)
-    # ctoon_read() itself is `ctoon_api_inline` (header-only, no real
-    # symbol in the compiled lib — see shim.c's docstring for why that
-    # matters for FFI) so, like the Rust and Zig bindings, call the real
-    # exported ctoon_read_opts() it forwards to instead. It wants a
-    # mutable buffer; NULL for the allocator (4th arg) is fine (default
-    # allocator), but pass a real ctoon_read_err (5th arg) so a failure
-    # reports why, instead of just NULL.
+    # ctoon_read()/ctoon_read_opts() parse ctoon's *native* TOON syntax
+    # (tabular/pipe-delimited arrays — see the C++ binding's
+    # arrays_tabular tests) — comma/bracket JSON input isn't valid there
+    # ("malformed delimiter marker in bracket segment" is exactly what
+    # ctoon_read_opts says about `[1, 2, 3]`). For JSON-style input, call
+    # ctoon_read_json() instead — a real exported symbol (no shim needed,
+    # unlike ctoon_read() which is `ctoon_api_inline`) — same as the Go
+    # binding's bridge.c does for its `asJSON` path. Wants a mutable
+    # buffer; NULL for the allocator (4th arg) is fine, but pass a real
+    # ctoon_read_err (5th arg) so a failure reports why.
     buf = Vector{UInt8}(str)
     err = Ref(ReadErr(0, 0, C_NULL, 0))
-    doc = Doc(@ccall libctoon_jl.ctoon_read_opts(
+    doc = Doc(@ccall libctoon_jl.ctoon_read_json(
         buf::Ptr{UInt8}, sizeof(buf)::Csize_t, 0::Cuint, C_NULL::Ptr{Cvoid}, err::Ptr{ReadErr},
     )::Ptr{Cvoid})
     if doc.ptr == C_NULL
