@@ -1,15 +1,27 @@
 # Driver script for the Julia test suite, run as
-# `julia --project=<binding dir> run_tests.jl` with the working directory
-# set to the binding dir (src/bindings/julia) — see tests/julia/CMakeLists.txt.
+# `julia --project=<binding dir> run_tests.jl <binding dir>` — see
+# tests/julia/CMakeLists.txt.
 #
-# This exists as a real .jl file, rather than inline `-e "..."` code in
-# CMakeLists.txt, specifically to sidestep a CMake quoting pitfall: a
-# `-e` string containing both semicolons and nested escaped double
-# quotes (needed for `include("...")`) gets mangled when CMake's Unix
-# Makefiles generator writes it into a Makefile recipe — the shell ends
-# up seeing unquoted `(` characters ("Syntax error: "(" unexpected").
-# A plain script file has no quoting to get wrong.
+# Takes the binding dir as an explicit argument (ARGS[1]) rather than
+# relying on the working directory + relative include() paths:
+# Julia's include() resolves a relative path against the *including
+# file's own directory* (tests/julia/, where this script lives), not
+# against the process's cwd — so "deps/build.jl" would resolve to
+# tests/julia/deps/build.jl, which doesn't exist. Absolute paths built
+# from an explicit argument sidestep that entirely.
+#
+# Order matters: deps/build.jl must run — and finish writing
+# deps/deps.jl — *before* Pkg.instantiate(), because instantiate()
+# auto-precompiles every package in the active project, including
+# CToon itself (this is the active project, via --project). Precompiling
+# CToon.jl means loading it, and CToon.jl errors immediately if
+# deps/deps.jl doesn't exist yet.
+isempty(ARGS) && error("run_tests.jl: expected the binding directory as ARGS[1]")
+binding_dir = ARGS[1]
+
+include(joinpath(binding_dir, "deps", "build.jl"))
+
 import Pkg
 Pkg.instantiate()
-include("deps/build.jl")
-include("test/runtests.jl")
+
+include(joinpath(binding_dir, "test", "runtests.jl"))

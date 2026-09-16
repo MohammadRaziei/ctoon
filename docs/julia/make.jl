@@ -14,7 +14,15 @@ const REPO_ROOT = normpath(joinpath(DOCS_DIR, "..", ".."))
 const BINDING_DIR = joinpath(REPO_ROOT, "src", "bindings", "julia")
 const OUTPUT_DIR = get(ENV, "CTOON_JULIA_DOCS_OUT", joinpath(DOCS_DIR, "build"))
 
+const BUILD_JL = joinpath(BINDING_DIR, "deps", "build.jl")
+
 Pkg.activate(BINDING_DIR)
+# Must run before instantiate(): instantiate() auto-precompiles every
+# package in the active project (CToon included, since it's the active
+# project here), and precompiling CToon.jl means loading it — which
+# errors unless deps/deps.jl already exists. See
+# tests/julia/run_tests.jl's comment for the same ordering requirement.
+include(BUILD_JL)
 Pkg.instantiate()
 
 Pkg.activate(DOCS_DIR)

@@ -36,7 +36,7 @@ message(STATUS "Found Julia: ${JULIA_VERSION_OUTPUT}")
 # two-step shape as Zig's `zig build test` implicitly does in one command.
 set(CTOON_JULIA_RUN_TESTS
     ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl ${CTOON_JULIA_BINDING_DIR}
 )
 
 # ── CTest integration ────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ if(JULIA_COVERAGE_CHECK EQUAL 0)
         # raw .cov files it leaves behind.
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Julia coverage as lcov..."
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR} --code-coverage=user
-                    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl
+                    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl ${CTOON_JULIA_BINDING_DIR}
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/run_coverage_report.jl ${CTOON_COVERAGE_JULIA_BINARY_DIR}/coverage.lcov
 
