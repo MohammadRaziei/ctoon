@@ -36,6 +36,11 @@ jobs:
       with:
         version: "0.16.0"
 
+    - name: Set up Julia
+      uses: julia-actions/setup-julia@v2
+      with:
+        version: "1"
+
     - name: Fix Xcode SDK selection (macOS)
       if: runner.os == 'macOS'
       # Zig's own build-runner (the process that runs build.zig itself)
@@ -59,6 +64,7 @@ jobs:
           CTOON_BUILD_PYTHON=ON 
           CTOON_BUILD_TESTS=ON 
           CTOON_BUILD_DOCS=OFF
+          CTOON_BUILD_JULIA=ON
 
     - name: Build
       run: cmake --build build -j4 --config Release
@@ -100,6 +106,11 @@ jobs:
     - name: Set up Rust
       uses: dtolnay/rust-toolchain@stable
 
+    - name: Set up Julia
+      uses: julia-actions/setup-julia@v2
+      with:
+        version: "1"
+
     - name: Configure CMake
       run: |
         cmake -B build \
@@ -107,7 +118,8 @@ jobs:
           -DCTOON_BUILD_EXAMPLES=OFF \
           -DCTOON_BUILD_PYTHON=ON \
           -DCTOON_BUILD_TESTS=OFF \
-          -DCTOON_BUILD_DOCS=ON
+          -DCTOON_BUILD_DOCS=ON \
+          -DCTOON_BUILD_JULIA=ON
 
     - name: Build documentation
       run: cmake --build build --target ctoon_docs
@@ -153,6 +165,14 @@ jobs:
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
 
+    - name: Set up Julia
+      uses: julia-actions/setup-julia@v2
+      with:
+        version: "1"
+
+    - name: Install Coverage.jl
+      run: julia -e 'import Pkg; Pkg.add("Coverage")'
+
     - name: Install coverage tools
       run: |
         sudo apt-get update
@@ -164,7 +184,8 @@ jobs:
           -DCTOON_BUILD_EXAMPLES=OFF \
           -DCTOON_BUILD_PYTHON=ON \
           -DCTOON_BUILD_TESTS=ON \
-          -DCTOON_BUILD_DOCS=OFF
+          -DCTOON_BUILD_DOCS=OFF \
+          -DCTOON_BUILD_JULIA=ON
 
     - name: Generate coverage report
       run: cmake --build build --target ctoon_coverage
