@@ -168,6 +168,41 @@ else()
 endif()
 
 
+# ── Julia Documentation (Documenter.jl) ─────────────────────────
+find_program(JULIA_EXECUTABLE julia)
+
+ctoon_require_lang(CTOON_BUILD_JULIA JULIA_EXECUTABLE "Julia"
+    "Install Julia (https://julialang.org/downloads/) and make sure 'julia' is on PATH.")
+
+if(JULIA_EXECUTABLE)
+    set(CTOON_DOCS_JULIA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/julia)
+    set(CTOON_DOCS_JULIA_OUT ${CTOON_DOCS_OUT}/julia)
+    set(CTOON_DOCS_JULIA_HTML ${CTOON_DOCS_JULIA_OUT}/index.html)
+
+    add_custom_command(
+        OUTPUT ${CTOON_DOCS_JULIA_HTML}
+        COMMAND ${CMAKE_COMMAND}
+            -DJULIA_EXECUTABLE=${JULIA_EXECUTABLE}
+            -DDOCS_DIR=${CTOON_DOCS_JULIA_DIR}
+            -DOUTPUT_DIR=${CTOON_DOCS_JULIA_OUT}
+            -P ${CTOON_DOCS_JULIA_DIR}/CreateDocs.cmake
+        DEPENDS
+            ${CTOON_DOCS_JULIA_DIR}/CreateDocs.cmake
+            ${CTOON_DOCS_JULIA_DIR}/make.jl
+            ${CTOON_DOCS_JULIA_DIR}/src/index.md
+            ${PROJECT_SOURCE_DIR}/src/bindings/julia/src/CToon.jl
+        COMMENT "Generating Julia API documentation with Documenter.jl"
+        VERBATIM
+    )
+
+    add_custom_target(ctoon_docs_julia DEPENDS ${CTOON_DOCS_JULIA_HTML})
+else()
+    add_custom_target(ctoon_docs_julia
+        COMMAND ${CMAKE_COMMAND} -E echo "Skipping Julia docs: julia not found"
+    )
+endif()
+
+
 # ── Route Index Page ──────────────────────────────────────────
 
 set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
@@ -290,7 +325,7 @@ add_custom_target(ctoon_docs
     COMMENT "Building all documentation"
 )
 
-add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_rust ctoon_docs_index ctoon_docs_matlab)
+add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_rust ctoon_docs_julia ctoon_docs_index ctoon_docs_matlab)
 ctoon_finalize_pages(ctoon_docs)
 
 
