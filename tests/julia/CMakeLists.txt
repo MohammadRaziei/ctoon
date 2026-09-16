@@ -30,14 +30,13 @@ execute_process(
 )
 message(STATUS "Found Julia: ${JULIA_VERSION_OUTPUT}")
 
-# ── Build the shim + test shell out to `julia deps/build.jl` themselves; ────
-# nothing to configure here. Both the CTest entry and the custom target
-# below run build.jl first (idempotent — it just recompiles the shared
-# lib) then the test suite, same two-step shape as Zig's `zig build test`
-# implicitly does in one command.
+# ── Build the shim + run tests via run_tests.jl (see that file's ───────────
+# comment for why this is a real script rather than an inline `-e`
+# string) — Pkg.instantiate() + deps/build.jl + test/runtests.jl, same
+# two-step shape as Zig's `zig build test` implicitly does in one command.
 set(CTOON_JULIA_RUN_TESTS
     ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
-    -e "import Pkg; Pkg.instantiate(); include(\"deps/build.jl\"); include(\"test/runtests.jl\")"
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl
 )
 
 # ── CTest integration ────────────────────────────────────────────────────────
@@ -93,9 +92,9 @@ if(JULIA_COVERAGE_CHECK EQUAL 0)
         # raw .cov files it leaves behind.
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Julia coverage as lcov..."
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR} --code-coverage=user
-                    -e "import Pkg; Pkg.instantiate(); include(\"deps/build.jl\"); include(\"test/runtests.jl\")"
+                    ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
-                    -e "using Coverage; cov = process_folder(\"src\"); LCOV.writefile(\"${CTOON_COVERAGE_JULIA_BINARY_DIR}/coverage.lcov\", cov); clean_folder(\"src\")"
+                    ${CMAKE_CURRENT_SOURCE_DIR}/run_coverage_report.jl ${CTOON_COVERAGE_JULIA_BINARY_DIR}/coverage.lcov
 
         COMMAND ${CMAKE_COMMAND}
                     -DSOURCE_PATH=${PROJECT_SOURCE_DIR}/

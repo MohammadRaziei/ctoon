@@ -20,7 +20,7 @@ endforeach()
 # `pip install -r requirements-dev.txt` step), just instantiate it here
 # if needed — cheap and idempotent when already up to date.
 execute_process(
-    COMMAND ${JULIA_EXECUTABLE} --project=${DOCS_DIR} -e "import Pkg; Pkg.instantiate()"
+    COMMAND ${JULIA_EXECUTABLE} --project=${DOCS_DIR} ${DOCS_DIR}/instantiate.jl
     RESULT_VARIABLE _DOCUMENTER_INSTANTIATE
 )
 if(NOT _DOCUMENTER_INSTANTIATE EQUAL 0)
