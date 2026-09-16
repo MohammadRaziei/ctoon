@@ -36,6 +36,11 @@ jobs:
       with:
         version: "0.16.0"
 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "stable"
+
     - name: Set up Julia
       uses: julia-actions/setup-julia@v2
       with:
@@ -64,6 +69,9 @@ jobs:
           CTOON_BUILD_PYTHON=ON 
           CTOON_BUILD_TESTS=ON 
           CTOON_BUILD_DOCS=OFF
+          CTOON_BUILD_RUST=ON
+          CTOON_BUILD_ZIG=ON
+          CTOON_BUILD_GO=ON
           CTOON_BUILD_JULIA=ON
 
     - name: Build

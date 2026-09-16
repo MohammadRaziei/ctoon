@@ -14,16 +14,17 @@ foreach(_var JULIA_EXECUTABLE DOCS_DIR OUTPUT_DIR)
     endif()
 endforeach()
 
-# ── Check Documenter.jl ──────────────────────────────────────────────────────
+# ── Instantiate Documenter.jl ────────────────────────────────────────────────
+# Rather than requiring a separate CI step to pre-instantiate this
+# Pkg environment (unlike Python's pip install, which needs its own
+# `pip install -r requirements-dev.txt` step), just instantiate it here
+# if needed — cheap and idempotent when already up to date.
 execute_process(
-    COMMAND ${JULIA_EXECUTABLE} --project=${DOCS_DIR} -e "using Documenter"
-    RESULT_VARIABLE _DOCUMENTER_CHECK
-    OUTPUT_QUIET ERROR_QUIET
+    COMMAND ${JULIA_EXECUTABLE} --project=${DOCS_DIR} -e "import Pkg; Pkg.instantiate()"
+    RESULT_VARIABLE _DOCUMENTER_INSTANTIATE
 )
-if(NOT _DOCUMENTER_CHECK EQUAL 0)
-    message(FATAL_ERROR
-        "Documenter.jl is not instantiated for docs/julia. Run:\n"
-        "  julia --project=${DOCS_DIR} -e 'import Pkg; Pkg.instantiate()'")
+if(NOT _DOCUMENTER_INSTANTIATE EQUAL 0)
+    message(FATAL_ERROR "Failed to instantiate docs/julia's Pkg environment (Documenter.jl).")
 endif()
 
 # ── Run Documenter.jl ─────────────────────────────────────────────────────────
