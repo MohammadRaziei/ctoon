@@ -44,7 +44,7 @@ ctoon_val *ctoon_rs_arr_get(ctoon_val *arr, size_t idx) { return ctoon_arr_get(a
 
 size_t ctoon_rs_obj_size(ctoon_val *obj) { return ctoon_obj_size(obj); }
 bool ctoon_rs_obj_iter_init(ctoon_val *obj, ctoon_obj_iter *iter) { return ctoon_obj_iter_init(obj, iter); }
-bool ctoon_rs_obj_iter_has_next(const ctoon_obj_iter *iter) { return ctoon_obj_iter_has_next(iter); }
+bool ctoon_rs_obj_iter_has_next(ctoon_obj_iter *iter) { return ctoon_obj_iter_has_next(iter); }
 ctoon_val *ctoon_rs_obj_iter_next(ctoon_obj_iter *iter) { return ctoon_obj_iter_next(iter); }
 ctoon_val *ctoon_rs_obj_iter_get_val(ctoon_val *key_val) { return ctoon_obj_iter_get_val(key_val); }
 

@@ -39,6 +39,16 @@ function doc_free(doc::Doc)
     nothing
 end
 
+# Mirrors ctoon_read_err's C layout (include/ctoon.h): { ctoon_read_code
+# code (uint32_t); const char *msg; size_t pos; } — used so parse
+# failures report the real reason instead of a generic message.
+struct ReadErr
+    code::UInt32
+    _pad::UInt32
+    msg::Ptr{UInt8}
+    pos::UInt64
+end
+
 """
     CToon.parse(str::AbstractString) -> Any
 
@@ -51,13 +61,19 @@ function parse(str::AbstractString)
     # symbol in the compiled lib — see shim.c's docstring for why that
     # matters for FFI) so, like the Rust and Zig bindings, call the real
     # exported ctoon_read_opts() it forwards to instead. It wants a
-    # mutable buffer and takes alc/err as the last two args — NULL for
-    # both is fine (default allocator, no error detail wanted here yet).
+    # mutable buffer; NULL for the allocator (4th arg) is fine (default
+    # allocator), but pass a real ctoon_read_err (5th arg) so a failure
+    # reports why, instead of just NULL.
     buf = Vector{UInt8}(str)
+    err = Ref(ReadErr(0, 0, C_NULL, 0))
     doc = Doc(@ccall libctoon_jl.ctoon_read_opts(
-        buf::Ptr{UInt8}, sizeof(buf)::Csize_t, 0::Cuint, C_NULL::Ptr{Cvoid}, C_NULL::Ptr{Cvoid},
+        buf::Ptr{UInt8}, sizeof(buf)::Csize_t, 0::Cuint, C_NULL::Ptr{Cvoid}, err::Ptr{ReadErr},
     )::Ptr{Cvoid})
-    doc.ptr == C_NULL && error("CToon: failed to parse input")
+    if doc.ptr == C_NULL
+        e = err[]
+        msg = e.msg == C_NULL ? "(no message)" : unsafe_string(e.msg)
+        error("CToon: failed to parse input: $msg (code=$(e.code), pos=$(e.pos))")
+    end
     try
         root_ptr = @ccall libctoon_jl.ctoon_rs_doc_get_root(doc.ptr::Ptr{Cvoid})::Ptr{Cvoid}
         return _to_julia(Val(root_ptr))
@@ -67,7 +83,7 @@ function parse(str::AbstractString)
 end
 
 function _get_type(v::Val)
-    @ccall libctoon_jl.ctoon_rs_get_type(v.ptr::Ptr{Cvoid})::Cint
+    @ccall libctoon_jl.ctoon_rs_get_type(v.ptr::Ptr{Cvoid})::UInt8
 end
 
 function _to_julia(v::Val)
@@ -78,9 +94,9 @@ function _to_julia(v::Val)
     elseif t == TYPE_BOOL
         return @ccall libctoon_jl.ctoon_rs_get_bool(v.ptr::Ptr{Cvoid})::Bool
     elseif t == TYPE_NUM
-        if Bool(@ccall libctoon_jl.ctoon_rs_is_sint(v.ptr::Ptr{Cvoid})::Cint)
+        if @ccall(libctoon_jl.ctoon_rs_is_sint(v.ptr::Ptr{Cvoid})::Bool)
             return @ccall libctoon_jl.ctoon_rs_get_sint(v.ptr::Ptr{Cvoid})::Int64
-        elseif Bool(@ccall libctoon_jl.ctoon_rs_is_uint(v.ptr::Ptr{Cvoid})::Cint)
+        elseif @ccall(libctoon_jl.ctoon_rs_is_uint(v.ptr::Ptr{Cvoid})::Bool)
             return @ccall libctoon_jl.ctoon_rs_get_uint(v.ptr::Ptr{Cvoid})::UInt64
         else
             return @ccall libctoon_jl.ctoon_rs_get_real(v.ptr::Ptr{Cvoid})::Cdouble
@@ -109,7 +125,7 @@ function _to_julia(v::Val)
             iter_ptr = pointer(iter_buf)
             ok = @ccall libctoon_jl.ctoon_rs_obj_iter_init(v.ptr::Ptr{Cvoid}, iter_ptr::Ptr{Cvoid})::Bool
             ok || return out
-            while Bool(@ccall libctoon_jl.ctoon_rs_obj_iter_has_next(iter_ptr::Ptr{Cvoid})::Cint)
+            while @ccall(libctoon_jl.ctoon_rs_obj_iter_has_next(iter_ptr::Ptr{Cvoid})::Bool)
                 key_ptr = @ccall libctoon_jl.ctoon_rs_obj_iter_next(iter_ptr::Ptr{Cvoid})::Ptr{Cvoid}
                 key_ptr == C_NULL && break
                 val_ptr = @ccall libctoon_jl.ctoon_rs_obj_iter_get_val(key_ptr::Ptr{Cvoid})::Ptr{Cvoid}
