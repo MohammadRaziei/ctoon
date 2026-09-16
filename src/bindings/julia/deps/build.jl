@@ -6,7 +6,7 @@
 # past the skeleton stage, but it's not needed to get a working package
 # today).
 
-binding_dir = @__DIR__ |> dirname          # .../src/bindings/julia
+binding_dir = dirname(@__DIR__)            # .../src/bindings/julia
 repo_root = joinpath(binding_dir, "..", "..", "..") |> normpath
 
 include_dir = joinpath(repo_root, "include")
