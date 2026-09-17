@@ -6,7 +6,31 @@ built from ctoon's C core plus a shim (`shim.c`, shared verbatim with
 those two) that gives the header's `static inline` functions real,
 linkable symbols.
 
-## Build & try it
+## Install as a dependency
+
+Not registered in Julia's General registry yet — install straight from
+GitHub with `subdir` (the standard Pkg way to install one package out
+of several living in one git repo):
+
+```julia
+import Pkg
+Pkg.add(url="https://github.com/mohammadraziei/ctoon.git", subdir="src/bindings/julia")
+```
+
+`Pkg.add` runs `deps/build.jl` for you automatically as part of the
+install — no separate C library install, no BinaryBuilder/JLL step,
+just a C compiler on the build host.
+
+```julia
+using CToon
+CToon.parse("{\"a\": [1, 2, true]}")
+# Dict{String, Any}("a" => Any[1, 2, true])
+```
+
+Iterating on the binding itself while using it from another project's
+environment: `Pkg.develop(path="/path/to/ctoon/src/bindings/julia")`.
+
+## Developing this binding directly
 
 No CMake, no BinaryBuilder/JLL step needed yet — `deps/build.jl`
 compiles `ctoon.c` + `shim.c` into `deps/libctoon_jl.{so,dylib,dll}`
