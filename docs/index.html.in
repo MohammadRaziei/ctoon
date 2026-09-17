@@ -48,12 +48,12 @@
 <div class="hero">
     <div class="hero-eyebrow">
         <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        C · C++ · Python · Go · Rust · Zig · MATLAB
+        C · C++ · Python · Go · Rust · Zig · MATLAB · Julia
     </div>
     <h1>CToon Documentation</h1>
     <p class="hero-desc">
         A high-performance serialisation library for the TOON format — a compact, human-readable alternative to JSON.
-        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, Go, Rust, and Zig.
+        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, Go, Rust, Zig, and Julia.
     </p>
     <div class="hero-stats">
         <div class="hero-stat">
@@ -112,6 +112,9 @@
             </button>
             <button class="tab-btn" data-tab="docs-matlab" onclick="switchTab('docs','matlab')">
                 <i class="fa-solid fa-square-root-variable"></i> MATLAB
+            </button>
+            <button class="tab-btn" data-tab="docs-julia" onclick="switchTab('docs','julia')">
+                <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Julia
             </button>
         </div>
 
@@ -223,6 +226,20 @@
                     <p class="doc-card-desc">MEX-based binding for the CToon C library. Documents <code>ctoon.encode</code>, <code>ctoon.decode</code>, <code>ctoon.read</code>, and <code>ctoon.write</code> (plus Python-style aliases <code>ctoon.dumps</code>/<code>ctoon.loads</code>). Works with any MATLAB R2014b or newer — no toolboxes required. Build with <code>ctoon_build</code> or via CMake.</p>
                     <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Generated from .m docstrings</span></div>
                     <a href="matlab/index.html" class="doc-card-btn">Open MATLAB Reference <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="docs-julia">
+            <div class="doc-card-inner">
+                <div class="doc-card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="doc-card-body">
+                    <div class="doc-card-title">Julia API <span class="card-badge">Julia 1.6+</span></div>
+                    <p class="doc-card-desc">Dependency-free <code>ccall</code> wrapper around the C core, built by compiling <code>ctoon.c</code> directly (no separate C library install needed). Documents <code>CToon.parse</code>, which reads JSON via <code>ctoon_read_json</code> into native <code>Dict</code>/<code>Vector</code>/<code>String</code>/number/<code>Bool</code>/<code>nothing</code> values.</p>
+                    <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with Documenter.jl</span></div>
+                    <a href="julia/index.html" class="doc-card-btn">Open Julia Reference <i class="fa-solid fa-arrow-right"></i></a>
                 </div>
             </div>
         </div>

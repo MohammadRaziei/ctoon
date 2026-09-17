@@ -35,3 +35,9 @@ node/node_modules/
 
 # OS/editor cruft
 .DS_Store
+
+# Manifest.toml is a pure derived lockfile — like go.sum/Cargo.lock
+# above, it gets rewritten every run since the deps-fetch target always
+# re-pins ctoon to its current @master commit via a git-URL Pkg.add.
+# Project.toml stays tracked (the manifest — deps list, package name).
+julia/Manifest.toml

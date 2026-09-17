@@ -118,6 +118,7 @@ find_program(RUSTC_EXECUTABLE rustc)
 find_program(ZIG_EXECUTABLE zig)
 find_program(NODE_EXECUTABLE node)
 find_program(NPM_EXECUTABLE npm)
+find_program(JULIA_EXECUTABLE julia)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
 add_custom_target(ctoon_benchmarks
@@ -197,4 +198,11 @@ if(ZIG_EXECUTABLE)
 else()
     message(WARNING "Zig toolchain not found — Zig benchmark skipped. "
                      "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
+endif()
+
+if(JULIA_EXECUTABLE)
+    add_subdirectory(julia)
+else()
+    message(WARNING "Julia toolchain not found — Julia benchmark skipped. "
+                     "Install Julia and make sure 'julia' is on PATH.")
 endif()
