@@ -121,7 +121,7 @@ find_program(NPM_EXECUTABLE npm)
 find_program(JULIA_EXECUTABLE julia)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
-add_custom_target(ctoon_benchmarks
+add_custom_target(ctoon_bench_langs
     COMMENT "Running all available CToon language benchmarks"
 )
 
@@ -205,4 +205,28 @@ if(JULIA_EXECUTABLE)
 else()
     message(WARNING "Julia toolchain not found — Julia benchmark skipped. "
                      "Install Julia and make sure 'julia' is on PATH.")
+endif()
+
+# ── Report: combine every language's JSON into one standalone HTML ───────
+# Needs only Python3 + jinja2 (installed into its own throwaway venv) —
+# independent of which language toolchains were detected above. Modeled
+# on https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report.
+if(Python3_Interpreter_FOUND)
+    add_subdirectory(report)
+else()
+    message(WARNING "Python3 not found — HTML report skipped (per-language "
+                     "JSON results are still written to CTOON_BENCH_RESULTS_DIR).")
+endif()
+
+# ── Umbrella target: run every language benchmark, THEN build the report ──
+# `ctoon_benchmarks` is the one target people actually run; it fans out to
+# ctoon_bench_langs (all per-language benchmarks) and, once those are done,
+# ctoon_bench_report (which depends on ctoon_bench_langs itself, so the
+# report always renders last, from fresh JSON).
+add_custom_target(ctoon_benchmarks
+    COMMENT "CToon: running all language benchmarks and building the standalone HTML report"
+)
+add_dependencies(ctoon_benchmarks ctoon_bench_langs)
+if(TARGET ctoon_bench_report)
+    add_dependencies(ctoon_benchmarks ctoon_bench_report)
 endif()

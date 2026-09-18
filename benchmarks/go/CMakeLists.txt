@@ -30,4 +30,4 @@ add_custom_target(ctoon_benchmarks_go
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_go ctoon_benchmarks_go_deps)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_go)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_go)

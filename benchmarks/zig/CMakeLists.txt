@@ -109,4 +109,4 @@ add_custom_target(ctoon_benchmarks_zig
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_zig ctoon_benchmarks_zig_deps)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_zig)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_zig)

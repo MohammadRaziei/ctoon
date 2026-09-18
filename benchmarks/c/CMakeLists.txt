@@ -48,4 +48,4 @@ add_custom_target(ctoon_benchmarks_c
     DEPENDS bench_c
     USES_TERMINAL
 )
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_c)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_c)

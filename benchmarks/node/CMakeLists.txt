@@ -20,4 +20,4 @@ add_custom_target(ctoon_benchmarks_node
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_node ctoon_benchmarks_node_deps)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_node)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_node)

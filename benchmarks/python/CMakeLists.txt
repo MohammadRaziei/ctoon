@@ -37,4 +37,4 @@ add_custom_target(ctoon_benchmarks_python
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_python ctoon_benchmarks_python_venv)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_python)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_python)

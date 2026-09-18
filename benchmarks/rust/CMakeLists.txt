@@ -11,4 +11,4 @@ add_custom_target(ctoon_benchmarks_rust
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     USES_TERMINAL
 )
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_rust)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_rust)

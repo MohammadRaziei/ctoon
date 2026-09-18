@@ -39,4 +39,4 @@ add_custom_target(ctoon_benchmarks_matlab
     COMMENT "Running MATLAB benchmark..."
 )
 add_dependencies(ctoon_benchmarks_matlab ctoon_build_mex)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_matlab)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_matlab)

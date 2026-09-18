@@ -25,9 +25,17 @@ cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release
 cmake --build build-bench --target ctoon_benchmarks
 ```
 
-That fetches every dependency (the corpus, and every language's own
-libraries) and runs every benchmark whose language toolchain is present.
-To run just one language:
+`ctoon_benchmarks` is the umbrella target: it fetches every dependency
+(the corpus, and every language's own libraries), runs every benchmark
+whose language toolchain is present (via `ctoon_bench_langs`), and — once
+those finish — renders one standalone HTML report combining all of them
+(via `ctoon_bench_report`) to `build-bench/results/report.html`. Chart.js
+and every language's JSON are embedded inline, so the file needs no
+server or network to view and is safe to send around on its own.
+Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
+same CMake-fetched Chart.js, same jinja2-rendered single-file output.
+
+To run just one language (skips the report):
 
 ```bash
 cmake --build build-bench --target ctoon_benchmarks_c
@@ -39,8 +47,17 @@ cmake --build build-bench --target ctoon_benchmarks_zig
 cmake --build build-bench --target ctoon_benchmarks_matlab
 ```
 
-Each one prints a results table and writes a JSON file to
-`build-bench/results/<language>.json`:
+To run every language without rendering the report, or to re-render just
+the report from whatever JSON is already in `build-bench/results/`
+(no re-running the benchmarks, no API/network spend beyond Chart.js):
+
+```bash
+cmake --build build-bench --target ctoon_bench_langs   # every language, no report
+cmake --build build-bench --target ctoon_bench_report  # report only, from existing JSON
+```
+
+Each per-language target above also prints a results table and writes a
+JSON file to `build-bench/results/<language>.json`:
 
 ```json
 {

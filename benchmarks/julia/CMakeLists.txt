@@ -28,4 +28,4 @@ add_custom_target(ctoon_benchmarks_julia
     USES_TERMINAL
 )
 add_dependencies(ctoon_benchmarks_julia ctoon_benchmarks_julia_deps)
-add_dependencies(ctoon_benchmarks ctoon_benchmarks_julia)
+add_dependencies(ctoon_bench_langs ctoon_benchmarks_julia)
