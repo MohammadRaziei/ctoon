@@ -117,6 +117,8 @@ find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
 find_program(ZIG_EXECUTABLE zig)
 find_program(JULIA_EXECUTABLE julia)
+find_program(NODE_EXECUTABLE node)
+find_program(NPM_EXECUTABLE npm)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
 add_custom_target(ctoon_bench_langs
@@ -196,6 +198,17 @@ if(JULIA_EXECUTABLE)
 else()
     message(WARNING "Julia toolchain not found — Julia benchmark skipped. "
                      "Install Julia and make sure 'julia' is on PATH.")
+endif()
+
+# ctoon has no Node.js binding (see benchmarks/node/CMakeLists.txt's own
+# comment), so this measures only the reference @toon-format/toon
+# package — kept as a standalone reference point, not a ctoon-vs-X
+# comparison like every other language here.
+if(NODE_EXECUTABLE AND NPM_EXECUTABLE)
+    add_subdirectory(node)
+else()
+    message(WARNING "Node.js toolchain (node/npm) not found — Node.js benchmark "
+                     "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
 endif()
 
 # ── Report: combine every language's JSON into one standalone HTML ───────

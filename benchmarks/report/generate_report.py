@@ -34,6 +34,7 @@ OP_TITLES = {
 LANG_TITLES = {
     "c": "C", "cpp": "C++", "python": "Python", "go": "Go",
     "rust": "Rust", "zig": "Zig", "matlab": "MATLAB", "julia": "Julia",
+    "node": "Node.js",
 }
 PALETTE = ["#ff6b81", "#35d0ba", "#ffb454", "#b98bff", "#8b93a7", "#4dd0e1"]
 CTOON_COLOR = "#5b8cff"  # fixed across every chart, in every language --
