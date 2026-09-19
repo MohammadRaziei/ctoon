@@ -1,3 +1,7 @@
 name = "CToonBenchJulia"
 
 [deps]
+CToon = "7c8e6b1a-0c1e-4a9e-9c3e-c1000ffee001"
+
+[sources]
+CToon = {rev = "master", subdir = "src/bindings/julia", url = "https://github.com/mohammadraziei/ctoon.git"}
