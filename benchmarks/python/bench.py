@@ -25,13 +25,22 @@ Implementations:
   - toon_format  github.com/toon-format/toon-python (official)
   - toons        github.com/alesanfra/toons (community, Rust backend)
 
-If a log file path is given, one line per failure (which file, which
-library/operation, and the caught exception) is written there — only for
-the first repeat of each timed phase (and the untimed pre-pass), not all
-20 repeats.
+If the CTOON_BENCH_ONLY environment variable is set to a library name
+("ctoon", "toon_format", or "toons"), only that library's benchmark runs,
+and the results JSON is NOT written -- used by the memory harness to get
+one library's peak RSS in a fresh process. Note: the untimed pre-pass
+(building each file's TOON text) always uses ctoon regardless of which
+library is being isolated, since toon_to_json/roundtrip need TOON input
+from *somewhere* -- so every library's isolated number includes that one
+constant, shared cost. It's the same for every library, so relative
+memory comparisons between them are still fair; it just means these
+memory numbers aren't directly comparable to, say, C's (which has no such
+shared step). Normal timed runs leave this unset.
 """
 import argparse
 import json
+import os
+import resource
 import sys
 import time
 
@@ -203,14 +212,16 @@ def main():
             "total_time_s": t_rt,
         })
 
+    only = os.environ.get("CTOON_BENCH_ONLY", "").strip()
+
     add_rows(
         "ctoon",
         lambda text: ctoon.dumps(json.loads(text)),
         lambda text: ctoon.dumps_json(ctoon.loads(text), indent=2),
         lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2),
-    )
+    ) if not only or only == "ctoon" else None
 
-    if toon_format:
+    if toon_format and (not only or only == "toon_format"):
         add_rows(
             "toon_format",
             lambda text: toon_format.encode(json.loads(text)),
@@ -218,13 +229,20 @@ def main():
             lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2),
         )
 
-    if toons:
+    if toons and (not only or only == "toons"):
         add_rows(
             "toons",
             lambda text: toons.dumps(json.loads(text)),
             lambda text: toons.to_json(text, indent=2),
             lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2),
         )
+
+    if only:
+        peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print(f"CTOON_BENCH_MEM_RESULT library={only} peak_rss_kb={peak_kb}", file=sys.stderr)
+        if log_file:
+            log_file.close()
+        return 0
 
     headers = ["Library", "Operation", "Throughput", "Docs/sec", "Success", f"Total time (x{REPEATS} reps)"]
     if tabulate:

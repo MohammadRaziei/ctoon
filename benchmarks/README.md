@@ -27,11 +27,14 @@ cmake --build build-bench --target ctoon_benchmarks
 
 `ctoon_benchmarks` is the umbrella target: it fetches every dependency
 (the corpus, and every language's own libraries), runs every benchmark
-whose language toolchain is present (via `ctoon_bench_langs`), and — once
-those finish — renders one standalone HTML report combining all of them
-(via `ctoon_bench_report`) to `build-bench/results/report.html`. Chart.js
-and every language's JSON are embedded inline, so the file needs no
-server or network to view and is safe to send around on its own.
+whose language toolchain is present (via `ctoon_bench_langs`), measures
+peak memory per (language, library) in isolated fresh processes (via
+`ctoon_bench_memory` — see "Memory" below), records the machine it ran
+on (via `ctoon_bench_system_info`), and — once all of that finishes —
+renders one standalone HTML report combining everything (via
+`ctoon_bench_report`) to `build-bench/results/report.html`. Chart.js and
+every language's JSON are embedded inline, so the file needs no server
+or network to view and is safe to send around on its own.
 Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
 same CMake-fetched Chart.js, same jinja2-rendered single-file output.
 
@@ -75,6 +78,52 @@ The JSON files are kept **separate per language** rather than merged —
 each language tests a different set of libraries and has its own corpus
 loading overhead, so there's no meaningful single "language-agnostic"
 number to combine them into.
+
+## Memory
+
+Besides throughput, `ctoon_bench_memory` measures **peak RSS per
+(language, library)** — for now, C, C++, and Python (the languages that
+support isolated per-library runs so far; see below). Run on its own:
+
+```bash
+cmake --build build-bench --target ctoon_bench_memory
+```
+
+That adds a `"peak_rss_mb"` field onto that library's rows in the
+existing `<language>.json` files (merged in place, not a separate
+file) — one number per library, since it's a whole-process high-water
+mark, not something finer-grained than that.
+
+**Why isolated processes, not just reading memory after the normal
+run:** the normal C and Python runs benchmark more than one library
+back-to-back in the *same* process for simplicity. `ru_maxrss` never
+goes down, so reading it after such a run would have every later
+library's number inflated by whichever earlier library used the most
+memory — not a real number about that library. So `collect_memory.py`
+re-invokes each language's benchmark binary/script once per library, in
+a **fresh process** each time, via `CTOON_BENCH_ONLY=<library>` (an
+environment variable both `bench.c` and `bench.py` check — see their
+docstrings), and reads that one process's peak with `/usr/bin/time -v`.
+C++ has no competing implementation at all, so its ordinary run is
+already isolated and needs no such flag.
+
+One caveat worth knowing: Python's `toon_to_json`/`roundtrip` need TOON
+input, and only ctoon can produce that (it's the only library here with
+a JSON parser too) — so *every* library's isolated Python run pays that
+same shared, constant cost during its pre-pass. It's identical across
+libraries, so relative comparisons between them are still fair; it just
+means these numbers aren't directly comparable to C's (which has no such
+shared step).
+
+Go, Rust, Zig, MATLAB, and Julia don't have the `CTOON_BENCH_ONLY`
+isolation flag yet, so they're not part of `ctoon_bench_memory` — same
+"only what's actually wired up" convention as the rest of this suite.
+Adding it to a language means: (1) an env var in that language's bench
+runner that skips every library except the one named, and returns
+before writing that language's normal results JSON when set; (2) a new
+`--<lang>-exe`/`--<lang>-manifest`-style block in `collect_memory.py`;
+(3) wiring it into `report/CMakeLists.txt`'s `MEMORY_ARGS`/`MEMORY_DEPS`,
+guarded the same way the C/C++/Python blocks are.
 
 ## Layout
 

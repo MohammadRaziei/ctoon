@@ -33,6 +33,12 @@
  * untimed pre-pass), not all 20. Real error messages are captured where
  * ctoon's API provides one; TOONc's API doesn't return one at all, so its
  * log lines just note that parsing failed.
+ *
+ * If the CTOON_BENCH_ONLY environment variable is set to a library name
+ * ("ctoon" or "TOONc"), only that library's benchmark runs (and the results
+ * JSON is NOT written) -- used by the memory harness to get one library's
+ * peak RSS in a fresh process, uncontaminated by the other library ever
+ * having run in the same address space. Normal timed runs leave this unset.
  */
 
 #define _POSIX_C_SOURCE 200809L /* for open_memstream, used for TOONc */
@@ -365,10 +371,16 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    bench_ctoon(files, n);
-    bench_toonc(files, n, pre_ok);
+    bool run_ctoon = true, run_toonc = true;
+    const char *only = getenv("CTOON_BENCH_ONLY");
+    if (only && only[0]) {
+        run_ctoon = (strcmp(only, "ctoon") == 0);
+        run_toonc = (strcmp(only, "TOONc") == 0);
+    }
+    if (run_ctoon) bench_ctoon(files, n);
+    if (run_toonc) bench_toonc(files, n, pre_ok);
 
-    write_results_json(n, total_json_bytes);
+    if (!only || !only[0]) write_results_json(n, total_json_bytes);
 
     if (g_log) {
         fclose(g_log);

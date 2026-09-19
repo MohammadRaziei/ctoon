@@ -33,17 +33,22 @@ OP_TITLES = {
 }
 LANG_TITLES = {
     "c": "C", "cpp": "C++", "python": "Python", "go": "Go",
-    "rust": "Rust", "zig": "Zig", "matlab": "MATLAB",
-    "node": "Node.js", "julia": "Julia",
+    "rust": "Rust", "zig": "Zig", "matlab": "MATLAB", "julia": "Julia",
 }
-PALETTE = ["#5b8cff", "#ff6b81", "#35d0ba", "#ffb454", "#b98bff", "#8b93a7", "#4dd0e1"]
+PALETTE = ["#ff6b81", "#35d0ba", "#ffb454", "#b98bff", "#8b93a7", "#4dd0e1"]
+CTOON_COLOR = "#5b8cff"  # fixed across every chart, in every language --
+                          # not a special filtering rule, just a stable
+                          # visual anchor so the same bar is always the
+                          # same color from section to section.
 
 
 def _load_all(results_dir):
-    """Every *.json in results_dir except the corpus manifest is one
+    """Every *.json in results_dir except system_info.json is one
     language's result file (see benchmarks/CMakeLists.txt)."""
     langs = []
     for path in sorted(glob.glob(os.path.join(results_dir, "*.json"))):
+        if os.path.basename(path) == "system_info.json":
+            continue
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if "language" in data and "results" in data:
@@ -53,7 +58,10 @@ def _load_all(results_dir):
 
 
 def _lib_color(lib, lib_order):
-    idx = lib_order.index(lib) if lib in lib_order else 0
+    if lib == "ctoon":
+        return CTOON_COLOR
+    others = [l for l in lib_order if l != "ctoon"]
+    idx = others.index(lib) if lib in others else 0
     return PALETTE[idx % len(PALETTE)]
 
 
@@ -95,6 +103,35 @@ new Chart(document.getElementById('chart-{language}'), {{
 }});
 """
 
+    # One peak-RSS number per library (see collect_memory.py -- it's a
+    # whole-process high-water mark from an isolated run, not something
+    # finer-grained than "per library"), plotted as its own small chart.
+    mem_by_lib = {}
+    for r in results:
+        if r.get("peak_rss_mb") is not None:
+            mem_by_lib[r["library"]] = r["peak_rss_mb"]
+
+    memory_chart_js = ""
+    if mem_by_lib:
+        mem_libs = [l for l in libs_seen if l in mem_by_lib]
+        mem_values = [mem_by_lib[l] for l in mem_libs]
+        mem_colors = [_lib_color(l, libs_seen) for l in mem_libs]
+        memory_chart_js = f"""
+new Chart(document.getElementById('chart-{language}-mem'), {{
+  type: 'bar',
+  data: {{ labels: {json.dumps(mem_libs)}, datasets: [{{
+    label: 'Peak RSS (MB)', data: {json.dumps(mem_values)},
+    backgroundColor: {json.dumps(mem_colors)}
+  }}] }},
+  options: {{
+    indexAxis: 'x',
+    responsive: true, maintainAspectRatio: false,
+    scales: {{ y: {{ title: {{ display: true, text: 'MB (lower is better)' }}, beginAtZero: true }} }},
+    plugins: {{ legend: {{ display: false }} }}
+  }}
+}});
+"""
+
     table_rows = []
     for op in present_ops:
         for r in [x for x in results if x["operation"] == op]:
@@ -105,7 +142,10 @@ new Chart(document.getElementById('chart-{language}'), {{
                 "docs_per_sec": round(r.get("docs_per_sec", 0), 1),
                 "success_rate": round(r.get("success_rate", 0) * 100, 1),
                 "total_time_s": round(r.get("total_time_s", 0), 3),
+                "peak_rss_mb": r.get("peak_rss_mb"),
             })
+
+    has_memory = any(r.get("peak_rss_mb") is not None for r in table_rows)
 
     return {
         "key": language,
@@ -115,12 +155,24 @@ new Chart(document.getElementById('chart-{language}'), {{
         "chart_id": f"chart-{language}",
         "chart_js": chart_js,
         "rows": table_rows,
+        "has_memory": has_memory,
+        "memory_chart_id": f"chart-{language}-mem",
+        "memory_chart_js": memory_chart_js,
     }
+
+
+def _load_system_info(results_dir):
+    path = os.path.join(results_dir, "system_info.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def build(results_dir, output_path, chartjs_path):
     langs = _load_all(results_dir)
     sections = [_build_language_section(d) for d in langs]
+    system_info = _load_system_info(results_dir)
 
     with open(chartjs_path, "r", encoding="utf-8") as f:
         chartjs_source = f.read()
@@ -128,6 +180,8 @@ def build(results_dir, output_path, chartjs_path):
     chart_scripts = []
     for sec in sections:
         chart_scripts.append(sec["chart_js"])
+        if sec["has_memory"]:
+            chart_scripts.append(sec["memory_chart_js"])
 
     embedded = {d["language"]: d for d in langs}
 
@@ -146,6 +200,7 @@ def build(results_dir, output_path, chartjs_path):
         chartjs_source=chartjs_source,
         embedded_json=json.dumps(embedded),
         chart_scripts="\n".join(chart_scripts),
+        system_info=system_info,
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

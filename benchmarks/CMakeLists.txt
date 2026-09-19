@@ -116,8 +116,6 @@ find_program(GO_EXECUTABLE go)
 find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
 find_program(ZIG_EXECUTABLE zig)
-find_program(NODE_EXECUTABLE node)
-find_program(NPM_EXECUTABLE npm)
 find_program(JULIA_EXECUTABLE julia)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
@@ -184,13 +182,6 @@ if(CARGO_EXECUTABLE AND RUSTC_EXECUTABLE)
 else()
     message(WARNING "Rust toolchain (cargo/rustc) not found — Rust benchmark "
                      "skipped. Install Rust >= 1.87 and make sure 'cargo' is on PATH.")
-endif()
-
-if(NODE_EXECUTABLE AND NPM_EXECUTABLE)
-    add_subdirectory(node)
-else()
-    message(WARNING "Node.js toolchain (node/npm) not found — Node.js benchmark "
-                     "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
 endif()
 
 if(ZIG_EXECUTABLE)

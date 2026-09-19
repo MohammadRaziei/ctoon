@@ -43,6 +43,7 @@ section:last-of-type { border-bottom: none; }
 .kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-2); font-weight: 700; margin-bottom: 10px; }
 h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
 .corpus-note { color: var(--text-dim); font-size: 13.5px; margin: 0 0 28px; }
+.env-note { color: var(--text-dim); font-size: 12.5px; margin: 10px 0 20px; }
 h3.op-title { font-size: 17px; margin: 36px 0 12px; }
 h3.op-title:first-of-type { margin-top: 8px; }
 .chart-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; height: 340px; margin-bottom: 24px; }
@@ -71,6 +72,10 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
   <p class="corpus-note">Corpus: {{ sec.corpus_files }} files, {{ "%.1f"|format(sec.corpus_bytes / 1048576) }} MB.</p>
 
   <div class="chart-panel"><canvas id="{{ sec.chart_id }}"></canvas></div>
+  {% if sec.has_memory %}
+  <h3 class="op-title">Peak memory (isolated per library)</h3>
+  <div class="chart-panel" style="height:260px"><canvas id="{{ sec.memory_chart_id }}"></canvas></div>
+  {% endif %}
   <table>
     <thead>
       <tr>
@@ -80,6 +85,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
         <th class="num">docs/s</th>
         <th class="num">Success rate</th>
         <th class="num">Total time (s)</th>
+        {% if sec.has_memory %}<th class="num">Peak RSS (MB)</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -91,12 +97,33 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
         <td class="num">{{ row.docs_per_sec }}</td>
         <td class="num">{{ row.success_rate }}%</td>
         <td class="num">{{ row.total_time_s }}</td>
+        {% if sec.has_memory %}<td class="num">{{ row.peak_rss_mb if row.peak_rss_mb is not none else "—" }}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </section>
 {% endfor %}
+
+{% if system_info %}
+<section>
+  <div class="kicker">Environment</div>
+  <h2>What machine these numbers ran on</h2>
+  <p class="env-note">Recorded automatically by <code>system_info.py</code> at run
+    time &mdash; not filled in by hand. Numbers above are only meaningful relative
+    to each other on this specific machine; they won't transfer directly to yours.</p>
+  <table>
+    <tbody>
+      <tr><td>CPU</td><td>{{ system_info.cpu_model }}</td></tr>
+      <tr><td>Logical cores</td><td>{{ system_info.logical_cores }}</td></tr>
+      {% if system_info.ram_gib %}<tr><td>RAM</td><td>{{ system_info.ram_gib }} GiB</td></tr>{% endif %}
+      <tr><td>Architecture</td><td>{{ system_info.architecture }}</td></tr>
+      <tr><td>OS</td><td>{{ system_info.os }}</td></tr>
+      <tr><td>Python</td><td>{{ system_info.python_implementation }} {{ system_info.python_version }}</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endif %}
 </div>
 
 <footer>ctoon benchmarks &middot; standalone report, no network or server needed to view</footer>

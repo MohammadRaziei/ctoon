@@ -9,6 +9,11 @@ else()
     cmake_path(APPEND VENV_DIR "bin" "pip" OUTPUT_VARIABLE VENV_PIP)
 endif()
 
+# Visible from report/CMakeLists.txt (a sibling directory) so the memory
+# harness can run this exact venv's python in isolation per library,
+# without re-deriving the venv path or re-installing anything.
+set(CTOON_PY_VENV_PYTHON "${VENV_PYTHON}" CACHE INTERNAL "ctoon python benchmark venv interpreter")
+
 # A real venv (not the system Python) — installs ctoon and toon_format
 # straight from their GitHub repos, exactly like every other language
 # fetches its dependencies here. Nothing comes from a local checkout.
