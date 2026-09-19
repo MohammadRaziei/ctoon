@@ -132,7 +132,17 @@ static int cmp_bench_file_ptr_by_len(const void *a, const void *b) {
  * sample and its round-tripped output is enough for a single-level-deep,
  * honest yes/no per library, the same check bench.py does. */
 #define ORDER_CHECK_MAX_KEYS 16
-static const char *ORDER_CHECK_SAMPLE_JSON =
+/* A char[] (not `const char *`) -- a real, separate, writable array
+   the compiler fills from the literal at load time, not a pointer
+   into read-only literal storage. ctoon_read_json's `dat` param is
+   deliberately `char *` (it supports in-situ parsing), so passing a
+   genuinely mutable buffer here is correct by construction: no
+   cast-away-const, no defensive copy, no core-library API change --
+   this stays entirely local to the benchmark. (flg=0 below means
+   CTOON_READ_INSITU is off, so this buffer isn't actually written
+   through anyway -- but it's still the right *type* to hand a
+   function whose contract says it might be.) */
+static char ORDER_CHECK_SAMPLE_JSON[] =
     "{\"zebra\": 1, \"apple\": 2, \"mango\": 3, "
     "\"nested\": {\"beta\": true, \"alpha\": false}, "
     "\"list\": [{\"z\": 1, \"a\": 2}, {\"z\": 3, \"a\": 4}]}";
@@ -531,8 +541,10 @@ static void bench_toonc_scaling(bench_file **sorted, size_t n) {
 }
 
 static void run_order_checks(void) {
-    ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-    ctoon_doc *doc1 = ctoon_read_json(ORDER_CHECK_SAMPLE_JSON, strlen(ORDER_CHECK_SAMPLE_JSON), 0, NULL, &rerr);
+    /* ctoon_read_json_const() -- the const-safe counterpart to
+       ctoon_read_json(), same pattern ctoon_read() already uses for
+       TOON input (see its own doc comment in ctoon.h). */
+    ctoon_doc *doc1 = ctoon_read_json_const(ORDER_CHECK_SAMPLE_JSON, strlen(ORDER_CHECK_SAMPLE_JSON), 0);
     if (!doc1) { record_order_check("ctoon", false, "sample failed to parse as JSON"); return; }
     size_t toon_len = 0;
     char *toon = ctoon_write(doc1, &toon_len);

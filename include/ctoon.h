@@ -1434,6 +1434,31 @@ ctoon_api ctoon_doc *ctoon_read_json(char *dat, size_t len,
                                       const ctoon_alc *alc,
                                       ctoon_read_err *err);
 
+/**
+ * Parse a JSON string, without a mutable buffer.
+ *
+ * The `ctoon_read_json()` counterpart to `ctoon_read()` above: same
+ * simplified signature (no `alc`/`err`), same trick (clears
+ * `CTOON_READ_INSITU` and casts constness away internally, since
+ * `dat` is never written without that flag).
+ *
+ * @param dat  Input bytes (UTF-8, null-terminator not required).
+ *    If this parameter is NULL, the function will fail and return NULL.
+ * @param len  Byte count. If this parameter is 0, the function will
+ *    fail and return NULL.
+ * @param flg  CTOON_READ_* flags (BOM, etc.) — CTOON_READ_INSITU is
+ *    always cleared, regardless of what's passed here.
+ * @return     A new document, or NULL if an error occurs.
+ *    When it's no longer needed, it should be freed with `ctoon_doc_free()`.
+ */
+ctoon_api_inline ctoon_doc *ctoon_read_json_const(const char *dat,
+                                                   size_t len,
+                                                   ctoon_read_flag flg) {
+    flg &= ~CTOON_READ_INSITU; /* const string cannot be modified */
+    return ctoon_read_json((char *)(void *)(size_t)(const void *)dat,
+                            len, flg, NULL, NULL);
+}
+
 /** Parse a JSON file from disk. */
 ctoon_api ctoon_doc *ctoon_read_json_file(const char *path,
                                            ctoon_read_flag flg,
