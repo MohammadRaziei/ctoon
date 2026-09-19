@@ -5,11 +5,20 @@
 # the fetched package's native shared lib (deps/build.jl) happens
 # automatically as part of `Pkg.add` — same as it does when developing
 # the binding directly out of the main repo checkout.
+#
+# deps/build.jl fetches the core C source (src/ctoon.c, include/ctoon.h)
+# from GitHub at build time too (see its own comment for why); by
+# default that means whatever the latest tagged *release* is. A
+# benchmark run should measure this repo's own current master instead
+# — otherwise "run the benchmark" and "what commit does it measure"
+# quietly drift apart the moment a new release is tagged — so
+# CTOON_JULIA_CORE_REF=master is set for this one build.
 add_custom_target(ctoon_benchmarks_julia_deps
-    COMMAND ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env CTOON_JULIA_CORE_REF=master
+            ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/fetch_deps.jl ${CTOON_GITHUB_URL}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Fetching Julia benchmark dependency (ctoon) from GitHub"
+    COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub"
     USES_TERMINAL
 )
 

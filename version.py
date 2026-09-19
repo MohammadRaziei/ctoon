@@ -34,6 +34,7 @@ HEADER_ABS_PATH = Path(__file__).parent / HEADER_PATH
 # call below also rewrites these.
 CARGO_TOML_ABS_PATH = Path(__file__).parent / "Cargo.toml"
 ZON_ABS_PATH = Path(__file__).parent / "build.zig.zon"
+JULIA_PROJECT_TOML_ABS_PATH = Path(__file__).parent / "src" / "bindings" / "julia" / "Project.toml"
 
 # ============================================================
 # Utilities
@@ -73,11 +74,15 @@ def write_version(version, text):
     sync_manifest_versions(version_str(version))
 
 def sync_manifest_versions(v):
-    """Keep Cargo.toml's and build.zig.zon's version string literals in
-    sync with the header. Unlike pyproject.toml, neither manifest format
-    supports reading the version dynamically from another file at
-    build/publish time, so this rewrite is the only way to keep them
-    from drifting apart."""
+    """Keep Cargo.toml's, build.zig.zon's, and the Julia binding's
+    Project.toml's version string literals in sync with the header.
+    None of these formats support reading the version dynamically from
+    another file at build/publish time (unlike pyproject.toml), so this
+    rewrite is the only way to keep them from drifting apart -- and
+    deps/build.jl (the Julia binding's build script) depends on
+    Project.toml's version being current: it fetches the matching
+    "v{version}" GitHub tag for the core C source, so a stale version
+    here means it fetches the wrong release."""
     if CARGO_TOML_ABS_PATH.exists():
         text = CARGO_TOML_ABS_PATH.read_text()
         new_text = re.sub(
@@ -99,6 +104,17 @@ def sync_manifest_versions(v):
         )
         if new_text != text:
             ZON_ABS_PATH.write_text(new_text)
+
+    if JULIA_PROJECT_TOML_ABS_PATH.exists():
+        text = JULIA_PROJECT_TOML_ABS_PATH.read_text()
+        new_text = re.sub(
+            r'(?m)^version = "[^"]*"',
+            f'version = "{v}"',
+            text,
+            count=1,
+        )
+        if new_text != text:
+            JULIA_PROJECT_TOML_ABS_PATH.write_text(new_text)
 
 def version_str(v):
     return f"{v['MAJOR']}.{v['MINOR']}.{v['PATCH']}"
@@ -205,7 +221,7 @@ def cmd_tag(args):
         write_version(version, text)
         new_version = version_str(version)
         tag_name = f"v{new_version}"
-        run(["git", "add", str(HEADER_ABS_PATH), str(CARGO_TOML_ABS_PATH), str(ZON_ABS_PATH)])
+        run(["git", "add", str(HEADER_ABS_PATH), str(CARGO_TOML_ABS_PATH), str(ZON_ABS_PATH), str(JULIA_PROJECT_TOML_ABS_PATH)])
         run(["git", "commit", "-m", f"Release {new_version}"])
         run(["git", "tag", tag_name])
         print(f"Committed and tagged {tag_name}")
