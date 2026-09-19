@@ -3,5 +3,14 @@ uuid = "7c8e6b1a-0c1e-4a9e-9c3e-c1000ffee001" # placeholder — regenerate with 
 authors = ["mohammadraziei"]
 version = "0.7.0"
 
+[deps]
+# Downloads is stdlib, but deps/build.jl runs in Pkg's own isolated
+# build sandbox (only this package's own [deps] are visible there —
+# not whatever's available in the environment that triggered the
+# build), so it still has to be declared here explicitly or
+# `using Downloads` inside build.jl fails with "Package Downloads not
+# found in current path", even though it's part of every Julia install.
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
 [compat]
 julia = "1.6"
