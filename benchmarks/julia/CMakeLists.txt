@@ -1,22 +1,27 @@
 # Fetches ctoon's own Julia binding straight from GitHub — the same way
-# any real Julia user would install it, via a git URL + subdir (Pkg's
-# equivalent of `go get`/`pip install git+...`; CToon.jl doesn't need to
-# be registered in Julia's General registry for this to work). Building
-# the fetched package's native shared lib (deps/build.jl) happens
-# automatically as part of `Pkg.add` — same as it does when developing
-# the binding directly out of the main repo checkout.
+# any real Julia user would install it, declared in this environment's
+# own Project.toml (see its [sources] entry) rather than an imperative
+# `Pkg.add(url=..., subdir=...)` call: modern Pkg resolves a [sources]
+# entry the same way for an unregistered git+subdir dependency, and a
+# declared entry is one less script to maintain. Pinned to rev="master"
+# right in Project.toml, since this benchmark should always measure
+# ctoon's current master, not whatever the last tagged release happened
+# to be — every checkout of this repo gets that same pin, so there's no
+# separate "make sure this build measures master" step to remember.
+# Building the fetched package's native shared lib (deps/build.jl)
+# happens automatically as part of `Pkg.instantiate()`.
 #
-# deps/build.jl fetches the core C source (src/ctoon.c, include/ctoon.h)
-# from GitHub at build time too (see its own comment for why); by
-# default that means whatever the latest tagged *release* is. A
-# benchmark run should measure this repo's own current master instead
-# — otherwise "run the benchmark" and "what commit does it measure"
-# quietly drift apart the moment a new release is tagged — so
-# CTOON_JULIA_CORE_REF=master is set for this one build.
+# That's the Julia *binding* (CToon.jl itself). deps/build.jl separately
+# fetches the core C source (src/ctoon.c, include/ctoon.h) it compiles
+# against — a different pin, for a different piece — and defaults to
+# whatever this package's own Project.toml version says is the latest
+# *release*. Same reasoning applies there: a benchmark run should
+# measure current master, not a possibly-older tagged release, so
+# CTOON_JULIA_CORE_REF=master is set for this one build too.
 add_custom_target(ctoon_benchmarks_julia_deps
     COMMAND ${CMAKE_COMMAND} -E env CTOON_JULIA_CORE_REF=master
             ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/fetch_deps.jl ${CTOON_GITHUB_URL}
+            ${CMAKE_CURRENT_SOURCE_DIR}/instantiate_deps.jl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub"
     USES_TERMINAL
