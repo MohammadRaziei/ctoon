@@ -27,16 +27,22 @@ cmake --build build-bench --target ctoon_benchmarks
 
 `ctoon_benchmarks` is the umbrella target: it fetches every dependency
 (the corpus, and every language's own libraries), runs every benchmark
-whose language toolchain is present (via `ctoon_bench_langs`), measures
-peak memory per (language, library) in isolated fresh processes (via
-`ctoon_bench_memory` — see "Memory" below), records the machine it ran
-on (via `ctoon_bench_system_info`), and — once all of that finishes —
-renders one standalone HTML report combining everything (via
+whose language toolchain is present (via `ctoon_bench_langs`), records
+the machine it ran on (via `ctoon_bench_system_info`), and — once that
+finishes — renders one standalone HTML report combining everything (via
 `ctoon_bench_report`) to `build-bench/results/report.html`. Chart.js and
 every language's JSON are embedded inline, so the file needs no server
 or network to view and is safe to send around on its own.
 Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
 same CMake-fetched Chart.js, same jinja2-rendered single-file output.
+
+The report draws **three line charts per language** — one per operation
+(JSON→TOON, TOON→JSON, roundtrip) — with one line per library, markers
+at each point, x-axis = input size. That size axis comes from splitting
+the corpus into 5 equal-count buckets by file size and re-measuring each
+bucket on its own (fewer reps than the main comparison); see "Scaling"
+below. Peak-memory-per-library is a separate, **opt-in** bar chart — see
+"Memory" below.
 
 To run just one language (skips the report):
 
@@ -70,29 +76,98 @@ JSON file to `build-bench/results/<language>.json`:
     {"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 87.0,
      "docs_per_sec": 12345.0, "success_rate": 1.0, "total_time_s": 1.23},
     ...
+  ],
+  "scaling": [
+    {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 1051.0,
+     "throughput_mb_s": 124.1, "docs_per_sec": 119639.3, "success_rate": 1.0},
+    ...
   ]
 }
 ```
+
+`"results"` is one aggregate number per (library, operation) over the
+*whole* corpus, at the full `REPEATS` rep count — this is the table in
+the report and in the terminal output. `"scaling"` is the same
+(library, operation) pairs measured again on 5 size-sorted buckets of
+that same corpus, at a lower rep count (`SCALING_REPS`, default 5) since
+it runs 5x more passes — this is only used for the line charts. A
+language with no `"scaling"` array (not wired up for that language yet)
+just gets no line charts in its report section; everything else about it
+still renders normally.
 
 The JSON files are kept **separate per language** rather than merged —
 each language tests a different set of libraries and has its own corpus
 loading overhead, so there's no meaningful single "language-agnostic"
 number to combine them into.
 
+## Key order preservation
+
+Every language runs one extra, fixed check: a deliberately
+non-alphabetical sample (nested object, array of objects) round-tripped
+through each library, then checked with a `"key":` regex/scanner against
+the JSON text — not a full structural diff, just "did the keys come back
+in the same order they went in". Recorded as an `"order_check"` array
+(`{library, preserved, detail}`) in each language's results JSON, and
+rendered as its own small ✓/✗ table under that language's results table
+in the report — with the sample itself shown once, near the top of the
+report, so it's clear exactly what was tested. `detail` is empty on
+success; on failure it says what came back instead (or, more likely for
+a library like TOONc that only *reads* TOON, that a step in the chain
+threw or crashed).
+
+## Scaling
+
+Wired up for C, C++, and Python so far. Each of those, after the normal
+whole-corpus comparison, sorts the corpus by file size, splits it into
+`SCALING_NBUCKETS` (5) equal-*count* buckets, and re-measures every
+(library, operation) pair on each bucket at a reduced `SCALING_REPS` (5,
+vs. the normal `REPEATS`/20) — a bucket's x-axis position is the
+*median* file size within it. This is what feeds the report's three
+line charts per language (one per operation, one line per library,
+marker per bucket).
+
+Adding it to a language not yet wired up means: (1) sort the loaded
+corpus by size and split into `SCALING_NBUCKETS` slices — `bench.c` does
+this via a sorted array of pointers so it never has to duplicate or
+reorder the original file data, `bench.py` just does `sorted(files,
+key=...)`; (2) re-run each (library, operation) on each slice at
+`SCALING_REPS` and record `{library, operation, size_bytes,
+throughput_mb_s, docs_per_sec, success_rate}` into a `"scaling"` array
+in that language's results JSON, alongside the existing `"results"`
+array (see the schema above); (3) nothing to change in
+`report/CMakeLists.txt` or `generate_report.py` — the report already
+draws line charts for whatever `"scaling"` data it finds, and quietly
+skips the line charts for a language that has none.
+
 ## Memory
 
-Besides throughput, `ctoon_bench_memory` measures **peak RSS per
-(language, library)** — for now, C, C++, and Python (the languages that
-support isolated per-library runs so far; see below). Run on its own:
+Besides throughput, this suite can measure **peak RSS per (language,
+library)** — for now, C, C++, and Python (the languages that support
+isolated per-library runs so far; see below). It's **off by default**
+(reruns every library several times over in fresh processes just to
+read peak RSS, which roughly doubles that language's benchmark wall time
+for information most people don't need on every run) — turn it on at
+configure time:
+
+```bash
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DCTOON_BENCH_MEMORY=ON
+cmake --build build-bench --target ctoon_benchmarks
+```
+
+Or run it on its own against an already-configured build:
 
 ```bash
 cmake --build build-bench --target ctoon_bench_memory
 ```
 
-That adds a `"peak_rss_mb"` field onto that library's rows in the
+When on, it adds a `"peak_rss_mb"` field onto that library's rows in the
 existing `<language>.json` files (merged in place, not a separate
 file) — one number per library, since it's a whole-process high-water
-mark, not something finer-grained than that.
+mark, not something finer-grained than that — and the report grows a
+peak-memory bar chart and table column per language that has it. When
+off (the default), that field, chart, and column are simply absent —
+`ctoon_bench_report` doesn't depend on `ctoon_bench_memory` at all in
+that case.
 
 **Why isolated processes, not just reading memory after the normal
 run:** the normal C and Python runs benchmark more than one library

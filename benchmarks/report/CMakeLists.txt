@@ -76,39 +76,53 @@ add_dependencies(ctoon_bench_system_info ctoon_bench_report_venv)
 # venv was configured) get a --*-exe/--py-python flag; the others are
 # silently left out of collect_memory.py's argv, same "only what's
 # configured" convention as everywhere else in this suite.
+#
+# Off by default (CTOON_BENCH_MEMORY): it reruns every library several
+# times over in fresh processes just to read peak RSS, which roughly
+# doubles that language's benchmark wall time for information most
+# people don't need on every run. Turn on with:
+#   cmake -S . -B build-bench -DCTOON_BENCH_MEMORY=ON
 
-set(MEMORY_STAMP "${CMAKE_CURRENT_BINARY_DIR}/_memory.stamp")
-set(MEMORY_ARGS "")
-set(MEMORY_DEPS "")
+option(CTOON_BENCH_MEMORY "Measure peak memory per (language, library) in isolated processes" OFF)
 
-if(TARGET bench_c)
-  list(APPEND MEMORY_ARGS --c-exe "$<TARGET_FILE:bench_c>" --c-manifest "${CTOON_BENCH_MANIFEST}")
-  list(APPEND MEMORY_DEPS ctoon_benchmarks_c)
-endif()
-if(TARGET bench_cpp)
-  list(APPEND MEMORY_ARGS --cpp-exe "$<TARGET_FILE:bench_cpp>")
-  list(APPEND MEMORY_DEPS ctoon_benchmarks_cpp)
-endif()
-if(DEFINED CTOON_PY_VENV_PYTHON AND TARGET ctoon_benchmarks_python)
-  list(APPEND MEMORY_ARGS --py-python "${CTOON_PY_VENV_PYTHON}"
-                          --py-script "${CMAKE_CURRENT_SOURCE_DIR}/../python/bench.py"
-                          --py-manifest "${CTOON_BENCH_MANIFEST}")
-  list(APPEND MEMORY_DEPS ctoon_benchmarks_python)
-endif()
+set(MEMORY_STAMP "")
+if(CTOON_BENCH_MEMORY)
+  set(MEMORY_STAMP "${CMAKE_CURRENT_BINARY_DIR}/_memory.stamp")
+  set(MEMORY_ARGS "")
+  set(MEMORY_DEPS "")
 
-add_custom_command(
-  OUTPUT "${MEMORY_STAMP}"
-  COMMAND "${REPORT_VENV_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
-          "${CTOON_BENCH_RESULTS_DIR}" ${MEMORY_ARGS}
-  COMMAND ${CMAKE_COMMAND} -E touch "${MEMORY_STAMP}"
-  DEPENDS "${REPORT_VENV_STAMP}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
-  COMMENT "ctoon benchmarks: measuring peak memory per library (isolated processes)"
-  USES_TERMINAL
-)
-add_custom_target(ctoon_bench_memory DEPENDS "${MEMORY_STAMP}")
-add_dependencies(ctoon_bench_memory ctoon_bench_report_venv)
-if(MEMORY_DEPS)
-  add_dependencies(ctoon_bench_memory ${MEMORY_DEPS})
+  if(TARGET bench_c)
+    list(APPEND MEMORY_ARGS --c-exe "$<TARGET_FILE:bench_c>" --c-manifest "${CTOON_BENCH_MANIFEST}")
+    list(APPEND MEMORY_DEPS ctoon_benchmarks_c)
+  endif()
+  if(TARGET bench_cpp)
+    list(APPEND MEMORY_ARGS --cpp-exe "$<TARGET_FILE:bench_cpp>")
+    list(APPEND MEMORY_DEPS ctoon_benchmarks_cpp)
+  endif()
+  if(DEFINED CTOON_PY_VENV_PYTHON AND TARGET ctoon_benchmarks_python)
+    list(APPEND MEMORY_ARGS --py-python "${CTOON_PY_VENV_PYTHON}"
+                            --py-script "${CMAKE_CURRENT_SOURCE_DIR}/../python/bench.py"
+                            --py-manifest "${CTOON_BENCH_MANIFEST}")
+    list(APPEND MEMORY_DEPS ctoon_benchmarks_python)
+  endif()
+
+  add_custom_command(
+    OUTPUT "${MEMORY_STAMP}"
+    COMMAND "${REPORT_VENV_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
+            "${CTOON_BENCH_RESULTS_DIR}" ${MEMORY_ARGS}
+    COMMAND ${CMAKE_COMMAND} -E touch "${MEMORY_STAMP}"
+    DEPENDS "${REPORT_VENV_STAMP}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
+    COMMENT "ctoon benchmarks: measuring peak memory per library (isolated processes)"
+    USES_TERMINAL
+  )
+  add_custom_target(ctoon_bench_memory DEPENDS "${MEMORY_STAMP}")
+  add_dependencies(ctoon_bench_memory ctoon_bench_report_venv)
+  if(MEMORY_DEPS)
+    add_dependencies(ctoon_bench_memory ${MEMORY_DEPS})
+  endif()
+else()
+  message(STATUS "ctoon benchmarks: memory measurement is OFF (CTOON_BENCH_MEMORY=OFF) — "
+                  "peak_rss_mb will not appear in the report. Enable with -DCTOON_BENCH_MEMORY=ON.")
 endif()
 
 # ------------------------------------------------------------------ report --
@@ -131,7 +145,10 @@ add_custom_command(
   USES_TERMINAL
 )
 add_custom_target(ctoon_bench_report DEPENDS "${REPORT_HTML}")
-add_dependencies(ctoon_bench_report ctoon_bench_report_venv ctoon_bench_chartjs ctoon_bench_system_info ctoon_bench_memory)
+add_dependencies(ctoon_bench_report ctoon_bench_report_venv ctoon_bench_chartjs ctoon_bench_system_info)
+if(CTOON_BENCH_MEMORY)
+  add_dependencies(ctoon_bench_report ctoon_bench_memory)
+endif()
 
 # The report target always runs *after* whichever language benchmarks
 # were actually configured (see toolchain detection in the parent

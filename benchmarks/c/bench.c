@@ -86,6 +86,104 @@ static bench_result g_results[16];
 static int g_result_count = 0;
 static FILE *g_log = NULL;
 
+/* Scaling: same (library, operation) pairs, but measured on NBUCKETS
+   subsets of the corpus split by file size, so the report can plot
+   throughput vs. input size as a line, not just one aggregate bar. */
+#define SCALING_NBUCKETS 5
+#define SCALING_REPS 5
+
+typedef struct {
+    char   library[32];
+    char   operation[16];
+    double size_bytes;      /* representative (median) size of this bucket */
+    double throughput_mb_s;
+    double docs_per_sec;
+    double success_rate;
+} scaling_result;
+
+static scaling_result g_scaling[3 /*ops*/ * 2 /*libs*/ * SCALING_NBUCKETS];
+static int g_scaling_count = 0;
+
+static void record_scaling(const char *library, const char *operation,
+                            double size_bytes, double bytes, long ops,
+                            double seconds, long attempted) {
+    scaling_result *r = &g_scaling[g_scaling_count++];
+    snprintf(r->library, sizeof(r->library), "%s", library);
+    snprintf(r->operation, sizeof(r->operation), "%s", operation);
+    r->size_bytes = size_bytes;
+    r->throughput_mb_s = ops ? bytes / seconds / 1e6 : 0.0;
+    r->docs_per_sec = (double)ops / seconds;
+    r->success_rate = attempted ? (double)ops / (double)attempted : 0.0;
+}
+
+static int cmp_bench_file_ptr_by_len(const void *a, const void *b) {
+    const bench_file *fa = *(const bench_file * const *)a;
+    const bench_file *fb = *(const bench_file * const *)b;
+    if (fa->len < fb->len) return -1;
+    if (fa->len > fb->len) return 1;
+    return 0;
+}
+
+/* ------------------------------------------------------------ order check --
+ * A fixed, deliberately non-alphabetical sample -- if a library reorders
+ * keys, this catches it. extract_key_order() is a small hand-written
+ * scanner (no regex dependency) that pulls out the sequence of `"key":`
+ * occurrences from a JSON text; comparing that sequence between the
+ * sample and its round-tripped output is enough for a single-level-deep,
+ * honest yes/no per library, the same check bench.py does. */
+#define ORDER_CHECK_MAX_KEYS 16
+static const char *ORDER_CHECK_SAMPLE_JSON =
+    "{\"zebra\": 1, \"apple\": 2, \"mango\": 3, "
+    "\"nested\": {\"beta\": true, \"alpha\": false}, "
+    "\"list\": [{\"z\": 1, \"a\": 2}, {\"z\": 3, \"a\": 4}]}";
+
+static int extract_key_order(const char *text, char keys[][32]) {
+    int n = 0;
+    const char *p = text;
+    while (*p && n < ORDER_CHECK_MAX_KEYS) {
+        if (*p == '"') {
+            const char *start = p + 1;
+            const char *end = strchr(start, '"');
+            if (!end) break;
+            const char *q = end + 1;
+            while (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r') q++;
+            if (*q == ':') {
+                size_t len = (size_t)(end - start);
+                if (len >= sizeof(keys[0])) len = sizeof(keys[0]) - 1;
+                memcpy(keys[n], start, len);
+                keys[n][len] = '\0';
+                n++;
+            }
+            p = end + 1;
+        } else {
+            p++;
+        }
+    }
+    return n;
+}
+
+static bool order_preserved(const char *output_json) {
+    char expected[ORDER_CHECK_MAX_KEYS][32], got[ORDER_CHECK_MAX_KEYS][32];
+    int n_expected = extract_key_order(ORDER_CHECK_SAMPLE_JSON, expected);
+    int n_got = extract_key_order(output_json, got);
+    if (n_expected != n_got) return false;
+    for (int i = 0; i < n_expected; i++) {
+        if (strcmp(expected[i], got[i]) != 0) return false;
+    }
+    return true;
+}
+
+typedef struct { char library[32]; bool preserved; char detail[64]; } order_check_result;
+static order_check_result g_order_checks[4];
+static int g_order_check_count = 0;
+
+static void record_order_check(const char *library, bool preserved, const char *detail) {
+    order_check_result *r = &g_order_checks[g_order_check_count++];
+    snprintf(r->library, sizeof(r->library), "%s", library);
+    r->preserved = preserved;
+    snprintf(r->detail, sizeof(r->detail), "%s", detail ? detail : "");
+}
+
 static void log_fail(const char *library, const char *operation,
                       const char *path, const char *err_msg) {
     if (!g_log) return;
@@ -283,6 +381,207 @@ static void bench_toonc(bench_file *files, size_t n, size_t pre_ok) {
     free(safe);
 }
 
+/* ---------------------------------------------------------------- scaling --
+ * Sort the corpus by file size, split into SCALING_NBUCKETS equal-COUNT
+ * buckets, and re-measure each bucket on its own (fewer reps than the
+ * main comparison -- this runs NBUCKETS times, so keeping SCALING_REPS
+ * small keeps the whole benchmark's wall time reasonable). Each bucket's
+ * x-axis position is the MEDIAN file size within it, not its edges --
+ * a single representative point per bucket, for a line chart.
+ */
+static void bench_ctoon_scaling(bench_file **sorted, size_t n) {
+    size_t base = n / SCALING_NBUCKETS, rem = n % SCALING_NBUCKETS, start = 0;
+    for (int b = 0; b < SCALING_NBUCKETS; b++) {
+        size_t count = base + (b < (int)rem ? 1 : 0);
+        if (count == 0) { continue; }
+        bench_file **bucket = sorted + start;
+        double size_bytes = (double)bucket[count / 2]->len;
+
+        long ops = 0; double bytes = 0;
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+                ctoon_doc *doc = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
+                if (!doc) continue;
+                size_t len = 0;
+                char *toon = ctoon_write(doc, &len);
+                if (toon) { free(toon); ops++; bytes += (double)bucket[i]->len; }
+                ctoon_doc_free(doc);
+            }
+        }
+        double t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+                ctoon_doc *doc = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
+                if (!doc) continue;
+                size_t len = 0;
+                char *toon = ctoon_write(doc, &len);
+                if (toon) free(toon);
+                ctoon_doc_free(doc);
+            }
+        }
+        double seconds = now_seconds() - t0;
+        record_scaling("ctoon", "json_to_toon", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+
+        ops = 0; bytes = 0; t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                if (!bucket[i]->toon) continue;
+                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+                ctoon_doc *doc = ctoon_read(bucket[i]->toon, bucket[i]->toon_len, 0);
+                if (!doc) continue;
+                size_t len = 0;
+                ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+                char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
+                if (json) { free(json); ops++; bytes += (double)bucket[i]->toon_len; }
+                ctoon_doc_free(doc);
+            }
+        }
+        seconds = now_seconds() - t0;
+        record_scaling("ctoon", "toon_to_json", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+
+        ops = 0; bytes = 0; t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+                ctoon_doc *doc1 = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
+                if (!doc1) continue;
+                size_t tlen = 0;
+                char *toon = ctoon_write(doc1, &tlen);
+                ctoon_doc_free(doc1);
+                if (!toon) continue;
+                ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
+                free(toon);
+                if (!doc2) continue;
+                size_t jlen = 0;
+                ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+                char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
+                ctoon_doc_free(doc2);
+                if (json) { free(json); ops++; bytes += (double)bucket[i]->len; }
+            }
+        }
+        seconds = now_seconds() - t0;
+        record_scaling("ctoon", "roundtrip", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+
+        start += count;
+    }
+}
+
+static void bench_toonc_scaling(bench_file **sorted, size_t n) {
+    fflush(stdout);
+    int devnull = open("/dev/null", O_WRONLY);
+    int saved_stdout = dup(STDOUT_FILENO);
+    int saved_stderr = dup(STDERR_FILENO);
+    if (devnull >= 0) { dup2(devnull, STDOUT_FILENO); dup2(devnull, STDERR_FILENO); }
+
+    size_t base = n / SCALING_NBUCKETS, rem = n % SCALING_NBUCKETS, start = 0;
+    for (int b = 0; b < SCALING_NBUCKETS; b++) {
+        size_t count = base + (b < (int)rem ? 1 : 0);
+        if (count == 0) { continue; }
+        bench_file **bucket = sorted + start;
+        double size_bytes = (double)bucket[count / 2]->len;
+
+        /* Same crash-safety probe as bench_toonc(), scoped to this bucket. */
+        char *safe = (char *)calloc(count, 1);
+        for (size_t i = 0; i < count; i++) {
+            if (!bucket[i]->toon) continue;
+            pid_t pid = fork();
+            if (pid == 0) {
+                toonObject *obj = TOONc_parseString(bucket[i]->toon);
+                if (obj) {
+                    char *membuf = NULL; size_t memsize = 0;
+                    FILE *mem = open_memstream(&membuf, &memsize);
+                    if (mem) { TOONc_toJSON(obj, mem, 0); fclose(mem); free(membuf); }
+                    TOONc_free(obj);
+                }
+                _exit(obj ? 0 : 1);
+            } else if (pid > 0) {
+                int status = 0;
+                waitpid(pid, &status, 0);
+                if (WIFEXITED(status) && WEXITSTATUS(status) == 0) safe[i] = 1;
+            }
+        }
+
+        long ops = 0; double bytes = 0;
+        double t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                if (!safe[i]) continue;
+                toonObject *obj = TOONc_parseString(bucket[i]->toon);
+                if (!obj) continue;
+                char *membuf = NULL; size_t memsize = 0;
+                FILE *mem = open_memstream(&membuf, &memsize);
+                if (mem) { TOONc_toJSON(obj, mem, 0); fclose(mem); free(membuf); ops++; bytes += (double)bucket[i]->toon_len; }
+                TOONc_free(obj);
+            }
+        }
+        double seconds = now_seconds() - t0;
+        record_scaling("TOONc", "toon_to_json", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+        free(safe);
+        start += count;
+    }
+
+    fflush(stdout);
+    if (devnull >= 0) {
+        dup2(saved_stdout, STDOUT_FILENO);
+        dup2(saved_stderr, STDERR_FILENO);
+        close(devnull); close(saved_stdout); close(saved_stderr);
+    }
+}
+
+static void run_order_checks(void) {
+    ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+    ctoon_doc *doc1 = ctoon_read_json(ORDER_CHECK_SAMPLE_JSON, strlen(ORDER_CHECK_SAMPLE_JSON), 0, NULL, &rerr);
+    if (!doc1) { record_order_check("ctoon", false, "sample failed to parse as JSON"); return; }
+    size_t toon_len = 0;
+    char *toon = ctoon_write(doc1, &toon_len);
+    ctoon_doc_free(doc1);
+    if (!toon) { record_order_check("ctoon", false, "ctoon_write failed on sample"); return; }
+
+    ctoon_doc *doc2 = ctoon_read(toon, toon_len, 0);
+    if (doc2) {
+        size_t jlen = 0;
+        ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+        char *json_out = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
+        ctoon_doc_free(doc2);
+        if (json_out) {
+            record_order_check("ctoon", order_preserved(json_out), "");
+            free(json_out);
+        } else {
+            record_order_check("ctoon", false, "ctoon_doc_to_json failed on roundtrip");
+        }
+    } else {
+        record_order_check("ctoon", false, "ctoon_read failed on its own TOON output");
+    }
+
+    /* TOONc has no JSON parser at all, so it can't do a JSON->TOON->JSON
+       roundtrip on its own -- it's only fed the TOON text ctoon already
+       produced above (same as bench_toonc() does for the timed run). */
+    fflush(stdout);
+    int devnull = open("/dev/null", O_WRONLY);
+    int saved_stdout = dup(STDOUT_FILENO);
+    if (devnull >= 0) dup2(devnull, STDOUT_FILENO);
+    toonObject *obj = TOONc_parseString(toon);
+    if (devnull >= 0) { dup2(saved_stdout, STDOUT_FILENO); close(devnull); close(saved_stdout); }
+    if (obj) {
+        char *membuf = NULL; size_t memsize = 0;
+        FILE *mem = open_memstream(&membuf, &memsize);
+        if (mem) {
+            TOONc_toJSON(obj, mem, 0);
+            fclose(mem);
+            record_order_check("TOONc", order_preserved(membuf), "");
+            free(membuf);
+        } else {
+            record_order_check("TOONc", false, "open_memstream failed");
+        }
+        TOONc_free(obj);
+    } else {
+        record_order_check("TOONc", false, "TOONc_parseString failed on ctoon's TOON output for the sample");
+    }
+    free(toon);
+}
+
 static void write_results_json(size_t n_files, size_t total_json_bytes) {
     FILE *f = fopen(CTOON_BENCH_RESULTS_JSON, "w");
     if (!f) { fprintf(stderr, "warning: could not write %s\n", CTOON_BENCH_RESULTS_JSON); return; }
@@ -297,6 +596,26 @@ static void write_results_json(size_t n_files, size_t total_json_bytes) {
             "\"success_rate\": %.4f, \"total_time_s\": %.6f}%s\n",
             r->library, r->operation, r->throughput_mb_s, r->docs_per_sec,
             r->success_rate, r->total_time_s, (i + 1 < g_result_count) ? "," : "");
+    }
+    fprintf(f, "  ]\n,");
+    fprintf(f, "\n  \"scaling\": [\n");
+    for (int i = 0; i < g_scaling_count; i++) {
+        scaling_result *r = &g_scaling[i];
+        fprintf(f,
+            "    {\"library\": \"%s\", \"operation\": \"%s\", "
+            "\"size_bytes\": %.1f, \"throughput_mb_s\": %.4f, "
+            "\"docs_per_sec\": %.2f, \"success_rate\": %.4f}%s\n",
+            r->library, r->operation, r->size_bytes, r->throughput_mb_s,
+            r->docs_per_sec, r->success_rate, (i + 1 < g_scaling_count) ? "," : "");
+    }
+    fprintf(f, "  ]\n,");
+    fprintf(f, "\n  \"order_check\": [\n");
+    for (int i = 0; i < g_order_check_count; i++) {
+        order_check_result *r = &g_order_checks[i];
+        fprintf(f,
+            "    {\"library\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
+            r->library, r->preserved ? "true" : "false", r->detail,
+            (i + 1 < g_order_check_count) ? "," : "");
     }
     fprintf(f, "  ]\n}\n");
     fclose(f);
@@ -379,6 +698,20 @@ int main(int argc, char **argv) {
     }
     if (run_ctoon) bench_ctoon(files, n);
     if (run_toonc) bench_toonc(files, n, pre_ok);
+
+    /* Scaling: same libraries, re-measured across size buckets so the
+       report can plot throughput vs. input size. Skipped in memory-only
+       mode (CTOON_BENCH_ONLY set) -- that run only needs a peak RSS
+       number, not more timing work. */
+    if (!only || !only[0]) {
+        bench_file **sorted = (bench_file **)malloc(n * sizeof(bench_file *));
+        for (size_t i = 0; i < n; i++) sorted[i] = &files[i];
+        qsort(sorted, n, sizeof(bench_file *), cmp_bench_file_ptr_by_len);
+        bench_ctoon_scaling(sorted, n);
+        bench_toonc_scaling(sorted, n);
+        free(sorted);
+        run_order_checks();
+    }
 
     if (!only || !only[0]) write_results_json(n, total_json_bytes);
 

@@ -41,6 +41,11 @@ CTOON_COLOR = "#5b8cff"  # fixed across every chart, in every language --
                           # visual anchor so the same bar is always the
                           # same color from section to section.
 
+ORDER_CHECK_SAMPLE = (
+    '{"zebra": 1, "apple": 2, "mango": 3, "nested": {"beta": true, "alpha": false}, '
+    '"list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}'
+)  # same literal string every language's bench runner checks against
+
 
 def _load_all(results_dir):
     """Every *.json in results_dir except system_info.json is one
@@ -65,35 +70,51 @@ def _lib_color(lib, lib_order):
     return PALETTE[idx % len(PALETTE)]
 
 
+def _fmt_size(n):
+    if n >= 1024 * 1024:
+        return f"{n / (1024 * 1024):.1f} MB"
+    if n >= 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n:.0f} B"
+
+
 def _build_language_section(lang_data):
-    """One chart per language: x-axis = operation (json_to_toon,
-    toon_to_json, roundtrip), one dataset (bar series) per library, so
-    all three operations sit side by side and every library --
-    including ctoon itself -- is just one more bar, not singled out."""
+    """Three line charts per language, one per operation (json_to_toon,
+    toon_to_json, roundtrip) -- x-axis is input size (median size of a
+    corpus-size bucket, see bench.c/.cpp/.py's "scaling" pass), one line
+    with markers per library, so the shape of the speed-vs-size curve is
+    directly comparable across libraries. Falls back to no line charts
+    for a language with no "scaling" data (nothing wired up yet)."""
     language = lang_data["language"]
     corpus = lang_data.get("corpus", {})
     results = lang_data["results"]
+    scaling = lang_data.get("scaling", [])
 
     libs_seen = []
     for r in results:
         if r["library"] not in libs_seen:
             libs_seen.append(r["library"])
 
+    # Aggregate bar chart: one dataset (bar) per library, x = operation,
+    # values = throughput over the WHOLE corpus at full rep count (the
+    # same numbers as the table below) -- the single-number summary,
+    # shown above the size-scaling line charts rather than instead of them.
     present_ops = [op for op in OPERATIONS if any(r["operation"] == op for r in results)]
-    op_labels = [OP_TITLES.get(op, op) for op in present_ops]
-
-    datasets = []
-    for lib in libs_seen:
-        values = []
-        for op in present_ops:
-            match = next((r for r in results if r["library"] == lib and r["operation"] == op), None)
-            values.append(round(match.get("throughput_mb_s", 0), 2) if match else None)
-        datasets.append({"label": lib, "data": values, "backgroundColor": _lib_color(lib, libs_seen)})
-
-    chart_js = f"""
-new Chart(document.getElementById('chart-{language}'), {{
+    agg_chart_id = f"chart-{language}-agg"
+    agg_chart_js = ""
+    if present_ops:
+        agg_labels = [OP_TITLES.get(op, op) for op in present_ops]
+        agg_datasets = []
+        for lib in libs_seen:
+            values = []
+            for op in present_ops:
+                match = next((r for r in results if r["library"] == lib and r["operation"] == op), None)
+                values.append(round(match.get("throughput_mb_s", 0), 2) if match else None)
+            agg_datasets.append({"label": lib, "data": values, "backgroundColor": _lib_color(lib, libs_seen)})
+        agg_chart_js = f"""
+new Chart(document.getElementById('{agg_chart_id}'), {{
   type: 'bar',
-  data: {{ labels: {json.dumps(op_labels)}, datasets: {json.dumps(datasets)} }},
+  data: {{ labels: {json.dumps(agg_labels)}, datasets: {json.dumps(agg_datasets)} }},
   options: {{
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -103,9 +124,59 @@ new Chart(document.getElementById('chart-{language}'), {{
 }});
 """
 
+    op_charts = []
+    if scaling:
+        # Bucket x-positions: same corpus, same split, so every library
+        # lands on the same size labels -- pull them from whichever
+        # library has the most points.
+        sizes_by_op = {}
+        for op in OPERATIONS:
+            op_rows = [r for r in scaling if r["operation"] == op]
+            if not op_rows:
+                continue
+            sizes = sorted({r["size_bytes"] for r in op_rows})
+            sizes_by_op[op] = sizes
+
+        for op in OPERATIONS:
+            sizes = sizes_by_op.get(op)
+            if not sizes:
+                continue
+            labels = [_fmt_size(s) for s in sizes]
+            datasets = []
+            for lib in libs_seen:
+                lib_rows = {r["size_bytes"]: r for r in scaling
+                            if r["library"] == lib and r["operation"] == op}
+                if not lib_rows:
+                    continue
+                data = [round(lib_rows[s]["throughput_mb_s"], 2) if s in lib_rows else None for s in sizes]
+                datasets.append({
+                    "label": lib, "data": data,
+                    "borderColor": _lib_color(lib, libs_seen),
+                    "backgroundColor": _lib_color(lib, libs_seen),
+                    "pointRadius": 4, "pointHoverRadius": 6, "tension": 0,
+                })
+            chart_id = f"chart-{language}-{op}"
+            chart_js = f"""
+new Chart(document.getElementById('{chart_id}'), {{
+  type: 'line',
+  data: {{ labels: {json.dumps(labels)}, datasets: {json.dumps(datasets)} }},
+  options: {{
+    responsive: true, maintainAspectRatio: false,
+    scales: {{
+      x: {{ title: {{ display: true, text: 'Input size (this bucket\\'s median file)' }} }},
+      y: {{ title: {{ display: true, text: 'MB/s (higher is better)' }}, beginAtZero: true }}
+    }},
+    plugins: {{ legend: {{ display: true, position: 'top' }} }}
+  }}
+}});
+"""
+            op_charts.append({"key": op, "title": OP_TITLES.get(op, op),
+                               "chart_id": chart_id, "chart_js": chart_js})
+
     # One peak-RSS number per library (see collect_memory.py -- it's a
     # whole-process high-water mark from an isolated run, not something
     # finer-grained than "per library"), plotted as its own small chart.
+    # Only present at all when -DCTOON_BENCH_MEMORY=ON was used.
     mem_by_lib = {}
     for r in results:
         if r.get("peak_rss_mb") is not None:
@@ -133,7 +204,7 @@ new Chart(document.getElementById('chart-{language}-mem'), {{
 """
 
     table_rows = []
-    for op in present_ops:
+    for op in OPERATIONS:
         for r in [x for x in results if x["operation"] == op]:
             table_rows.append({
                 "operation": OP_TITLES.get(op, op),
@@ -147,17 +218,21 @@ new Chart(document.getElementById('chart-{language}-mem'), {{
 
     has_memory = any(r.get("peak_rss_mb") is not None for r in table_rows)
 
+    order_check = lang_data.get("order_check", [])
+
     return {
         "key": language,
         "title": LANG_TITLES.get(language, language),
         "corpus_files": corpus.get("files", 0),
         "corpus_bytes": corpus.get("bytes", 0),
-        "chart_id": f"chart-{language}",
-        "chart_js": chart_js,
+        "agg_chart_id": agg_chart_id,
+        "agg_chart_js": agg_chart_js,
+        "op_charts": op_charts,
         "rows": table_rows,
         "has_memory": has_memory,
         "memory_chart_id": f"chart-{language}-mem",
         "memory_chart_js": memory_chart_js,
+        "order_check": order_check,
     }
 
 
@@ -179,7 +254,10 @@ def build(results_dir, output_path, chartjs_path):
 
     chart_scripts = []
     for sec in sections:
-        chart_scripts.append(sec["chart_js"])
+        if sec["agg_chart_js"]:
+            chart_scripts.append(sec["agg_chart_js"])
+        for oc in sec["op_charts"]:
+            chart_scripts.append(oc["chart_js"])
         if sec["has_memory"]:
             chart_scripts.append(sec["memory_chart_js"])
 
@@ -201,6 +279,7 @@ def build(results_dir, output_path, chartjs_path):
         embedded_json=json.dumps(embedded),
         chart_scripts="\n".join(chart_scripts),
         system_info=system_info,
+        order_check_sample=ORDER_CHECK_SAMPLE,
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

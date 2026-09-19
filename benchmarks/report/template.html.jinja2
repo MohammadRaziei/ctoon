@@ -52,6 +52,10 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11.5px; letter-spacing: .04em; }
 td.num, th.num { text-align: right; font-family: var(--mono); }
 tr:hover td { background: var(--bg-panel-2); }
+code.sample { display: block; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); overflow-x: auto; white-space: pre; }
+.check-yes { color: var(--accent-2); font-weight: 700; }
+.check-no { color: #ff6b81; font-weight: 700; }
 footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding: 40px 24px; font-family: var(--mono); }
 </style>
 </head>
@@ -65,13 +69,30 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 </div>
 
 <div class="wrap">
+{% if order_check_sample %}
+<section>
+  <div class="kicker">Method</div>
+  <h2>Key order sample</h2>
+  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order &mdash; deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
+  <code class="sample">{{ order_check_sample }}</code>
+</section>
+{% endif %}
 {% for sec in sections %}
 <section>
   <div class="kicker">{{ sec.title }}</div>
   <h2>{{ sec.title }} bindings</h2>
   <p class="corpus-note">Corpus: {{ sec.corpus_files }} files, {{ "%.1f"|format(sec.corpus_bytes / 1048576) }} MB.</p>
 
-  <div class="chart-panel"><canvas id="{{ sec.chart_id }}"></canvas></div>
+  {% if sec.agg_chart_js %}
+  <h3 class="op-title">Average across the whole corpus</h3>
+  <div class="chart-panel"><canvas id="{{ sec.agg_chart_id }}"></canvas></div>
+  {% endif %}
+
+  {% for oc in sec.op_charts %}
+  <h3 class="op-title">{{ oc.title }}</h3>
+  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <div class="chart-panel"><canvas id="{{ oc.chart_id }}"></canvas></div>
+  {% endfor %}
   {% if sec.has_memory %}
   <h3 class="op-title">Peak memory (isolated per library)</h3>
   <div class="chart-panel" style="height:260px"><canvas id="{{ sec.memory_chart_id }}"></canvas></div>
@@ -102,6 +123,25 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       {% endfor %}
     </tbody>
   </table>
+
+  {% if sec.order_check %}
+  <h3 class="op-title">Key order preservation</h3>
+  <p class="corpus-note">Round-trips the fixed sample below through each library and checks whether keys come back in the same order they went in.</p>
+  <table>
+    <thead>
+      <tr><th>Library</th><th>Order preserved</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for oc in sec.order_check %}
+      <tr>
+        <td>{{ oc.library }}</td>
+        <td>{% if oc.preserved %}<span class="check-yes">&#10003; yes</span>{% else %}<span class="check-no">&#10007; no</span>{% endif %}</td>
+        <td>{{ oc.detail or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 </section>
 {% endfor %}
 
