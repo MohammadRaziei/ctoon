@@ -9,7 +9,10 @@
 # to be — every checkout of this repo gets that same pin, so there's no
 # separate "make sure this build measures master" step to remember.
 # Building the fetched package's native shared lib (deps/build.jl)
-# happens automatically as part of `Pkg.instantiate()`.
+# happens automatically as part of resolving it -- and "resolving"
+# specifically means `Pkg.update("CToon")`, not `Pkg.instantiate()`;
+# see update_deps.jl's own comment for why that distinction matters
+# for a rev="master" pin specifically.
 #
 # That's the Julia *binding* (CToon.jl itself). deps/build.jl separately
 # fetches the core C source (src/ctoon.c, include/ctoon.h) it compiles
@@ -21,7 +24,7 @@
 add_custom_target(ctoon_benchmarks_julia_deps
     COMMAND ${CMAKE_COMMAND} -E env CTOON_JULIA_CORE_REF=master
             ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_SOURCE_DIR}/instantiate_deps.jl
+            ${CMAKE_CURRENT_SOURCE_DIR}/update_deps.jl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub"
     USES_TERMINAL
