@@ -44,7 +44,7 @@ using Downloads
 
 const CTOON_REPO = "mohammadraziei/ctoon"
 
-binding_dir = @__DIR__ |> dirname                            # .../src/bindings/julia
+binding_dir = dirname(@__DIR__)                               # .../src/bindings/julia
 local_repo_root = normpath(joinpath(binding_dir, "..", "..", ".."))
 local_ctoon_c = joinpath(local_repo_root, "src", "ctoon.c")
 local_ctoon_h = joinpath(local_repo_root, "include", "ctoon.h")
@@ -77,7 +77,11 @@ function fetch_core_with_fallback(cache_dir::AbstractString)
 
     for (i, ref) in enumerate(candidates)
         try
-            @info (i == 1 ? "ctoon: fetching core source" : "ctoon: falling back to") ref
+            if i == 1
+                @info "ctoon: fetching core source" ref
+            else
+                @info "ctoon: falling back to" ref
+            end
             ctoon_c = fetch_core_at(ref, cache_dir)
             return ref, ctoon_c
         catch e
