@@ -20,7 +20,7 @@
 
 The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
-CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, Rust, Zig, and MATLAB. The name reflects its foundation: **C** + **TOON**.
+CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, Rust, Zig, Julia, and MATLAB. The name reflects its foundation: **C** + **TOON**.
 
 ## Format Overview
 
@@ -196,14 +196,15 @@ cmake --build build -j$(nproc) --target ctoon_coverage # Generate coverage repor
 | `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
 | `CTOON_BUILD_PYTHON` | OFF | Build Python extension (nanobind) |
 | `CTOON_BUILD_DOCS` | OFF | Build documentation |
-| `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain (Go, Rust, Zig, MATLAB) — error instead of skip if any is missing |
+| `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain (Go, Rust, Zig, Julia, MATLAB) — error instead of skip if any is missing |
 | `CTOON_BUILD_GO` | OFF | Require the Go toolchain (error instead of skip if missing) |
 | `CTOON_BUILD_RUST` | OFF | Require the Rust toolchain (error instead of skip if missing) |
 | `CTOON_BUILD_ZIG` | OFF | Require the Zig toolchain (error instead of skip if missing) |
+| `CTOON_BUILD_JULIA` | OFF | Require the Julia toolchain (error instead of skip if missing) |
 | `CTOON_BUILD_MATLAB` | OFF | Require the MATLAB toolchain (error instead of skip if missing) |
 
-Go, Rust, Zig, and MATLAB each compile themselves with their own external
-toolchain (`go build`, `cargo`, `zig build`, MEX) rather than through this
+Go, Rust, Zig, Julia, and MATLAB each compile themselves with their own external
+toolchain (`go build`, `cargo`, `zig build`, Julia's `Pkg`, MEX) rather than through this
 project's own CMake graph — the `CTOON_BUILD_<LANG>` flags above don't
 turn on a build step, they change what happens when `tests/` or `docs/`
 detect that toolchain is missing: silently skip that language (the
@@ -228,6 +229,18 @@ go get github.com/mohammadraziei/ctoon
 ```
 
 Requires Go 1.21+. Uses CGo to call the C core.
+
+### Julia package
+
+```julia
+import Pkg
+Pkg.add(url="https://github.com/mohammadraziei/ctoon.git", subdir="src/bindings/julia")
+```
+
+Requires a C compiler on the build host — `deps/build.jl` compiles the
+core directly, no CMake or BinaryBuilder/JLL step. See
+[`src/bindings/julia/README.md`](src/bindings/julia/README.md) for
+usage and what's implemented so far.
 
 ### MATLAB MEX
 
@@ -399,6 +412,7 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 | Go binding | Go 1.21+, CGo |
 | Rust binding | Rust 1.70+ |
 | Zig binding | Zig 0.16.0+ |
+| Julia binding | Julia 1.7+, C compiler |
 | MATLAB binding | MATLAB R2014b+, C compiler for MEX |
 | CLI | C++17 |
 

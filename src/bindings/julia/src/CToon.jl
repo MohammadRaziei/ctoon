@@ -1,12 +1,12 @@
 module CToon
 
+using OrderedCollections: OrderedDict
+
 # Loaded by build.jl into a shared lib containing ctoon.c + shim.c (the
 # same ctoon_rs_* exported wrappers the Rust and Zig bindings use for
 # ctoon's `static inline` API — see ../shim.c for why those wrappers
-# exist). This is a skeleton: read-only, covering the most common
-# ctoon_type cases. Mutable-document building (the ctoon_mut_* side that
-# shim.c also exports) is left for a follow-up once this shape is
-# confirmed to be the right one.
+# exist). Covers reading (parse/parse_toon) and writing (dumps/to_json)
+# for the most common ctoon_type cases.
 
 const depsjl = joinpath(@__DIR__, "..", "deps", "deps.jl")
 isfile(depsjl) || error(
@@ -53,7 +53,8 @@ end
     CToon.parse(str::AbstractString) -> Any
 
 Parse `str` (TOON/JSON per ctoon's reader) and return it as native Julia
-data: `Dict{String,Any}` for objects, `Vector{Any}` for arrays, `String`,
+data: `OrderedDict{String,Any}` for objects (order-preserving — see
+`_to_julia`'s own comment), `Vector{Any}` for arrays, `String`,
 `Int64`/`Float64`, `Bool`, or `nothing`.
 """
 function parse(str::AbstractString)
@@ -117,7 +118,15 @@ function _to_julia(v::Val)
         end
         return out
     elseif t == TYPE_OBJ
-        out = Dict{String,Any}()
+        # OrderedDict, not Base.Dict: unlike Python's dict (insertion-
+        # ordered since 3.7), Base.Dict does NOT preserve insertion
+        # order on iteration -- which would silently scramble key order
+        # on every parse -> dumps/to_json round trip through this
+        # binding, unlike every other language binding in this repo.
+        # OrderedDict (OrderedCollections.jl) preserves it, matching
+        # ctoon's own ctoon_val tree (order-preserving via
+        # ctoon_obj_iter) and every other language binding here.
+        out = OrderedDict{String,Any}()
         # ctoon_obj_iter is a small fixed-layout struct; the shim exposes
         # it opaquely via a heap-free stack buffer here rather than
         # binding its C layout directly — good enough for a skeleton,
@@ -143,5 +152,143 @@ function _to_julia(v::Val)
 end
 
 export parse
+
+# ------------------------------------------------------------- writing --
+# Julia value -> ctoon_mut_doc (via the ctoon_rs_mut_* shims), then
+# written out as either TOON (ctoon_rs_mut_write) or JSON
+# (ctoon_mut_doc_to_json -- a real exported symbol, no shim needed,
+# same as ctoon_read_json() above). Mirrors _to_julia's structure in
+# reverse: one recursive function building up ctoon_mut_val nodes
+# instead of tearing a ctoon_val tree down into Julia values.
+
+function _mut_string(doc::Ptr{Cvoid}, s::AbstractString)
+    b = codeunits(s)
+    GC.@preserve b begin
+        @ccall libctoon_jl.ctoon_rs_mut_strncpy(
+            doc::Ptr{Cvoid}, pointer(b)::Ptr{UInt8}, length(b)::Csize_t,
+        )::Ptr{Cvoid}
+    end
+end
+
+function _from_julia(doc::Ptr{Cvoid}, v::Nothing)
+    @ccall libctoon_jl.ctoon_rs_mut_null(doc::Ptr{Cvoid})::Ptr{Cvoid}
+end
+function _from_julia(doc::Ptr{Cvoid}, v::Bool)
+    v ? (@ccall libctoon_jl.ctoon_rs_mut_true(doc::Ptr{Cvoid})::Ptr{Cvoid}) :
+        (@ccall libctoon_jl.ctoon_rs_mut_false(doc::Ptr{Cvoid})::Ptr{Cvoid})
+end
+function _from_julia(doc::Ptr{Cvoid}, v::Signed)
+    @ccall libctoon_jl.ctoon_rs_mut_sint(doc::Ptr{Cvoid}, Int64(v)::Int64)::Ptr{Cvoid}
+end
+function _from_julia(doc::Ptr{Cvoid}, v::Unsigned)
+    @ccall libctoon_jl.ctoon_rs_mut_uint(doc::Ptr{Cvoid}, UInt64(v)::UInt64)::Ptr{Cvoid}
+end
+function _from_julia(doc::Ptr{Cvoid}, v::AbstractFloat)
+    @ccall libctoon_jl.ctoon_rs_mut_real(doc::Ptr{Cvoid}, Float64(v)::Cdouble)::Ptr{Cvoid}
+end
+function _from_julia(doc::Ptr{Cvoid}, v::AbstractString)
+    _mut_string(doc, v)
+end
+function _from_julia(doc::Ptr{Cvoid}, v::AbstractVector)
+    arr = @ccall libctoon_jl.ctoon_rs_mut_arr(doc::Ptr{Cvoid})::Ptr{Cvoid}
+    for item in v
+        item_val = _from_julia(doc, item)
+        @ccall libctoon_jl.ctoon_rs_mut_arr_append(arr::Ptr{Cvoid}, item_val::Ptr{Cvoid})::Bool
+    end
+    return arr
+end
+function _from_julia(doc::Ptr{Cvoid}, v::AbstractDict)
+    obj = @ccall libctoon_jl.ctoon_rs_mut_obj(doc::Ptr{Cvoid})::Ptr{Cvoid}
+    for (k, val) in v
+        key_val = _mut_string(doc, string(k))
+        item_val = _from_julia(doc, val)
+        @ccall libctoon_jl.ctoon_rs_mut_obj_put(obj::Ptr{Cvoid}, key_val::Ptr{Cvoid}, item_val::Ptr{Cvoid})::Bool
+    end
+    return obj
+end
+
+function _new_mut_doc(v)
+    doc = @ccall libctoon_jl.ctoon_mut_doc_new(C_NULL::Ptr{Cvoid})::Ptr{Cvoid}
+    doc == C_NULL && error("CToon: ctoon_mut_doc_new failed (out of memory)")
+    root = _from_julia(doc, v)
+    @ccall libctoon_jl.ctoon_rs_mut_doc_set_root(doc::Ptr{Cvoid}, root::Ptr{Cvoid})::Cvoid
+    return doc
+end
+
+function _mut_doc_free(doc::Ptr{Cvoid})
+    doc == C_NULL || @ccall libctoon_jl.ctoon_mut_doc_free(doc::Ptr{Cvoid})::Cvoid
+    nothing
+end
+
+"""
+    CToon.dumps(value) -> String
+
+Encode a native Julia value (as `CToon.parse` would produce: `AbstractDict`,
+`Vector`, `AbstractString`, `Bool`, `Integer`, `AbstractFloat`, or
+`nothing`) as TOON text.
+"""
+function dumps(v)
+    doc = _new_mut_doc(v)
+    try
+        len = Ref{Csize_t}(0)
+        cptr = @ccall libctoon_jl.ctoon_rs_mut_write(doc::Ptr{Cvoid}, len::Ptr{Csize_t})::Ptr{UInt8}
+        cptr == C_NULL && error("CToon: ctoon_mut_write failed")
+        return unsafe_string(cptr, len[])
+    finally
+        _mut_doc_free(doc)
+    end
+end
+
+"""
+    CToon.to_json(value) -> String
+
+Encode a native Julia value the same way `CToon.dumps` does, but as
+JSON text instead of TOON.
+"""
+function to_json(v)
+    doc = _new_mut_doc(v)
+    try
+        len = Ref{Csize_t}(0)
+        cptr = @ccall libctoon_jl.ctoon_mut_doc_to_json(
+            doc::Ptr{Cvoid}, 2::Cint, 0::Cuint, C_NULL::Ptr{Cvoid}, len::Ptr{Csize_t}, C_NULL::Ptr{Cvoid},
+        )::Ptr{UInt8}
+        cptr == C_NULL && error("CToon: ctoon_mut_doc_to_json failed")
+        return unsafe_string(cptr, len[])
+    finally
+        _mut_doc_free(doc)
+    end
+end
+
+# ------------------------------------------------------------- TOON read --
+# ctoon_read_opts() parses ctoon's *native* TOON syntax (as opposed to
+# ctoon_read_json(), which parse() above uses for JSON input) -- a real
+# exported symbol, no shim needed, same as ctoon_read_json().
+
+"""
+    CToon.parse_toon(str::AbstractString) -> Any
+
+Parse `str` as TOON (not JSON -- see `CToon.parse` for that) and return
+it as native Julia data, same value shapes as `CToon.parse`.
+"""
+function parse_toon(str::AbstractString)
+    buf = Vector{UInt8}(str)
+    err = Ref(ReadErr(0, 0, C_NULL, 0))
+    doc = Doc(@ccall libctoon_jl.ctoon_read_opts(
+        buf::Ptr{UInt8}, sizeof(buf)::Csize_t, 0::Cuint, C_NULL::Ptr{Cvoid}, err::Ptr{ReadErr},
+    )::Ptr{Cvoid})
+    if doc.ptr == C_NULL
+        e = err[]
+        msg = e.msg == C_NULL ? "(no message)" : unsafe_string(e.msg)
+        error("CToon: failed to parse TOON input: $msg (code=$(e.code), pos=$(e.pos))")
+    end
+    try
+        root_ptr = @ccall libctoon_jl.ctoon_rs_doc_get_root(doc.ptr::Ptr{Cvoid})::Ptr{Cvoid}
+        return _to_julia(Val(root_ptr))
+    finally
+        doc_free(doc)
+    end
+end
+
+export dumps, to_json, parse_toon
 
 end # module CToon

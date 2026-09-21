@@ -5,27 +5,23 @@
 # no TOON implementation for Julia at the time this was written. So
 # this is a one-library table, same as benchmarks/matlab's.
 #
-# It's also a *smaller* table than the other languages': this repo's
-# Julia binding (src/bindings/julia — fetched here the same way any
-# real dependent would, via `Pkg.add(url=..., subdir=...)`) only wraps
-# ctoon's reader (CToon.parse). There's no encode/dumps support yet, so
-# unlike every other language benchmark here, this one cannot measure
-# json_to_toon, toon_to_json, or roundtrip — only decode. The single
-# operation reported, "json_parse", corresponds to the decode half of
-# what the other benchmarks call "toon_to_json" (parsing — here, JSON
-# text straight through ctoon's C reader via ctoon_read_json — rather
-# than producing TOON text at all).
+# Same three operations as every other language benchmark here:
+#  - json_to_toon: CToon.parse (JSON text -> native Julia value) then
+#    CToon.dumps (that value -> TOON text).
+#  - toon_to_json: CToon.parse_toon (TOON text -> native Julia value)
+#    then CToon.to_json (that value -> JSON text).
+#  - roundtrip: json_to_toon's output fed through toon_to_json, as one
+#    timed operation per file (matching how every other language here
+#    defines "roundtrip" -- see e.g. bench.py's own comment on this).
 #
-# Methodology for the parts that DO apply (same across every language
-# benchmark in this repo):
+# Methodology (same across every language benchmark in this repo):
 #  1. Load every file in the corpus manifest into memory (untimed).
-#  2. Timed "json_parse": repeatedly parse each file's JSON text into a
-#     native Julia value via CToon.parse.
-#  3. Report throughput (MB/s of bytes actually read by successful
-#     parses only) and documents/sec.
+#  2. Time each operation over `REPEATS` passes over the whole corpus.
+#  3. Report throughput (MB/s of bytes actually processed by successful
+#     calls only) and documents/sec.
 #
 # If a log file path is given (3rd CLI arg), one line per failure is
-# written there — only for the first repeat, not all `repeats` reps.
+# written there — only for the first repeat, not all `REPEATS` reps.
 using CToon
 
 const REPEATS = 20
@@ -98,6 +94,75 @@ function record!(results, library, operation, seconds, ok, attempted, bytes)
     )
 end
 
+function bench_json_to_toon(files, log_fail)
+    ok = 0
+    bytes = 0.0
+    t0 = time()
+    for r in 1:REPEATS
+        for f in files
+            try
+                CToon.dumps(CToon.parse(f.json))
+                ok += 1
+                bytes += sizeof(f.json)
+            catch e
+                r == 1 && log_fail("json_to_toon", f.path, e)
+            end
+        end
+    end
+    return time() - t0, ok, bytes
+end
+
+function bench_toon_to_json(files, log_fail)
+    # Needs each file's TOON text first (same untimed pre-pass every
+    # other language's benchmark does) -- ctoon is the only thing that
+    # can produce that here, there being no other Julia TOON library.
+    toons = Vector{Union{String,Nothing}}(undef, length(files))
+    for (i, f) in enumerate(files)
+        toons[i] = try
+            CToon.dumps(CToon.parse(f.json))
+        catch
+            nothing
+        end
+    end
+
+    ok = 0
+    bytes = 0.0
+    t0 = time()
+    for r in 1:REPEATS
+        for (i, f) in enumerate(files)
+            t = toons[i]
+            t === nothing && continue
+            try
+                CToon.to_json(CToon.parse_toon(t))
+                ok += 1
+                bytes += sizeof(t)
+            catch e
+                r == 1 && log_fail("toon_to_json", f.path, e)
+            end
+        end
+    end
+    return time() - t0, ok, bytes
+end
+
+function bench_roundtrip(files, log_fail)
+    ok = 0
+    bytes = 0.0
+    t0 = time()
+    for r in 1:REPEATS
+        for f in files
+            try
+                toon = CToon.dumps(CToon.parse(f.json))
+                CToon.to_json(CToon.parse_toon(toon))
+                ok += 1
+                bytes += sizeof(f.json)
+            catch e
+                r == 1 && log_fail("roundtrip", f.path, e)
+            end
+        end
+    end
+    return time() - t0, ok, bytes
+end
+
 function main()
     if length(ARGS) < 2
         println(stderr, "usage: julia bench.jl <manifest> <results.json> [log_file]")
@@ -107,7 +172,7 @@ function main()
     log_path = length(ARGS) >= 3 ? ARGS[3] : ""
     log_io = isempty(log_path) ? nothing : open(log_path, "w")
 
-    log_fail(op, path, err) = log_io === nothing || println(log_io, "[ctoon] [$op] FILE: $path ERROR: $err")
+    log_fail = (op, path, err) -> (log_io === nothing || println(log_io, "[ctoon] [$op] FILE: $path ERROR: $err"))
 
     files = load_corpus(manifest_path)
     if isempty(files)
@@ -124,22 +189,14 @@ function main()
 
     results = Result[]
 
-    ok = 0
-    bytes = 0.0
-    t0 = time()
-    for r in 1:REPEATS
-        for f in files
-            try
-                CToon.parse(f.json)
-                ok += 1
-                bytes += sizeof(f.json)
-            catch e
-                r == 1 && log_fail("json_parse", f.path, e)
-            end
-        end
+    for (op, bench_fn) in (
+        ("json_to_toon", bench_json_to_toon),
+        ("toon_to_json", bench_toon_to_json),
+        ("roundtrip", bench_roundtrip),
+    )
+        seconds, ok, bytes = bench_fn(files, log_fail)
+        record!(results, "ctoon", op, seconds, ok, length(files) * REPEATS, bytes)
     end
-    elapsed = time() - t0
-    record!(results, "ctoon", "json_parse", elapsed, ok, length(files) * REPEATS, bytes)
 
     write_results_json(results_path, "julia", length(files), total_json_bytes, results)
     println("\nResults written to $results_path")

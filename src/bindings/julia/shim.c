@@ -49,6 +49,7 @@ ctoon_val *ctoon_rs_obj_iter_next(ctoon_obj_iter *iter) { return ctoon_obj_iter_
 ctoon_val *ctoon_rs_obj_iter_get_val(ctoon_val *key_val) { return ctoon_obj_iter_get_val(key_val); }
 
 void ctoon_rs_mut_doc_set_root(ctoon_mut_doc *doc, ctoon_mut_val *root) { ctoon_mut_doc_set_root(doc, root); }
+char *ctoon_rs_mut_write(const ctoon_mut_doc *doc, size_t *len) { return ctoon_mut_write(doc, len); }
 ctoon_mut_val *ctoon_rs_mut_null(ctoon_mut_doc *doc) { return ctoon_mut_null(doc); }
 ctoon_mut_val *ctoon_rs_mut_true(ctoon_mut_doc *doc) { return ctoon_mut_true(doc); }
 ctoon_mut_val *ctoon_rs_mut_false(ctoon_mut_doc *doc) { return ctoon_mut_false(doc); }

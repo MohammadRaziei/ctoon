@@ -1,3 +1,14 @@
+# A local, throwaway Julia depot (registries, packages, compiled
+# cache, artifacts -- everything Julia would otherwise put in
+# ~/.julia) instead of the user's real one: the same idea as a Python
+# venv, just at the depot level rather than per-package. Nothing this
+# benchmark does ever touches ~/.julia, and `rm -rf build-bench` wipes
+# every trace of it, including the General registry download -- no
+# separate cleanup step, no risk to whatever the user has installed
+# globally for their own Julia work.
+set(CTOON_JULIA_DEPOT "${CMAKE_CURRENT_BINARY_DIR}/depot")
+file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
+
 # Fetches ctoon's own Julia binding straight from GitHub — the same way
 # any real Julia user would install it, declared in this environment's
 # own Project.toml (see its [sources] entry) rather than an imperative
@@ -22,11 +33,13 @@
 # measure current master, not a possibly-older tagged release, so
 # CTOON_JULIA_CORE_REF=master is set for this one build too.
 add_custom_target(ctoon_benchmarks_julia_deps
-    COMMAND ${CMAKE_COMMAND} -E env CTOON_JULIA_CORE_REF=master
+    COMMAND ${CMAKE_COMMAND} -E env
+            CTOON_JULIA_CORE_REF=master
+            JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT}
             ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/update_deps.jl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub"
+    COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub, into a local depot"
     USES_TERMINAL
 )
 
@@ -38,7 +51,9 @@ endif()
 
 add_custom_target(ctoon_benchmarks_julia
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Julia benchmark..."
-    COMMAND ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env
+            JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT}
+            ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/bench.jl
             ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/julia.json ${CTOON_JULIA_LOG_ARG}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

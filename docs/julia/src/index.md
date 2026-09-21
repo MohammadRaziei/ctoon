@@ -25,7 +25,10 @@ step, just a C compiler on the build host).
 ```julia
 using CToon
 CToon.parse("{\"a\": [1, 2, true]}")
-# Dict{String, Any}("a" => Any[1, 2, true])
+# OrderedDict{String, Any}("a" => Any[1, 2, true])
+
+CToon.dumps(Dict("a" => 1, "b" => [1, 2, 3]))
+# "a: 1\nb[3]: 1,2,3"
 ```
 
 ### Developing against a local checkout
@@ -44,11 +47,13 @@ using it from elsewhere.
 
 ## Scope
 
-This is a read-only skeleton: `parse` covers `null`/`bool`/`int`/
-`uint`/`real`/`string`/array/object, converting into native
-`Dict{String,Any}` / `Vector{Any}` / etc. Writing / mutable documents
-isn't wired up yet, though the C shim already exports what it would
-need.
+- `parse` / `parse_toon` — JSON and TOON reading respectively, into
+  native `OrderedDict{String,Any}` / `Vector{Any}` / `String` /
+  `Int64`/`UInt64`/`Float64` / `Bool` / `nothing`. `OrderedDict`
+  specifically (not `Base.Dict`) so that a `parse` → `dumps`/`to_json`
+  round trip preserves key order.
+- `dumps` / `to_json` — the reverse: any of those same native shapes,
+  encoded as TOON or JSON text.
 
 ## API Reference
 
