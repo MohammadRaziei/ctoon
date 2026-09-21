@@ -21,9 +21,10 @@ file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
 # separate "make sure this build measures master" step to remember.
 # Building the fetched package's native shared lib (deps/build.jl)
 # happens automatically as part of resolving it -- and "resolving"
-# specifically means `Pkg.update("CToon")`, not `Pkg.instantiate()`;
-# see update_deps.jl's own comment for why that distinction matters
-# for a rev="master" pin specifically.
+# means BOTH `Pkg.instantiate()` (for a fresh depot with no
+# Manifest.toml yet) AND `Pkg.update("CToon")` (to re-resolve against
+# current master on every later run); see update_deps.jl's own comment
+# for why a rev="master" pin specifically needs both, in that order.
 #
 # That's the Julia *binding* (CToon.jl itself). deps/build.jl separately
 # fetches the core C source (src/ctoon.c, include/ctoon.h) it compiles
