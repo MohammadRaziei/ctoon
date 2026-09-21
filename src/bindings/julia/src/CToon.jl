@@ -111,10 +111,18 @@ function _to_julia(v::Val)
         return unsafe_string(cptr, len)
     elseif t == TYPE_ARR
         n = @ccall libctoon_jl.ctoon_rs_arr_size(v.ptr::Ptr{Cvoid})::Csize_t
-        out = Vector{Any}(undef, n)
-        for i in 0:(n - 1)
-            item_ptr = @ccall libctoon_jl.ctoon_rs_arr_get(v.ptr::Ptr{Cvoid}, i::Csize_t)::Ptr{Cvoid}
-            out[i + 1] = _to_julia(Val(item_ptr))
+        # Int(n) BEFORE any arithmetic, not after: n is Csize_t (UInt64,
+        # unsigned) -- `n - 1` on an *unsigned* 0 doesn't give -1, it
+        # wraps around to typemax(UInt64) (~1.8e19), so `0:(n - 1)` for
+        # an EMPTY array silently became a ~1.8e19-iteration range
+        # instead of an empty one. `1:Int(n)` with n converted to a
+        # signed Int first is correct for n=0 (an genuinely empty
+        # `1:0` range) with no unsigned arithmetic involved at all.
+        nn = Int(n)
+        out = Vector{Any}(undef, nn)
+        for i in 1:nn
+            item_ptr = @ccall libctoon_jl.ctoon_rs_arr_get(v.ptr::Ptr{Cvoid}, (i - 1)::Csize_t)::Ptr{Cvoid}
+            out[i] = _to_julia(Val(item_ptr))
         end
         return out
     elseif t == TYPE_OBJ
