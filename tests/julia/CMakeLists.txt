@@ -13,6 +13,17 @@
 
 set(CTOON_JULIA_BINDING_DIR ${PROJECT_SOURCE_DIR}/src/bindings/julia)
 
+# A local, throwaway Julia depot (registries, packages, compiled cache,
+# artifacts -- everything Julia would otherwise put in ~/.julia)
+# instead of the user's real one -- same idea as a Python venv, and the
+# same thing benchmarks/julia/CMakeLists.txt does for the benchmark
+# suite's own Julia environment. Nothing the test suite or coverage
+# target below does ever touches ~/.julia; `rm -rf build` wipes every
+# trace of it, General registry download included.
+set(CTOON_JULIA_DEPOT ${CMAKE_CURRENT_BINARY_DIR}/depot)
+file(MAKE_DIRECTORY ${CTOON_JULIA_DEPOT})
+set(CTOON_JULIA_ENV ${CMAKE_COMMAND} -E env JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT})
+
 # ── Locate Julia toolchain ───────────────────────────────────────────────────
 find_program(JULIA_EXECUTABLE julia)
 
@@ -35,6 +46,7 @@ message(STATUS "Found Julia: ${JULIA_VERSION_OUTPUT}")
 # string) — Pkg.instantiate() + deps/build.jl + test/runtests.jl, same
 # two-step shape as Zig's `zig build test` implicitly does in one command.
 set(CTOON_JULIA_RUN_TESTS
+    ${CTOON_JULIA_ENV}
     ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl ${CTOON_JULIA_BINDING_DIR}
 )
@@ -72,6 +84,14 @@ add_dependencies(ctoon_test ctoon_test_julia)
 # behind the ccalls, which the C/C++ coverage targets already cover.
 set(CTOON_COVERAGE_JULIA_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/julia)
 
+# Deliberately NOT run against the isolated CTOON_JULIA_DEPOT above:
+# Coverage.jl here is a globally pre-installed dev tool (same footing
+# as GENHTML_EXECUTABLE/lcov, found via find_program against the
+# system, not vendored), not a project dependency declared anywhere —
+# the warning below even tells people to `Pkg.add("Coverage")` globally.
+# Isolating this check would make it always fail (nothing's ever
+# installed in a brand new depot) and silently break coverage for
+# everyone who already has it set up.
 execute_process(
     COMMAND ${JULIA_EXECUTABLE} -e "using Coverage"
     OUTPUT_QUIET
@@ -89,7 +109,9 @@ if(JULIA_COVERAGE_CHECK EQUAL 0)
         # Run the test suite instrumented (--code-coverage=user writes
         # per-source .cov files next to src/CToon.jl), then have
         # Coverage.jl fold those into one lcov file and clean up the
-        # raw .cov files it leaves behind.
+        # raw .cov files it leaves behind. Also deliberately not using
+        # CTOON_JULIA_ENV/CTOON_JULIA_RUN_TESTS here, for the same
+        # reason as the "using Coverage" check above.
         COMMAND ${CMAKE_COMMAND} -E echo "-- Capturing Julia coverage as lcov..."
         COMMAND ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR} --code-coverage=user
                     ${CMAKE_CURRENT_SOURCE_DIR}/run_tests.jl ${CTOON_JULIA_BINDING_DIR}
