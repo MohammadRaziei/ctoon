@@ -65,6 +65,33 @@ cmake --build build-bench --target ctoon_bench_langs   # every language, no repo
 cmake --build build-bench --target ctoon_bench_report  # report only, from existing JSON
 ```
 
+## Build options
+
+The full set of `cmake -S . -B build-bench -D...` options this project
+actually defines — everything else on the command line (`CMAKE_BUILD_TYPE`,
+etc.) is plain CMake, not something this project adds:
+
+| Option                 | Default | Effect |
+|-------------------------|---------|--------|
+| `CTOON_BENCH_LOG_DEBUG` | `OFF`   | Writes a per-file diagnostic log (which files failed, for which library/operation, and why) to `build-bench/logs/<language>.log`. Off by default — extra I/O, only useful while chasing a success-rate anomaly. This is what produced the `[ctoon] [pre_pass] FILE: ... ERROR: ...` lines used above. |
+| `CTOON_BENCH_MEMORY`    | `OFF`   | Measures peak RSS per (language, library) in isolated processes — see "Memory" below for the full explanation of why and what it costs. |
+
+```bash
+cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DCTOON_BENCH_LOG_DEBUG=ON
+cmake --build build-bench --target ctoon_benchmarks_matlab
+cat build-bench/logs/matlab.log
+```
+
+Everything else you'll see referenced below — `CTOON_BENCH_REPEATS` (20),
+`SCALING_NBUCKETS` (5), `SCALING_REPS` (5) — is a compile-time `#define` in
+the relevant `bench.*` source file, **not** a `cmake -D` option; there is no
+cache variable wired up for them. Changing one means editing that language's
+benchmark source (or, for the C benchmark specifically, passing a raw
+`-DCTOON_BENCH_REPEATS=N` *compiler* flag yourself — it's guarded with
+`#ifndef` — which bypasses CMake's normal option/cache mechanism entirely
+and won't show up in `cmake -L` or a cache GUI).
+
+
 Each per-language target above also prints a results table and writes a
 JSON file to `build-bench/results/<language>.json`:
 
