@@ -121,6 +121,15 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
     if (mxIsLogical(mx) && mxIsScalar(mx))
         return ctoon_mut_bool(doc, ((mxLogical *)mxGetData(mx))[0] != 0);
 
+    if (mxIsLogical(mx)) {
+        size_t n = mxGetNumberOfElements(mx);
+        mxLogical *pl = (mxLogical *)mxGetData(mx);
+        ctoon_mut_val *arr = ctoon_mut_arr(doc);
+        for (size_t i = 0; i < n; i++)
+            ctoon_mut_arr_append(arr, ctoon_mut_bool(doc, pl[i] != 0));
+        return arr;
+    }
+
     if (mxIsChar(mx)) {
         char *s = mxArrayToString(mx);
         ctoon_mut_val *v = ctoon_mut_strcpy(doc, s);
