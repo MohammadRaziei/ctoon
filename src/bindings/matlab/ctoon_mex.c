@@ -137,8 +137,14 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         return v;
     }
 
-    if (mxIsDouble(mx) && mxIsScalar(mx))
-        return ctoon_mut_real(doc, mxGetScalar(mx));
+    if (mxIsDouble(mx) && mxIsScalar(mx)) {
+        double d = mxGetScalar(mx);
+        /* jsondecode() substitutes NaN for a JSON `null` that appears
+           inside an otherwise-numeric array/scalar context. Round-trip
+           it back to null rather than handing ctoon_write_num() a
+           non-finite value it will (correctly) refuse to write. */
+        return mxIsNaN(d) ? ctoon_mut_null(doc) : ctoon_mut_real(doc, d);
+    }
 
     if (mxIsInt64(mx) && mxIsScalar(mx))
         return ctoon_mut_sint(doc, *((int64_t *)mxGetData(mx)));
@@ -151,7 +157,8 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         double *pr = (double *)mxGetPr(mx);
         ctoon_mut_val *arr = ctoon_mut_arr(doc);
         for (size_t i = 0; i < n; i++)
-            ctoon_mut_arr_append(arr, ctoon_mut_real(doc, pr[i]));
+            ctoon_mut_arr_append(arr,
+                mxIsNaN(pr[i]) ? ctoon_mut_null(doc) : ctoon_mut_real(doc, pr[i]));
         return arr;
     }
 
