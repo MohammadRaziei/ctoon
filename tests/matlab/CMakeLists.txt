@@ -16,7 +16,7 @@ if(NOT Matlab_FOUND OR NOT TARGET ctoon_build_mex)
     return()
 endif()
 
-set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/Matlab")
+set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/matlab")
 set(CTOON_MATLAB_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/bindings/matlab")
 set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
 

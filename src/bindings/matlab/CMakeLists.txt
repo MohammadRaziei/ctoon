@@ -25,7 +25,7 @@ endif()
 
 message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
 
-set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/Matlab")
+set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/matlab")
 
 # ---------------------------------------------------------------------------
 # MEX target

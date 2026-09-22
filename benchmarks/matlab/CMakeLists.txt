@@ -13,15 +13,8 @@ if(NOT TARGET ctoon_build_mex)
     return()
 endif()
 
-# ctoon_build_mex (defined in the fetched ctoon's own
-# src/bindings/matlab/CMakeLists.txt) outputs the compiled MEX binary and
-# the +ctoon/ package folder to ${CMAKE_BINARY_DIR}/Matlab/build/+ctoon/ —
-# NOT into the plain, unprefixed `ctoon/` source folder (that one has no
-# '+' prefix, so it's not a real MATLAB package and ctoon.foo() can never
-# resolve there no matter what's on the path). CMAKE_BINARY_DIR is the
-# same value everywhere in one build tree, so this matches exactly what
-# that subdirectory computed for itself without needing PARENT_SCOPE.
-set(CTOON_MATLAB_BUILD_DIR "${CMAKE_BINARY_DIR}/Matlab/build")
+
+set(CTOON_MATLAB_BUILD_DIR "${CMAKE_BINARY_DIR}/matlab/build")
 set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodesktop -singleCompThread -nojvm)
 
 if(CTOON_BENCH_LOG_DEBUG)
