@@ -206,10 +206,20 @@ static void do_encode(int nlhs, mxArray *plhs[],
         mexErrMsgIdAndTxt("ctoon:badArg", "encode: value argument required.");
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     size_t len = 0;
-    char *out = ctoon_mut_write(doc, &len);
+    /* ctoon_mut_write_opts() directly, not the ctoon_mut_write()
+       convenience wrapper: that wrapper passes err=NULL, discarding
+       exactly the information needed to say WHY encoding failed --
+       important since this is the only MATLAB-side signal for a
+       category of failure every other language binding's benchmark
+       can name precisely (see e.g. bench.c's TOONc failure logging). */
+    ctoon_write_err werr;
+    memset(&werr, 0, sizeof(werr));
+    char *out = ctoon_mut_write_opts(doc, NULL, NULL, &len, &werr);
     ctoon_mut_doc_free(doc);
-    if (!out)
-        mexErrMsgIdAndTxt("ctoon:encodeError", "ctoon_mut_write() failed.");
+    if (!out) {
+        mexErrMsgIdAndTxt("ctoon:encodeError", "ctoon_mut_write() failed: %s",
+            werr.msg ? werr.msg : "(no error message)");
+    }
     if (nlhs > 0) plhs[0] = mxCreateString(out);
     free(out);
 }
