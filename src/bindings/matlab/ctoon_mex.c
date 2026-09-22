@@ -157,6 +157,27 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
 
     if (mxIsStruct(mx)) {
         int nf = mxGetNumberOfFields(mx);
+        size_t ne = mxGetNumberOfElements(mx);
+
+        /* Non-scalar struct array (e.g. from jsondecode() of a top-level
+           JSON array of objects) -> JSON array of objects. Must walk every
+           element; reading element 0 only would silently drop elements
+           1..ne-1. */
+        if (ne != 1) {
+            ctoon_mut_val *arr = ctoon_mut_arr(doc);
+            for (size_t ei = 0; ei < ne; ei++) {
+                ctoon_mut_val *obj = ctoon_mut_obj(doc);
+                for (int fi = 0; fi < nf; fi++) {
+                    const char *fname = mxGetFieldNameByNumber(mx, fi);
+                    ctoon_mut_obj_put(obj,
+                        ctoon_mut_strcpy(doc, fname),
+                        mx_to_mut(doc, mxGetFieldByNumber(mx, (mwIndex)ei, fi)));
+                }
+                ctoon_mut_arr_append(arr, obj);
+            }
+            return arr;
+        }
+
         ctoon_mut_val *obj = ctoon_mut_obj(doc);
         for (int fi = 0; fi < nf; fi++) {
             const char *fname = mxGetFieldNameByNumber(mx, fi);
@@ -206,10 +227,12 @@ static void do_encode(int nlhs, mxArray *plhs[],
         mexErrMsgIdAndTxt("ctoon:badArg", "encode: value argument required.");
     ctoon_mut_doc *doc = doc_from_mx(prhs[1]);
     size_t len = 0;
-    char *out = ctoon_mut_write(doc, &len);
+    ctoon_write_err werr;
+    char *out = ctoon_mut_write_opts(doc, NULL, NULL, &len, &werr);
     ctoon_mut_doc_free(doc);
     if (!out)
-        mexErrMsgIdAndTxt("ctoon:encodeError", "ctoon_mut_write() failed.");
+        mexErrMsgIdAndTxt("ctoon:encodeError", "ctoon_mut_write() failed: %s",
+            werr.msg ? werr.msg : "unknown error");
     if (nlhs > 0) plhs[0] = mxCreateString(out);
     free(out);
 }
