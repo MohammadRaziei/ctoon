@@ -29,7 +29,11 @@ end
     @test CToon.dumps(nothing) == "null"
     @test CToon.dumps(true) == "true"
     @test CToon.dumps(42) == "42"
-    @test CToon.dumps("hi") == "\"hi\""
+    # dumps() emits TOON, not JSON -- a bare scalar string needs no
+    # quoting in TOON (same as tests/matlab/test_ctoon.m's testDecodeString
+    # comment: "Bare string (no quotes needed in TOON)"). Confirmed against
+    # the C CLI directly: `"hi"` (JSON) -> `hi` (TOON), no quote chars.
+    @test CToon.dumps("hi") == "hi"
 
     @test CToon.to_json(nothing) == "null"
     @test CToon.to_json(true) == "true"
