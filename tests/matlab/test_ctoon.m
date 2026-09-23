@@ -238,20 +238,31 @@ end
 %  the struct-array / null-as-NaN / logical-array bugs above were hiding;
 %  the hand-built literals never exercised jsondecode()'s own type
 %  choices (a struct ARRAY for a JSON array of objects, NaN standing in
-%  for a JSON null inside a numeric context, etc). Expected TOON output
-%  below was captured from the real C CLI (ctoon.c's own writer), not
-%  hand-typed, so these assert against ground truth, not intuition.
+%  for a JSON null inside a numeric context, etc).
+%
+%  Expected TOON output below is sourced from toon-format/spec's own
+%  tests/fixtures/encode/*.json -- NOT from running ctoon's own CLI or
+%  any of ctoon's own bindings against these inputs, since that would
+%  only prove the implementation agrees with itself. Each test names the
+%  exact fixture file + case its expected string was copied from. Where
+%  no single fixture case matches exactly, the expected string is a
+%  direct composition of two *separately* fixture-confirmed grammar
+%  rules (cited by name), never hand-guessed.
 %% -------------------------------------------------------------------------
 
 function testEncodeJsondecodeStructArray(testCase)
 % Regression: mx_to_mut() used to hardcode struct element index 0, so a
 % jsondecode()'d top-level JSON array of objects (-> a non-scalar MATLAB
 % struct array) silently collapsed to just its first element.
-v = jsondecode('[{"a":1,"b":2},{"a":3,"b":4}]');
+%
+% Input/expected copied verbatim from toon-format/spec's
+% tests/fixtures/encode/arrays-nested.json, case "encodes root-level
+% array of uniform objects in tabular form".
+v = jsondecode('[{"id":1},{"id":2}]');
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, numel(v), 2); % sanity: jsondecode did make a struct array
 out = ctoon.encode(v);
-verifyEqual(testCase, out, sprintf('[2]{a,b}:\n  1,2\n  3,4'));
+verifyEqual(testCase, out, sprintf('[2]{id}:\n  1\n  2'));
 end
 
 function testEncodeJsondecodeNullInNumericArray(testCase)
@@ -263,6 +274,13 @@ function testEncodeJsondecodeNullInNumericArray(testCase)
 % null inside a numeric array (this is how it was actually found: see
 % draft7/items.json's "allows null elements" case in the JSON-Schema-
 % Test-Suite corpus used by benchmarks/). Must round-trip back to null.
+%
+% Expected string composed from two separately fixture-confirmed rules
+% (root form drops only the key, never the grammar -- see the struct-
+% array test above for that): arrays-primitive.json "encodes number
+% arrays inline" ([1,2,3] -> 'nums[3]: 1,2,3', i.e. `[N]: v1,v2,v3`) and
+% arrays-tabular.json "encodes null values in tabular form" (bare,
+% unquoted `null` token for a JSON null in a row).
 v = jsondecode('[1, null, 3]');
 verifyTrue(testCase, isnumeric(v));
 verifyTrue(testCase, any(isnan(v))); % sanity: this IS the NaN-substitution case
@@ -273,6 +291,11 @@ end
 function testEncodeJsondecodeNullScalar(testCase)
 % Same bug, scalar form: {"data": [null]} decodes "data" to a bare NaN
 % scalar (not a 1-element array) -- this was draft7/items.json exactly.
+%
+% Expected value is the literal `null` token itself, not a fixture
+% excerpt: a bare TOON document whose only content is the null keyword
+% -- there is nothing to compose or look up here, spec section 7.1
+% defines `null` as the literal keyword for a JSON null scalar.
 v = jsondecode('[null]');
 verifyTrue(testCase, isscalar(v) && isnan(v));
 out = ctoon.encode(v);
@@ -283,6 +306,12 @@ function testEncodeJsondecodeLogicalArray(testCase)
 % Regression: only scalar logical was handled; a non-scalar logical
 % array (jsondecode() of a JSON array of booleans) fell through to the
 % "Unsupported MATLAB type 'logical'" fallback and silently became null.
+%
+% Expected string composed from arrays-primitive.json "encodes mixed
+% primitive arrays inline" (['x','y',true,10] -> 'data[4]: x,y,true,10'
+% -- confirms bare, unquoted `true`) applied to an all-boolean array via
+% the same `[N]: v1,v2,v3` root-array grammar the struct-array test
+% above already confirms.
 v = jsondecode('[true, false, true]');
 verifyClass(testCase, v, 'logical');
 verifyTrue(testCase, ~isscalar(v));
