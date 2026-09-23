@@ -8,6 +8,12 @@ end
 function setupOnce(testCase)
 here = fileparts(mfilename('fullpath'));
 testCase.TestData.DataDir = fullfile(here, '..', 'data');
+% Set centrally in tests/CMakeLists.txt (FetchContent of toon-format/spec)
+% and passed down as an env var, same as tests/python/conftest.py does.
+% Empty when the fetch didn't happen (e.g. no network at configure time,
+% or running this file directly outside the cmake/buildtool harness) --
+% every test that uses it must skip via assumeTrue(...), not fail.
+testCase.TestData.SpecFixturesDir = getenv('CTOON_SPEC_FIXTURES_DIR');
 end
 
 function teardownOnce(~)
@@ -220,6 +226,111 @@ end
 function testWriteInvalidPath(testCase)
 verifyError(testCase, @() ctoon.write(struct('x', 1.5), '/no/such/dir/out.toon'), ...
     'ctoon:writeError');
+end
+
+%% -------------------------------------------------------------------------
+%  ctoon.encode — MATLAB-native jsondecode() round trips
+%
+%  Every test above feeds ctoon.encode/decode hand-built MATLAB literals
+%  (struct(...), {...}, scalars) directly -- none of them ever go through
+%  jsondecode() first. That untested path (real JSON text -> jsondecode()
+%  -> whatever MATLAB type it produces -> ctoon.encode) is exactly where
+%  the struct-array / null-as-NaN / logical-array bugs above were hiding;
+%  the hand-built literals never exercised jsondecode()'s own type
+%  choices (a struct ARRAY for a JSON array of objects, NaN standing in
+%  for a JSON null inside a numeric context, etc). Expected TOON output
+%  below was captured from the real C CLI (ctoon.c's own writer), not
+%  hand-typed, so these assert against ground truth, not intuition.
+%% -------------------------------------------------------------------------
+
+function testEncodeJsondecodeStructArray(testCase)
+% Regression: mx_to_mut() used to hardcode struct element index 0, so a
+% jsondecode()'d top-level JSON array of objects (-> a non-scalar MATLAB
+% struct array) silently collapsed to just its first element.
+v = jsondecode('[{"a":1,"b":2},{"a":3,"b":4}]');
+verifyClass(testCase, v, 'struct');
+verifyEqual(testCase, numel(v), 2); % sanity: jsondecode did make a struct array
+out = ctoon.encode(v);
+verifyEqual(testCase, out, sprintf('[2]{a,b}:\n  1,2\n  3,4'));
+end
+
+function testEncodeJsondecodeNullInNumericArray(testCase)
+% Regression: jsondecode() substitutes NaN for a JSON `null` inside an
+% otherwise-numeric array ([1, null, 3] -> [1 NaN 3]). mx_to_mut() used
+% to hand that NaN straight to ctoon_mut_real(), and ctoon_write_num()
+% correctly refuses to write a non-finite double -> the whole encode
+% failed with "ctoon_mut_write() failed." for any fixture containing a
+% null inside a numeric array (this is how it was actually found: see
+% draft7/items.json's "allows null elements" case in the JSON-Schema-
+% Test-Suite corpus used by benchmarks/). Must round-trip back to null.
+v = jsondecode('[1, null, 3]');
+verifyTrue(testCase, isnumeric(v));
+verifyTrue(testCase, any(isnan(v))); % sanity: this IS the NaN-substitution case
+out = ctoon.encode(v);
+verifyEqual(testCase, out, '[3]: 1,null,3');
+end
+
+function testEncodeJsondecodeNullScalar(testCase)
+% Same bug, scalar form: {"data": [null]} decodes "data" to a bare NaN
+% scalar (not a 1-element array) -- this was draft7/items.json exactly.
+v = jsondecode('[null]');
+verifyTrue(testCase, isscalar(v) && isnan(v));
+out = ctoon.encode(v);
+verifyEqual(testCase, out, 'null');
+end
+
+function testEncodeJsondecodeLogicalArray(testCase)
+% Regression: only scalar logical was handled; a non-scalar logical
+% array (jsondecode() of a JSON array of booleans) fell through to the
+% "Unsupported MATLAB type 'logical'" fallback and silently became null.
+v = jsondecode('[true, false, true]');
+verifyClass(testCase, v, 'logical');
+verifyTrue(testCase, ~isscalar(v));
+out = ctoon.encode(v);
+verifyEqual(testCase, out, '[3]: true,false,true');
+end
+
+%% -------------------------------------------------------------------------
+%  Spec conformance (toon-format/spec fixtures, via jsondecode + encode)
+%
+%  Mirrors tests/cpp/test_spec_conformance.cpp and
+%  tests/python/test_spec_conformance.py, but through jsondecode() rather
+%  than ctoon's own JSON reader -- the same MATLAB-native path the four
+%  regression tests above target. Skips (not fails) when
+%  CTOON_SPEC_FIXTURES_DIR isn't set, same convention as the rest of the
+%  suite (see setupOnce above and tests/python/conftest.py).
+%% -------------------------------------------------------------------------
+
+function testSpecFixturesEncodePrimitives(testCase)
+runSpecEncodeFixture(testCase, 'primitives.json');
+end
+
+function testSpecFixturesEncodeObjects(testCase)
+runSpecEncodeFixture(testCase, 'objects.json');
+end
+
+function testSpecFixturesEncodeArraysPrimitive(testCase)
+runSpecEncodeFixture(testCase, 'arrays-primitive.json');
+end
+
+function runSpecEncodeFixture(testCase, filename)
+d = testCase.TestData.SpecFixturesDir;
+assumeTrue(testCase, ~isempty(d) && isfolder(d), ...
+    'CTOON_SPEC_FIXTURES_DIR not set/found -- skipping spec-conformance test.');
+raw = fileread(fullfile(d, 'encode', filename));
+fixture = jsondecode(raw);
+for i = 1:numel(fixture.tests)
+    t = fixture.tests(i);
+    % Options (delimiter/indentSize/strict) aren't threaded through
+    % ctoon.encode() yet -- only run the cases that rely on defaults,
+    % same restriction the smoke-test scope here is meant to have.
+    if isfield(t, 'options') && ~isempty(t.options)
+        continue
+    end
+    got = ctoon.encode(t.input);
+    verifyEqual(testCase, got, t.expected, ...
+        sprintf('[%s] case "%s"', filename, t.name));
+end
 end
 
 %% -------------------------------------------------------------------------

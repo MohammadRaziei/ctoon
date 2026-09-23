@@ -158,3 +158,65 @@ class TestJsonEdgeCases:
         data = [1, "two", 3.0, True, None]
         json_str = ctoon.dumps_json(data)
         assert isinstance(json_str, str)
+
+
+class TestNativeJsonNanInfinity:
+    """dumps()/dumps_json() given a float that came from Python's own
+    ``json`` module, not from ctoon.loads_json().
+
+    This is the same class of bug the MATLAB binding had (see
+    src/bindings/matlab/ctoon_mex.c and tests/matlab/test_ctoon.m's
+    testEncodeJsondecodeNullInNumericArray): MATLAB's jsondecode()
+    silently substitutes NaN for a JSON `null` inside a numeric array, and
+    that NaN used to be handed straight to ctoon_mut_real() -> a write
+    failure with no useful message.
+
+    Python's stdlib json module is different in one important way: by
+    default (parse_constant unset) it accepts the bareword tokens `NaN`,
+    `Infinity` and `-Infinity` as a *documented, non-standard* extension
+    (https://docs.python.org/3/library/json.html#json.loads) and produces
+    a genuine float('nan')/float('inf') -- there is no null involved, the
+    caller's own JSON text asked for this. binding.cpp's py_to_mutval()
+    hands that float straight to doc.make_real() with no NaN/Inf check
+    (same gap the MATLAB code had), so it still reaches ctoon_write_num()
+    and still gets refused -- but as a raw, low-level RuntimeError instead
+    of MATLAB's confusing partial-write. These tests pin down that CURRENT
+    behavior (confirmed against the built extension) so a future change to
+    it is a deliberate decision, not a silent regression -- see this
+    module's docstring note below on the open question.
+    """
+
+    def test_json_module_accepts_bareword_nan(self):
+        """Sanity check the premise: stdlib json.loads *does* produce a
+        real NaN here by default, same as MATLAB's jsondecode() does via
+        its own (different) null-substitution mechanism."""
+        import json
+        import math
+
+        v = json.loads("[1, NaN, 3]")
+        assert v[0] == 1 and v[2] == 3
+        assert math.isnan(v[1])
+
+    def test_dumps_nan_from_json_module_currently_raises(self):
+        """Current, verified behavior: this raises rather than silently
+        dropping data or producing invalid TOON. Whether it *should*
+        instead round-trip to `null` (matching what the MATLAB fix now
+        does for its own null-as-NaN case) is an open design question --
+        the two cases aren't quite the same: MATLAB's NaN is a decoder's
+        stand-in for a `null` the source JSON actually had; a NaN parsed
+        by Python's own json.loads(parse_constant default) is the caller
+        deliberately passing one. This test only locks in "still raises
+        cleanly, does not crash or corrupt", not that this is the final
+        desired behavior."""
+        import json
+
+        v = json.loads("[1, NaN, 3]")
+        with pytest.raises(RuntimeError):
+            ctoon.dumps(v)
+
+    def test_dumps_json_nan_from_json_module_currently_raises(self):
+        import json
+
+        v = json.loads("[1, NaN, 3]")
+        with pytest.raises(RuntimeError):
+            ctoon.dumps_json(v)

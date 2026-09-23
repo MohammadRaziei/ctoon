@@ -25,7 +25,8 @@ set(Matlab_EXECUTABLE ${Matlab_MAIN_PROGRAM} -nosplash -noFigureWindows -nodeskt
 # ---------------------------------------------------------------------------
 
 add_custom_target(ctoon_test_matlab
-    COMMAND ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E env "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+            ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}"
             -batch "buildtool config(buildDir='${CTOON_MATLAB_BINARY_DIR}/build', coverageOutputDir='${CTOON_COVERAGE_MATLAB_BINARY_DIR}') test"
     USES_TERMINAL
     VERBATIM
@@ -38,6 +39,10 @@ add_test(NAME test_ctoon_matlab
     COMMAND ${Matlab_EXECUTABLE} -sd "${CTOON_MATLAB_SOURCE_DIR}"
             -batch "buildtool config(buildDir='${CTOON_MATLAB_BINARY_DIR}/build', coverageOutputDir='${CTOON_COVERAGE_MATLAB_BINARY_DIR}') test"
 )
+if(CTOON_SPEC_FIXTURES_DIR)
+    set_tests_properties(test_ctoon_matlab PROPERTIES
+        ENVIRONMENT "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}")
+endif()
 
 # ---------------------------------------------------------------------------
 # Coverage target

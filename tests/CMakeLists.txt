@@ -28,6 +28,40 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_program(LCOV_EXECUTABLE lcov)
 find_program(GENHTML_EXECUTABLE genhtml)
 
+# toon-format/spec isn't part of this project — its test fixtures are only
+# used (read-only) to check each language binding's encode/decode output
+# against the spec. Fetched ONCE here, centrally, so every language under
+# tests/ (not just C++ and Python, which is all that consumed it before)
+# gets the same CTOON_SPEC_FIXTURES_DIR. Pinned to a specific commit for
+# reproducible test runs; shallow clone since only the fixture JSON files
+# are needed, not history.
+#
+# CTOON_SPEC_FIXTURES_DIR is intentionally allowed to end up unset (e.g. no
+# network at configure time): every consumer below must check it and skip
+# its spec-conformance tests, not fail the whole suite, when it's empty.
+include(FetchContent)
+FetchContent_Declare(
+    toon_format_spec
+    GIT_REPOSITORY https://github.com/toon-format/spec.git
+    GIT_TAG        d6db4b04303bdea132351ce45aed612311c850b2
+    GIT_SHALLOW    TRUE
+    GIT_PROGRESS   TRUE
+)
+FetchContent_MakeAvailable(toon_format_spec)
+# toon_format_spec has no CMakeLists.txt of its own, so MakeAvailable only
+# populates toon_format_spec_SOURCE_DIR and does not add_subdirectory() it.
+set(CTOON_SPEC_FIXTURES_DIR "${toon_format_spec_SOURCE_DIR}/tests/fixtures"
+    CACHE PATH "Absolute path to toon-format/spec's tests/fixtures/ (empty if the fetch failed/was skipped)")
+
+# Separate from tests/fixtures/{encode,decode}/*.json above (those are test
+# *manifests* — {"tests":[{"input","expected",...}]}, not real documents).
+# examples/conversions/ instead holds genuine paired <name>.json / <name>.toon
+# files — the same shape as this project's own tests/data/*.json+*.toon
+# pairs, just spec-sourced. Good for plain "does language X's native JSON
+# parser + ctoon's TOON writer agree with the spec" round-trip corpus tests.
+set(CTOON_SPEC_EXAMPLES_DIR "${toon_format_spec_SOURCE_DIR}/examples/conversions"
+    CACHE PATH "Absolute path to toon-format/spec's examples/conversions/ paired .json/.toon files (empty if the fetch failed/was skipped)")
+
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/c)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/cpp)
 add_subdirectory(${CTOON_TEST_SOURCE_DIR}/python)

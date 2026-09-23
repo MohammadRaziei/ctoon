@@ -23,31 +23,15 @@ target_compile_definitions(test_ctoon_cpp PRIVATE
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
 )
 
-# toon-format/spec isn't part of this project — its test fixtures are only
-# used (read-only) by test_spec_conformance.cpp to check ctoon against the
-# spec. Fetch it on demand instead of vendoring a copy or adding a git
-# submodule. Pinned to a specific commit for reproducible test runs; shallow
-# clone since only the fixture JSON files are needed, not history.
-include(FetchContent)
-FetchContent_Declare(
-    toon_format_spec
-    GIT_REPOSITORY https://github.com/toon-format/spec.git
-    GIT_TAG        d6db4b04303bdea132351ce45aed612311c850b2
-    GIT_SHALLOW    TRUE
-    GIT_PROGRESS   TRUE
-)
-FetchContent_MakeAvailable(toon_format_spec)
-# toon_format_spec has no CMakeLists.txt of its own, so MakeAvailable only
-# populates toon_format_spec_SOURCE_DIR and does not add_subdirectory() it.
-
-# Promote to the parent (tests/) scope so tests/python's pytest invocation
-# can reuse this same checkout instead of fetching its own copy.
-set(CTOON_SPEC_FIXTURES_DIR "${toon_format_spec_SOURCE_DIR}/tests/fixtures" PARENT_SCOPE)
-
-# Absolute path to the fetched toon-format/spec fixtures, used by
-# test_spec_conformance.cpp regardless of the test binary's working directory.
-target_compile_definitions(test_ctoon_cpp PRIVATE
-    CTOON_SPEC_FIXTURES_DIR="${toon_format_spec_SOURCE_DIR}/tests/fixtures")
+# toon-format/spec's fixtures are fetched centrally in the parent
+# tests/CMakeLists.txt now (so every language subdir gets them, not just
+# this one) — CTOON_SPEC_FIXTURES_DIR is already set by the time this file
+# runs. Guarded: an empty value (fetch skipped/failed) must not break the
+# build, only disable this target's spec-conformance cases at runtime.
+if(CTOON_SPEC_FIXTURES_DIR)
+    target_compile_definitions(test_ctoon_cpp PRIVATE
+        CTOON_SPEC_FIXTURES_DIR="${CTOON_SPEC_FIXTURES_DIR}")
+endif()
 
 # The C++ wrapper itself is header-only (ctoon::ctoonpp is an INTERFACE
 # library) — add its include directory directly instead of linking the

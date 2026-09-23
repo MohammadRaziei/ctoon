@@ -24,6 +24,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
 
@@ -32,6 +33,33 @@ namespace {
 #ifndef CTOON_SPEC_FIXTURES_DIR
 #define CTOON_SPEC_FIXTURES_DIR "tests/data/toon-spec"
 #endif
+
+// toon-format/spec is fetched over the network at configure time (see
+// tests/CMakeLists.txt); that fetch is best-effort, not a hard requirement
+// for the rest of the suite to run (no network / GitHub unreachable /
+// CTOON_SPEC_FIXTURES_DIR left unset). Previously, a missing fixtures dir
+// hit the same "fixture not found" branch as a genuinely broken fixture
+// file and hard-failed every spec_encode/spec_decode case via ASSERT_TRUE
+// -- indistinguishable from an actual conformance regression. Skip
+// gracefully (soft pass, once-only notice) when the whole directory is
+// simply absent, and keep failing hard when a fixture inside an existing
+// directory is missing or wrong -- that's still a real bug.
+bool fixtures_dir_missing() {
+    struct stat st;
+    bool missing = stat(CTOON_SPEC_FIXTURES_DIR, &st) != 0 || !(st.st_mode & S_IFDIR);
+    if (missing) {
+        static bool warned = false;
+        if (!warned) {
+            std::fprintf(stderr,
+                "  toon-format/spec fixtures not found at %s -- skipping "
+                "spec_encode/spec_decode tests (CTOON_SPEC_FIXTURES_DIR "
+                "unset or the FetchContent fetch didn't run)\n",
+                CTOON_SPEC_FIXTURES_DIR);
+            warned = true;
+        }
+    }
+    return missing;
+}
 
 std::string read_file(const std::string &path) {
     std::ifstream f(path.c_str(), std::ios::binary);
@@ -72,6 +100,8 @@ bool parse_strict(const ctoon::value &options, bool fallback) {
 // UTEST(...) body, so this helper reports failures itself and returns a
 // pass/fail bool for the caller to assert on.
 bool run_encode_fixture(const char *filename) {
+    if (fixtures_dir_missing()) return true;
+
     std::string path = std::string(CTOON_SPEC_FIXTURES_DIR) + "/encode/" + filename;
     std::string src  = read_file(path);
     if (src.empty()) { std::fprintf(stderr, "  fixture not found: %s\n", path.c_str()); return false; }
@@ -117,6 +147,8 @@ bool run_encode_fixture(const char *filename) {
 
 // Runs every "decode" case in one fixture file: TOON text -> JSON value.
 bool run_decode_fixture(const char *filename) {
+    if (fixtures_dir_missing()) return true;
+
     std::string path = std::string(CTOON_SPEC_FIXTURES_DIR) + "/decode/" + filename;
     std::string src  = read_file(path);
     if (src.empty()) { std::fprintf(stderr, "  fixture not found: %s\n", path.c_str()); return false; }
