@@ -110,10 +110,36 @@ pub fn build(b: *std.Build) void {
     integration_tests.root_module.addIncludePath(b.path(include_dir));
     integration_tests.root_module.addImport("ctoon", ctoon_module);
 
+    // std.json (stdlib, no dependency to add -- unlike Rust/Julia, which
+    // needed a dev-only serde_json/JSON.jl dependency for their equivalent
+    // of this test) vs ctoon's own JSON reader. See that file's module doc
+    // for why this is a separate, meaningful test rather than duplicating
+    // integration_tests above.
+    const native_json_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/zig/native_json_roundtrip_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    native_json_tests.root_module.linkLibrary(ctoon_lib);
+    native_json_tests.root_module.addIncludePath(b.path(include_dir));
+    native_json_tests.root_module.addImport("ctoon", ctoon_module);
+
     const run_unit_tests = b.addRunArtifact(unit_tests);
     const run_integration_tests = b.addRunArtifact(integration_tests);
+    // CTOON_SPEC_FIXTURES_DIR / CTOON_SPEC_EXAMPLES_DIR (set centrally by
+    // tests/CMakeLists.txt's FetchContent, passed through by
+    // tests/zig/CMakeLists.txt's `cmake -E env` wrapper) reach this test
+    // via ordinary process-environment inheritance -- a Run step inherits
+    // the parent environment by default unless clearEnvironment(true) is
+    // called, which nothing here does. Skips gracefully (see that file)
+    // when running `zig build test` directly, outside CMake, where
+    // they're simply unset.
+    const run_native_json_tests = b.addRunArtifact(native_json_tests);
 
     const test_step = b.step("test", "Run ctoon Zig binding tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_integration_tests.step);
+    test_step.dependOn(&run_native_json_tests.step);
 }

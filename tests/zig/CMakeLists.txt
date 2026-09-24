@@ -59,7 +59,10 @@ string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
 # ── CTest integration ────────────────────────────────────────────────────────
 add_test(
     NAME ctoon_zig_tests
-    COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+    COMMAND ${CMAKE_COMMAND} -E env
+            "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+            "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}"
             ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
 )
@@ -68,7 +71,10 @@ set_tests_properties(ctoon_zig_tests PROPERTIES TIMEOUT 180)
 # ── ctoon_test_zig custom target ─────────────────────────────────────────────
 add_custom_target(ctoon_test_zig
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig tests..."
-    COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+    COMMAND ${CMAKE_COMMAND} -E env
+            "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+            "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}"
             ${ZIG_EXECUTABLE} build ${CTOON_ZIG_SEARCH_PREFIX_ARGS} test
     WORKING_DIRECTORY ${CTOON_ZIG_PROJECT_ROOT}
     USES_TERMINAL

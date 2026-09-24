@@ -22,7 +22,15 @@ set(CTOON_JULIA_BINDING_DIR ${PROJECT_SOURCE_DIR}/src/bindings/julia)
 # trace of it, General registry download included.
 set(CTOON_JULIA_DEPOT ${CMAKE_CURRENT_BINARY_DIR}/depot)
 file(MAKE_DIRECTORY ${CTOON_JULIA_DEPOT})
-set(CTOON_JULIA_ENV ${CMAKE_COMMAND} -E env JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT})
+# CTOON_SPEC_FIXTURES_DIR / CTOON_SPEC_EXAMPLES_DIR: set centrally in
+# tests/CMakeLists.txt (FetchContent of toon-format/spec); empty when the
+# fetch didn't run. tests/julia/native_json_roundtrip_test.jl must
+# @test_skip (not fail) when these are unset, same convention as
+# tests/python/conftest.py's spec_fixtures_dir fixture.
+set(CTOON_JULIA_ENV ${CMAKE_COMMAND} -E env
+    JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT}
+    "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+    "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}")
 
 # ── Locate Julia toolchain ───────────────────────────────────────────────────
 find_program(JULIA_EXECUTABLE julia)

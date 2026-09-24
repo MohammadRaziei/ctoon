@@ -40,12 +40,25 @@ path = "src/bindings/rust/src/lib.rs"
 # Python binding takes with dict/list, not a derive-macro/struct-mapping
 # layer).
 
+[dev-dependencies]
+# Only for tests/rust/native_json_roundtrip_test.rs, which deliberately
+# parses real JSON with an *independent* parser (not ctoon's own C reader)
+# to check ctoon::loads_json()/dumps() agree with it — see that file's
+# module doc for why (the Go/Python/MATLAB analogues of the same check
+# already caught real bugs). Dev-only: never affects the published crate,
+# same zero-dependency guarantee as before.
+serde_json = "1"
+
 [build-dependencies]
 cc = "1"
 
 [[test]]
 name = "integration"
 path = "tests/rust/integration_test.rs"
+
+[[test]]
+name = "native_json_roundtrip"
+path = "tests/rust/native_json_roundtrip_test.rs"
 
 [profile.release]
 opt-level = 3

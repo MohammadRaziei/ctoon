@@ -14,7 +14,18 @@ Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 # For order-preserving object parsing (see CToon.parse's own comment):
 # Base.Dict does not preserve insertion order, OrderedDict does.
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+# Only used by tests/julia/native_json_roundtrip_test.jl (an independent
+# JSON parser to check CToon.parse()/CToon.dumps() against — see that
+# file's module doc). Not a runtime dependency of CToon.jl itself; would
+# belong under [extras]/[targets] "test" (Cargo dev-dependencies' Julia
+# equivalent) instead of here, except tests/julia/run_tests.jl drives
+# testing via a plain Pkg.instantiate() + include(), which only resolves
+# [deps] -- not Pkg.test()'s separate test-environment machinery, which
+# [extras]/[targets] needs. Kept here, with this note, until run_tests.jl
+# is worth changing to use Pkg.test() for this one dependency's sake.
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 
 [compat]
 julia = "1.7" # OrderedCollections itself requires >= 1.7.1
 OrderedCollections = "1"
+JSON = "0.21"

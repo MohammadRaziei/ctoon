@@ -35,11 +35,22 @@ add_test(
     WORKING_DIRECTORY ${CTOON_RUST_CRATE_DIR}
 )
 set_tests_properties(ctoon_rust_tests PROPERTIES TIMEOUT 180)
+if(CTOON_SPEC_FIXTURES_DIR)
+    # Set centrally in tests/CMakeLists.txt (FetchContent of toon-format/spec).
+    # Empty when the fetch didn't run -- tests/rust/native_json_roundtrip_test.rs
+    # must skip (early-return, not panic) when unset, same convention as
+    # tests/python/conftest.py's spec_fixtures_dir fixture.
+    set_tests_properties(ctoon_rust_tests PROPERTIES
+        ENVIRONMENT "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR};CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}")
+endif()
 
 # ── ctoon_test_rust custom target ────────────────────────────────────────────
 add_custom_target(ctoon_test_rust
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Rust tests..."
-    COMMAND ${CARGO_EXECUTABLE} test 
+    COMMAND ${CMAKE_COMMAND} -E env
+            "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+            "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}"
+            ${CARGO_EXECUTABLE} test 
     WORKING_DIRECTORY ${CTOON_RUST_CRATE_DIR}
     USES_TERMINAL
 )

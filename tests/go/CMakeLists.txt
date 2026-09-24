@@ -32,11 +32,22 @@ add_test(
     WORKING_DIRECTORY ${CTOON_GO_MODULE_DIR}
 )
 set_tests_properties(ctoon_go_tests PROPERTIES TIMEOUT 120)
+if(CTOON_SPEC_FIXTURES_DIR)
+    # Set centrally in tests/CMakeLists.txt (FetchContent of toon-format/spec).
+    # Empty when the fetch didn't run (no network at configure time) -- Go
+    # tests that use these must skip (t.Skip), not fail, when unset. Same
+    # convention as tests/python/conftest.py's spec_fixtures_dir fixture.
+    set_tests_properties(ctoon_go_tests PROPERTIES
+        ENVIRONMENT "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR};CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}")
+endif()
 
 # ── ctoon_test_go custom target ──────────────────────────────────────────────
 add_custom_target(ctoon_test_go
     COMMAND ${CMAKE_COMMAND} -E echo "-- Running Go tests..."
-    COMMAND ${GO_EXECUTABLE} test -v -count=1 ${CTOON_GO_TEST_SOURCE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E env
+            "CTOON_SPEC_FIXTURES_DIR=${CTOON_SPEC_FIXTURES_DIR}"
+            "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}"
+            ${GO_EXECUTABLE} test -v -count=1 ${CTOON_GO_TEST_SOURCE_DIR}
     WORKING_DIRECTORY ${CTOON_GO_MODULE_DIR}
     USES_TERMINAL
 )

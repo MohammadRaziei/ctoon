@@ -25,3 +25,11 @@ import Pkg
 Pkg.instantiate()
 
 include(joinpath(binding_dir, "test", "runtests.jl"))
+
+# Lives under the root tests/ folder (this script's own directory), like
+# every other language's tests, rather than under the binding's own
+# test/ -- same split test/runtests.jl vs tests/julia/run_tests.jl above
+# already makes. Run as a second, separate include() (not folded into
+# test/runtests.jl itself) so a JSON.jl resolution problem here is
+# clearly distinguishable from a failure in CToon.jl's own test suite.
+include(joinpath(@__DIR__, "native_json_roundtrip_test.jl"))
