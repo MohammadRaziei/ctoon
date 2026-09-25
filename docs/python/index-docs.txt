@@ -1,0 +1,11 @@
+<div class="doc-card-inner">
+    <div class="doc-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="doc-card-body">
+        <div class="doc-card-title">Python API <span class="card-badge">Python 3.9+</span></div>
+        <p class="doc-card-desc">nanobind-based extension module. Documents <code>loads</code>, <code>dumps</code>, <code>load</code>, <code>dump</code>, JSON interop functions (<code>loads_json</code>, <code>dumps_json</code>), and the <code>ReadFlag</code> / <code>WriteFlag</code> / <code>Delimiter</code> enums. Ships pre-built wheels for Linux, macOS, and Windows.</p>
+        <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with Sphinx</span></div>
+        <a href="python/html/index.html" class="doc-card-btn">Open Python Reference <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+</div>

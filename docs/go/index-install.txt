@@ -1,0 +1,10 @@
+<div class="code-wrap">
+    <div class="code-label">
+        <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">bash</span></div>
+        <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+    </div>
+    <pre><code class="language-bash">go get github.com/mohammadraziei/ctoon</code></pre>
+</div>
+<div class="install-note">
+    Requires Go 1.21+ with CGo enabled (<code>CGO_ENABLED=1</code>). The module bundles the C core source — no separate C library install is needed. A C compiler (gcc / clang) must be available on the build host.
+</div>

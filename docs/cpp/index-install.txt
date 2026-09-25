@@ -1,0 +1,20 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">CMake — FetchContent</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-cmake"># CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(
+  ctoon
+  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(ctoon)
+
+# Link the C++ target
+target_link_libraries(my_app PRIVATE ctoon::ctoonpp)</code></pre>
+            </div>
+            <div class="install-note">
+                Requires CMake 3.19+ and a C++11-compatible compiler. Link against <code>ctoon::ctoonpp</code> and include <code>ctoon.hpp</code>. The C++ wrapper is header-only on top of the C core — all RAII lifetime management is included automatically.
+            </div>

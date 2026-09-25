@@ -207,6 +207,19 @@ endif()
 
 set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
 
+# Per-language tab content for the docs/install/example panels: supported_langs.txt
+# lists the languages (see its header comment for the format), and each language
+# folder holds index-docs.txt / index-install.txt / index-example.txt. Globbed at
+# configure time so adding or editing a fragment triggers a reconfigure — new
+# fragment files need `cmake` re-run once (e.g. via `touch supported_langs.txt`)
+# for the glob itself to pick them up.
+set(CTOON_SUPPORTED_LANGS ${CMAKE_CURRENT_SOURCE_DIR}/supported_langs.txt)
+file(GLOB_RECURSE CTOON_LANG_FRAGMENTS
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/index-docs.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/index-install.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/index-example.txt
+)
+
 add_custom_command(
     OUTPUT ${CTOON_INDEX_OUT}
     COMMAND ${CMAKE_COMMAND}
@@ -215,12 +228,16 @@ add_custom_command(
         -DCSS_FILE=${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         -DPROJECT_VERSION=${PROJECT_VERSION}
         -DLOGO_SQ=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
+        -DLANGS_FILE=${CTOON_SUPPORTED_LANGS}
+        -DLANGS_DIR=${CMAKE_CURRENT_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
         ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
         ${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
+        ${CTOON_SUPPORTED_LANGS}
+        ${CTOON_LANG_FRAGMENTS}
     COMMENT "Creating documentation route index"
     VERBATIM
 )

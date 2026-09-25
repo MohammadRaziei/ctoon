@@ -1,0 +1,31 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">python</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-python">import ctoon
+
+# Encode Python dict → TOON string
+toon = ctoon.dumps({"name": "Alice", "age": 30})
+# name: Alice
+# age: 30
+
+# Decode TOON string → Python dict
+data = ctoon.loads(toon)
+
+# File I/O — path strings or file-like objects
+ctoon.dump(data, "out.toon")
+data = ctoon.load("out.toon")
+
+# JSON interop
+json_str = ctoon.dumps_json(data, indent=2)
+data     = ctoon.loads_json(json_str)
+ctoon.dump_json(data, "out.json")
+
+# Advanced encode flags
+from ctoon import WriteFlag, Delimiter
+toon = ctoon.dumps(data,
+    indent=4,
+    delimiter=Delimiter.PIPE,
+    flags=WriteFlag.LENGTH_MARKER | WriteFlag.NEWLINE_AT_END)</code></pre>
+            </div>

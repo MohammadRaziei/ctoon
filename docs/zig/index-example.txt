@@ -1,0 +1,28 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">zig</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-zig">const std = @import("std");
+const ctoon = @import("ctoon");
+
+pub fn main() !void {
+    const gpa = std.heap.page_allocator;
+
+    // Decode ← TOON
+    var val = try ctoon.loads(gpa, "name: Alice\nage: 30");
+    defer val.deinit(gpa);
+    std.debug.print("{s}\n", .{val.get("name").?.asStr().?}); // Alice
+
+    // Encode → TOON
+    const toon = try ctoon.dumps(gpa, val);
+    defer gpa.free(toon);
+
+    // JSON interop
+    const json = try ctoon.dumpsJson(gpa, val, 2);
+    defer gpa.free(json);
+    var back = try ctoon.loadsJson(gpa, json);
+    defer back.deinit(gpa);
+    std.debug.print("{}\n", .{back.get("age").?.asU64().?}); // 30
+}</code></pre>
+            </div>

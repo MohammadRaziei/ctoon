@@ -1,0 +1,34 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-c">#include "ctoon.h"
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+int main(void) {
+    const char *src = "name: Alice\nage: 30";
+    ctoon_doc *doc  = ctoon_read(src, strlen(src), 0);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+
+    /* Access fields */
+    ctoon_val *name = ctoon_obj_get(root, "name");
+    printf("%s\n", ctoon_get_str(name));   /* Alice */
+
+    /* Serialise back to TOON */
+    size_t len;
+    char *toon = ctoon_write(doc, &amp;len);
+    free(toon);
+
+    /* Export as JSON (on by default; define CTOON_DISABLE_JSON to turn off) */
+    char *json = ctoon_doc_to_json(doc, 2,
+                     CTOON_WRITE_NOFLAG, NULL, &amp;len, NULL);
+    printf("%s\n", json);
+    free(json);
+
+    ctoon_doc_free(doc);
+    return 0;
+}</code></pre>
+            </div>

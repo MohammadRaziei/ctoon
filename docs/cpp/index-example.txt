@@ -1,0 +1,32 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">c++</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-cpp">#include "ctoon.hpp"
+#include &lt;iostream&gt;
+
+int main() {
+    // Parse a TOON document
+    auto doc  = ctoon::document::parse("name: Alice\nage: 30");
+    auto root = doc.root();
+    std::cout &lt;&lt; root["name"].get_str().str() &lt;&lt; "\n";  // Alice
+    std::cout &lt;&lt; root["age"].get_uint()        &lt;&lt; "\n";  // 30
+
+    // Serialise to TOON and JSON
+    std::cout &lt;&lt; doc.to_string().c_str()    &lt;&lt; "\n";
+    std::cout &lt;&lt; doc.to_json(2).c_str() &lt;&lt; "\n";
+
+    // Build a document programmatically
+    auto mdoc = ctoon::make_document();
+    auto obj  = mdoc.make_obj();
+    mdoc.set_root(obj);
+    obj.obj_put(mdoc.make_str("city"), mdoc.make_str("Tehran"));
+    obj.obj_put(mdoc.make_str("pop"),  mdoc.make_uint(9000000));
+    std::cout &lt;&lt; mdoc.to_json(0).c_str() &lt;&lt; "\n";
+
+    // Parse from JSON
+    auto jdoc = ctoon::document::from_json(R"({"x":1,"y":2})");
+    std::cout &lt;&lt; jdoc.root()["x"].get_uint() &lt;&lt; "\n";  // 1
+}</code></pre>
+            </div>

@@ -1,0 +1,25 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">matlab</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-matlab">% Encode a MATLAB struct → TOON string
+s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
+% name: Alice
+% age: 30
+% active: true
+
+% Decode TOON string → MATLAB struct
+v = ctoon.decode(s);
+v.name    % 'Alice'
+v.age     % uint64(30)
+v.active  % true
+
+% File I/O
+ctoon.write(v, 'data.toon');
+v = ctoon.read('data.toon');
+
+% Python-style aliases
+s = ctoon.dumps(v);   % same as ctoon.encode
+v = ctoon.loads(s);   % same as ctoon.decode</code></pre>
+            </div>

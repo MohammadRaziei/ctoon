@@ -1,0 +1,13 @@
+            <div class="code-wrap">
+                <div class="code-label">
+                    <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">matlab</span></div>
+                    <button class="copy-btn" onclick="copyCode(this)"><i class="fa-regular fa-copy"></i> copy</button>
+                </div>
+                <pre><code class="language-matlab">cd src/bindings/matlab
+ctoon_install</code></pre>
+            </div>
+            <div class="install-note">
+                Requires MATLAB R2014b+ and a C compiler (<code>mex -setup C</code>).
+                <code>ctoon_install</code> compiles the MEX gateway and permanently adds the binding to your MATLAB path.
+                For MATLAB R2022b+ you can also use <code>buildtool mex</code>.
+            </div>

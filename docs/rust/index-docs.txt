@@ -1,0 +1,11 @@
+<div class="doc-card-inner">
+    <div class="doc-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="doc-card-body">
+        <div class="doc-card-title">Rust API <span class="card-badge">Rust 1.70+</span></div>
+        <p class="doc-card-desc">Safe wrapper around the C core with a dependency-free <code>Value</code> enum (no <code>serde_json</code> required). Covers <code>loads</code>, <code>dumps</code>, <code>loads_json</code>, <code>dumps_json</code>, and <code>Error</code>. Compiles <code>ctoon.c</code> directly via a <code>build.rs</code> — no separate C library install needed.</p>
+        <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-book"></i> Generated with rustdoc</span></div>
+        <a href="rust/doc/ctoon/index.html" class="doc-card-btn">Open Rust Reference <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+</div>

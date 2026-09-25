@@ -1,0 +1,11 @@
+<div class="doc-card-inner">
+    <div class="doc-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div class="doc-card-body">
+        <div class="doc-card-title">MATLAB API <span class="card-badge">R2014b+</span></div>
+        <p class="doc-card-desc">MEX-based binding for the CToon C library. Documents <code>ctoon.encode</code>, <code>ctoon.decode</code>, <code>ctoon.read</code>, and <code>ctoon.write</code> (plus Python-style aliases <code>ctoon.dumps</code>/<code>ctoon.loads</code>). Works with any MATLAB R2014b or newer — no toolboxes required. Build with <code>ctoon_build</code> or via CMake.</p>
+        <div class="doc-card-meta"><span class="doc-meta-item"><i class="fa-solid fa-file-lines"></i> Generated from .m docstrings</span></div>
+        <a href="matlab/index.html" class="doc-card-btn">Open MATLAB Reference <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
+</div>
