@@ -39,11 +39,21 @@ find_program(GENHTML_EXECUTABLE genhtml)
 # CTOON_SPEC_FIXTURES_DIR is intentionally allowed to end up unset (e.g. no
 # network at configure time): every consumer below must check it and skip
 # its spec-conformance tests, not fail the whole suite, when it's empty.
+#
+# CTOON_SPEC_TAG comes from the root CMakeLists.txt (cmake/SpecVersion.cmake)
+# and is inherited here via add_subdirectory() - it's the same commit as
+# CTOON_SPEC_GIT_REF there, just resolved to its release tag (e.g. v4.1.1)
+# instead of a bare hash, so this clone always matches what got reported at
+# the top-level configure. Falls back to the raw ref if for some reason it
+# wasn't resolved (e.g. no network yet at that point either).
+if(NOT CTOON_SPEC_TAG)
+    set(CTOON_SPEC_TAG ${CTOON_SPEC_GIT_REF})
+endif()
 include(FetchContent)
 FetchContent_Declare(
     toon_format_spec
     GIT_REPOSITORY https://github.com/toon-format/spec.git
-    GIT_TAG        d6db4b04303bdea132351ce45aed612311c850b2
+    GIT_TAG        ${CTOON_SPEC_TAG}
     GIT_SHALLOW    TRUE
     GIT_PROGRESS   TRUE
 )

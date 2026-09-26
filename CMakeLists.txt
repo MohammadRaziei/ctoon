@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 include(DynamicVersion)
+include(SpecVersion)
 
 extract_version_string(
     HEADER_FILE ${CMAKE_CURRENT_LIST_DIR}/include/ctoon.h
@@ -12,6 +13,21 @@ extract_version_string(
 project(CToon LANGUAGES CXX C VERSION ${PROJECT_VERSION})
 message(STATUS "Project: ${PROJECT_NAME}@v${PROJECT_VERSION}")
 include(Startup)
+
+# Single source of truth for which toon-format/spec commit this project is
+# pinned to (tests/CMakeLists.txt's FetchContent_Declare uses CTOON_SPEC_TAG
+# below instead of duplicating this hash). Bump this to move to a newer
+# spec release.
+set(CTOON_SPEC_GIT_REF d6db4b04303bdea132351ce45aed612311c850b2)
+extract_spec_version(
+    GIT_REF     ${CTOON_SPEC_GIT_REF}
+    TAG_VAR     CTOON_SPEC_TAG
+    VERSION_VAR CTOON_SPEC_VERSION
+    DATE_VAR    CTOON_SPEC_DATE
+)
+if(CTOON_SPEC_TAG)
+    message(STATUS "TOON spec: ${CTOON_SPEC_TAG} (spec v${CTOON_SPEC_VERSION}, ${CTOON_SPEC_DATE})")
+endif()
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
