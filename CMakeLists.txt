@@ -38,9 +38,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(Optimize)
 
 # Project options
-option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
+option(CTOON_BUILD_EXAMPLES "Build examples" OFF)
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
-option(CTOON_BUILD_PYTHON "Build Python" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
 
 # Self-building language bindings (Go, Rust, Zig, MATLAB, Julia): each has its
@@ -54,6 +53,7 @@ option(CTOON_BUILD_DOCS "Build documentation" OFF)
 # warn-and-skips regardless, since its whole point is running whatever
 # it can find.
 option(CTOON_BUILD_ALL_LANGS "Require every language binding's toolchain (error, don't skip, if any is missing)" OFF)
+option(CTOON_BUILD_PYTHON "Build Python" OFF)
 option(CTOON_BUILD_GO "Require the Go toolchain" OFF)
 option(CTOON_BUILD_RUST "Require the Rust toolchain" OFF)
 option(CTOON_BUILD_ZIG "Require the Zig toolchain" OFF)
