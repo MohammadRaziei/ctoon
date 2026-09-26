@@ -1,0 +1,9 @@
+{
+  "title": "Go API",
+  "badge": "Go 1.21+",
+  "description": "CGo bindings that wrap the C core. Covers <code>Loads</code>, <code>Dumps</code>, <code>LoadsJSON</code>, <code>DumpsJSON</code>, file I/O helpers (<code>EncodeToFile</code>, <code>DecodeFromFile</code>), and encode/decode option structs. Requires CGo-enabled build environment.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with godoc",
+  "link_href": "go/index.html",
+  "link_label": "Open Go Reference"
+}

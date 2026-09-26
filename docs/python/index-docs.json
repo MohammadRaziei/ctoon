@@ -1,0 +1,9 @@
+{
+  "title": "Python API",
+  "badge": "Python 3.9+",
+  "description": "nanobind-based extension module. Documents <code>loads</code>, <code>dumps</code>, <code>load</code>, <code>dump</code>, JSON interop functions (<code>loads_json</code>, <code>dumps_json</code>), and the <code>ReadFlag</code> / <code>WriteFlag</code> / <code>Delimiter</code> enums. Ships pre-built wheels for Linux, macOS, and Windows.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with Sphinx",
+  "link_href": "python/html/index.html",
+  "link_label": "Open Python Reference"
+}

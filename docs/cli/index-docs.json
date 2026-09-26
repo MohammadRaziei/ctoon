@@ -1,0 +1,9 @@
+{
+  "title": "CLI Reference",
+  "badge": "v@PROJECT_VERSION@",
+  "description": "Command-line tool for converting between JSON and TOON formats. Covers all options and flags including <code>--delimiter</code>, <code>--length-marker</code>, <code>--stats</code>, stdin piping, and forced encode/decode modes. Auto-detects conversion direction from file extension.",
+  "meta_icon": "fa-solid fa-file-lines",
+  "meta_label": "Written in Markdown",
+  "link_href": "cli/index.html",
+  "link_label": "Open CLI Reference"
+}

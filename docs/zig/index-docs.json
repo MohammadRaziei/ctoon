@@ -1,0 +1,9 @@
+{
+  "title": "Zig API",
+  "badge": "Zig 0.16.0+",
+  "description": "Dependency-free wrapper around the C core with a tagged-union <code>Value</code> type. Covers <code>loads</code>, <code>dumps</code>, <code>loadsJson</code>, <code>dumpsJson</code>, and <code>lastError</code>. Compiles <code>ctoon.c</code> directly via <code>build.zig</code> — no CMake step needed to build or test it on its own.",
+  "meta_icon": "fa-solid fa-file-lines",
+  "meta_label": "Written in Markdown",
+  "link_href": "zig/index.html",
+  "link_label": "Open Zig Reference"
+}

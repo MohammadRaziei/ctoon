@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "CToon supported-language registry - drives the tab bar + tab content of",
+    "docs/index.html.in (see docs/generate_index.py, invoked by docs/CreateDocs.cmake).",
+    "",
+    "Order here is the display order everywhere: CLI is pinned first (it's the",
+    "tool most users reach for first), the rest are alphabetical by display name.",
+    "",
+    "Each entry's 'folder' must contain three fragment files:",
+    "  <folder>/index-docs.json    - structured API-reference card fields",
+    "                                 (title, badge, description, meta_icon,",
+    "                                 meta_label, link_href, link_label)",
+    "  <folder>/index-install.txt  - raw HTML for the install panel",
+    "  <folder>/index-example.txt  - raw HTML for the quick-example panel",
+    "",
+    "icon.kind is 'fa' (a Font Awesome class string) or 'svg' (a named inline",
+    "glyph resolved by generate_index.py's ICON_SVG dict - currently only",
+    "'layers', the generic block/document glyph shared by C, C++, Zig and",
+    "Julia, none of which has a suitable brand icon in Font Awesome's free set)."
+  ],
+  "languages": [
+    { "folder": "cli",    "name": "CLI",    "icon": { "kind": "fa",  "value": "fa-solid fa-terminal" } },
+    { "folder": "c",      "name": "C",      "icon": { "kind": "svg", "value": "layers" } },
+    { "folder": "cpp",    "name": "C++",    "icon": { "kind": "svg", "value": "layers" } },
+    { "folder": "go",     "name": "Go",     "icon": { "kind": "fa",  "value": "fa-brands fa-golang" } },
+    { "folder": "julia",  "name": "Julia",  "icon": { "kind": "svg", "value": "layers" } },
+    { "folder": "matlab", "name": "MATLAB", "icon": { "kind": "fa",  "value": "fa-solid fa-square-root-variable" } },
+    { "folder": "python", "name": "Python", "icon": { "kind": "fa",  "value": "fa-brands fa-python" } },
+    { "folder": "rust",   "name": "Rust",   "icon": { "kind": "fa",  "value": "fa-brands fa-rust" } },
+    { "folder": "zig",    "name": "Zig",    "icon": { "kind": "svg", "value": "layers" } }
+  ]
+}

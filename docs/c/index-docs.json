@@ -1,0 +1,9 @@
+{
+  "title": "C API",
+  "badge": "C99",
+  "description": "Core library interface. Covers document parsing with <code>ctoon_read</code>, serialisation with <code>ctoon_write</code>, JSON export via <code>ctoon_doc_to_json</code>, and full value-traversal API including <code>ctoon_obj_get</code>, <code>ctoon_arr_get</code>, and typed getters. Zero dependencies beyond the C standard library.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with Doxygen",
+  "link_href": "c/html/index.html",
+  "link_label": "Open C Reference"
+}

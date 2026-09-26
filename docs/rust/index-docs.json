@@ -1,0 +1,9 @@
+{
+  "title": "Rust API",
+  "badge": "Rust 1.70+",
+  "description": "Safe wrapper around the C core with a dependency-free <code>Value</code> enum (no <code>serde_json</code> required). Covers <code>loads</code>, <code>dumps</code>, <code>loads_json</code>, <code>dumps_json</code>, and <code>Error</code>. Compiles <code>ctoon.c</code> directly via a <code>build.rs</code> — no separate C library install needed.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with rustdoc",
+  "link_href": "rust/doc/ctoon/index.html",
+  "link_label": "Open Rust Reference"
+}

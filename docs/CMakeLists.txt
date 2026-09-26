@@ -207,15 +207,17 @@ endif()
 
 set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
 
-# Per-language tab content for the docs/install/example panels: supported_langs.txt
-# lists the languages (see its header comment for the format), and each language
-# folder holds index-docs.txt / index-install.txt / index-example.txt. Globbed at
-# configure time so adding or editing a fragment triggers a reconfigure — new
-# fragment files need `cmake` re-run once (e.g. via `touch supported_langs.txt`)
+# Per-language tab content for the docs/install/example panels: supported_langs.json
+# lists the languages (see its "_comment" field for the format), and each language
+# folder holds index-docs.json (structured fields) + index-install.txt +
+# index-example.txt (raw HTML). generate_index.py assembles index.html from these.
+# Globbed at configure time so adding or editing a fragment triggers a reconfigure —
+# new fragment files need `cmake` re-run once (e.g. via `touch supported_langs.json`)
 # for the glob itself to pick them up.
-set(CTOON_SUPPORTED_LANGS ${CMAKE_CURRENT_SOURCE_DIR}/supported_langs.txt)
+set(CTOON_SUPPORTED_LANGS ${CMAKE_CURRENT_SOURCE_DIR}/supported_langs.json)
+set(CTOON_GENERATE_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/generate_index.py)
 file(GLOB_RECURSE CTOON_LANG_FRAGMENTS
-    ${CMAKE_CURRENT_SOURCE_DIR}/*/index-docs.txt
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/index-docs.json
     ${CMAKE_CURRENT_SOURCE_DIR}/*/index-install.txt
     ${CMAKE_CURRENT_SOURCE_DIR}/*/index-example.txt
 )
@@ -230,9 +232,11 @@ add_custom_command(
         -DLOGO_SQ=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
         -DLANGS_FILE=${CTOON_SUPPORTED_LANGS}
         -DLANGS_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+        -DGENERATE_SCRIPT=${CTOON_GENERATE_SCRIPT}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
     DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/CreateDocs.cmake
+        ${CTOON_GENERATE_SCRIPT}
         ${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
         ${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         ${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg

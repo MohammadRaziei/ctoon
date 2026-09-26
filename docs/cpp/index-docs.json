@@ -1,0 +1,9 @@
+{
+  "title": "C++ API",
+  "badge": "C++11",
+  "description": "Header-only RAII wrappers around the C core. Covers <code>ctoon::document</code>, <code>ctoon::value</code>, <code>ctoon::make_document</code>, <code>EncodeOptions</code>, <code>DecodeOptions</code>, and read/write flag enums. All objects manage lifetime automatically — no manual free calls needed.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with Doxygen",
+  "link_href": "cpp/html/index.html",
+  "link_label": "Open C++ Reference"
+}

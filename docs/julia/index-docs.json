@@ -1,0 +1,9 @@
+{
+  "title": "Julia API",
+  "badge": "Julia 1.6+",
+  "description": "Dependency-free <code>ccall</code> wrapper around the C core, built by compiling <code>ctoon.c</code> directly (no separate C library install needed). Documents <code>CToon.parse</code>, which reads JSON via <code>ctoon_read_json</code> into native <code>Dict</code>/<code>Vector</code>/<code>String</code>/number/<code>Bool</code>/<code>nothing</code> values.",
+  "meta_icon": "fa-solid fa-book",
+  "meta_label": "Generated with Documenter.jl",
+  "link_href": "julia/index.html",
+  "link_label": "Open Julia Reference"
+}
