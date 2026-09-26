@@ -32,7 +32,8 @@ find_program(GENHTML_EXECUTABLE genhtml)
 # used (read-only) to check each language binding's encode/decode output
 # against the spec. Fetched ONCE here, centrally, so every language under
 # tests/ (not just C++ and Python, which is all that consumed it before)
-# gets the same CTOON_SPEC_FIXTURES_DIR. Pinned to a specific commit for
+# gets the same CTOON_SPEC_FIXTURES_DIR. Pinned to a specific release tag
+# (auto-resolved to the latest one, see CTOON_SPEC_TAG below) for
 # reproducible test runs; shallow clone since only the fixture JSON files
 # are needed, not history.
 #
@@ -40,15 +41,11 @@ find_program(GENHTML_EXECUTABLE genhtml)
 # network at configure time): every consumer below must check it and skip
 # its spec-conformance tests, not fail the whole suite, when it's empty.
 #
-# CTOON_SPEC_TAG comes from the root CMakeLists.txt (cmake/SpecVersion.cmake)
-# and is inherited here via add_subdirectory() - it's the same commit as
-# CTOON_SPEC_GIT_REF there, just resolved to its release tag (e.g. v4.1.1)
-# instead of a bare hash, so this clone always matches what got reported at
-# the top-level configure. Falls back to the raw ref if for some reason it
-# wasn't resolved (e.g. no network yet at that point either).
-if(NOT CTOON_SPEC_TAG)
-    set(CTOON_SPEC_TAG ${CTOON_SPEC_GIT_REF})
-endif()
+# CTOON_SPEC_TAG comes from the root CMakeLists.txt (cmake/SpecVersion.cmake,
+# resolved off main's package.json/CHANGELOG.md) and is inherited here via
+# add_subdirectory(). It's a real published git tag (e.g. v4.1.1), so this
+# is still a fully reproducible clone - no manually-maintained commit hash
+# to keep in sync anymore, and it auto-tracks whatever was last released.
 include(FetchContent)
 FetchContent_Declare(
     toon_format_spec

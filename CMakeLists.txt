@@ -14,19 +14,16 @@ project(CToon LANGUAGES CXX C VERSION ${PROJECT_VERSION})
 message(STATUS "Project: ${PROJECT_NAME}@v${PROJECT_VERSION}")
 include(Startup)
 
-# Single source of truth for which toon-format/spec commit this project is
-# pinned to (tests/CMakeLists.txt's FetchContent_Declare uses CTOON_SPEC_TAG
-# below instead of duplicating this hash). Bump this to move to a newer
-# spec release.
-set(CTOON_SPEC_GIT_REF d6db4b04303bdea132351ce45aed612311c850b2)
-extract_spec_version(
-    GIT_REF     ${CTOON_SPEC_GIT_REF}
+# Single source of truth for which toon-format/spec version this project
+# builds against - cached in supported_spec.conf (see cmake/SpecVersion.cmake
+# for how/when it's refreshed vs read from cache).
+resolve_spec_version(
     TAG_VAR     CTOON_SPEC_TAG
     VERSION_VAR CTOON_SPEC_VERSION
     DATE_VAR    CTOON_SPEC_DATE
 )
 if(CTOON_SPEC_TAG)
-    message(STATUS "TOON spec: ${CTOON_SPEC_TAG} (spec v${CTOON_SPEC_VERSION}, ${CTOON_SPEC_DATE})")
+    message(STATUS "TOON spec: ${CTOON_SPEC_TAG} (spec v${CTOON_SPEC_VERSION} ${CTOON_SPEC_DATE})")
 endif()
 
 # Set C++ standard
@@ -38,8 +35,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(Optimize)
 
 # Project options
-option(CTOON_BUILD_EXAMPLES "Build examples" OFF)
+option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
+option(CTOON_BUILD_PYTHON "Build Python" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
 
 # Self-building language bindings (Go, Rust, Zig, MATLAB, Julia): each has its
@@ -53,7 +51,6 @@ option(CTOON_BUILD_DOCS "Build documentation" OFF)
 # warn-and-skips regardless, since its whole point is running whatever
 # it can find.
 option(CTOON_BUILD_ALL_LANGS "Require every language binding's toolchain (error, don't skip, if any is missing)" OFF)
-option(CTOON_BUILD_PYTHON "Build Python" OFF)
 option(CTOON_BUILD_GO "Require the Go toolchain" OFF)
 option(CTOON_BUILD_RUST "Require the Rust toolchain" OFF)
 option(CTOON_BUILD_ZIG "Require the Zig toolchain" OFF)
