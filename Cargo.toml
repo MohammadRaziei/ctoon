@@ -47,7 +47,16 @@ path = "src/bindings/rust/src/lib.rs"
 # module doc for why (the Go/Python/MATLAB analogues of the same check
 # already caught real bugs). Dev-only: never affects the published crate,
 # same zero-dependency guarantee as before.
-serde_json = "1"
+#
+# preserve_order is required, not cosmetic: without it, serde_json::Value
+# ::Object is a BTreeMap and silently re-sorts every object's keys
+# alphabetically, which broke the exact-text comparison against name.toon
+# for every multi-key object (confirmed in CI: "active, age, name, tags"
+# instead of the source's "name, age, active, tags"). With it, Object is
+# an indexmap::IndexMap, which preserves insertion (= source JSON) order --
+# the same property Python's dict, Julia's OrderedDict, and every other
+# binding's object representation in this project already has.
+serde_json = { version = "1", features = ["preserve_order"] }
 
 [build-dependencies]
 cc = "1"
