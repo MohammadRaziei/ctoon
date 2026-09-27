@@ -133,10 +133,12 @@ endif()
 
 # ── Rust Documentation (rustdoc via `cargo doc`) ───────────────
 
-find_program(CARGO_EXECUTABLE cargo)
-
-ctoon_require_lang(CTOON_BUILD_RUST CARGO_EXECUTABLE "Rust"
-    "Install Rust >= 1.70 and make sure 'cargo' is on PATH.")
+ctoon_lang_wanted(CTOON_BUILD_RUST _ctoon_rust_wanted)
+if(_ctoon_rust_wanted)
+    find_program(CARGO_EXECUTABLE cargo)
+    ctoon_require_lang(CTOON_BUILD_RUST CARGO_EXECUTABLE "Rust"
+        "Install Rust >= 1.70 and make sure 'cargo' is on PATH.")
+endif()
 
 if(CARGO_EXECUTABLE)
     set(CTOON_DOCS_RUST_OUT ${CTOON_DOCS_OUT}/rust)
@@ -169,10 +171,12 @@ endif()
 
 
 # ── Julia Documentation (Documenter.jl) ─────────────────────────
-find_program(JULIA_EXECUTABLE julia)
-
-ctoon_require_lang(CTOON_BUILD_JULIA JULIA_EXECUTABLE "Julia"
-    "Install Julia (https://julialang.org/downloads/) and make sure 'julia' is on PATH.")
+ctoon_lang_wanted(CTOON_BUILD_JULIA _ctoon_julia_wanted)
+if(_ctoon_julia_wanted)
+    find_program(JULIA_EXECUTABLE julia)
+    ctoon_require_lang(CTOON_BUILD_JULIA JULIA_EXECUTABLE "Julia"
+        "Install Julia (https://julialang.org/downloads/) and make sure 'julia' is on PATH.")
+endif()
 
 if(JULIA_EXECUTABLE)
     set(CTOON_DOCS_JULIA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/julia)

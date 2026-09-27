@@ -33,6 +33,11 @@ set(CTOON_JULIA_ENV ${CMAKE_COMMAND} -E env
     "CTOON_SPEC_EXAMPLES_DIR=${CTOON_SPEC_EXAMPLES_DIR}")
 
 # ── Locate Julia toolchain ───────────────────────────────────────────────────
+ctoon_lang_wanted(CTOON_BUILD_JULIA _ctoon_julia_wanted)
+if(NOT _ctoon_julia_wanted)
+    return()
+endif()
+
 find_program(JULIA_EXECUTABLE julia)
 
 ctoon_require_lang(CTOON_BUILD_JULIA JULIA_EXECUTABLE "Julia"

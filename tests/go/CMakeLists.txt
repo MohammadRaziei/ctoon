@@ -9,6 +9,11 @@ set(CTOON_GO_TEST_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CTOON_GO_MODULE_DIR      ${PROJECT_SOURCE_DIR}/src/bindings/go)
 
 # ── Locate Go toolchain ──────────────────────────────────────────────────────
+ctoon_lang_wanted(CTOON_BUILD_GO _ctoon_go_wanted)
+if(NOT _ctoon_go_wanted)
+    return()
+endif()
+
 find_program(GO_EXECUTABLE go)
 
 ctoon_require_lang(CTOON_BUILD_GO GO_EXECUTABLE "Go"

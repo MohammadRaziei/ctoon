@@ -14,6 +14,11 @@
 
 cmake_minimum_required(VERSION 3.19)
 
+ctoon_lang_wanted(CTOON_BUILD_MATLAB _ctoon_matlab_wanted)
+if(NOT _ctoon_matlab_wanted)
+    return()
+endif()
+
 find_package(Matlab COMPONENTS MX_LIBRARY MEX_COMPILER QUIET)
 
 ctoon_require_lang(CTOON_BUILD_MATLAB Matlab_FOUND "MATLAB"

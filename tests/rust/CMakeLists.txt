@@ -12,6 +12,11 @@
 set(CTOON_RUST_CRATE_DIR ${PROJECT_SOURCE_DIR}/src/bindings/rust)
 
 # ── Locate Rust toolchain ────────────────────────────────────────────────────
+ctoon_lang_wanted(CTOON_BUILD_RUST _ctoon_rust_wanted)
+if(NOT _ctoon_rust_wanted)
+    return()
+endif()
+
 find_program(CARGO_EXECUTABLE cargo)
 
 ctoon_require_lang(CTOON_BUILD_RUST CARGO_EXECUTABLE "Rust"

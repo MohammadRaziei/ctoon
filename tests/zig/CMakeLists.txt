@@ -13,6 +13,11 @@
 set(CTOON_ZIG_PROJECT_ROOT ${PROJECT_SOURCE_DIR})
 
 # ── Locate Zig toolchain ─────────────────────────────────────────────────────
+ctoon_lang_wanted(CTOON_BUILD_ZIG _ctoon_zig_wanted)
+if(NOT _ctoon_zig_wanted)
+    return()
+endif()
+
 find_program(ZIG_EXECUTABLE zig)
 
 ctoon_require_lang(CTOON_BUILD_ZIG ZIG_EXECUTABLE "Zig"

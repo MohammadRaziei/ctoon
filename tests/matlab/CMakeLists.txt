@@ -6,6 +6,11 @@
 #   ctoon_test_matlab       run test suite, hooks into ctoon_test
 #   ctoon_coverage_matlab   run tests + Cobertura XML, hooks into ctoon_coverage
 # =============================================================================
+ctoon_lang_wanted(CTOON_BUILD_MATLAB _ctoon_matlab_wanted)
+if(NOT _ctoon_matlab_wanted)
+    return()
+endif()
+
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
 
 ctoon_require_lang(CTOON_BUILD_MATLAB Matlab_FOUND "MATLAB"
