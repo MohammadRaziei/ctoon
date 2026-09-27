@@ -7,7 +7,11 @@ Reads docs/supported_langs.json (the language registry) plus, per language,
   <folder>/index-example.txt   raw HTML for the quick-example panel
 and substitutes the @DOCS_TABS@ / @DOCS_CONTENT@ / @INSTALL_TABS@ /
 @INSTALL_CONTENT@ / @EXAMPLE_TABS@ / @EXAMPLE_CONTENT@ placeholders (plus
-@PROJECT_VERSION@ / @LOGO_CONTENT@ / @FAVICON@) in index.html.in.
+@PROJECT_VERSION@ / @SPEC_VERSION@ / @LOGO_CONTENT@ / @FAVICON@) in
+index.html.in. @SPEC_VERSION@ is rendered as "v<value>" (e.g. "v4.1"), or
+"n/a" when --spec-version isn't given/resolved (see cmake/SpecVersion.cmake
+-- CTOON_SPEC_VERSION can legitimately be empty if it was never resolved
+and no supported_spec.conf cache exists yet).
 
 Invoked by docs/CreateDocs.cmake (which also copies ctoon-docs.css and the
 logo/favicon into place) — see that file for the exact command line. Can
@@ -16,7 +20,7 @@ also be run directly for local iteration, e.g.:
     python3 generate_index.py \
         --index-in index.html.in --output /tmp/preview/index.html \
         --langs-file supported_langs.json --langs-dir . \
-        --project-version 0.7.0 --logo-svg images/ctoon-sq.svg
+        --project-version 0.7.0 --spec-version 4.1 --logo-svg images/ctoon-sq.svg
 """
 import argparse
 import json
@@ -130,6 +134,8 @@ def build(args: argparse.Namespace) -> str:
         index_content = index_content.replace(f"@{panel.upper()}_CONTENT@", "".join(content[panel]))
 
     index_content = index_content.replace("@PROJECT_VERSION@", args.project_version)
+    spec_display = f"v{args.spec_version}" if args.spec_version else "n/a"
+    index_content = index_content.replace("@SPEC_VERSION@", spec_display)
     logo_content = Path(args.logo_svg).read_text(encoding="utf-8") if args.logo_svg else ""
     index_content = index_content.replace("@LOGO_CONTENT@", logo_content)
     index_content = index_content.replace("@FAVICON@", args.favicon)
@@ -143,6 +149,7 @@ def main() -> None:
     ap.add_argument("--langs-file", required=True, help="path to supported_langs.json")
     ap.add_argument("--langs-dir", required=True, help="directory containing each <folder>/ subdirectory")
     ap.add_argument("--project-version", required=True)
+    ap.add_argument("--spec-version", default="", help="toon-format/spec version (e.g. 4.1); rendered as vX.Y, or \"n/a\" if empty")
     ap.add_argument("--logo-svg", default="", help="path to the inline logo SVG (embedded verbatim)")
     ap.add_argument("--favicon", default="ctoon-sq.svg")
     args = ap.parse_args()

@@ -233,6 +233,7 @@ add_custom_command(
         -DINDEX_IN=${CMAKE_CURRENT_SOURCE_DIR}/index.html.in
         -DCSS_FILE=${CMAKE_CURRENT_SOURCE_DIR}/ctoon-docs.css
         -DPROJECT_VERSION=${PROJECT_VERSION}
+        -DSPEC_VERSION=${CTOON_SPEC_VERSION}
         -DLOGO_SQ=${PROJECT_SOURCE_DIR}/docs/images/ctoon-sq.svg
         -DLANGS_FILE=${CTOON_SUPPORTED_LANGS}
         -DLANGS_DIR=${CMAKE_CURRENT_SOURCE_DIR}

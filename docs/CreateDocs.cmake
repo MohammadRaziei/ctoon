@@ -6,6 +6,9 @@
 #   <folder>/index-docs.json + index-install.txt + index-example.txt — see
 #   supported_langs.json's own "_comment" field for the format),
 #   GENERATE_SCRIPT (docs/generate_index.py)
+# Optional:
+#   SPEC_VERSION (CTOON_SPEC_VERSION from cmake/SpecVersion.cmake, e.g.
+#   "4.1" -- rendered in the hero stats as "vX.Y", or "n/a" if unset/empty)
 #
 # The tab bars / tab panes themselves are built by GENERATE_SCRIPT, a small
 # Python helper — reading JSON and templating HTML fought CMake's own
@@ -39,6 +42,7 @@ execute_process(
           --langs-file      "${LANGS_FILE}"
           --langs-dir       "${LANGS_DIR}"
           --project-version "${PROJECT_VERSION}"
+          --spec-version    "${SPEC_VERSION}"
           --logo-svg        "${LOGO_SQ}"
           --favicon         "ctoon-sq.svg"
   RESULT_VARIABLE GENERATE_RESULT

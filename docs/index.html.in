@@ -73,8 +73,8 @@
         </div>
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num">3.19+</div>
-            <div class="hero-stat-label">CMake required</div>
+            <div class="hero-stat-num">@SPEC_VERSION@</div>
+            <div class="hero-stat-label">TOON Spec</div>
         </div>
     </div>
 </div>
