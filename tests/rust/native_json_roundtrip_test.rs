@@ -133,6 +133,50 @@ fn pair_files(dir: &Path) -> Vec<String> {
     names
 }
 
+/// Numeric-tolerant equality between two `ctoon::Value`s, used only for the
+/// *post-round-trip* comparison in `check_pair()` below.
+///
+/// TOON's own text format doesn't distinguish a whole-valued float from an
+/// integer: per spec §2, a `Real` with zero fractional part (e.g. `15.0`)
+/// is written as a bare `15` (see ctoon.c's real-number writer), and on the
+/// way back in there is no textual difference left for the reader to
+/// recover -- `15` parses as `Uint(15)`. That's a property of the format
+/// itself, not data loss (the numeric *value* survives exactly), so a
+/// strict `Value::eq` here would fail on any input JSON that happens to
+/// spell an integer-valued number with a decimal point (as
+/// sample3_nested.json's `"price": 15.0` does).
+///
+/// This mirrors the numeric-tolerant spirit of `values_equal()` above,
+/// which already compares serde_json's `Number` against ctoon's `Value` by
+/// numeric value rather than by variant. Everything else (strings, bools,
+/// nulls, array/object shape, and int-vs-int or float-vs-float within the
+/// same "is it whole" class) still must match exactly.
+fn round_trip_equal(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        (Value::Str(x), Value::Str(y)) => x == y,
+        // Numeric cross-comparison: Uint/Sint/Real all normalize to f64.
+        // This only ever forgives the specific whole-valued-float case
+        // described above -- a genuinely fractional Real (e.g. 2.5) can
+        // never compare equal to a Uint/Sint this way, since no integer
+        // has a fractional value.
+        (Value::Uint(_) | Value::Sint(_) | Value::Real(_), Value::Uint(_) | Value::Sint(_) | Value::Real(_)) => {
+            a.as_f64() == b.as_f64()
+        }
+        (Value::Array(x), Value::Array(y)) => {
+            x.len() == y.len() && x.iter().zip(y.iter()).all(|(p, q)| round_trip_equal(p, q))
+        }
+        (Value::Object(x), Value::Object(y)) => {
+            x.len() == y.len()
+                && x.iter().all(|(k, v)| {
+                    y.iter().find(|(yk, _)| yk == k).map_or(false, |(_, yv)| round_trip_equal(v, yv))
+                })
+        }
+        _ => false,
+    }
+}
+
 fn check_pair(dir: &Path, name: &str) {
     let raw_json = fs::read_to_string(dir.join(format!("{name}.json")))
         .unwrap_or_else(|e| panic!("reading {name}.json: {e}"));
@@ -163,7 +207,10 @@ fn check_pair(dir: &Path, name: &str) {
 
     let round_tripped = ctoon::loads(&produced)
         .unwrap_or_else(|e| panic!("ctoon::loads(ctoon::dumps(...)) for {name}: {e:?}"));
-    assert_eq!(round_tripped, own, "{name}: TOON round trip changed the value");
+    assert!(
+        round_trip_equal(&round_tripped, &own),
+        "{name}: TOON round trip changed the value\n  left: {round_tripped:?}\n right: {own:?}"
+    );
 }
 
 // ---------------------------------------------------------------------------
