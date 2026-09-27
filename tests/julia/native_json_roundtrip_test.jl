@@ -106,7 +106,18 @@ function check_pair(dir::AbstractString, name::AbstractString)
     expected = read(joinpath(dir, name * ".toon"), String)
     @test trim_trailing_newlines(produced) == trim_trailing_newlines(expected)
 
-    round_tripped = CToon.parse(produced)
+    # `produced` is TOON text (CToon.dumps() output), not JSON, so it must
+    # go back in through CToon.parse_toon() (-> ctoon_read_opts, ctoon's
+    # native-syntax reader) -- not CToon.parse() (-> ctoon_read_json,
+    # JSON-only). Using CToon.parse() here fails immediately on every
+    # input with "unexpected character (code=6, pos=0)": TOON's bare
+    # `key: value` syntax (no opening `{`) isn't valid JSON, so the JSON
+    # reader rejects the very first character. This mirrors how the
+    # Python/Go/Rust siblings of this file do the same step --
+    # tests/python/test_native_json_roundtrip.py's `ctoon.loads(produced)`
+    # and tests/go/native_json_roundtrip_test.go's `ctoon.Loads(produced)`
+    # both call the TOON reader, never the JSON one, for this step.
+    round_tripped = CToon.parse_toon(produced)
     @test values_equal(round_tripped, native)
 end
 
