@@ -54,3 +54,28 @@ function(ctoon_require_lang FLAG_VAR FOUND_VAR HUMAN_NAME INSTALL_HINT)
             "to make a missing toolchain a hard error instead.)")
     endif()
 endfunction()
+
+# ctoon_require_lang_version(<actual_version> <min_version> <human_name>)
+#
+# A MACRO, not a function: `return()` inside it exits the CMakeLists.txt
+# that called it, not just this check. Call it right after
+# ctoon_require_lang() has confirmed the toolchain exists (this only makes
+# sense once that's true — an unset <actual_version> would just compare
+# less than everything).
+#
+# The toolchain being too old is a different situation from it being
+# missing: unlike ctoon_require_lang()'s FATAL_ERROR-when-explicitly-
+# requested policy, this always WARNs and skips regardless of
+# CTOON_BUILD_ALL_LANGS/<flag_var> — a wrong version isn't something
+# installing-the-package fixes the way a missing one is, and CI's real
+# signal for "this language's tests didn't run" is the WARNING itself,
+# still visible either way.
+macro(ctoon_require_lang_version ACTUAL_VERSION MIN_VERSION HUMAN_NAME)
+    if("${ACTUAL_VERSION}" VERSION_LESS "${MIN_VERSION}")
+        message(WARNING
+            "${HUMAN_NAME} ${ACTUAL_VERSION} found, but ${MIN_VERSION}+ is "
+            "required — skipping ${HUMAN_NAME}. Upgrade ${HUMAN_NAME} to "
+            "${MIN_VERSION} or newer.")
+        return()
+    endif()
+endmacro()

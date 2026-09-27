@@ -28,6 +28,9 @@ execute_process(
     OUTPUT_VARIABLE GO_VERSION_OUTPUT
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+if(GO_VERSION_OUTPUT MATCHES "go([0-9]+\\.[0-9]+(\\.[0-9]+)?)")
+    ctoon_require_lang_version(${CMAKE_MATCH_1} 1.21 "Go")
+endif() # ponytail: silently skips the version check on an unparseable `go version` string instead of warning - go's output format has been stable for years, not worth a second failure mode here
 message(STATUS "Found Go: ${GO_VERSION_OUTPUT}")
 
 # ── CTest integration ────────────────────────────────────────────────────────

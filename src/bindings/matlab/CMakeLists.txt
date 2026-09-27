@@ -28,6 +28,13 @@ if(NOT Matlab_FOUND)
     return()
 endif()
 
+# R2014b == internal version 8.4 (MathWorks' classic 9.x-style numbering).
+# Releases from R2023b on report a calendar-based Matlab_VERSION_STRING
+# (23.2, 24.1, ...) instead, but that's still numerically well above 8.4,
+# so this VERSION_LESS check holds across both schemes without needing a
+# release-name lookup table.
+ctoon_require_lang_version(${Matlab_VERSION_STRING} 8.4 "MATLAB")
+
 message(STATUS "MATLAB found: ${Matlab_ROOT_DIR}  (${Matlab_VERSION_STRING})")
 
 set(CTOON_MATLAB_BINARY_DIR "${CMAKE_BINARY_DIR}/matlab")

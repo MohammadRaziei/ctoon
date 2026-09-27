@@ -31,6 +31,9 @@ execute_process(
     OUTPUT_VARIABLE CARGO_VERSION_OUTPUT
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+if(CARGO_VERSION_OUTPUT MATCHES "cargo ([0-9]+\\.[0-9]+(\\.[0-9]+)?)")
+    ctoon_require_lang_version(${CMAKE_MATCH_1} 1.70 "Rust")
+endif()
 message(STATUS "Found Cargo: ${CARGO_VERSION_OUTPUT}")
 
 # ── CTest integration ────────────────────────────────────────────────────────

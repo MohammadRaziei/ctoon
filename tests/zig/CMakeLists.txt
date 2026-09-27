@@ -32,6 +32,7 @@ execute_process(
     OUTPUT_VARIABLE ZIG_VERSION_OUTPUT
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+ctoon_require_lang_version(${ZIG_VERSION_OUTPUT} 0.16.0 "Zig")
 message(STATUS "Found Zig: ${ZIG_VERSION_OUTPUT}")
 
 # On some Linux setups (notably Debian/Ubuntu multiarch layouts, and
