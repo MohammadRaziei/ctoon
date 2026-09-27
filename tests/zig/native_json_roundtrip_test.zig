@@ -33,6 +33,17 @@
 //! confined to toCtoonValue()'s switch arms below, nothing else in this
 //! file needing to be reasoned through again.
 //!
+//! Filesystem/env access below targets Zig 0.16's std.Io-based APIs:
+//! std.process.getEnvVarOwned and std.fs.cwd() are both gone in 0.16 (see
+//! the 0.16.0 release notes and std.Io.Dir's doc comment). Env vars go
+//! through std.c.getenv (libc is already linked for this target -- see
+//! tests/zig/CMakeLists.txt/build.zig's -lc) since there's no
+//! std.process.Init available inside a `test { }` block to source
+//! init.environ from. Directory/file access goes through std.Io.Dir.cwd(),
+//! threading an explicit `io: std.Io` (std.testing.io inside tests, same
+//! place std.testing.allocator already comes from) through every call, per
+//! 0.16's std.Io.Dir doc comment.
+//!
 //! Expected TOON strings are copied verbatim from toon-format/spec's own
 //! tests/fixtures/encode/*.json -- never from running ctoon's own CLI or
 //! any of ctoon's own bindings against these inputs (that would only prove
@@ -56,17 +67,25 @@ const local_data_dir = "tests/data";
 /// toon-format/spec centrally (see tests/CMakeLists.txt). `std.testing`
 /// has no runtime "skip" status any more than Rust's harness does; an
 /// early return is the same convention that file uses.
-fn specExamplesDir(gpa: std.mem.Allocator) ?[]const u8 {
-    const dir = std.process.getEnvVarOwned(gpa, "CTOON_SPEC_EXAMPLES_DIR") catch return null;
+fn specExamplesDir(gpa: std.mem.Allocator, io: std.Io) ?[]const u8 {
+    // std.process.getEnvVarOwned is gone in Zig 0.16 (see the 0.16.0
+    // release notes); std.c.getenv is the replacement where libc is
+    // linked (it is, for this target). It returns a NUL-terminated
+    // pointer into the process's actual environment block, not an owned
+    // allocation, so this still dupes into `gpa` itself to keep the same
+    // "Owned" contract the rest of this function (and its caller, which
+    // frees `dir_path` implicitly via the arena) relies on.
+    const raw = std.c.getenv("CTOON_SPEC_EXAMPLES_DIR") orelse return null;
+    const dir = gpa.dupe(u8, std.mem.span(raw)) catch return null;
     if (dir.len == 0) {
         gpa.free(dir);
         return null;
     }
-    var d = std.fs.cwd().openDir(dir, .{}) catch {
+    var d = std.Io.Dir.cwd().openDir(io, dir, .{}) catch {
         gpa.free(dir);
         return null;
     };
-    d.close();
+    d.close(io);
     return dir;
 }
 
@@ -148,6 +167,73 @@ fn valuesEqual(native: std.json.Value, own: ctoon.Value) bool {
     };
 }
 
+/// Numeric-tolerant equality between a std.json.Value and a ctoon.Value,
+/// used ONLY for the post-round-trip comparison in checkPair() below --
+/// see round_trip_equal() in tests/rust/native_json_roundtrip_test.rs for
+/// the full rationale (same fix, same root cause, applied per-binding).
+///
+/// In short: TOON's text format doesn't distinguish a whole-valued float
+/// (`15.0`) from an integer (`15`) -- per spec, ctoon's writer emits a
+/// whole-valued Real as a bare integer token, and ctoon's reader then has
+/// no way to recover that it was ever a float. That's an inherent property
+/// of the TOON format itself (the numeric *value* survives exactly), not
+/// data loss, so this — and only this — comparison tolerates an integer
+/// and a same-valued float comparing equal. valuesEqual() above (used for
+/// the *pre*-round-trip std.json-vs-ctoon.loadsJson agreement check, where
+/// both sides parsed the same JSON text and so have no such ambiguity)
+/// deliberately stays strict.
+fn roundTripEqual(native: std.json.Value, own: ctoon.Value) bool {
+    return switch (native) {
+        .null => own == .null,
+        .bool => |a| own == .boolean and own.boolean == a,
+        .integer => |a| switch (own) {
+            .uint => |b| a >= 0 and @as(u64, @intCast(a)) == b,
+            .sint => |b| a == b,
+            .real => |b| @as(f64, @floatFromInt(a)) == b,
+            else => false,
+        },
+        .float => |a| switch (own) {
+            .real => |b| a == b,
+            .uint => |b| a == @as(f64, @floatFromInt(b)),
+            .sint => |b| a == @as(f64, @floatFromInt(b)),
+            else => false,
+        },
+        .number_string => |a| blk: {
+            const parsed_a = std.fmt.parseFloat(f64, a) catch break :blk false;
+            break :blk switch (own) {
+                .real => |b| parsed_a == b,
+                .uint => |b| parsed_a == @as(f64, @floatFromInt(b)),
+                .sint => |b| parsed_a == @as(f64, @floatFromInt(b)),
+                else => false,
+            };
+        },
+        .string => |a| own == .str and std.mem.eql(u8, a, own.str),
+        .array => |a| blk: {
+            if (own != .array or a.items.len != own.array.items.len) break :blk false;
+            for (a.items, own.array.items) |x, y| {
+                if (!roundTripEqual(x, y)) break :blk false;
+            }
+            break :blk true;
+        },
+        .object => |a| blk: {
+            if (own != .object or a.count() != own.object.items.len) break :blk false;
+            var it = a.iterator();
+            while (it.next()) |entry| {
+                var found = false;
+                for (own.object.items) |field| {
+                    if (std.mem.eql(u8, field.key, entry.key_ptr.*)) {
+                        if (!roundTripEqual(entry.value_ptr.*, field.value)) break :blk false;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) break :blk false;
+            }
+            break :blk true;
+        },
+    };
+}
+
 fn trimTrailingNewlines(s: []const u8) []const u8 {
     var end = s.len;
     while (end > 0 and s[end - 1] == '\n') : (end -= 1) {}
@@ -156,19 +242,19 @@ fn trimTrailingNewlines(s: []const u8) []const u8 {
 
 /// Every `<name>.json` in `dir` with a matching `<name>.toon`, sorted for a
 /// deterministic run order.
-fn pairFiles(gpa: std.mem.Allocator, dir_path: []const u8) ![][]const u8 {
-    var dir = try std.fs.cwd().openDir(dir_path, .{ .iterate = true });
-    defer dir.close();
+fn pairFiles(gpa: std.mem.Allocator, io: std.Io, dir_path: []const u8) ![][]const u8 {
+    var dir = try std.Io.Dir.cwd().openDir(io, dir_path, .{ .iterate = true });
+    defer dir.close(io);
 
     var names = std.ArrayList([]const u8).empty;
     var it = dir.iterate();
-    while (try it.next()) |entry| {
+    while (try it.next(io)) |entry| {
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.name, ".json")) continue;
         const stem = entry.name[0 .. entry.name.len - ".json".len];
         const toon_name = try std.fmt.allocPrint(gpa, "{s}.toon", .{stem});
         defer gpa.free(toon_name);
-        dir.access(toon_name, .{}) catch continue;
+        dir.access(io, toon_name, .{}) catch continue;
         try names.append(gpa, try gpa.dupe(u8, stem));
     }
     std.mem.sort([]const u8, names.items, {}, struct {
@@ -179,13 +265,13 @@ fn pairFiles(gpa: std.mem.Allocator, dir_path: []const u8) ![][]const u8 {
     return names.toOwnedSlice(gpa);
 }
 
-fn checkPair(gpa: std.mem.Allocator, dir_path: []const u8, name: []const u8) !void {
-    var dir = try std.fs.cwd().openDir(dir_path, .{});
-    defer dir.close();
+fn checkPair(gpa: std.mem.Allocator, io: std.Io, dir_path: []const u8, name: []const u8) !void {
+    var dir = try std.Io.Dir.cwd().openDir(io, dir_path, .{});
+    defer dir.close(io);
 
     const json_name = try std.fmt.allocPrint(gpa, "{s}.json", .{name});
     defer gpa.free(json_name);
-    const raw_json = try dir.readFileAlloc(gpa, json_name, 64 * 1024 * 1024);
+    const raw_json = try dir.readFileAlloc(io, json_name, gpa, .limited(64 * 1024 * 1024));
 
     const parsed = try std.json.parseFromSliceLeaky(std.json.Value, gpa, raw_json, .{});
 
@@ -203,13 +289,13 @@ fn checkPair(gpa: std.mem.Allocator, dir_path: []const u8, name: []const u8) !vo
 
     const toon_name = try std.fmt.allocPrint(gpa, "{s}.toon", .{name});
     defer gpa.free(toon_name);
-    const expected = try dir.readFileAlloc(gpa, toon_name, 64 * 1024 * 1024);
+    const expected = try dir.readFileAlloc(io, toon_name, gpa, .limited(64 * 1024 * 1024));
 
     try testing.expectEqualStrings(trimTrailingNewlines(expected), trimTrailingNewlines(produced));
 
     var round_tripped = try ctoon.loads(gpa, produced);
     defer round_tripped.deinit(gpa);
-    if (!valuesEqual(parsed, round_tripped)) {
+    if (!roundTripEqual(parsed, round_tripped)) {
         std.debug.print("{s}: TOON round trip changed the value\n", .{name});
         return error.RoundTripMismatch;
     }
@@ -223,11 +309,12 @@ test "native json roundtrip: local data corpus" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const gpa = arena.allocator();
+    const io = testing.io;
 
-    const names = try pairFiles(gpa, local_data_dir);
+    const names = try pairFiles(gpa, io, local_data_dir);
     try testing.expect(names.len > 0);
     for (names) |name| {
-        try checkPair(gpa, local_data_dir, name);
+        try checkPair(gpa, io, local_data_dir, name);
     }
 }
 
@@ -239,15 +326,16 @@ test "native json roundtrip: spec examples corpus" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const gpa = arena.allocator();
+    const io = testing.io;
 
-    const dir_path = specExamplesDir(gpa) orelse {
+    const dir_path = specExamplesDir(gpa, io) orelse {
         std.debug.print("CTOON_SPEC_EXAMPLES_DIR not set/found — skipping (only available under CMake/ctest).\n", .{});
         return;
     };
 
-    const names = try pairFiles(gpa, dir_path);
+    const names = try pairFiles(gpa, io, dir_path);
     try testing.expect(names.len > 0);
     for (names) |name| {
-        try checkPair(gpa, dir_path, name);
+        try checkPair(gpa, io, dir_path, name);
     }
 }
