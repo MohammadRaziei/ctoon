@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 import ctoon
-from ctoon import Delimiter, ReadFlag
+from ctoon import Delimiter
 
 ENCODE_FIXTURES = [
     "primitives.json", "objects.json", "objects-keyed.json",
@@ -97,11 +97,10 @@ def test_decode_fixture(spec_fixtures_dir, filename):
         options = case.get("options")
         expect_error = bool(case.get("shouldError"))
         strict = _strict(options)
-        flags = ReadFlag.NOFLAG if strict else ReadFlag.ALLOW_INF_AND_NAN
         indent = _indent(options)
 
         try:
-            got = ctoon.loads(case["input"], flags=flags, indent=indent)
+            got = ctoon.loads(case["input"], indent=indent, strict=strict)
             threw = False
         except Exception:
             threw = True

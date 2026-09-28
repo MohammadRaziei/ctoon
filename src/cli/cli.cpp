@@ -71,7 +71,7 @@ void writeFile(const std::string &path, const std::string &content) {
  * ============================================================ */
 
 std::string toonToJson(const std::string &input, int indent, bool strict) {
-    ctoon_read_flag flg  = strict ? CTOON_READ_NOFLAG : CTOON_READ_ALLOW_INF_AND_NAN;
+    ctoon_read_flag flg  = strict ? CTOON_READ_NOFLAG : CTOON_READ_NON_STRICT;
     ctoon_read_err  rerr;
     memset(&rerr, 0, sizeof(rerr));
     ctoon_doc *idoc = ctoon_read_opts(const_cast<char *>(input.data()),

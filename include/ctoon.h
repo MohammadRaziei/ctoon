@@ -757,7 +757,12 @@ static const ctoon_read_flag CTOON_READ_ALLOW_TRAILING_COMMAS     = 1 << 2;
 static const ctoon_read_flag CTOON_READ_ALLOW_COMMENTS            = 1 << 3;
 
 /** Allow inf/nan number and literal, case-insensitive,
-    such as 1e999, NaN, inf, -Infinity (non-standard). */
+    such as 1e999, NaN, inf, -Infinity (non-standard).
+
+    @deprecated On the TOON read path this flag also implies
+    `CTOON_READ_NON_STRICT`, for backward compatibility with callers that
+    used it to disable strict-mode checks. That implication will be removed
+    in a future release; pass `CTOON_READ_NON_STRICT` explicitly instead. */
 static const ctoon_read_flag CTOON_READ_ALLOW_INF_AND_NAN         = 1 << 4;
 
 /** Read all numbers as raw strings (value with `CTOON_TYPE_RAW` type),
@@ -813,6 +818,15 @@ static const ctoon_read_flag CTOON_READ_ALLOW_SINGLE_QUOTED_STR   = 1 << 12;
     This extends the ECMAScript IdentifierName rule by allowing any
     non-whitespace character with code point above `U+007F`. */
 static const ctoon_read_flag CTOON_READ_ALLOW_UNQUOTED_KEY        = 1 << 13;
+
+/** Decode TOON in non-strict mode (spec §13 `strict: false`).
+    By default the TOON reader is strict and reports the spec §14
+    strict-mode errors. With this flag those checks are relaxed as the
+    spec permits for non-strict decoders, e.g. indentation that is not a
+    multiple of indentSize and leading tabs are tolerated, duplicate keys
+    resolve last-write-wins, and malformed headers fall back to literal
+    keys. Has no effect on JSON input. */
+static const ctoon_read_flag CTOON_READ_NON_STRICT                = 1 << 14;
 
 /** Allow TOON5 format, see: [https://json5.org].
     This flag supports all TOON5 features with some additional extensions:

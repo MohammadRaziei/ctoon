@@ -215,6 +215,7 @@ enum class read_flag : uint32_t {
     ALLOW_EXT_WHITESPACE    = static_cast<uint32_t>(CTOON_READ_ALLOW_EXT_WHITESPACE),
     ALLOW_SINGLE_QUOTED_STR = static_cast<uint32_t>(CTOON_READ_ALLOW_SINGLE_QUOTED_STR),
     ALLOW_UNQUOTED_KEY      = static_cast<uint32_t>(CTOON_READ_ALLOW_UNQUOTED_KEY),
+    NON_STRICT              = static_cast<uint32_t>(CTOON_READ_NON_STRICT),
 };
 
 inline read_flag operator|(read_flag l, read_flag r) CTOON_NOEXCEPT {

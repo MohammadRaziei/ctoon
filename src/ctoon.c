@@ -2700,11 +2700,11 @@ typedef struct {
     usize           hdr_slots; /* val slots consumed by ctoon_doc */
 } ctoon_read_ctx;
 
-/* Non-strict is signalled the same way the rest of the codebase already
- * does (see the CLI's --no-strict handling): CTOON_READ_ALLOW_INF_AND_NAN
- * doubles as the TOON "relax strict-mode checks" flag. */
+/* Non-strict (spec §13 `strict: false`) is CTOON_READ_NON_STRICT.
+ * CTOON_READ_ALLOW_INF_AND_NAN still implies it for backward
+ * compatibility (deprecated, see ctoon.h). */
 static bool ctoon_read_is_strict(const ctoon_read_ctx *c) {
-    return !(c->flags & CTOON_READ_ALLOW_INF_AND_NAN);
+    return !(c->flags & (CTOON_READ_NON_STRICT | CTOON_READ_ALLOW_INF_AND_NAN));
 }
 
 /*----------------------------------------------------------------------------

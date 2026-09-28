@@ -171,11 +171,11 @@ bool run_decode_fixture(const char *filename) {
 
         std::string toon_text(input.get_str());
 
-        // strict=false in the spec maps to ALLOW_INF_AND_NAN, mirroring the
+        // strict=false in the spec maps to NON_STRICT, mirroring the
         // ctoon CLI's own --no-strict handling (see src/cli/cli.cpp).
         bool strict = parse_strict(options, true);
         ctoon::read_flag flags = strict ? ctoon::read_flag::NOFLAG
-                                         : ctoon::read_flag::ALLOW_INF_AND_NAN;
+                                         : ctoon::read_flag::NON_STRICT;
         int indent_size = parse_indent(options, 2);
 
         bool threw = false;

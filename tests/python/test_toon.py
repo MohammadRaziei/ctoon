@@ -36,7 +36,7 @@ class TestModule:
 
     def test_read_flag_values(self):
         for name in ("NOFLAG", "INSITU", "ALLOW_COMMENTS", "ALLOW_INF_AND_NAN",
-                     "ALLOW_TRAILING_COMMAS", "ALLOW_BOM"):
+                     "ALLOW_TRAILING_COMMAS", "ALLOW_BOM", "NON_STRICT"):
             assert hasattr(ReadFlag, name), f"ReadFlag.{name} missing"
 
     def test_write_flag_values(self):
@@ -202,6 +202,37 @@ class TestDecode:
     def test_read_flag_noflag(self):
         data = ctoon.loads("x: 1", flags=ReadFlag.NOFLAG)
         assert data["x"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Test: Strict / non-strict decoding (spec §13 `strict`)
+# ---------------------------------------------------------------------------
+
+class TestStrict:
+    # Duplicate keys are a strict-mode error (§14.3); non-strict resolves
+    # them last-write-wins.
+    DUP = "a: 1\na: 2"
+
+    def test_strict_by_default(self):
+        with pytest.raises(Exception):
+            ctoon.loads(self.DUP)
+
+    def test_strict_true_explicit(self):
+        with pytest.raises(Exception):
+            ctoon.loads(self.DUP, strict=True)
+
+    def test_strict_false(self):
+        assert ctoon.loads(self.DUP, strict=False) == {"a": 2}
+
+    def test_non_strict_flag(self):
+        assert ctoon.loads(self.DUP, flags=ReadFlag.NON_STRICT) == {"a": 2}
+
+    def test_allow_inf_and_nan_still_implies_non_strict(self):
+        # Deprecated back-compat path, see CTOON_READ_ALLOW_INF_AND_NAN.
+        assert ctoon.loads(self.DUP, flags=ReadFlag.ALLOW_INF_AND_NAN) == {"a": 2}
+
+    def test_load_filelike_strict_false(self):
+        assert ctoon.load(io.StringIO(self.DUP), strict=False) == {"a": 2}
 
 
 # ---------------------------------------------------------------------------

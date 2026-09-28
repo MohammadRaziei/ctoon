@@ -173,6 +173,7 @@ NB_MODULE(ctoon_py, m) {
         .value("ALLOW_EXT_WHITESPACE",    ctoon::read_flag::ALLOW_EXT_WHITESPACE)
         .value("ALLOW_SINGLE_QUOTED_STR", ctoon::read_flag::ALLOW_SINGLE_QUOTED_STR)
         .value("ALLOW_UNQUOTED_KEY",      ctoon::read_flag::ALLOW_UNQUOTED_KEY)
+        .value("NON_STRICT",              ctoon::read_flag::NON_STRICT)
         /* __or__: combine two flags and return a new ReadFlag instance
          * using nb::type<T>() to construct without validation. */
         .def("__or__",  [](nb::object self, nb::object other) -> nb::object {
@@ -225,12 +226,14 @@ NB_MODULE(ctoon_py, m) {
         .export_values();
 
     /* ------------------------------------------------------------------
-     * loads(s, *, flags=ReadFlag.NOFLAG, indent=2) -> object
+     * loads(s, *, flags=ReadFlag.NOFLAG, indent=2, strict=True) -> object
      *
      * Parse a TOON string or bytes object.
+     * strict=False ORs in ReadFlag.NON_STRICT (spec §13 `strict: false`).
      * ------------------------------------------------------------------ */
     m.def("loads",
-        [](nb::object s, ctoon::read_flag flags, int indent) -> nb::object {
+        [](nb::object s, ctoon::read_flag flags, int indent, bool strict) -> nb::object {
+            if (!strict) flags |= ctoon::read_flag::NON_STRICT;
             std::string buf;
             if (nb::isinstance<nb::bytes>(s)) {
                 auto b = nb::cast<nb::bytes>(s);
@@ -246,20 +249,24 @@ NB_MODULE(ctoon_py, m) {
         nb::arg("s"),
         nb::arg("flags") = ctoon::read_flag::NOFLAG,
         nb::arg("indent") = 2,
+        nb::arg("strict") = true,
         "Parse a TOON string or bytes object. Returns a Python object.\n\n"
-        "    loads(s, flags=ReadFlag.NOFLAG, indent=2) -> object\n\n"
+        "    loads(s, flags=ReadFlag.NOFLAG, indent=2, strict=True) -> object\n\n"
         "indent overrides indentSize (spec §12) — the number of spaces\n"
-        "that count as one indentation level when decoding (default 2).");
+        "that count as one indentation level when decoding (default 2).\n"
+        "strict=False decodes in non-strict mode (spec §13 `strict: false`),\n"
+        "equivalent to passing ReadFlag.NON_STRICT.");
 
     /* ------------------------------------------------------------------
-     * load(fp, *, flags=ReadFlag.NOFLAG, indent=2) -> object
+     * load(fp, *, flags=ReadFlag.NOFLAG, indent=2, strict=True) -> object
      *
      * fp can be:
      *   - a str / bytes path  -> read the file from disk
      *   - a file-like object with .read() -> read from it
      * ------------------------------------------------------------------ */
     m.def("load",
-        [](nb::object fp, ctoon::read_flag flags, int indent) -> nb::object {
+        [](nb::object fp, ctoon::read_flag flags, int indent, bool strict) -> nb::object {
+            if (!strict) flags |= ctoon::read_flag::NON_STRICT;
             ctoon::document doc(nullptr);
             if (nb::isinstance<nb::str>(fp) || nb::isinstance<nb::bytes>(fp)) {
                 /* path string */
@@ -277,8 +284,10 @@ NB_MODULE(ctoon_py, m) {
         nb::arg("fp"),
         nb::arg("flags") = ctoon::read_flag::NOFLAG,
         nb::arg("indent") = 2,
+        nb::arg("strict") = true,
         "Load TOON from a file path (str) or a file-like object with .read().\n\n"
-        "    load(fp, flags=ReadFlag.NOFLAG, indent=2) -> object\n\n"
+        "    load(fp, flags=ReadFlag.NOFLAG, indent=2, strict=True) -> object\n\n"
+        "strict=False decodes in non-strict mode (spec §13 `strict: false`).\n\n"
         "    with open('data.toon') as f:\n"
         "        obj = ctoon.load(f)\n"
         "    obj = ctoon.load('data.toon')");
