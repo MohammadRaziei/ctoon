@@ -424,5 +424,5 @@ Before you open your PR, confirm that:
 
 ## 10. License
 
-CToon is released under the MIT License. By contributing, you agree that your
-contributions will be licensed under the same terms.
+CToon is released under the [MIT License](LICENSE). By contributing, you agree
+that your contributions will be licensed under the same terms.

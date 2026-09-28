@@ -64,8 +64,11 @@ cmake.define.CTOON_BUILD_EXAMPLES = "OFF"
 # nanobind's linked-mode STABLE_ABI only takes effect on Python >= 3.12
 # (silently falls back to a normal per-version build below that), so a
 # single global py-api would mistag the 3.9/3.10/3.11 wheels as abi3 when
-# they are not. It's set per-build instead: CIBW_ENVIRONMENT_CP312 (etc.)
-# in .github/workflows/wheels.yml enables it only for 3.12+ builds.
+# they are not. It's set per-build instead, for the cp312 wheel only, by the
+# [[tool.cibuildwheel.overrides]] block below (SKBUILD_WHEEL_PY_API=cp312).
+# (cibuildwheel has no CIBW_ENVIRONMENT_CP312-style variable - only platform
+# suffixes like _LINUX/_MACOS/_WINDOWS exist - so per-Python-version settings
+# must go through `overrides`; the old workflow env var was silently ignored.)
 
 
 [tool.scikit-build.metadata.version]
@@ -83,6 +86,12 @@ result = "{major}.{minor}.{patch}"
 test-command = "pytest {project}"
 test-extras = ["test"]
 test-skip = ["*universal2:arm64"]
+
+# 3.12 is built once as a stable-ABI wheel (cp312-abi3) that pip also accepts
+# on 3.13, 3.14, 3.15, ... so wheels.yml does not build those separately.
+[[tool.cibuildwheel.overrides]]
+select = "cp312-*"
+environment = { SKBUILD_WHEEL_PY_API = "cp312" }
 
 
 [tool.pytest.ini_options]
