@@ -16,7 +16,7 @@
 #       this in the current build tree?" marker. Absent  -> try a fresh
 #       resolve. Present -> skip straight to the committed cache below, no
 #       network calls on every reconfigure.
-#   ${CMAKE_SOURCE_DIR}/supported_spec.conf  - the actual, git-committed
+#   ${PROJECT_SOURCE_DIR}/supported_spec.conf  - the actual, git-committed
 #       cache/fallback. Written only after a fresh resolve succeeds;
 #       otherwise read as-is.
 #
@@ -131,7 +131,7 @@ function(resolve_spec_version)
     cmake_parse_arguments(RSV "" "TAG_VAR;VERSION_VAR;DATE_VAR" "" ${ARGN})
 
     set(_build_conf "${CMAKE_BINARY_DIR}/supported_spec.conf")
-    set(_root_conf "${CMAKE_SOURCE_DIR}/supported_spec.conf")
+    set(_root_conf "${PROJECT_SOURCE_DIR}/supported_spec.conf")
 
     if(EXISTS "${_build_conf}")
         # Already resolved earlier in this build tree - trust the
