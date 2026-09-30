@@ -173,6 +173,11 @@ jobs:
     - name: Install cargo-llvm-cov
       uses: taiki-e/install-action@cargo-llvm-cov
 
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "stable"
+
     - name: Set up Julia
       uses: julia-actions/setup-julia@v2
       with:
@@ -193,6 +198,8 @@ jobs:
           -DCTOON_BUILD_PYTHON=ON \
           -DCTOON_BUILD_TESTS=ON \
           -DCTOON_BUILD_DOCS=OFF \
+          -DCTOON_BUILD_RUST=ON \
+          -DCTOON_BUILD_GO=ON \
           -DCTOON_BUILD_JULIA=ON
 
     - name: Generate coverage report
