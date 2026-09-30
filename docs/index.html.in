@@ -172,6 +172,9 @@
                 <a class="footer-link" href="matlab/index.html">
                     <i class="fa-solid fa-square-root-variable"></i> MATLAB reference
                 </a>
+                <a class="footer-link" href="benchmarks/index.html">
+                    <i class="fa-solid fa-gauge-high"></i> Benchmarks
+                </a>
                 <a class="footer-link" href="coverage/index.html">
                     <i class="fa-solid fa-chart-pie"></i> Coverage report
                     <span class="footer-link-badge">dev</span>

@@ -30,7 +30,7 @@ cmake --build build-bench --target ctoon_benchmarks
 whose language toolchain is present (via `ctoon_bench_langs`), records
 the machine it ran on (via `ctoon_bench_system_info`), and — once that
 finishes — renders one standalone HTML report combining everything (via
-`ctoon_bench_report`) to `build-bench/results/report.html`. Chart.js and
+`ctoon_bench_report`) to `benchmarks/results/report.html`. Chart.js and
 every language's JSON are embedded inline, so the file needs no server
 or network to view and is safe to send around on its own.
 Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
@@ -55,6 +55,13 @@ cmake --build build-bench --target ctoon_benchmarks_rust
 cmake --build build-bench --target ctoon_benchmarks_zig
 cmake --build build-bench --target ctoon_benchmarks_matlab
 ```
+
+The report lands in **`benchmarks/results/report.html`**, and that file is
+meant to be **committed**: benchmarks are run on your own machine, not in CI
+(shared runners are too noisy). CI only publishes the committed file, as
+`/benchmarks/` on the docs site. Everything else (JSON, venvs, fetched
+sources) stays under `build-bench/`. Override the location with
+`-DCTOON_BENCH_REPORT_DIR=...`.
 
 To run every language without rendering the report, or to re-render just
 the report from whatever JSON is already in `build-bench/results/`

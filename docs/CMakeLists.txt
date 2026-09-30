@@ -367,3 +367,23 @@ add_custom_command(TARGET ctoon_docs POST_BUILD
     COMMENT "Injecting HTML comments into documentation pages"
     VERBATIM
 )
+
+# ── Benchmarks page ───────────────────────────────────────────
+# benchmarks/results/report.html is generated on a developer machine
+# (cmake --build build-bench --target ctoon_benchmarks, see
+# benchmarks/README.md) and committed; it is only copied here, never
+# rebuilt. Runs after InjectComment above so the standalone file is
+# published byte-for-byte as committed.
+set(CTOON_BENCH_REPORT ${PROJECT_SOURCE_DIR}/benchmarks/results/report.html)
+if(EXISTS ${CTOON_BENCH_REPORT})
+    add_custom_command(TARGET ctoon_docs POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_OUT}/benchmarks
+        COMMAND ${CMAKE_COMMAND} -E copy ${CTOON_BENCH_REPORT} ${CTOON_DOCS_OUT}/benchmarks/index.html
+        COMMENT "Publishing committed benchmark report -> ${CTOON_DOCS_OUT}/benchmarks/index.html"
+        VERBATIM
+    )
+else()
+    message(WARNING "benchmarks/results/report.html not found -- the docs site "
+                    "will have no /benchmarks/ page. Generate it with the "
+                    "ctoon_benchmarks target in benchmarks/ and commit it.")
+endif()

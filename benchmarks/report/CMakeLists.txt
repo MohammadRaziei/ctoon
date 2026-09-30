@@ -127,7 +127,15 @@ endif()
 
 # ------------------------------------------------------------------ report --
 
-set(REPORT_HTML "${CTOON_BENCH_RESULTS_DIR}/report.html")
+# report.html is the one artifact meant to be COMMITTED (same convention as
+# pygixml's benchmarks/results/report.html): run the suite on your own
+# machine, commit the file, and CI just publishes it (docs/CMakeLists.txt
+# copies it to <site>/benchmarks/index.html) -- CI never runs the benchmarks.
+# The per-language JSON stays in the disposable build dir.
+set(CTOON_BENCH_REPORT_DIR "${CTOON_BENCH_SOURCE_DIR}/results"
+    CACHE PATH "Where the final standalone report.html is written -- the one artifact meant to be committed")
+file(MAKE_DIRECTORY "${CTOON_BENCH_REPORT_DIR}")
+set(REPORT_HTML "${CTOON_BENCH_REPORT_DIR}/report.html")
 
 add_custom_command(
   OUTPUT "${REPORT_HTML}"
