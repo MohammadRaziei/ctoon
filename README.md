@@ -11,8 +11,11 @@
 [![C](https://img.shields.io/badge/C-99-blue.svg)](https://en.cppreference.com/w/c)
 [![C++11](https://img.shields.io/badge/C++-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
 [![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://go.dev/)
-[![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Julia 1.7+](https://img.shields.io/badge/Julia-1.7+-blue.svg)](https://julialang.org/)
 [![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-blue.svg)](https://www.mathworks.com/products/matlab.html)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Rust 1.70+](https://img.shields.io/badge/Rust-1.70+-blue.svg)](https://www.rust-lang.org/)
+[![Zig 0.16.0+](https://img.shields.io/badge/Zig-0.16.0+-blue.svg)](https://ziglang.org/)
 
 **[Documentation](https://mohammadraziei.github.io/ctoon)**
 
@@ -20,7 +23,7 @@
 
 The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
-CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Python, Go, Rust, Zig, Julia, and MATLAB. The name reflects its foundation: **C** + **TOON**.
+CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Go, Julia, MATLAB, Python, Rust, and Zig, plus a standalone CLI. The name reflects its foundation: **C** + **TOON**.
 
 ## Format Overview
 
@@ -41,244 +44,275 @@ CToon is built on a high-performance C core and exposes the same logic through i
 
 ## Quick Start
 
+Pick your language below — each section is install, a short example, then a
+link to that language's full reference for everything else (flags, options,
+error handling, ...). Order matches the tabs on the
+[documentation site](https://mohammadraziei.github.io/ctoon).
+
 ### CLI
 
 ```bash
-cmake -B build && cmake --build build
-./build/ctoon data.json           # JSON  -> TOON
-./build/ctoon data.toon           # TOON  -> JSON
-cat data.json | ./build/ctoon     # stdin -> TOON
+pip install ctoon        # ships a pre-built `ctoon` binary — no compiler needed
 ```
 
+```bash
+ctoon input.json                 # JSON  -> TOON (auto-detected from extension)
+ctoon input.toon -o output.json  # TOON  -> JSON
+cat data.json | ctoon -e -       # stdin -> TOON
+```
+
+Building from source with CMake instead is also supported (`sudo cmake
+--install build` after building — see [Building & Testing](#building--testing-from-source)).
+→ [Full CLI reference](https://mohammadraziei.github.io/ctoon/cli/index.html)
+
 ### C
+
+Requires CMake 3.19+ and a C99 compiler.
+
+```cmake
+# CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(ctoon
+  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git  GIT_TAG main)
+FetchContent_MakeAvailable(ctoon)
+target_link_libraries(my_app PRIVATE ctoon::ctoon)
+```
 
 ```c
 #include "ctoon.h"
 
 ctoon_doc *doc = ctoon_read("name: Alice\nage: 30", 20, 0);
 ctoon_val *root = ctoon_doc_get_root(doc);
-
-ctoon_val *name = ctoon_obj_get(root, "name");
-printf("%s\n", ctoon_get_str(name));     /* Alice */
+printf("%s\n", ctoon_get_str(ctoon_obj_get(root, "name")));  /* Alice */
 
 size_t len;
-char *toon = ctoon_write(doc, &len);     /* caller must free() */
+char *toon = ctoon_write(doc, &len);   /* caller must free() */
 free(toon);
 ctoon_doc_free(doc);
-
-/* JSON output (on by default; define CTOON_DISABLE_JSON to turn off) */
-char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, NULL);
-free(json);
 ```
 
+→ [Full C API reference](https://mohammadraziei.github.io/ctoon/c/html/index.html) (also summarised [below](#c-api-reference))
+
 ### C++
+
+Requires CMake 3.19+ and a C++11 compiler. Header-only on top of the C core.
+
+```cmake
+# same FetchContent block as C, then:
+target_link_libraries(my_app PRIVATE ctoon::ctoonpp)
+```
 
 ```cpp
 #include "ctoon.hpp"
 
-/* Parse TOON */
 auto doc  = ctoon::document::parse("name: Alice\nage: 30");
 auto root = doc.root();
 std::cout << root["name"].get_str().str() << "\n";  // Alice
-std::cout << root["age"].get_uint()        << "\n";  // 30
-
-/* Serialise */
-std::cout << doc.to_string().c_str()    << "\n";  // TOON
-std::cout << doc.to_json(2).c_str() << "\n";  // JSON
-
-/* Build a mutable document */
-auto mdoc = ctoon::make_document();
-auto obj  = mdoc.make_obj();
-mdoc.set_root(obj);
-obj.obj_put(mdoc.make_str("city"), mdoc.make_str("Tehran"));
-obj.obj_put(mdoc.make_str("pop"),  mdoc.make_uint(9'000'000));
-std::cout << mdoc.to_json(0).c_str() << "\n";  // {"city":"Tehran","pop":9000000}
+std::cout << doc.to_json(2).c_str() << "\n";         // pretty JSON
 ```
 
-### Python
-
-```python
-import ctoon
-
-# encode / decode
-toon = ctoon.dumps({"name": "Alice", "age": 30})
-data = ctoon.loads(toon)
-
-# file I/O
-ctoon.dump(data, "out.toon")
-data = ctoon.load("out.toon")
-
-# JSON
-json_str = ctoon.dumps_json(data, indent=2)
-data     = ctoon.loads_json(json_str)
-```
+→ [Full C++ API reference](https://mohammadraziei.github.io/ctoon/cpp/html/index.html)
 
 ### Go
 
-```go
-import ctoon "github.com/mohammadraziei/ctoon"
-
-// encode / decode
-toon, _ := ctoon.Dumps(map[string]interface{}{"name": "Alice", "age": int64(30)})
-val,  _ := ctoon.Loads(toon)
-
-// file I/O
-ctoon.EncodeToFile(data, "out.toon", ctoon.DefaultEncodeOptions())
-val, _ = ctoon.DecodeFromFile("out.toon", ctoon.DefaultDecodeOptions())
-```
-
-### MATLAB
-
-```matlab
-% Install once (compiles MEX and adds to MATLAB path permanently)
-cd src/bindings/matlab
-ctoon_install
-
-% Versin / info
-ctoon.version
-v = ctoon.version
-[v, info] = ctoon.version
-
-% Encode / decode
-s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30), 'active', true));
-v = ctoon.decode(s);
-v.name    % -> 'Alice'
-v.age     % -> uint64(30)
-v.active  % -> true
-
-% Python-style aliases
-s = ctoon.dumps(v);
-v = ctoon.loads(s);
-
-% File I/O  (filename)
-ctoon.write(v, 'config.toon');
-v = ctoon.read('config.toon');
-
-% File I/O  (open fid)
-fid = fopen('config.toon', 'w');
-ctoon.dump(v, fid);
-fclose(fid);
-
-fid = fopen('config.toon', 'r');
-v = ctoon.load(fid);
-fclose(fid);
-```
-
-MATLAB type mapping:
-
-| MATLAB | TOON |
-|--------|------|
-| `[]` | null |
-| `logical` | bool |
-| `double` scalar | real |
-| `int64` scalar | sint |
-| `uint64` scalar | uint |
-| `char` | str |
-| `cell` | array |
-| `struct` | object |
-
-Requires MATLAB R2014b+ and a C compiler configured for MEX (`mex -setup C`).
-
----
-
-## Build
-
-```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j$(nproc) --target ctoon_test     # Run all tests
-cmake --build build -j$(nproc) --target ctoon_coverage # Generate coverage reports
-```
-
-### CMake options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `CTOON_BUILD_TESTS` | ON | Build C and C++ tests |
-| `CTOON_BUILD_PYTHON` | OFF | Build Python extension (nanobind) |
-| `CTOON_BUILD_DOCS` | OFF | Build documentation |
-| `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain (Go, Rust, Zig, Julia, MATLAB) — error instead of skip if any is missing |
-| `CTOON_BUILD_GO` | OFF | Require the Go toolchain (error instead of skip if missing) |
-| `CTOON_BUILD_RUST` | OFF | Require the Rust toolchain (error instead of skip if missing) |
-| `CTOON_BUILD_ZIG` | OFF | Require the Zig toolchain (error instead of skip if missing) |
-| `CTOON_BUILD_JULIA` | OFF | Require the Julia toolchain (error instead of skip if missing) |
-| `CTOON_BUILD_MATLAB` | OFF | Require the MATLAB toolchain (error instead of skip if missing) |
-
-Go, Rust, Zig, Julia, and MATLAB each compile themselves with their own external
-toolchain (`go build`, `cargo`, `zig build`, Julia's `Pkg`, MEX) rather than through this
-project's own CMake graph — the `CTOON_BUILD_<LANG>` flags above don't
-turn on a build step, they change what happens when `tests/` or `docs/`
-detect that toolchain is missing: silently skip that language (the
-default, useful on a machine with only some toolchains installed), or
-fail the configure step outright once you've explicitly opted in.
-(`benchmarks/` is a separate, standalone CMake project and always
-warn-and-skips regardless — its whole point is running whatever it can
-find, see `benchmarks/README.md`.)
-
-JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off. No external JSON library required.
-
-### Python package
-
-```bash
-pip install ctoon
-```
-
-### Go module
+Requires Go 1.21+ with CGo enabled; a C compiler must be on the build host.
 
 ```bash
 go get github.com/mohammadraziei/ctoon
 ```
 
-Requires Go 1.21+. Uses CGo to call the C core.
+```go
+import ctoon "github.com/mohammadraziei/ctoon"
 
-### Julia package
+toon, _ := ctoon.Dumps(map[string]interface{}{"name": "Alice", "age": int64(30)})
+val, _  := ctoon.Loads(toon)
+```
+
+→ [Full Go reference](https://mohammadraziei.github.io/ctoon/go/index.html)
+
+### Julia
+
+Requires Julia 1.7+ and a C compiler. Not yet in Julia's General registry.
 
 ```julia
 import Pkg
 Pkg.add(url="https://github.com/mohammadraziei/ctoon.git", subdir="src/bindings/julia")
 ```
 
-Requires a C compiler on the build host — `deps/build.jl` compiles the
-core directly, no CMake or BinaryBuilder/JLL step. See
-[`src/bindings/julia/README.md`](src/bindings/julia/README.md) for
-usage and what's implemented so far.
+```julia
+using CToon
 
-### MATLAB MEX
+data = CToon.parse("""{"name": "Alice", "age": 30}""")
+println(data["name"])   # Alice
+```
+
+→ [Full Julia reference](https://mohammadraziei.github.io/ctoon/julia/index.html)
+
+### MATLAB
+
+Requires MATLAB R2014b+ and a C compiler configured for MEX (`mex -setup C`).
+
+```matlab
+cd src/bindings/matlab
+ctoon_install    % compiles the MEX gateway, adds it to your MATLAB path
+```
+
+```matlab
+s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30)));
+v = ctoon.decode(s);
+v.name    % 'Alice'
+```
+
+→ [Full MATLAB reference](https://mohammadraziei.github.io/ctoon/matlab/index.html) (type mapping, `ctoon.read`/`ctoon.write`, Python-style aliases, ...)
+
+### Python
+
+Requires Python 3.9+. Pre-built wheels for Linux, macOS and Windows — no compiler needed.
 
 ```bash
-# Via CMake
-cmake -B build -DCTOON_BUILD_MATLAB=ON -DMatlab_ROOT_DIR=/path/to/matlab
-cmake --build build --target ctoon_build_mex
-
-# Or directly from MATLAB
-cd src/bindings/matlab
-ctoon_install        % compile + add to path permanently
+pip install ctoon
 ```
+
+```python
+import ctoon
+
+toon = ctoon.dumps({"name": "Alice", "age": 30})
+data = ctoon.loads(toon)
+```
+
+→ [Full Python reference](https://mohammadraziei.github.io/ctoon/python/html/index.html)
+
+### Rust
+
+Requires Rust 1.70+ and a C compiler on the build host.
+
+```toml
+[dependencies]
+ctoon = { git = "https://github.com/mohammadraziei/ctoon.git" }
+```
+
+```rust
+let val = ctoon::loads("name: Alice\nage: 30")?;
+println!("{}", val["name"].as_str().unwrap()); // Alice
+let toon = ctoon::dumps(&val)?;
+```
+
+→ [Full Rust reference](https://mohammadraziei.github.io/ctoon/rust/doc/ctoon/index.html)
+
+### Zig
+
+Requires Zig 0.16.0+.
+
+```bash
+zig fetch --save git+https://github.com/mohammadraziei/ctoon.git
+```
+
+```zig
+const ctoon = @import("ctoon");
+
+var val = try ctoon.loads(gpa, "name: Alice\nage: 30");
+defer val.deinit(gpa);
+const toon = try ctoon.dumps(gpa, val);
+```
+
+→ [Full Zig reference](https://mohammadraziei.github.io/ctoon/zig/index.html)
 
 ---
 
-## CLI Reference
+## Building & Testing From Source
+
+Each binding can be built, run and tested entirely with its own native
+tooling — `cargo test` for Rust, `go test` for Go, `pytest` for Python, `zig
+build test` for Zig, `Pkg.test()` for Julia, MATLAB's `buildtool test` — pick
+whichever's already open and go. But the project **as a whole** — building
+every language together, running the full cross-language test matrix,
+generating coverage, and building the documentation site — is driven by
+**CMake**, the same commands CI uses. This section covers that path; see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the complete contributor workflow.
+
+### Configure
 
 ```bash
-# Encode  JSON -> TOON
-ctoon input.json
-ctoon input.json -o output.toon
-ctoon input.json --delimiter pipe      # comma (default), tab, pipe
-ctoon input.json --length-marker       # items[#3]: ...
-ctoon input.json --stats               # show byte savings
-
-# Decode  TOON -> JSON
-ctoon input.toon
-ctoon input.toon -o output.json
-ctoon input.toon -i 4                  # 4-space JSON indent
-
-# Force format (auto-detected from extension by default)
-ctoon -e input.json    # force encode
-ctoon -d input.toon    # force decode
-
-# Stdin
-cat data.json | ctoon -e -
-cat data.toon | ctoon -d -
+cmake -B build -DCMAKE_BUILD_TYPE=Release
 ```
+
+By default this configures only C, C++ and the CLI. Each other language is
+opt-in via its own flag — and the flag changes what a *missing* toolchain
+does: silently skipped when the flag is OFF (the default, so the command
+above works on a machine with only some toolchains installed), a hard
+configure error when you've explicitly turned it ON:
+
+```bash
+# e.g. working on the Rust binding
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCTOON_BUILD_RUST=ON
+
+# everything, like CI
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+      -DCTOON_BUILD_PYTHON=ON -DCTOON_BUILD_GO=ON -DCTOON_BUILD_RUST=ON \
+      -DCTOON_BUILD_ZIG=ON -DCTOON_BUILD_JULIA=ON
+```
+
+#### CMake options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `CTOON_BUILD_TESTS` | ON (top-level) | Build and register tests. |
+| `CTOON_BUILD_EXAMPLES` | ON (top-level) | Build the examples. |
+| `CTOON_BUILD_DOCS` | OFF | Build documentation. |
+| `CTOON_BUILD_PYTHON` | OFF | Build the Python extension (nanobind). |
+| `CTOON_BUILD_GO` | OFF | Require the Go toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_RUST` | OFF | Require the Rust toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_ZIG` | OFF | Require the Zig toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_JULIA` | OFF | Require the Julia toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_MATLAB` | OFF | Require the MATLAB toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain at once. |
+
+JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off — no external JSON library is required either way.
+
+### Build
+
+```bash
+cmake --build build -j
+```
+
+### Test
+
+```bash
+ctest --test-dir build --output-on-failure --extra-verbose
+# equivalently:
+cmake --build build --target ctoon_test
+```
+
+Per-language targets, for iterating on one binding at a time:
+`ctoon_test_c`, `ctoon_test_cpp`, `ctoon_test_go`, `ctoon_test_julia`,
+`ctoon_test_matlab`, `ctoon_test_python`, `ctoon_test_rust`, `ctoon_test_zig`
+— each also runnable as a single `ctest` case, e.g. `ctest --test-dir build -R rust`.
+
+### Coverage
+
+```bash
+cmake --build build --target ctoon_coverage
+```
+
+Per-language: `ctoon_coverage_c`, `ctoon_coverage_cpp`, `ctoon_coverage_go`,
+`ctoon_coverage_julia`, `ctoon_coverage_matlab`, `ctoon_coverage_python`,
+`ctoon_coverage_rust`, plus `ctoon_coverage_total` (merged C/C++/Python/Go/Rust/Julia
+lcov report). Output lands in `build/coverage/`, with `build/coverage/index.html`
+as the dashboard — published at
+[mohammadraziei.github.io/ctoon/coverage](https://mohammadraziei.github.io/ctoon/coverage/index.html).
+(Zig has no coverage target yet — see the comment in `tests/zig/CMakeLists.txt`.)
+
+### Docs
+
+```bash
+cmake -B build -DCTOON_BUILD_DOCS=ON   # plus any CTOON_BUILD_<LANG>=ON you need
+cmake --build build --target ctoon_docs
+```
+
+Per-language: `ctoon_docs_c`, `ctoon_docs_cpp`, `ctoon_docs_julia`,
+`ctoon_docs_matlab`, `ctoon_docs_python`, `ctoon_docs_rust`, plus
+`ctoon_docs_index` for the landing page (CLI and Zig are assembled straight
+from Markdown, no external doc tool needed). Output lands in `build/docs/out/`.
 
 ---
 
@@ -399,22 +433,6 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 | Multiple threads reading different documents | Yes |
 | Multiple threads reading the same document | Yes |
 | Building a document from multiple threads | No — arena not thread-safe |
-
----
-
-## Requirements
-
-| Component | Requirement |
-|-----------|-------------|
-| C core | C99, no dependencies |
-| C++ binding | C++11, header-only |
-| Python binding | Python 3.9+, nanobind >= 2.0, CMake 3.19+ |
-| Go binding | Go 1.21+, CGo |
-| Rust binding | Rust 1.70+ |
-| Zig binding | Zig 0.16.0+ |
-| Julia binding | Julia 1.7+, C compiler |
-| MATLAB binding | MATLAB R2014b+, C compiler for MEX |
-| CLI | C++17 |
 
 ---
 
