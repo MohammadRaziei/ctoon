@@ -49,12 +49,12 @@
 <div class="hero">
     <div class="hero-eyebrow">
         <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        C · C++ · Python · Go · Rust · Zig · MATLAB · Julia
+        @LANG_EYEBROW@
     </div>
     <h1>CToon Documentation</h1>
     <p class="hero-desc">
         A high-performance serialisation library for the TOON format — a compact, human-readable alternative to JSON.
-        Built on a fast C core, exposing idiomatic APIs for C, C++, Python, Go, Rust, Zig, and Julia.
+        Built on a fast C core, exposing idiomatic APIs for @LANG_LIST@.
     </p>
     <div class="hero-stats">
         <div class="hero-stat">
@@ -63,7 +63,7 @@
         </div>
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num">7</div>
+            <div class="hero-stat-num">@BINDING_COUNT@</div>
             <div class="hero-stat-label">Language bindings</div>
         </div>
         <div class="hero-stat-div"></div>
@@ -244,7 +244,7 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
             </div>
             <div class="footer-tagline">
                 A high-performance C serialisation library for the TOON and JSON formats,
-                with idiomatic language bindings for C++, Python, Go, Rust, Zig, and MATLAB.
+                with idiomatic language bindings for @BINDING_LIST@.
             </div>
             <div class="footer-copy">
                 &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>

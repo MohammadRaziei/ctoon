@@ -8,7 +8,10 @@ Reads docs/supported_langs.json (the language registry) plus, per language,
 and substitutes the @DOCS_TABS@ / @DOCS_CONTENT@ / @INSTALL_TABS@ /
 @INSTALL_CONTENT@ / @EXAMPLE_TABS@ / @EXAMPLE_CONTENT@ placeholders (plus
 @PROJECT_VERSION@ / @SPEC_VERSION@ / @LOGO_CONTENT@ / @FAVICON@) in
-index.html.in. @SPEC_VERSION@ is rendered as "v<value>" (e.g. "v4.1"), or
+index.html.in. The language lists in the hero and footer are derived from the
+same registry (each entry's optional "role", see supported_langs.json):
+@LANG_EYEBROW@ ("C · C++ · Go ..."), @LANG_LIST@ ("C, C++, ..., and Zig"),
+@BINDING_LIST@ (same, without the C core) and @BINDING_COUNT@. @SPEC_VERSION@ is rendered as "v<value>" (e.g. "v4.1"), or
 "n/a" when --spec-version isn't given/resolved (see cmake/SpecVersion.cmake
 -- CTOON_SPEC_VERSION can legitimately be empty if it was never resolved
 and no supported_spec.conf cache exists yet).
@@ -52,7 +55,31 @@ DOC_CARD_TEMPLATE = """<div class="doc-card-inner">
 </div>
 """
 
+ROLES = ("tool", "core", "binding")
+
 DOC_FIELDS = ("title", "badge", "description", "meta_icon", "meta_label", "link_href", "link_label")
+
+
+def oxford_join(items: list) -> str:
+    if len(items) <= 2:
+        return " and ".join(items)
+    return ", ".join(items[:-1]) + ", and " + items[-1]
+
+
+def language_placeholders(languages: list) -> dict:
+    """Hero/footer language text, derived from the registry (single source of truth)."""
+    for lang in languages:
+        role = lang.get("role", "binding")
+        if role not in ROLES:
+            sys.exit(f"generate_index.py: unknown role {role!r} for language {lang['folder']!r} (expected one of {ROLES})")
+    names = [l["name"] for l in languages if l.get("role", "binding") != "tool"]
+    bindings = [l["name"] for l in languages if l.get("role", "binding") == "binding"]
+    return {
+        "@LANG_EYEBROW@": " · ".join(names),
+        "@LANG_LIST@": oxford_join(names),
+        "@BINDING_LIST@": oxford_join(bindings),
+        "@BINDING_COUNT@": str(len(bindings)),
+    }
 
 
 def icon_html(icon: dict, folder: str) -> str:
@@ -132,6 +159,9 @@ def build(args: argparse.Namespace) -> str:
     for panel in PANELS:
         index_content = index_content.replace(f"@{panel.upper()}_TABS@", "".join(tabs[panel]))
         index_content = index_content.replace(f"@{panel.upper()}_CONTENT@", "".join(content[panel]))
+
+    for placeholder, value in language_placeholders(languages).items():
+        index_content = index_content.replace(placeholder, value)
 
     index_content = index_content.replace("@PROJECT_VERSION@", args.project_version)
     spec_display = f"v{args.spec_version}" if args.spec_version else "n/a"
