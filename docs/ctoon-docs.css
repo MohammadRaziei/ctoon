@@ -407,6 +407,21 @@ pre code.hljs { display: block; overflow-x: auto; background: transparent !impor
     box-shadow: var(--shadow-blue);
     transform: translateY(-1px);
 }
+/* ── TOON vs JSON overview ───────────────────────────── */
+.inline-link { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-glow); }
+.inline-link:hover { border-bottom-color: var(--accent); }
+.section-desc strong { color: var(--fg); font-weight: 600; }
+.compare-caption { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.compare-caption code, .compare-notes code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent);
+}
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.compare .code-wrap { min-width: 0; }
+.compare-notes { margin: 1.25rem 0; padding-left: 1.2rem; font-size: 0.88rem; color: var(--fg2); line-height: 1.75; }
+
+@media (max-width: 900px) {
+    .compare { grid-template-columns: 1fr; }
+}
 @media (max-width: 500px) {
     .doc-card-inner { flex-direction: column; }
 }
