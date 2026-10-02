@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 import io
+import json
 import os
 
 import ctoon
@@ -296,6 +297,64 @@ class TestRoundtrip:
             "foo\fbar": {"type": "number"},
         }}
         assert self._rt(orig) == orig
+
+
+# ---------------------------------------------------------------------------
+# Test: control-character escapes (spec 7.1)
+# ---------------------------------------------------------------------------
+# Every control character U+0000-U+001F other than LF, CR and HTAB MUST be
+# written as \uXXXX, and a decoder MUST reject any escape the spec doesn't
+# list. The encoder used to write the JSON-style short escapes "\b" and
+# "\f" for U+0008/U+000C -- not TOON escapes, and rejected by conforming
+# decoders (e.g. the official TS one). ctoon's own decoder accepted them,
+# which is why a same-library round trip never caught it; hence the encoder
+# output and the decoder's strictness are asserted separately here.
+
+_CONTROLS = [chr(c) for c in range(0x20) if chr(c) not in "\n\r\t"]
+
+
+class TestControlCharEscapes:
+    @pytest.mark.parametrize("ch", _CONTROLS, ids=lambda c: f"U+{ord(c):04X}")
+    def test_encoder_uses_unicode_escape(self, ch):
+        want = f"x\\u{ord(ch):04x}y"
+        for data in ({"k": "x" + ch + "y"}, {"x" + ch + "y": "v"}):   # value and key
+            out = ctoon.dumps(data)
+            assert want in out
+            assert "\\b" not in out and "\\f" not in out
+
+    @pytest.mark.parametrize("ch", _CONTROLS, ids=lambda c: f"U+{ord(c):04X}")
+    def test_roundtrip(self, ch):
+        data = {"k" + ch: "x" + ch + "y", "list": ["a" + ch, "b"]}
+        assert ctoon.loads(ctoon.dumps(data)) == data
+
+    @pytest.mark.parametrize("esc", [r"\f", r"\b", r"\/", r"\x", r"\u12", r"\u00zz"])
+    def test_decoder_rejects_escapes_not_in_spec(self, esc):
+        with pytest.raises(Exception):
+            ctoon.loads('k: "a' + esc + 'b"')
+
+    @pytest.mark.parametrize("esc", [r"\u000c", r"\u000C"])
+    def test_decoder_accepts_unicode_escape_any_hex_case(self, esc):
+        assert ctoon.loads('k: "a' + esc + 'b"') == {"k": "a\fb"}
+
+
+class TestJsonEscapesUnaffected:
+    """The string reader is shared by the TOON and JSON parsers but the two
+    formats have different escape tables: JSON has \\b \\f \\/ which TOON
+    does not. Making the TOON side strict once broke JSON input using them
+    (caught by the benchmark corpus, not by a test) -- pin both directions."""
+
+    def test_json_reader_accepts_all_json_escapes(self):
+        assert ctoon.loads_json('{"k": "a\\fb\\bc\\/d\\u0041"}') == {"k": "a\fb\bc/dA"}
+
+    def test_json_reader_accepts_json_only_escapes_in_keys(self):
+        assert ctoon.loads_json('{"a\\fb": 1}') == {"a\fb": 1}
+
+    @pytest.mark.parametrize("ch", _CONTROLS, ids=lambda c: f"U+{ord(c):04X}")
+    def test_json_output_roundtrips(self, ch):
+        data = {"k" + ch: "x" + ch + "y"}
+        text = ctoon.dumps_json(data)
+        assert json.loads(text) == data          # valid JSON for a standard parser
+        assert ctoon.loads_json(text) == data    # and for ctoon's own
 
 
 # ---------------------------------------------------------------------------

@@ -2956,7 +2956,14 @@ static void ctoon_ctn_child_added(ctoon_read_ctx *c) {
 /* Parse a quoted string starting at cur (must be '"').
    Decodes escape sequences into a temporary buffer, then copies into the
    spool.  Sets val->tag and val->uni.str on success. */
-static bool ctoon_parse_str_quoted(ctoon_read_ctx *c, ctoon_val *val) {
+/* Quoted-string reader shared by the TOON parser and the JSON reader.
+ *
+ * Which escapes are valid depends on the FORMAT being read, not on the
+ * string: TOON (spec 4.1) has exactly \\ \" \n \r \t and \uXXXX, and a
+ * decoder MUST reject every other escape; JSON (RFC 8259) additionally has
+ * \b \f and \/. So `json` only widens the accepted set -- it never lets
+ * TOON input through with JSON-only escapes. */
+static bool ctoon_parse_str_quoted_impl(ctoon_read_ctx *c, ctoon_val *val, bool json) {
     c->cur++;   /* skip opening '"' */
     const u8 *src = c->cur;
 
@@ -2994,12 +3001,18 @@ static bool ctoon_parse_str_quoted(ctoon_read_ctx *c, ctoon_val *val) {
         switch (*src) {
             case '"':  *dst_cur++ = '"';  src++; break;
             case '\\': *dst_cur++ = '\\'; src++; break;
-            case '/':  *dst_cur++ = '/';  src++; break;
             case 'n':  *dst_cur++ = '\n'; src++; break;
             case 'r':  *dst_cur++ = '\r'; src++; break;
             case 't':  *dst_cur++ = '\t'; src++; break;
-            case 'b':  *dst_cur++ = '\b'; src++; break;
-            case 'f':  *dst_cur++ = '\f'; src++; break;
+            case '/': case 'b': case 'f':
+                if (!json) {                      /* TOON: not a valid escape (spec 4.1) */
+                    c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
+                    return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
+                                    "invalid escape sequence");
+                }
+                *dst_cur++ = (*src == '/') ? '/' : (*src == 'b') ? '\b' : '\f';
+                src++;
+                break;
             case 'u': {
                 if (src + 4 >= c->eof) {
                     c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
@@ -3094,6 +3107,13 @@ static bool ctoon_parse_str_quoted(ctoon_read_ctx *c, ctoon_val *val) {
     val->uni.str = interned;
     c->cur = src + 1;   /* skip closing '"' */
     return true;
+}
+
+static bool ctoon_parse_str_quoted(ctoon_read_ctx *c, ctoon_val *val) {
+    return ctoon_parse_str_quoted_impl(c, val, false);   /* TOON */
+}
+static bool ctoon_parse_str_quoted_json(ctoon_read_ctx *c, ctoon_val *val) {
+    return ctoon_parse_str_quoted_impl(c, val, true);    /* JSON */
 }
 
 /* Parse an unquoted token (key or value).
@@ -4744,7 +4764,7 @@ static bool cj_parse_object(ctoon_read_ctx *c) {
         /* key */
         ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
         if (!kv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-        if (!ctoon_parse_str_quoted(c, kv)) return false;
+        if (!ctoon_parse_str_quoted_json(c, kv)) return false;
         /* colon */
         cj_skip_ws(c);
         if (c->cur >= c->eof || *c->cur != ':')
@@ -4782,7 +4802,7 @@ static bool cj_parse_value(ctoon_read_ctx *c) {
     if (ch == '"') {
         ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
         if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-        return ctoon_parse_str_quoted(c, vv);
+        return ctoon_parse_str_quoted_json(c, vv);
     }
     /* object */
     if (ch == '{') return cj_parse_object(c);
@@ -5916,8 +5936,6 @@ static_noinline bool ctoon_write_str(ctoon_write_ctx *w, const char *s, usize le
             case '\n': if (!ctoon_write_str_lit(w, "\\n"))  return false; break;
             case '\r': if (!ctoon_write_str_lit(w, "\\r"))  return false; break;
             case '\t': if (!ctoon_write_str_lit(w, "\\t"))  return false; break;
-            case '\b': if (!ctoon_write_str_lit(w, "\\b"))  return false; break;
-            case '\f': if (!ctoon_write_str_lit(w, "\\f"))  return false; break;
             default:
                 if (c < 0x20) {
                     /* control char: \uXXXX */

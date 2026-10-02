@@ -390,6 +390,143 @@ UTEST(ctoon_tests, test_keyed_tabular_escaped_keys_roundtrip) {
 }
 
 /* =========================================================================
+ * Regression: control-character escapes (spec 7.1)
+ * ========================================================================= */
+
+/* Spec 7.1: every control character U+0000-U+001F other than LF, CR and HTAB
+ * MUST be written as \uXXXX (lowercase hex SHOULD), and a decoder MUST reject
+ * any escape that table doesn't list. The writer used to emit the JSON-style
+ * short escapes "\b" and "\f" for U+0008/U+000C, which are not TOON escapes
+ * and are rejected by conforming decoders (e.g. the official TS one). ctoon's
+ * own reader accepted them, which is exactly why a same-library round trip
+ * never caught it -- so these tests check the written text itself and the
+ * reader's strictness separately. */
+static char *write_one_str(const char *key, const char *value) {
+    ctoon_mut_doc *doc = ctoon_mut_doc_new(NULL);
+    if (!doc) return NULL;
+    ctoon_mut_val *root = ctoon_mut_obj(doc);
+    char *out = NULL;
+    if (root && ctoon_mut_obj_add_str(doc, root, key, value)) {
+        ctoon_mut_doc_set_root(doc, root);
+        size_t len = 0;
+        out = ctoon_mut_write(doc, &len);
+    }
+    ctoon_mut_doc_free(doc);
+    return out;
+}
+
+UTEST(ctoon_tests, test_control_chars_written_as_unicode_escapes) {
+    for (int c = 0x01; c < 0x20; c++) {
+        if (c == '\n' || c == '\r' || c == '\t') continue;
+
+        char val[4] = { 'x', (char)c, 'y', 0 };
+        char want[32];
+        snprintf(want, sizeof want, "x\\u%04xy", c);
+
+        char *out = write_one_str("k", val);
+        ASSERT_TRUE(out != NULL);
+        ASSERT_TRUE(strstr(out, want) != NULL);          /* \u00XX, lowercase */
+        ASSERT_TRUE(strstr(out, "\\b") == NULL);         /* never the JSON short forms */
+        ASSERT_TRUE(strstr(out, "\\f") == NULL);
+        free(out);
+
+        /* ...and the same in a key */
+        char key[4] = { 'x', (char)c, 'y', 0 };
+        out = write_one_str(key, "v");
+        ASSERT_TRUE(out != NULL);
+        ASSERT_TRUE(strstr(out, want) != NULL);
+        ASSERT_TRUE(strstr(out, "\\b") == NULL);
+        ASSERT_TRUE(strstr(out, "\\f") == NULL);
+        free(out);
+    }
+}
+
+UTEST(ctoon_tests, test_control_chars_roundtrip) {
+    for (int c = 0x01; c < 0x20; c++) {
+        char val[4] = { 'x', (char)c, 'y', 0 };
+        char *out = write_one_str("k", val);
+        ASSERT_TRUE(out != NULL);
+
+        ctoon_doc *parsed = ctoon_read(out, strlen(out), CTOON_READ_NOFLAG);
+        ASSERT_TRUE(parsed != NULL);
+        ASSERT_STREQ(val, ctoon_get_str(ctoon_obj_get(ctoon_doc_get_root(parsed), "k")));
+        ctoon_doc_free(parsed);
+        free(out);
+    }
+}
+
+UTEST(ctoon_tests, test_reader_rejects_escapes_not_in_spec) {
+    const char *bad[] = {
+        "k: \"a\\fb\"",      /* \f  -- JSON has it, TOON doesn't */
+        "k: \"a\\bb\"",      /* \b  */
+        "k: \"a\\/b\"",      /* \/  */
+        "k: \"a\\xb\"",      /* unknown escape */
+        "k: \"a\\u12\"",     /* \u with fewer than 4 hex digits */
+        "k: \"a\\u00zzb\"",  /* \u with non-hex digits */
+    };
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); i++) {
+        ctoon_doc *doc = parse(bad[i]);
+        ASSERT_TRUE(doc == NULL);
+        if (doc) ctoon_doc_free(doc);
+    }
+}
+
+/* The string reader is shared by the TOON parser and the JSON reader, but
+ * the two formats have different escape tables: JSON (RFC 8259) has \b \f
+ * and \/ which TOON does not. Making the TOON side strict once broke JSON
+ * input that used them (caught by the benchmark corpus, not by a test), so
+ * pin both directions: JSON keeps its full table, TOON stays strict. */
+UTEST(ctoon_tests, test_json_reader_still_accepts_json_only_escapes) {
+    char json[] = "{\"k\":\"a\\fb\\bc\\/d\\u0041\"}";
+    ctoon_read_err err; memset(&err, 0, sizeof err);
+    ctoon_doc *doc = ctoon_read_json(json, strlen(json), 0, NULL, &err);
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_STREQ("a\fb\bc/dA", ctoon_get_str(ctoon_obj_get(ctoon_doc_get_root(doc), "k")));
+    ctoon_doc_free(doc);
+
+    /* the same keys, as an object KEY */
+    char jkey[] = "{\"a\\fb\":1}";
+    memset(&err, 0, sizeof err);
+    doc = ctoon_read_json(jkey, strlen(jkey), 0, NULL, &err);
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_TRUE(ctoon_obj_get(ctoon_doc_get_root(doc), "a\fb") != NULL);
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_json_output_for_control_chars_is_valid_json) {
+    for (int c = 0x01; c < 0x20; c++) {
+        char toon[64];
+        snprintf(toon, sizeof toon, "k: \"x\\u%04xy\"", c);
+        ctoon_doc *doc = parse(toon);
+        ASSERT_TRUE(doc != NULL);
+
+        size_t jlen = 0;
+        ctoon_write_err werr; memset(&werr, 0, sizeof werr);
+        char *json = ctoon_doc_to_json(doc, 0, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
+        ASSERT_TRUE(json != NULL);
+        ctoon_doc_free(doc);
+
+        ctoon_read_err rerr; memset(&rerr, 0, sizeof rerr);
+        ctoon_doc *back = ctoon_read_json(json, jlen, 0, NULL, &rerr);
+        ASSERT_TRUE(back != NULL);
+        char want[4] = { 'x', (char)c, 'y', 0 };
+        ASSERT_STREQ(want, ctoon_get_str(ctoon_obj_get(ctoon_doc_get_root(back), "k")));
+        ctoon_doc_free(back);
+        free(json);
+    }
+}
+
+UTEST(ctoon_tests, test_reader_accepts_unicode_escape_any_hex_case) {
+    const char *good[] = { "k: \"a\\u000cb\"", "k: \"a\\u000Cb\"" };
+    for (size_t i = 0; i < sizeof(good) / sizeof(good[0]); i++) {
+        ctoon_doc *doc = parse(good[i]);
+        ASSERT_TRUE(doc != NULL);
+        ASSERT_STREQ("a\fb", ctoon_get_str(ctoon_obj_get(ctoon_doc_get_root(doc), "k")));
+        ctoon_doc_free(doc);
+    }
+}
+
+/* =========================================================================
  * Iterator API
  * ========================================================================= */
 
