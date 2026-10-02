@@ -110,12 +110,9 @@ JSON file to `build-bench/results/<language>.json`:
     {"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 87.0,
      "docs_per_sec": 12345.0, "success_rate": 1.0, "total_time_s": 1.23},
     ...
-  ],
-  "scaling": [
-    {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 1051.0,
-     "throughput_mb_s": 124.1, "docs_per_sec": 119639.3, "success_rate": 1.0},
-    ...
-  ]
+  ],   // (after verification each row also has "verified", "verify" and "raw"
+       //  -- see Success vs. correctness below)
+  "scaling": [ ... ]   // optional, C and C++ only, see Scaling below
 }
 ```
 
@@ -136,7 +133,7 @@ number to combine them into.
 
 ## Key order preservation
 
-Every language runs one extra, fixed check: a deliberately
+C and C++ run one extra, fixed check: a deliberately
 non-alphabetical sample (nested object, array of objects) round-tripped
 through each library, then checked with a `"key":` regex/scanner against
 the JSON text — not a full structural diff, just "did the keys come back
@@ -151,7 +148,7 @@ threw or crashed).
 
 ## Scaling
 
-Wired up for C, C++, and Python so far. Each of those, after the normal
+Wired up for C and C++ so far. Each of those, after the normal
 whole-corpus comparison, sorts the corpus by file size, splits it into
 `SCALING_NBUCKETS` (5) equal-*count* buckets, and re-measures every
 (library, operation) pair on each bucket at a reduced `SCALING_REPS` (5,
@@ -163,8 +160,7 @@ marker per bucket).
 Adding it to a language not yet wired up means: (1) sort the loaded
 corpus by size and split into `SCALING_NBUCKETS` slices — `bench.c` does
 this via a sorted array of pointers so it never has to duplicate or
-reorder the original file data, `bench.py` just does `sorted(files,
-key=...)`; (2) re-run each (library, operation) on each slice at
+reorder the original file data; (2) re-run each (library, operation) on each slice at
 `SCALING_REPS` and record `{library, operation, size_bytes,
 throughput_mb_s, docs_per_sec, success_rate}` into a `"scaling"` array
 in that language's results JSON, alongside the existing `"results"`
@@ -176,7 +172,7 @@ skips the line charts for a language that has none.
 ## Memory
 
 Besides throughput, this suite can measure **peak RSS per (language,
-library)** — for now, C, C++, and Python (the languages that support
+library)** — for now, C and C++ (the languages that support
 isolated per-library runs so far; see below). It's **off by default**
 (reruns every library several times over in fresh processes just to
 read peak RSS, which roughly doubles that language's benchmark wall time
@@ -204,27 +200,19 @@ off (the default), that field, chart, and column are simply absent —
 that case.
 
 **Why isolated processes, not just reading memory after the normal
-run:** the normal C and Python runs benchmark more than one library
+run:** the normal C run benchmarks more than one library
 back-to-back in the *same* process for simplicity. `ru_maxrss` never
 goes down, so reading it after such a run would have every later
 library's number inflated by whichever earlier library used the most
 memory — not a real number about that library. So `collect_memory.py`
 re-invokes each language's benchmark binary/script once per library, in
 a **fresh process** each time, via `CTOON_BENCH_ONLY=<library>` (an
-environment variable both `bench.c` and `bench.py` check — see their
+environment variable `bench.c` checks — see their
 docstrings), and reads that one process's peak with `/usr/bin/time -v`.
 C++ has no competing implementation at all, so its ordinary run is
 already isolated and needs no such flag.
 
-One caveat worth knowing: Python's `toon_to_json`/`roundtrip` need TOON
-input, and only ctoon can produce that (it's the only library here with
-a JSON parser too) — so *every* library's isolated Python run pays that
-same shared, constant cost during its pre-pass. It's identical across
-libraries, so relative comparisons between them are still fair; it just
-means these numbers aren't directly comparable to C's (which has no such
-shared step).
-
-Go, Rust, Zig, MATLAB, and Julia don't have the `CTOON_BENCH_ONLY`
+Python, Go, Rust, Zig, MATLAB, and Julia don't have the `CTOON_BENCH_ONLY`
 isolation flag yet, so they're not part of `ctoon_bench_memory` — same
 "only what's actually wired up" convention as the rest of this suite.
 Adding it to a language means: (1) an env var in that language's bench
@@ -232,7 +220,7 @@ runner that skips every library except the one named, and returns
 before writing that language's normal results JSON when set; (2) a new
 `--<lang>-exe`/`--<lang>-manifest`-style block in `collect_memory.py`;
 (3) wiring it into `report/CMakeLists.txt`'s `MEMORY_ARGS`/`MEMORY_DEPS`,
-guarded the same way the C/C++/Python blocks are.
+guarded the same way the C/C++ blocks are.
 
 ## Layout
 
@@ -251,6 +239,8 @@ benchmarks/
   rust/            main.rs        — ctoon, toon-rust
   zig/             main.zig       — ctoon (toon-zig doesn't compile on Zig 0.16 yet)
   matlab/          bench.m        — ctoon (no competitor exists)
+  node/            bench.mjs      — @toon-format/toon (the reference);
+                   verify_outputs.mjs — judges every recorded output (see Success vs. correctness)
 ```
 
 ## Methodology
@@ -273,22 +263,96 @@ shared manifest file generated once by the top-level `CMakeLists.txt`):
    the two legs above run separately, and not cross-library. This
    measures a library's **self-consistency**: can it read back what it
    itself just wrote.
-6. **Report**: throughput in MB/s (of bytes actually read by *successful*
-   conversions only) and documents/second, plus a success rate.
+6. **Untimed — record outputs**: each harness writes what every
+   (library, operation) actually produced for every file (see
+   [Success vs. correctness](#success-vs-correctness) below).
+7. **Verify** (`ctoon_bench_verify`, once, after all languages): one script
+   judges every recorded output against one shared criterion and rewrites
+   the numbers: it adds `correct_rate` and makes MB/s count only *correct*
+   conversions.
+8. **Report**: throughput in MB/s (of bytes of *correct* conversions only)
+   and documents/second, plus the success rate and the correct rate.
 
 Because step 4 and step 5 test different things, a library can legitimately
-score very differently on each — e.g. `toon-go`'s decoder rejects a good
-chunk of *ctoon's* TOON output (low `toon_to_json` success rate) while
-happily reading back its *own* encoder's output almost every time (high
-`roundtrip` success rate). That's not a contradiction; it's the two
-metrics doing their jobs.
+score very differently on each: `toon_to_json` reads ctoon's TOON output
+(**interop**), `roundtrip` reads the library's *own* output back
+(**self-consistency**). That's not a contradiction; it's the two metrics
+doing their jobs.
 
-A library that fails to round-trip part of the corpus does not get an
-inflated throughput number — see each language's own findings on this:
-`TOONc`'s parser crashes on part of the corpus (isolated with a per-file
-fork-and-probe pass in the C benchmark so one crash doesn't take the whole
-run down), and `toon-go`'s decoder rejects TOON output that ctoon itself
-round-trips correctly.
+A library that gets part of the corpus wrong does not get an inflated
+throughput number: those files don't count towards MB/s or docs/s, and they
+lower the success rate. (`TOONc`'s parser also crashes on part of the corpus;
+the C benchmark isolates that with a per-file fork-and-probe pass so one
+crash doesn't take the whole run down.)
+
+## Success vs. correctness
+
+Two separate parameters, because they say different things:
+
+- **`success_rate`** -- the share of corpus files a library converted
+  **without an error**.
+- **`correct_rate`** -- of the outputs it actually *produced*, the share that
+  were **correct**. (`null` if it produced nothing.)
+
+A parser that returns the wrong document without complaining is not a fast
+parser, it's a broken one, and "no exception" alone cannot tell the two
+apart -- so "98% success, 0% correct" is a result worth being able to read at
+a glance. **MB/s and docs/s count only correct conversions**, so a wrong
+answer never looks like a fast one.
+
+The criterion for "correct" is the same for every language, because one
+script (`node/verify_outputs.mjs`) applies it to all of them:
+
+| operation      | the output is correct if...                                                        |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `json_to_toon` | the **official reference decoder** (`@toon-format/toon`) decodes it to the original document |
+| `toon_to_json` | it parses as JSON to the original document                                         |
+| `roundtrip`    | it parses as JSON to the original document                                         |
+
+- The TOON is decoded by the *reference* decoder, **not by the library's own**,
+  on purpose: a lenient decoder hides encoder bugs from its own round trip
+  (ctoon's decoder once accepted the JSON-style `\f` escape that its encoder
+  wrongly wrote, so a same-library round trip passed while a conforming
+  decoder rejected the output).
+- "The original document" means the spec's JSON-model equality: objects are
+  unordered maps, arrays are ordered, and **numbers compare as IEEE-754
+  doubles** (the spec lets an encoder fall back to the host's numeric
+  approximation for numbers outside its range, so a 60-digit integer that
+  comes back as the nearest double is correct). Key *order* is a separate,
+  stricter check -- see [Key order preservation](#key-order-preservation).
+- `toon_to_json` decodes the TOON that ctoon produced for each file. If that
+  shared input is itself missing or wrong, the file is left out of **every**
+  library's `toon_to_json` row (numerator and denominator), and the encoder
+  that made the bad input is charged for it in `json_to_toon` instead -- so
+  no decoder is blamed for someone else's output.
+
+`success_rate` is (files converted without error) / (corpus files);
+`correct_rate` is (correct outputs) / (outputs produced); `throughput_mb_s`
+and `docs_per_sec` count only the correct conversions (the *time* is still the
+time of all attempts). The harness's own numbers are kept under `"raw"` in
+each row, and a verified row carries `"verified": true` and a `"verify"`
+object with counts and the first few wrong files -- the quickest way to see
+*what* a library got wrong. Rows that could not be verified (no Node.js, or a
+harness that doesn't record outputs yet) have no `correct_rate`, report
+throughput for every conversion that raised no error, and are marked `*` in
+the report.
+
+**What a harness has to do** (the only language-specific part): in an untimed
+pass before its timed runs, write the text each (library, operation) produced
+for each corpus file to
+
+```
+<results dir>/dump/<language>/<library>/<operation>/<file index>.txt
+```
+
+and write **nothing** for a file the library failed on. `<file index>` is the
+0-based position of the file in the corpus manifest; `<library>` must be
+filesystem-safe (`/`, `@`, ... become `_`). The results directory is derived
+from the results JSON path every harness already receives, so no CMake
+changes are needed per language. (Zig records one framed file per operation
+instead -- see `openDump` in `verify_outputs.mjs` -- to stay within the file
+APIs its harness already uses.) Memory-measurement runs (`CTOON_BENCH_ONLY`)
+must not dump.
 
 ## Corpus
 

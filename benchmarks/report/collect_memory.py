@@ -5,15 +5,14 @@ in as a "peak_rss_mb" field on that library's rows in the language's
 existing <language>.json (the same file bench_c/bench_cpp/bench.py
 already wrote the throughput numbers into).
 
-Why a fresh process per library: several language harnesses (currently
-just Python; C similarly) run more than one library back-to-back in ONE
-process for the normal timed run, for simplicity. ru_maxrss (what `time
+Why a fresh process per library: the C harness runs more than
+one library (ctoon, TOONc) back-to-back in ONE process for the normal timed run, for simplicity. ru_maxrss (what `time
 -v` reports) is a whole-process HIGH-WATER MARK that never goes down, so
 reading it after such a run would have every later library's number
 inflated by whichever earlier library used the most memory -- not a
 number about that library at all. Each language exposes a
-CTOON_BENCH_ONLY=<library> environment variable (see bench.c's and
-bench.py's docstrings) that runs just one library and skips writing the
+CTOON_BENCH_ONLY=<library> environment variable (see bench.c's
+docstring) that runs just one library and skips writing the
 normal results JSON, specifically so this script can invoke it in
 isolation. C++ has only one library at all (ctoon -- no competing TOON
 implementation for C++ exists), so its ordinary run is already isolated
@@ -70,9 +69,6 @@ def main():
     p.add_argument("--c-exe")
     p.add_argument("--c-manifest")
     p.add_argument("--cpp-exe")
-    p.add_argument("--py-python")
-    p.add_argument("--py-script")
-    p.add_argument("--py-manifest")
     args = p.parse_args()
 
     if args.c_exe and args.c_manifest:
@@ -88,15 +84,6 @@ def main():
         merged = _merge(os.path.join(args.results_dir, "cpp.json"), {"ctoon": peak})
         for lib, mb in merged:
             print(f"collect_memory: cpp/{lib} peak={mb:.2f}MB", file=sys.stderr)
-
-    if args.py_python and args.py_script and args.py_manifest:
-        peaks = {}
-        for lib in ("ctoon", "toon_format", "toons"):
-            cmd = [args.py_python, args.py_script, args.py_manifest, "/dev/null"]
-            peaks[lib] = _peak_rss_mb(cmd, {"CTOON_BENCH_ONLY": lib})
-        merged = _merge(os.path.join(args.results_dir, "python.json"), peaks)
-        for lib, mb in merged:
-            print(f"collect_memory: python/{lib} peak={mb:.2f}MB", file=sys.stderr)
 
 
 if __name__ == "__main__":

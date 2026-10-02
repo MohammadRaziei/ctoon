@@ -81,6 +81,9 @@ function bench(manifestPath, resultsJsonPath, logPath)
         end
     end
 
+    % -- Untimed: record what each operation produced, for report/verify_outputs.mjs --
+    dumpOutputs(resultsJsonPath, files);
+
     % -- ctoon: json_to_toon --
     tic;
     opsA = 0; bytesA = 0;
@@ -152,6 +155,60 @@ function bench(manifestPath, resultsJsonPath, logPath)
         fclose(logFid);
         fprintf('Debug log written to %s\n', logPath);
     end
+end
+
+function dumpOutputs(resultsJsonPath, files)
+% Untimed. Writes what each ctoon operation actually produced for each file to
+%   <results dir>/dump/matlab/ctoon/<operation>/<file index>.txt
+% (0-based index; nothing for a file ctoon failed on) so
+% report/verify_outputs.mjs can judge whether the output is CORRECT, not merely
+% error-free -- see that script's header. Never lets a failure here stop the
+% benchmark itself.
+    try
+        resultsDir = fileparts(resultsJsonPath);
+        if isempty(resultsDir)
+            resultsDir = pwd;
+        end
+        root = fullfile(resultsDir, 'dump', 'matlab');
+        if exist(root, 'dir')
+            rmdir(root, 's');
+        end
+        ops = {'json_to_toon', 'toon_to_json', 'roundtrip'};
+        for k = 1:numel(ops)
+            mkdir(fullfile(root, 'ctoon', ops{k}));
+        end
+
+        for i = 1:numel(files)
+            try
+                val = jsondecode(files(i).json);
+                toon = ctoon.dumps(val);
+                writeOutput(root, 'json_to_toon', i, toon);
+            catch
+                continue;
+            end
+            try
+                writeOutput(root, 'roundtrip', i, jsonencode(ctoon.loads(toon)));
+            catch
+            end
+            if ~isempty(files(i).toon)
+                try
+                    writeOutput(root, 'toon_to_json', i, jsonencode(ctoon.loads(files(i).toon)));
+                catch
+                end
+            end
+        end
+    catch err
+        fprintf(2, 'warning: could not record outputs for verification: %s\n', err.message);
+    end
+end
+
+function writeOutput(root, op, idx, text)
+    fid = fopen(fullfile(root, 'ctoon', op, sprintf('%d.txt', idx - 1)), 'w');
+    if fid == -1
+        return;
+    end
+    fwrite(fid, unicode2native(char(text), 'UTF-8'), 'uint8');
+    fclose(fid);
 end
 
 function logFail(logFid, library, operation, path, err)

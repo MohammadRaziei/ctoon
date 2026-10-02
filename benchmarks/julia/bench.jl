@@ -163,6 +163,38 @@ function bench_roundtrip(files, log_fail)
     return time() - t0, ok, bytes
 end
 
+# Untimed. Writes what each operation actually produced for each file to
+#   <results dir>/dump/julia/<library>/<operation>/<file index>.txt
+# (0-based index; nothing for a file the library failed on) so
+# report/verify_outputs.mjs can judge whether the output is CORRECT, not merely
+# error-free -- see that script's header.
+function dump_outputs(results_path, files)
+    lang_root = joinpath(dirname(abspath(results_path)), "dump", "julia")
+    rm(lang_root; force=true, recursive=true)
+    for op in ("json_to_toon", "toon_to_json", "roundtrip")
+        mkpath(joinpath(lang_root, "ctoon", op))
+    end
+    write_out(op, i, text) = write(joinpath(lang_root, "ctoon", op, "$(i - 1).txt"), string(text))
+
+    for (i, f) in enumerate(files)
+        toon = try
+            CToon.dumps(CToon.parse(f.json))
+        catch
+            nothing
+        end
+        toon === nothing && continue
+        write_out("json_to_toon", i, toon)
+        # toon_to_json decodes this same ctoon-made TOON (the shared pre-pass),
+        # and the roundtrip decodes it too, so one decode serves both files.
+        try
+            json = CToon.to_json(CToon.parse_toon(toon))
+            write_out("toon_to_json", i, json)
+            write_out("roundtrip", i, json)
+        catch
+        end
+    end
+end
+
 function main()
     if length(ARGS) < 2
         println(stderr, "usage: julia bench.jl <manifest> <results.json> [log_file]")
@@ -186,6 +218,13 @@ function main()
     println("Corpus: $(length(files)) files, $(round(total_json_bytes / 1e6; digits=2)) MB (JSON)\n")
     println(rpad("Library", 8), " ", rpad("Operation", 14), " ", lpad("Throughput", 12), " ",
             lpad("Docs/sec", 14), " ", lpad("Success", 9), "  ", lpad("Total time", 12))
+
+    # Outputs for report/verify_outputs.mjs live next to the results JSON.
+    try
+        dump_outputs(results_path, files)
+    catch e
+        println(stderr, "warning: could not record outputs for verification: $e")
+    end
 
     results = Result[]
 

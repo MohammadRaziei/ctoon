@@ -69,6 +69,15 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 </div>
 
 <div class="wrap">
+<section>
+  <div class="kicker">Method</div>
+  <h2>Success vs. correctness</h2>
+  <p class="corpus-note">Two separate numbers, because they answer different questions. <strong>Success</strong> is the share of corpus files a library converted <em>without an error</em>. <strong>Correct</strong> is, of the outputs it actually produced, the share that were <em>right</em> &mdash; so &ldquo;98% success, 0% correct&rdquo; reads as what it is: a library that never complains and never gets it right. Correct means: TOON that a library produced is decoded with the <strong>official reference decoder</strong> (<code>@toon-format/toon</code>) &mdash; not with the library's own, because a lenient decoder hides encoder bugs from its own round trip &mdash; and JSON that a library produced is parsed back; either way the result has to equal the original document. Equality is the spec's JSON-model equality: numbers compare as IEEE-754 doubles (the spec lets an encoder fall back to the host's numeric approximation), objects are unordered maps, arrays are ordered.</p>
+  <p class="corpus-note"><strong>MB/s and docs/s count only correct conversions</strong>, so a wrong answer never looks like a fast one; the time is the time of all attempts, as before. <strong>TOON &rarr; JSON</strong> decodes the TOON that ctoon produced for each file; if that shared input is itself missing or wrong, the file is left out of every library's TOON &rarr; JSON row (the encoder is charged for it under JSON &rarr; TOON), so no decoder is blamed for someone else's output.</p>
+  {% if not all_verified %}
+  <p class="corpus-note"><strong>Not every row could be verified</strong> (Node.js, which provides the reference decoder, was not available when this report was generated, or a language does not record its outputs yet). For rows marked <sup>*</sup> there is no correctness figure, and MB/s counts every conversion that raised no error.</p>
+  {% endif %}
+</section>
 {% if order_check_sample %}
 <section>
   <div class="kicker">Method</div>
@@ -104,7 +113,8 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
         <th>Library</th>
         <th class="num">MB/s</th>
         <th class="num">docs/s</th>
-        <th class="num">Success rate</th>
+        <th class="num" title="share of corpus files converted without an error">Success</th>
+        <th class="num" title="of the outputs produced, the share that were correct">Correct</th>
         <th class="num">Total time (s)</th>
         {% if sec.has_memory %}<th class="num">Peak RSS (MB)</th>{% endif %}
       </tr>
@@ -117,6 +127,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
         <td class="num">{{ row.throughput_mb_s }}</td>
         <td class="num">{{ row.docs_per_sec }}</td>
         <td class="num">{{ row.success_rate }}%</td>
+        <td class="num">{% if row.correct_rate is none %}&mdash;{% if not row.verified %}<sup title="not verified">*</sup>{% endif %}{% else %}{{ row.correct_rate }}%{% endif %}</td>
         <td class="num">{{ row.total_time_s }}</td>
         {% if sec.has_memory %}<td class="num">{{ row.peak_rss_mb if row.peak_rss_mb is not none else "—" }}</td>{% endif %}
       </tr>

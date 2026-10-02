@@ -22,7 +22,8 @@
 // If a log file path is given, one line per failure is written there —
 // only for the first repeat of each timed phase, not all 20.
 
-import { readFileSync, writeFileSync, openSync, writeSync, closeSync } from "node:fs";
+import { readFileSync, writeFileSync, openSync, writeSync, closeSync, mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve, join } from "node:path";
 import { encode, decode } from "@toon-format/toon";
 
 const REPEATS = 20;
@@ -59,6 +60,23 @@ function record(results, library, operation, bytes, ops, seconds, attempted) {
     success_rate: successRate,
     total_time_s: seconds,
   });
+}
+
+// Untimed. Writes what each operation actually produced for each file to
+// <dump_root>/<library>/<operation>/<file index>.txt (nothing for a file the
+// library failed on), so verify_outputs.mjs can judge whether the output is
+// CORRECT, not merely error-free. See that script's header.
+const safeName = (name) => name.replace(/[^A-Za-z0-9._-]/g, "_");
+function dumpOutputs(dumpRoot, library, files, ops) {
+  for (const [operation, fn] of Object.entries(ops)) {
+    const dir = join(dumpRoot, safeName(library), operation);
+    mkdirSync(dir, { recursive: true });
+    files.forEach((f, i) => {
+      let out;
+      try { out = fn(f); } catch { return; }
+      if (typeof out === "string") writeFileSync(join(dir, `${i}.txt`), out, "utf8");
+    });
+  }
 }
 
 function main() {
@@ -101,6 +119,15 @@ function main() {
       logFail("@toon-format/toon", "pre_pass", f.path, e);
     }
   }
+
+  // Outputs for verify_outputs.mjs live next to the results JSON.
+  const dumpRoot = join(dirname(resolve(resultsJsonPath)), "dump", "node");
+  rmSync(dumpRoot, { recursive: true, force: true });
+  dumpOutputs(dumpRoot, "@toon-format/toon", files, {
+    json_to_toon: (f) => encode(JSON.parse(f.json)),
+    toon_to_json: (f) => (f.toon ? JSON.stringify(decode(f.toon)) : null),
+    roundtrip: (f) => JSON.stringify(decode(encode(JSON.parse(f.json)))),
+  });
 
   // json_to_toon
   let ops = 0;

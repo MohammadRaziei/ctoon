@@ -53,6 +53,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #ifndef CTOON_BENCH_MANIFEST
@@ -243,7 +244,111 @@ static char *dup_str(const char *s) {
     return out;
 }
 
+/* ------------------------------------------------------------------ dump --
+ * Untimed. Writes what each operation actually produced for each file to
+ *   <results dir>/dump/c/<library>/<operation>/<file index>.txt
+ * (nothing for a file the library failed on) so report/verify_outputs.mjs
+ * can judge whether the output is CORRECT, not merely error-free -- see that
+ * script's header. Disabled in the CTOON_BENCH_ONLY memory-measurement mode,
+ * which must not touch the filesystem or the timing. */
+static char g_dump_root[4096];   /* "" => disabled */
+
+static void dump_init(void) {
+    const char *res = CTOON_BENCH_RESULTS_JSON;
+    const char *slash = strrchr(res, '/');
+    size_t dirlen = slash ? (size_t)(slash - res) : 0;
+    if (dirlen == 0 || dirlen > sizeof(g_dump_root) - 16) return;
+    snprintf(g_dump_root, sizeof g_dump_root, "%.*s/dump/c", (int)dirlen, res);
+}
+
+static void mkdir_p(const char *path) {
+    char tmp[4352];
+    snprintf(tmp, sizeof tmp, "%s", path);
+    for (char *p = tmp + 1; *p; p++)
+        if (*p == '/') { *p = '\0'; mkdir(tmp, 0777); *p = '/'; }
+    mkdir(tmp, 0777);
+}
+
+static void dump_path(char *out, size_t cap, const char *lib, const char *op, size_t idx) {
+    snprintf(out, cap, "%s/%s/%s/%zu.txt", g_dump_root, lib, op, idx);
+}
+
+/* Call once per (library, operation) before dumping its files. */
+static void dump_prepare(const char *lib, const char *op) {
+    char dir[4352];
+    snprintf(dir, sizeof dir, "%s/%s/%s", g_dump_root, lib, op);
+    mkdir_p(dir);
+}
+
+/* Drop a stale file from a previous run, so "no file" always means "failed". */
+static void dump_clear(const char *lib, const char *op, size_t idx) {
+    char path[4608];
+    dump_path(path, sizeof path, lib, op, idx);
+    unlink(path);
+}
+
+static void dump_write(const char *lib, const char *op, size_t idx, const char *data, size_t len) {
+    char path[4608];
+    dump_path(path, sizeof path, lib, op, idx);
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    if (len) fwrite(data, 1, len, f);
+    fclose(f);
+}
+
+static void dump_ctoon(bench_file *files, size_t n) {
+    if (!g_dump_root[0]) return;
+    dump_prepare("ctoon", "json_to_toon");
+    dump_prepare("ctoon", "toon_to_json");
+    dump_prepare("ctoon", "roundtrip");
+    for (size_t i = 0; i < n; i++) {
+        dump_clear("ctoon", "json_to_toon", i);
+        dump_clear("ctoon", "toon_to_json", i);
+        dump_clear("ctoon", "roundtrip", i);
+
+        /* json_to_toon */
+        ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
+        ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
+        if (doc) {
+            size_t len = 0;
+            char *toon = ctoon_write(doc, &len);
+            if (toon) { dump_write("ctoon", "json_to_toon", i, toon, len); free(toon); }
+            ctoon_doc_free(doc);
+        }
+
+        /* toon_to_json */
+        if (files[i].toon) {
+            ctoon_doc *d = ctoon_read(files[i].toon, files[i].toon_len, 0);
+            if (d) {
+                size_t len = 0;
+                ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
+                char *json = ctoon_doc_to_json(d, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
+                if (json) { dump_write("ctoon", "toon_to_json", i, json, len); free(json); }
+                ctoon_doc_free(d);
+            }
+        }
+
+        /* roundtrip: json -> toon -> json */
+        memset(&rerr, 0, sizeof(rerr));
+        ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
+        if (!doc1) continue;
+        size_t tlen = 0;
+        char *toon = ctoon_write(doc1, &tlen);
+        ctoon_doc_free(doc1);
+        if (!toon) continue;
+        ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
+        free(toon);
+        if (!doc2) continue;
+        size_t jlen = 0;
+        ctoon_write_err werr2; memset(&werr2, 0, sizeof(werr2));
+        char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr2);
+        ctoon_doc_free(doc2);
+        if (json) { dump_write("ctoon", "roundtrip", i, json, jlen); free(json); }
+    }
+}
+
 static void bench_ctoon(bench_file *files, size_t n) {
+    dump_ctoon(files, n);
     long ops = 0; double bytes = 0;
     double t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
@@ -351,6 +456,25 @@ static void bench_toonc(bench_file *files, size_t n, size_t pre_ok) {
                 dup2(devnull, STDOUT_FILENO);
                 dup2(devnull, STDERR_FILENO);
             }
+        }
+    }
+
+    if (g_dump_root[0]) {
+        dump_prepare("TOONc", "toon_to_json");
+        for (size_t i = 0; i < n; i++) {
+            dump_clear("TOONc", "toon_to_json", i);
+            if (!safe[i]) continue;
+            toonObject *obj = TOONc_parseString(files[i].toon);
+            if (!obj) continue;
+            char *membuf = NULL; size_t memsize = 0;
+            FILE *mem = open_memstream(&membuf, &memsize);
+            if (mem) {
+                TOONc_toJSON(obj, mem, 0);
+                fclose(mem);
+                dump_write("TOONc", "toon_to_json", i, membuf, memsize);
+                free(membuf);
+            }
+            TOONc_free(obj);
         }
     }
 
@@ -704,6 +828,7 @@ int main(int argc, char **argv) {
 
     bool run_ctoon = true, run_toonc = true;
     const char *only = getenv("CTOON_BENCH_ONLY");
+    if (!only || !only[0]) dump_init();
     if (only && only[0]) {
         run_ctoon = (strcmp(only, "ctoon") == 0);
         run_toonc = (strcmp(only, "TOONc") == 0);

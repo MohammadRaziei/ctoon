@@ -25,22 +25,11 @@ Implementations:
   - toon_format  github.com/toon-format/toon-python (official)
   - toons        github.com/alesanfra/toons (community, Rust backend)
 
-If the CTOON_BENCH_ONLY environment variable is set to a library name
-("ctoon", "toon_format", or "toons"), only that library's benchmark runs,
-and the results JSON is NOT written -- used by the memory harness to get
-one library's peak RSS in a fresh process. Note: the untimed pre-pass
-(building each file's TOON text) always uses ctoon regardless of which
-library is being isolated, since toon_to_json/roundtrip need TOON input
-from *somewhere* -- so every library's isolated number includes that one
-constant, shared cost. It's the same for every library, so relative
-memory comparisons between them are still fair; it just means these
-memory numbers aren't directly comparable to, say, C's (which has no such
-shared step). Normal timed runs leave this unset.
 """
 import argparse
 import json
 import os
-import resource
+import shutil
 import sys
 import time
 
@@ -62,43 +51,6 @@ except ImportError:
     toons = None
 
 REPEATS = 20
-SCALING_NBUCKETS = 5
-SCALING_REPS = 5
-
-# ------------------------------------------------------------ order check --
-# A fixed, deliberately non-alphabetical sample -- if a library reorders
-# keys (e.g. sorts them, or hashes them into a dict with no defined
-# order), this catches it. Checked by extracting `"key":` occurrences
-# from the round-tripped JSON text with a regex (robust to whichever
-# indentation/spacing a library's own JSON writer uses) and comparing
-# that sequence to the sample's own key order -- not a full JSON walk,
-# but enough for a single-level-deep, honest yes/no per library.
-ORDER_CHECK_SAMPLE = (
-    '{"zebra": 1, "apple": 2, "mango": 3, '
-    '"nested": {"beta": true, "alpha": false}, '
-    '"list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}'
-)
-_KEY_RE = __import__("re").compile(r'"([A-Za-z_][A-Za-z0-9_]*)"\s*:')
-
-
-def _key_order(text):
-    return _KEY_RE.findall(text)
-
-
-def check_order_preserved(roundtrip_fn):
-    """roundtrip_fn(json_text) -> json_text. Returns (preserved: bool,
-    detail: str) -- detail explains a failure or exception, empty on
-    success."""
-    try:
-        out = roundtrip_fn(ORDER_CHECK_SAMPLE)
-    except Exception as e:
-        return False, f"exception: {e}"
-    expected = _key_order(ORDER_CHECK_SAMPLE)
-    got = _key_order(out)
-    if got == expected:
-        return True, ""
-    return False, f"expected {expected}, got {got}"
-
 
 def load_corpus(manifest_path):
     files = []
@@ -171,6 +123,28 @@ def bench_roundtrip(files, roundtrip_fn, log_file, library, reps=REPEATS):
     return time.perf_counter() - t0, ops, bytes_done
 
 
+def dump_outputs(dump_root, library, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
+    """Untimed. Writes what each operation actually produced for each file to
+    <dump_root>/<library>/<operation>/<file index>.txt (nothing for a file the
+    library failed on), so report/verify_outputs.mjs can judge whether the
+    output is CORRECT, not merely error-free. See that script's header."""
+    for operation, fn, field in (("json_to_toon", json_to_toon_fn, "json"),
+                                 ("toon_to_json", toon_to_json_fn, "toon"),
+                                 ("roundtrip", roundtrip_fn, "json")):
+        out_dir = os.path.join(dump_root, library, operation)
+        os.makedirs(out_dir, exist_ok=True)
+        for i, f in enumerate(files):
+            if not f[field]:
+                continue
+            try:
+                out = fn(f[field])
+                data = out if isinstance(out, bytes) else out.encode("utf-8")
+            except Exception:
+                continue
+            with open(os.path.join(out_dir, f"{i}.txt"), "wb") as fh:
+                fh.write(data)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("manifest")
@@ -199,12 +173,16 @@ def main():
         except Exception as e:
             log_fail(log_file, "ctoon", "pre_pass", f["path"], e)
 
+    # Outputs for report/verify_outputs.mjs live next to the results JSON.
+    dump_root = os.path.join(os.path.dirname(os.path.abspath(args.results_json)), "dump", "python")
+    shutil.rmtree(dump_root, ignore_errors=True)
+
     rows = []
     results = []
-    scaling = []
-    order_check = []
 
     def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
+        dump_outputs(dump_root, name, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn)
+
         t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn, log_file, name)
         rows.append([
             name, "json_to_toon",
@@ -250,101 +228,28 @@ def main():
             "total_time_s": t_rt,
         })
 
-    # Scaling: same libraries, re-measured on SCALING_NBUCKETS equal-count
-    # buckets of the corpus split by file size -- see bench.c's identical
-    # scheme for the full rationale (one line chart point per bucket,
-    # x = median file size in that bucket).
-    sorted_files = sorted(files, key=lambda f: len(f["json"]))
-
-    def add_scaling(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
-        n = len(sorted_files)
-        base, rem = divmod(n, SCALING_NBUCKETS)
-        start = 0
-        for b in range(SCALING_NBUCKETS):
-            count = base + (1 if b < rem else 0)
-            if count == 0:
-                continue
-            bucket = sorted_files[start:start + count]
-            size_bytes = len(bucket[count // 2]["json"].encode("utf-8"))
-
-            for op, fn, key in (
-                ("json_to_toon", json_to_toon_fn, "json"),
-                ("toon_to_json", toon_to_json_fn, "toon"),
-                ("roundtrip", roundtrip_fn, "json"),
-            ):
-                runner = {"json_to_toon": bench_json_to_toon,
-                          "toon_to_json": bench_toon_to_json,
-                          "roundtrip": bench_roundtrip}[op]
-                t, ops, bytes_done = runner(bucket, fn, None, name, reps=SCALING_REPS)
-                scaling.append({
-                    "library": name, "operation": op, "size_bytes": size_bytes,
-                    "throughput_mb_s": (bytes_done / t / 1e6) if ops else 0.0,
-                    "docs_per_sec": (ops / t) if t else 0.0,
-                    "success_rate": ops / (count * SCALING_REPS) if count else 0.0,
-                })
-            start += count
-
-    only = os.environ.get("CTOON_BENCH_ONLY", "").strip()
-
     add_rows(
         "ctoon",
         lambda text: ctoon.dumps(json.loads(text)),
         lambda text: ctoon.dumps_json(ctoon.loads(text), indent=2),
         lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2),
-    ) if not only or only == "ctoon" else None
-    if not only:
-        add_scaling(
-            "ctoon",
-            lambda text: ctoon.dumps(json.loads(text)),
-            lambda text: ctoon.dumps_json(ctoon.loads(text), indent=2),
-            lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2),
-        )
-        preserved, detail = check_order_preserved(
-            lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2))
-        order_check.append({"library": "ctoon", "preserved": preserved, "detail": detail})
+    )
 
-    if toon_format and (not only or only == "toon_format"):
+    if toon_format:
         add_rows(
             "toon_format",
             lambda text: toon_format.encode(json.loads(text)),
             lambda text: json.dumps(toon_format.decode(text), indent=2),
             lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2),
         )
-    if toon_format and not only:
-        add_scaling(
-            "toon_format",
-            lambda text: toon_format.encode(json.loads(text)),
-            lambda text: json.dumps(toon_format.decode(text), indent=2),
-            lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2),
-        )
-        preserved, detail = check_order_preserved(
-            lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2))
-        order_check.append({"library": "toon_format", "preserved": preserved, "detail": detail})
 
-    if toons and (not only or only == "toons"):
+    if toons:
         add_rows(
             "toons",
             lambda text: toons.dumps(json.loads(text)),
             lambda text: toons.to_json(text, indent=2),
             lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2),
         )
-    if toons and not only:
-        add_scaling(
-            "toons",
-            lambda text: toons.dumps(json.loads(text)),
-            lambda text: toons.to_json(text, indent=2),
-            lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2),
-        )
-        preserved, detail = check_order_preserved(
-            lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2))
-        order_check.append({"library": "toons", "preserved": preserved, "detail": detail})
-
-    if only:
-        peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        print(f"CTOON_BENCH_MEM_RESULT library={only} peak_rss_kb={peak_kb}", file=sys.stderr)
-        if log_file:
-            log_file.close()
-        return 0
 
     headers = ["Library", "Operation", "Throughput", "Docs/sec", "Success", f"Total time (x{REPEATS} reps)"]
     if tabulate:
@@ -360,8 +265,6 @@ def main():
             "language": "python",
             "corpus": {"files": len(files), "bytes": total_json_bytes},
             "results": results,
-            "scaling": scaling,
-            "order_check": order_check,
         }, f, indent=2)
     print(f"\nResults written to {args.results_json}")
 

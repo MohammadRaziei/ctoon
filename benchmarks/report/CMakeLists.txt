@@ -69,11 +69,10 @@ add_dependencies(ctoon_bench_system_info ctoon_bench_report_venv)
 # --------------------------------------------------------------- memory ----
 # Peak RSS per (language, library), each in its own fresh process (see
 # collect_memory.py's docstring for why) -- merged straight into the
-# c.json/cpp.json/python.json that ctoon_benchmarks_c / _cpp / _python
+# c.json/cpp.json that ctoon_benchmarks_c / _cpp
 # already wrote, so it MUST run after those, and MUST finish before
 # generate_report.py reads those files. Only languages whose toolchain
-# was actually found (bench_c / bench_cpp targets exist, or the python
-# venv was configured) get a --*-exe/--py-python flag; the others are
+# was actually found (bench_c / bench_cpp targets exist) get a --*-exe flag; the others are
 # silently left out of collect_memory.py's argv, same "only what's
 # configured" convention as everywhere else in this suite.
 #
@@ -99,12 +98,6 @@ if(CTOON_BENCH_MEMORY)
     list(APPEND MEMORY_ARGS --cpp-exe "$<TARGET_FILE:bench_cpp>")
     list(APPEND MEMORY_DEPS ctoon_benchmarks_cpp)
   endif()
-  if(DEFINED CTOON_PY_VENV_PYTHON AND TARGET ctoon_benchmarks_python)
-    list(APPEND MEMORY_ARGS --py-python "${CTOON_PY_VENV_PYTHON}"
-                            --py-script "${CMAKE_CURRENT_SOURCE_DIR}/../python/bench.py"
-                            --py-manifest "${CTOON_BENCH_MANIFEST}")
-    list(APPEND MEMORY_DEPS ctoon_benchmarks_python)
-  endif()
 
   add_custom_command(
     OUTPUT "${MEMORY_STAMP}"
@@ -123,6 +116,37 @@ if(CTOON_BENCH_MEMORY)
 else()
   message(STATUS "ctoon benchmarks: memory measurement is OFF (CTOON_BENCH_MEMORY=OFF) — "
                   "peak_rss_mb will not appear in the report. Enable with -DCTOON_BENCH_MEMORY=ON.")
+endif()
+
+# ------------------------------------------------------------------ verify --
+# "Success" means the output is CORRECT, not merely that nothing threw. Each
+# language harness dumps what it produced (results/dump/...), and
+# node/verify_outputs.mjs judges every one of those outputs against a single
+# shared criterion -- json_to_toon is decoded with the OFFICIAL reference
+# decoder, the JSON-producing operations are parsed back and compared to the
+# original -- then rewrites success_rate / throughput_mb_s / docs_per_sec in
+# each <language>.json so only correct conversions count (the harness's own
+# numbers are kept under "raw"). See that script's header for the details.
+#
+# A plain custom target, not an OUTPUT-stamp rule: the language targets
+# rewrite their JSON on every run, so this has to re-judge on every run too.
+# Needs Node (it uses @toon-format/toon as the reference decoder); without it
+# the report still renders, with every row marked unverified.
+if(TARGET ctoon_benchmarks_node_deps AND NODE_EXECUTABLE)
+  add_custom_target(ctoon_bench_verify
+    COMMAND ${CMAKE_COMMAND} -E echo "-- Verifying that every benchmark output is correct..."
+    COMMAND "${NODE_EXECUTABLE}" "${CTOON_BENCH_SOURCE_DIR}/node/verify_outputs.mjs"
+            "${CTOON_BENCH_MANIFEST}" "${CTOON_BENCH_RESULTS_DIR}"
+    COMMENT "ctoon benchmarks: verifying outputs against the reference decoder"
+    USES_TERMINAL
+  )
+  add_dependencies(ctoon_bench_verify ctoon_benchmarks_node_deps ctoon_bench_langs)
+  if(CTOON_BENCH_MEMORY)
+    add_dependencies(ctoon_bench_verify ctoon_bench_memory)   # memory merges into the same JSON first
+  endif()
+else()
+  message(WARNING "ctoon benchmarks: Node.js not found -- outputs will NOT be verified, so "
+                  "'success' only means 'no error' (the report says so). Install Node.js to fix.")
 endif()
 
 # ------------------------------------------------------------------ report --
@@ -166,3 +190,6 @@ endif()
 # top-level target people actually run) then depends on both this
 # target and ctoon_bench_langs, so the report always renders last.
 add_dependencies(ctoon_bench_report ctoon_bench_langs)
+if(TARGET ctoon_bench_verify)
+  add_dependencies(ctoon_bench_report ctoon_bench_verify)
+endif()

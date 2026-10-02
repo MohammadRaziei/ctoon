@@ -7,7 +7,11 @@ keep -- no server, no network, no sibling files.
 
 Modeled on https://github.com/MohammadRaziei/pygixml/blob/main/benchmarks/report/generate_report.py,
 adapted for ctoon's per-language result files (language, corpus, results[]
-with library/operation/throughput_mb_s/docs_per_sec/success_rate).
+with library/operation/throughput_mb_s/docs_per_sec/success_rate; after
+node/verify_outputs.mjs has run, a row also has correct_rate -- of the outputs
+produced, the share that were correct -- and verified=true; success_rate stays
+"converted without error", and throughput/docs_per_sec count correct
+conversions only, with the harness's own numbers kept under "raw").
 
 What this file deliberately does NOT contain: how the corpus was
 generated, or why each language's numbers aren't comparable across
@@ -213,6 +217,8 @@ new Chart(document.getElementById('chart-{language}-mem'), {{
                 "throughput_mb_s": round(r.get("throughput_mb_s", 0), 2),
                 "docs_per_sec": round(r.get("docs_per_sec", 0), 1),
                 "success_rate": round(r.get("success_rate", 0) * 100, 1),
+                "verified": bool(r.get("verified")),
+                "correct_rate": (round(r["correct_rate"] * 100, 1) if r.get("correct_rate") is not None else None),
                 "total_time_s": round(r.get("total_time_s", 0), 3),
                 "peak_rss_mb": r.get("peak_rss_mb"),
             })
@@ -281,6 +287,7 @@ def build(results_dir, output_path, chartjs_path):
         chart_scripts="\n".join(chart_scripts),
         system_info=system_info,
         order_check_sample=ORDER_CHECK_SAMPLE,
+        all_verified=all(row["verified"] for sec in sections for row in sec["rows"]),
     )
 
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

@@ -64,6 +64,66 @@ fn record(library: &'static str, operation: &'static str, bytes: f64, ops: u64, 
     ResultRow { library, operation, throughput_mb_s: throughput, docs_per_sec: ops as f64 / seconds, success_rate, total_time_s: seconds }
 }
 
+/// Untimed. Writes what each operation actually produced for each file to
+///   <results dir>/dump/rust/<library>/<operation>/<file index>.txt
+/// (nothing for a file the library failed on) so report/verify_outputs.mjs can
+/// judge whether the output is CORRECT, not merely error-free -- see that
+/// script's header.
+fn dump_outputs(results_path: &str, files: &[BenchFile]) {
+    let root = std::path::Path::new(results_path)
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("dump")
+        .join("rust");
+    let _ = fs::remove_dir_all(&root);
+    let write = |library: &str, operation: &str, idx: usize, text: &str| {
+        let dir = root.join(library).join(operation);
+        if fs::create_dir_all(&dir).is_ok() {
+            let _ = fs::write(dir.join(format!("{}.txt", idx)), text);
+        }
+    };
+
+    for (i, f) in files.iter().enumerate() {
+        // ctoon
+        if let Ok(val) = ctoon::loads_json(&f.json) {
+            if let Ok(toon) = ctoon::dumps(&val) {
+                write("ctoon", "json_to_toon", i, &toon);
+                if let Ok(val2) = ctoon::loads(&toon) {
+                    if let Ok(js) = ctoon::dumps_json(&val2, 2) {
+                        write("ctoon", "roundtrip", i, &js.to_string());
+                    }
+                }
+            }
+        }
+
+        // toon-rust
+        if let Ok(val) = serde_json::from_str::<JsonValue>(&f.json) {
+            if let Ok(toon) = encode_default(&val) {
+                write("toon-rust", "json_to_toon", i, &toon);
+                if let Ok(val2) = decode_default::<JsonValue>(&toon) {
+                    if let Ok(js) = serde_json::to_string(&val2) {
+                        write("toon-rust", "roundtrip", i, &js);
+                    }
+                }
+            }
+        }
+
+        // toon_to_json: both libraries decode the shared (ctoon-made) TOON
+        if let Some(toon) = &f.toon {
+            if let Ok(val) = ctoon::loads(toon) {
+                if let Ok(js) = ctoon::dumps_json(&val, 2) {
+                    write("ctoon", "toon_to_json", i, &js.to_string());
+                }
+            }
+            if let Ok(val) = decode_default::<JsonValue>(toon) {
+                if let Ok(js) = serde_json::to_string(&val) {
+                    write("toon-rust", "toon_to_json", i, &js);
+                }
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
@@ -110,6 +170,9 @@ fn main() {
             }
         }
     }
+
+    // Outputs for report/verify_outputs.mjs live next to the results JSON.
+    dump_outputs(results_path, &files);
 
     let mut results: Vec<ResultRow> = Vec::new();
 

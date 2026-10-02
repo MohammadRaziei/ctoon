@@ -19,6 +19,9 @@
 #include <string>
 #include <vector>
 
+#include <sys/stat.h>
+#include <unistd.h>
+
 #ifndef CTOON_BENCH_MANIFEST
 #error "CTOON_BENCH_MANIFEST must be defined at compile time"
 #endif
@@ -257,6 +260,58 @@ void write_results_json(size_t n_files, size_t total_json_bytes) {
 
 } // namespace
 
+// Untimed. Writes what each operation actually produced for each file to
+//   <results dir>/dump/cpp/<library>/<operation>/<file index>.txt
+// (nothing for a file the library failed on) so report/verify_outputs.mjs can
+// judge whether the output is CORRECT, not merely error-free -- see that
+// script's header. (POSIX calls rather than std::filesystem: this benchmark
+// is deliberately built as C++11.)
+static void mkdir_p(const std::string &path) {
+    for (std::size_t i = 1; i < path.size(); i++)
+        if (path[i] == '/') mkdir(path.substr(0, i).c_str(), 0777);
+    mkdir(path.c_str(), 0777);
+}
+
+static void dump_outputs(const std::vector<BenchFile> &files) {
+    std::string results = CTOON_BENCH_RESULTS_JSON;
+    std::size_t slash = results.rfind('/');
+    if (slash == std::string::npos) return;
+    const std::string root = results.substr(0, slash) + "/dump/cpp/ctoon";
+    const char *ops[] = {"json_to_toon", "toon_to_json", "roundtrip"};
+    for (const char *op : ops) {
+        mkdir_p(root + "/" + op);
+        for (std::size_t i = 0; i < files.size(); i++)   // drop stale files: "no file" must mean "failed"
+            unlink((root + "/" + op + "/" + std::to_string(i) + ".txt").c_str());
+    }
+
+    auto write = [&](const char *op, std::size_t i, const std::string &text) {
+        std::ofstream out(root + "/" + op + "/" + std::to_string(i) + ".txt", std::ios::binary);
+        out.write(text.data(), static_cast<std::streamsize>(text.size()));
+    };
+
+    for (std::size_t i = 0; i < files.size(); i++) {
+        const BenchFile &f = files[i];
+        try {
+            auto doc = ctoon::document::from_json(f.json);
+            write("json_to_toon", i, doc.to_string().str());
+        } catch (const ctoon::error &) {}
+
+        if (!f.toon.empty()) {
+            try {
+                auto doc = ctoon::document::parse(f.toon);
+                write("toon_to_json", i, doc.to_json(2).str());
+            } catch (const ctoon::error &) {}
+        }
+
+        try {
+            auto doc1 = ctoon::document::from_json(f.json);
+            std::string toon = doc1.to_string().str();
+            auto doc2 = ctoon::document::parse(toon);
+            write("roundtrip", i, doc2.to_json(2).str());
+        } catch (const ctoon::error &) {}
+    }
+}
+
 int main() {
     std::ifstream manifest(CTOON_BENCH_MANIFEST);
     if (!manifest) {
@@ -296,6 +351,8 @@ int main() {
         } catch (const ctoon::error &) {
         }
     }
+
+    dump_outputs(files);
 
     long ops_a = 0; double bytes_a = 0;
     double t0 = now_seconds();

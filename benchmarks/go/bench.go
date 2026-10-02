@@ -36,6 +36,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/alpkeskin/gotoon"
@@ -112,6 +114,71 @@ func record(library, operation string, bytes float64, ops int, seconds float64, 
 		library, operation, throughput, float64(ops)/seconds, successRate*100, seconds, repeats)
 }
 
+// Untimed. Writes what each operation actually produced for each file to
+//   <results dir>/dump/go/<library>/<operation>/<file index>.txt
+// (nothing for a file the library failed on) so report/verify_outputs.mjs can
+// judge whether the output is CORRECT, not merely error-free -- see that
+// script's header.
+var dumpRoot string
+
+func dumpWrite(library, operation string, idx int, text string) {
+	dir := filepath.Join(dumpRoot, library, operation)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	_ = os.WriteFile(filepath.Join(dir, strconv.Itoa(idx)+".txt"), []byte(text), 0o644)
+}
+
+func dumpOutputs(files []*benchFile) {
+	for i, f := range files {
+		// ctoon
+		if val, err := ctoon.LoadsJSON(f.json); err == nil {
+			if toon, err := ctoon.Dumps(val); err == nil {
+				dumpWrite("ctoon", "json_to_toon", i, toon)
+				if val2, err := ctoon.Loads(toon); err == nil {
+					if js, err := ctoon.DumpsJSON(val2, 2); err == nil {
+						dumpWrite("ctoon", "roundtrip", i, string(js))
+					}
+				}
+			}
+		}
+		if f.toon != "" {
+			if val, err := ctoon.Loads(f.toon); err == nil {
+				if js, err := ctoon.DumpsJSON(val, 2); err == nil {
+					dumpWrite("ctoon", "toon_to_json", i, string(js))
+				}
+			}
+		}
+
+		var plain interface{}
+		if err := json.Unmarshal([]byte(f.json), &plain); err != nil {
+			continue
+		}
+
+		// gotoon (encode-only)
+		if toon, err := gotoon.Encode(plain); err == nil {
+			dumpWrite("gotoon", "json_to_toon", i, string(toon))
+		}
+
+		// toon-go
+		if toon, err := toongo.MarshalString(plain); err == nil {
+			dumpWrite("toon-go", "json_to_toon", i, toon)
+			if val2, err := toongo.DecodeString(toon); err == nil {
+				if js, err := json.Marshal(val2); err == nil {
+					dumpWrite("toon-go", "roundtrip", i, string(js))
+				}
+			}
+		}
+		if f.toon != "" {
+			if val, err := toongo.DecodeString(f.toon); err == nil {
+				if js, err := json.Marshal(val); err == nil {
+					dumpWrite("toon-go", "toon_to_json", i, string(js))
+				}
+			}
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Fprintln(os.Stderr, "usage: bench <manifest> <results.json> [log_file]")
@@ -160,6 +227,11 @@ func main() {
 		f.toon = toon
 		totalTOONBytes += len(toon)
 	}
+
+	// Outputs for report/verify_outputs.mjs live next to the results JSON.
+	dumpRoot = filepath.Join(filepath.Dir(resultsPath), "dump", "go")
+	_ = os.RemoveAll(dumpRoot)
+	dumpOutputs(files)
 
 	// ── ctoon ──
 	var opsA, opsB int

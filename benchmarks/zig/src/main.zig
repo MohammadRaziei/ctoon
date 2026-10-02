@@ -86,6 +86,54 @@ fn record(gpa: std.mem.Allocator, results: *std.ArrayList(Result), library: []co
     });
 }
 
+/// Untimed. Records what each ctoon operation actually produced for each file,
+/// so report/verify_outputs.mjs can judge whether the output is CORRECT, not
+/// merely error-free -- see that script's header. Unlike the other languages
+/// (one file per output under dump/), this writes ONE framed file per
+/// operation next to the results JSON, because it only uses calls this file
+/// already makes (Writer.Allocating, Dir.writeFile): each record is
+/// "<file index>\t<byte length>\n<bytes>", and a file ctoon failed on simply
+/// has no record.
+fn frame(w: *std.Io.Writer, idx: usize, text: []const u8) void {
+    w.print("{d}\t{d}\n", .{ idx, text.len }) catch return;
+    w.writeAll(text) catch return;
+}
+
+fn writeFrames(gpa: std.mem.Allocator, dir: []const u8, operation: []const u8, data: []const u8) void {
+    const path = std.fmt.allocPrint(gpa, "{s}/dump_zig_ctoon_{s}.frames", .{ dir, operation }) catch return;
+    std.Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = data }) catch {};
+}
+
+fn dumpOutputs(gpa: std.mem.Allocator, results_path: []const u8, files: []const BenchFile) void {
+    const dir = if (std.mem.lastIndexOfScalar(u8, results_path, '/')) |i| results_path[0..i] else ".";
+    var jt: std.Io.Writer.Allocating = .init(gpa); // json_to_toon
+    var tj: std.Io.Writer.Allocating = .init(gpa); // toon_to_json
+    var rt: std.Io.Writer.Allocating = .init(gpa); // roundtrip
+    defer jt.deinit();
+    defer tj.deinit();
+    defer rt.deinit();
+
+    for (files, 0..) |f, i| {
+        if (ctoon.loadsJson(gpa, f.json)) |val| {
+            if (ctoon.dumps(gpa, val)) |toon| {
+                frame(&jt.writer, i, toon);
+                if (ctoon.loads(gpa, toon)) |val2| {
+                    if (ctoon.dumpsJson(gpa, val2, 2)) |js| frame(&rt.writer, i, js) else |_| {}
+                } else |_| {}
+            } else |_| {}
+        } else |_| {}
+
+        if (f.toon) |toon_text| {
+            if (ctoon.loads(gpa, toon_text)) |val| {
+                if (ctoon.dumpsJson(gpa, val, 2)) |js| frame(&tj.writer, i, js) else |_| {}
+            } else |_| {}
+        }
+    }
+    writeFrames(gpa, dir, "json_to_toon", jt.written());
+    writeFrames(gpa, dir, "toon_to_json", tj.written());
+    writeFrames(gpa, dir, "roundtrip", rt.written());
+}
+
 pub fn main(init: std.process.Init) !void {
     io = init.io;
     const gpa = init.arena.allocator();
@@ -141,6 +189,9 @@ pub fn main(init: std.process.Init) !void {
             continue;
         };
     }
+
+    // Outputs for report/verify_outputs.mjs live next to the results JSON.
+    dumpOutputs(gpa, results_path, files.items);
 
     var results: std.ArrayList(Result) = .empty;
     const total = files.items.len * repeats;
