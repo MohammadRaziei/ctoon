@@ -2959,7 +2959,7 @@ static void ctoon_ctn_child_added(ctoon_read_ctx *c) {
 /* Quoted-string reader shared by the TOON parser and the JSON reader.
  *
  * Which escapes are valid depends on the FORMAT being read, not on the
- * string: TOON (spec 4.1) has exactly \\ \" \n \r \t and \uXXXX, and a
+ * string: TOON (spec 7.1) has exactly \\ \" \n \r \t and \uXXXX, and a
  * decoder MUST reject every other escape; JSON (RFC 8259) additionally has
  * \b \f and \/. So `json` only widens the accepted set -- it never lets
  * TOON input through with JSON-only escapes. */
@@ -3005,7 +3005,7 @@ static bool ctoon_parse_str_quoted_impl(ctoon_read_ctx *c, ctoon_val *val, bool 
             case 'r':  *dst_cur++ = '\r'; src++; break;
             case 't':  *dst_cur++ = '\t'; src++; break;
             case '/': case 'b': case 'f':
-                if (!json) {                      /* TOON: not a valid escape (spec 4.1) */
+                if (!json) {                      /* TOON: not a valid escape (spec 7.1) */
                     c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
                     return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
                                     "invalid escape sequence");
@@ -5851,6 +5851,35 @@ static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
 /*---- string writer ---------------------------------------------------------*/
 
 /*
+ * §7.2 "numeric-like": /^[+-]?[0-9]+(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?$/i, ASCII
+ * digits only, any length. Hand-rolled rather than strtod() so that it matches
+ * the spec grammar exactly: strtod is locale/length dependent and also accepts
+ * forms outside the grammar ("0x1A", "inf", ".5"), while a fixed-size copy
+ * buffer would let long digit strings (>= 32 bytes) slip through unquoted and
+ * be decoded as numbers.
+ */
+static_inline bool ctoon_write_str_is_numeric_like(const char *s, usize len) {
+    usize i = 0;
+    if (i < len && (s[i] == '+' || s[i] == '-')) i++;
+    usize d0 = i;
+    while (i < len && s[i] >= '0' && s[i] <= '9') i++;
+    if (i == d0) return false;                         /* needs 1+ integer digits */
+    if (i < len && s[i] == '.') {
+        usize f0 = ++i;
+        while (i < len && s[i] >= '0' && s[i] <= '9') i++;
+        if (i == f0) return false;                     /* '.' needs 1+ digits */
+    }
+    if (i < len && (s[i] == 'e' || s[i] == 'E')) {
+        i++;
+        if (i < len && (s[i] == '+' || s[i] == '-')) i++;
+        usize e0 = i;
+        while (i < len && s[i] >= '0' && s[i] <= '9') i++;
+        if (i == e0) return false;                     /* exponent needs 1+ digits */
+    }
+    return i == len;
+}
+
+/*
  * Determine if a string needs quoting in a TOON context, per spec §7.2
  * (string values) and §7.3 (keys and header field names).
  *
@@ -5875,6 +5904,18 @@ static_inline bool ctoon_write_str_needs_quote(ctoon_write_ctx *w, const char *s
 
     /* §7.2: value quoting rules */
     if (len == 0) return true;                                  /* empty */
+
+    /*
+     * §12: a single U+FEFF at the very start of the document is a byte-order
+     * mark, and decoders MUST strip it before any other processing. A string
+     * that is the first thing in the output (a root string value, w->len == 0)
+     * and begins with U+FEFF (UTF-8 EF BB BF) would therefore lose that
+     * character on a round trip, so it has to be quoted. A U+FEFF anywhere
+     * else is ordinary content and needs no quoting. Keys never get here:
+     * §7.3 quotes every non-ASCII key.
+     */
+    if (w->len == 0 && len >= 3 &&
+        (u8)s[0] == 0xEF && (u8)s[1] == 0xBB && (u8)s[2] == 0xBF) return true;
     if (s[0] == ' ' || s[0] == '\t' ||
         s[len-1] == ' ' || s[len-1] == '\t') return true;        /* leading/trailing ws */
     if (s[0] == '-') return true;                                /* equals/starts with '-' */
@@ -5894,13 +5935,8 @@ static_inline bool ctoon_write_str_needs_quote(ctoon_write_ctx *w, const char *s
     if (len == 4 && memcmp(s, "null",  4) == 0) return true;
     if (len == 4 && memcmp(s, "true",  4) == 0) return true;
     if (len == 5 && memcmp(s, "false", 5) == 0) return true;
-    /* number check */
-    if (len < 32) {
-        char tmp[32]; memcpy(tmp, s, len); tmp[len] = '\0';
-        char *end = NULL;
-        strtod(tmp, &end);
-        if (end == tmp + len) return true;
-    }
+    /* §7.2: numeric-like strings must be quoted, at any length */
+    if (ctoon_write_str_is_numeric_like(s, len)) return true;
     return false;
 }
 

@@ -503,3 +503,35 @@ class TestJSON:
     def test_dumps_json_with_write_flag(self):
         s = ctoon.dumps_json({"x": 1}, flags=WriteFlag.NOFLAG)
         assert "x" in s
+
+
+class TestStringQuotingRoundtrip:
+    """Strings whose unquoted form would be re-read as something else."""
+
+    def test_root_string_starting_with_bom_is_quoted(self):
+        # §12: a leading U+FEFF is a byte-order mark and is stripped by decoders,
+        # so a root string that starts with one must be quoted to survive.
+        s = "\ufeff8"
+        out = ctoon.dumps(s)
+        assert out == '"\ufeff8"'
+        assert ctoon.loads(out) == s
+
+    def test_bom_not_at_document_start_is_plain_content(self):
+        for s in ("a\ufeffb", "x\ufeff"):
+            assert ctoon.dumps(s) == s
+            assert ctoon.loads(ctoon.dumps(s)) == s
+        data = {"k": "\ufeff8", "l": ["\ufeff1", "\ufeff2"]}
+        assert ctoon.loads(ctoon.dumps(data)) == data
+
+    @pytest.mark.parametrize(
+        "s",
+        ["42", "-3.14", "05", "+1", "1e-6", "1E+6", "1" * 40, "-" + "1" * 31 + "." + "1" * 13 + "e-99"],
+    )
+    def test_numeric_like_strings_stay_strings(self, s):
+        out = ctoon.dumps(s)
+        assert out == f'"{s}"'
+        assert ctoon.loads(out) == s
+
+    @pytest.mark.parametrize("s", ["0x1A", "inf", ".5", "5.", "1e", "12abc", "a-1"])
+    def test_non_numeric_strings_roundtrip(self, s):
+        assert ctoon.loads(ctoon.dumps(s)) == s

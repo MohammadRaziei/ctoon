@@ -455,6 +455,92 @@ UTEST(ctoon_tests, test_control_chars_roundtrip) {
     }
 }
 
+/* Writes `value` as a bare root string, returns the TOON text (caller frees). */
+static char *write_root_str(const char *value) {
+    ctoon_mut_doc *doc = ctoon_mut_doc_new(NULL);
+    if (!doc) return NULL;
+    char *out = NULL;
+    ctoon_mut_val *root = ctoon_mut_strcpy(doc, value);
+    if (root) {
+        ctoon_mut_doc_set_root(doc, root);
+        size_t len = 0;
+        out = ctoon_mut_write(doc, &len);
+    }
+    ctoon_mut_doc_free(doc);
+    return out;
+}
+
+/* §12: a U+FEFF at the very start of the document is a byte-order mark that
+ * decoders MUST strip. A root string that starts with U+FEFF therefore has to
+ * be quoted, or it silently loses that character on a round trip. A U+FEFF
+ * anywhere else is plain content and stays unquoted. */
+UTEST(ctoon_tests, test_root_string_starting_with_feff_is_quoted) {
+    const char *val = "\xEF\xBB\xBF" "8";
+    char *out = write_root_str(val);
+    ASSERT_TRUE(out != NULL);
+    ASSERT_STREQ("\"\xEF\xBB\xBF" "8\"", out);
+
+    ctoon_doc *parsed = ctoon_read(out, strlen(out), CTOON_READ_NOFLAG);
+    ASSERT_TRUE(parsed != NULL);
+    ASSERT_STREQ(val, ctoon_get_str(ctoon_doc_get_root(parsed)));
+    ctoon_doc_free(parsed);
+    free(out);
+
+    /* not at document start -> ordinary content, no quotes needed */
+    out = write_one_str("k", val);
+    ASSERT_TRUE(out != NULL);
+    ASSERT_STREQ("k: \xEF\xBB\xBF" "8", out);
+    free(out);
+
+    out = write_root_str("a\xEF\xBB\xBF" "b");
+    ASSERT_TRUE(out != NULL);
+    ASSERT_STREQ("a\xEF\xBB\xBF" "b", out);
+    free(out);
+}
+
+/* §7.2 numeric-like strings must be quoted whatever their length; a 40-digit
+ * string used to slip through unquoted and decode as a (lossy) number. */
+UTEST(ctoon_tests, test_numeric_like_strings_are_quoted_at_any_length) {
+    const char *quoted[] = {
+        "42", "-3.14", "05", "+1", "1e-6", "1E+6",
+        "1111111111111111111111111111111111111111",           /* 40 digits */
+        "-1111111111111111111111111111111.1111111111111e-99", /* long, all parts */
+    };
+    for (size_t i = 0; i < sizeof(quoted) / sizeof(quoted[0]); i++) {
+        char *out = write_one_str("k", quoted[i]);
+        ASSERT_TRUE(out != NULL);
+        char want[160];
+        snprintf(want, sizeof want, "k: \"%s\"", quoted[i]);
+        ASSERT_STREQ(want, out);
+
+        ctoon_doc *parsed = ctoon_read(out, strlen(out), CTOON_READ_NOFLAG);
+        ASSERT_TRUE(parsed != NULL);
+        ctoon_val *v = ctoon_obj_get(ctoon_doc_get_root(parsed), "k");
+        ASSERT_TRUE(ctoon_is_str(v));
+        ASSERT_STREQ(quoted[i], ctoon_get_str(v));
+        ctoon_doc_free(parsed);
+        free(out);
+    }
+
+    /* outside the §7.2 grammar -> safe unquoted, still read back as a string */
+    const char *plain[] = { "0x1A", "inf", ".5", "5.", "1e", "12abc", "a-1" };
+    for (size_t i = 0; i < sizeof(plain) / sizeof(plain[0]); i++) {
+        char *out = write_one_str("k", plain[i]);
+        ASSERT_TRUE(out != NULL);
+        char want[64];
+        snprintf(want, sizeof want, "k: %s", plain[i]);
+        ASSERT_STREQ(want, out);
+
+        ctoon_doc *parsed = ctoon_read(out, strlen(out), CTOON_READ_NOFLAG);
+        ASSERT_TRUE(parsed != NULL);
+        ctoon_val *v = ctoon_obj_get(ctoon_doc_get_root(parsed), "k");
+        ASSERT_TRUE(ctoon_is_str(v));
+        ASSERT_STREQ(plain[i], ctoon_get_str(v));
+        ctoon_doc_free(parsed);
+        free(out);
+    }
+}
+
 UTEST(ctoon_tests, test_reader_rejects_escapes_not_in_spec) {
     const char *bad[] = {
         "k: \"a\\fb\"",      /* \f  -- JSON has it, TOON doesn't */
