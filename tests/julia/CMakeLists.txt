@@ -68,12 +68,47 @@ set(CTOON_JULIA_RUN_TESTS
 )
 
 # ── CTest integration ────────────────────────────────────────────────────────
+# Two tests, chained with a CTest fixture:
+#
+#   ctoon_julia_setup  Pkg.instantiate() + deps/build.jl (setup_env.jl).
+#                      Against an empty depot this installs the General
+#                      registry, downloads every dependency and precompiles
+#                      them -- network- and runner-speed-bound, minutes on a
+#                      cold CI machine (the Linux job needed ~135 s of a 180 s
+#                      budget; the slower macOS runner ran out). It gets its
+#                      own generous timeout.
+#   ctoon_julia_tests  The actual test suite. run_tests.jl repeats the same two
+#                      steps, which are now no-ops against the warm depot, so
+#                      this timeout only has to cover running the tests.
+#
+# Keeping them separate means the tight timeout stays meaningful (a hung test
+# is still caught quickly) without a slow dependency install tripping it.
+# FIXTURES_REQUIRED also makes `ctest -R ctoon_julia_tests` run the setup first.
+set(CTOON_JULIA_SETUP
+    ${CTOON_JULIA_ENV}
+    ${JULIA_EXECUTABLE} --project=${CTOON_JULIA_BINDING_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup_env.jl ${CTOON_JULIA_BINDING_DIR}
+)
+
+add_test(
+    NAME ctoon_julia_setup
+    COMMAND ${CTOON_JULIA_SETUP}
+    WORKING_DIRECTORY ${CTOON_JULIA_BINDING_DIR}
+)
+set_tests_properties(ctoon_julia_setup PROPERTIES
+    TIMEOUT 900
+    FIXTURES_SETUP ctoon_julia_env
+)
+
 add_test(
     NAME ctoon_julia_tests
     COMMAND ${CTOON_JULIA_RUN_TESTS}
     WORKING_DIRECTORY ${CTOON_JULIA_BINDING_DIR}
 )
-set_tests_properties(ctoon_julia_tests PROPERTIES TIMEOUT 180)
+set_tests_properties(ctoon_julia_tests PROPERTIES
+    TIMEOUT 180
+    FIXTURES_REQUIRED ctoon_julia_env
+)
 
 # ── ctoon_test_julia custom target ───────────────────────────────────────────
 add_custom_target(ctoon_test_julia

@@ -2959,7 +2959,7 @@ static void ctoon_ctn_child_added(ctoon_read_ctx *c) {
 /* Quoted-string reader shared by the TOON parser and the JSON reader.
  *
  * Which escapes are valid depends on the FORMAT being read, not on the
- * string: TOON (spec 7.1) has exactly \\ \" \n \r \t and \uXXXX, and a
+ * string: TOON (spec 4.1) has exactly \\ \" \n \r \t and \uXXXX, and a
  * decoder MUST reject every other escape; JSON (RFC 8259) additionally has
  * \b \f and \/. So `json` only widens the accepted set -- it never lets
  * TOON input through with JSON-only escapes. */
@@ -3005,7 +3005,7 @@ static bool ctoon_parse_str_quoted_impl(ctoon_read_ctx *c, ctoon_val *val, bool 
             case 'r':  *dst_cur++ = '\r'; src++; break;
             case 't':  *dst_cur++ = '\t'; src++; break;
             case '/': case 'b': case 'f':
-                if (!json) {                      /* TOON: not a valid escape (spec 7.1) */
+                if (!json) {                      /* TOON: not a valid escape (spec 4.1) */
                     c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
                     return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
                                     "invalid escape sequence");
