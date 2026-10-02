@@ -211,13 +211,16 @@ UTEST(ctoon_cpp_tests, test_version) {
 }
 
 UTEST(ctoon_cpp_tests, test_spec_version) {
-    ASSERT_EQ(ctoon::spec::hex(), ctoon_spec_version());
-    std::string v = std::to_string(ctoon::spec::major()) + "." +
-                    std::to_string(ctoon::spec::minor());
-    ASSERT_TRUE(ctoon::spec::string() == v);
-#ifdef CTOON_EXPECTED_SPEC_VERSION
+    ASSERT_EQ(ctoon::spec::tag::hex(), ctoon_spec_version());
+    std::string tag = "v" + std::to_string(ctoon::spec::tag::major()) + "." +
+                      std::to_string(ctoon::spec::tag::minor()) + "." +
+                      std::to_string(ctoon::spec::tag::patch());
+    ASSERT_TRUE(ctoon::spec::tag::string() == tag);
+#ifdef CTOON_EXPECTED_SPEC_TAG
     // must match supported_spec.conf
-    ASSERT_TRUE(ctoon::spec::string() == CTOON_EXPECTED_SPEC_VERSION);
+    ASSERT_TRUE(ctoon::spec::tag::string() == CTOON_EXPECTED_SPEC_TAG);
+    ASSERT_TRUE(ctoon::spec::version::string() == CTOON_EXPECTED_SPEC_VERSION);
+    ASSERT_TRUE(ctoon::spec::date::string() == CTOON_EXPECTED_SPEC_DATE);
 #endif
 }
 

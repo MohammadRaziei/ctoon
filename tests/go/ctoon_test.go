@@ -732,7 +732,7 @@ func TestSpecVersion(t *testing.T) {
 	}
 	want := ""
 	for _, line := range strings.Split(string(conf), "\n") {
-		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "CTOON_SPEC_VERSION="); ok {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "CTOON_SPEC_TAG=v"); ok {
 			want = v
 		}
 	}

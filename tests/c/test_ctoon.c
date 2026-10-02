@@ -48,13 +48,17 @@ UTEST(ctoon_tests, test_parse_basic_object) {
 }
 
 UTEST(ctoon_tests, test_spec_version) {
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%d.%d", CTOON_SPEC_VERSION_MAJOR, CTOON_SPEC_VERSION_MINOR);
-    ASSERT_STREQ(CTOON_SPEC_VERSION_STRING, buf);
-    ASSERT_EQ(ctoon_spec_version(), (uint32_t)CTOON_SPEC_VERSION_HEX);
-#ifdef CTOON_EXPECTED_SPEC_VERSION
+    char buf[32];
+    snprintf(buf, sizeof(buf), "v%d.%d.%d", CTOON_SPEC_TAG_MAJOR,
+             CTOON_SPEC_TAG_MINOR, CTOON_SPEC_TAG_PATCH);
+    ASSERT_STREQ(CTOON_SPEC_TAG_STRING, buf);
+    ASSERT_EQ(ctoon_spec_version(), (uint32_t)CTOON_SPEC_TAG_HEX);
+    ASSERT_EQ(strlen(CTOON_SPEC_DATE_STRING), 10U);
+#ifdef CTOON_EXPECTED_SPEC_TAG
     /* must match supported_spec.conf */
+    ASSERT_STREQ(CTOON_SPEC_TAG_STRING, CTOON_EXPECTED_SPEC_TAG);
     ASSERT_STREQ(CTOON_SPEC_VERSION_STRING, CTOON_EXPECTED_SPEC_VERSION);
+    ASSERT_STREQ(CTOON_SPEC_DATE_STRING, CTOON_EXPECTED_SPEC_DATE);
 #endif
 }
 

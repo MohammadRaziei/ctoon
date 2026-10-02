@@ -37,7 +37,7 @@ uint32_t ctoon_version(void) {
 }
 
 uint32_t ctoon_spec_version(void) {
-    return CTOON_SPEC_VERSION_HEX;
+    return CTOON_SPEC_TAG_HEX;
 }
 
 

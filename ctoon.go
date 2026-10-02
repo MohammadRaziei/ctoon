@@ -72,7 +72,7 @@ const (
 // TOON spec this build targets  (spec §13)
 // ---------------------------------------------------------------------------
 
-// SpecVersion returns the targeted TOON spec version, e.g. "4.1".
+// SpecVersion returns the targeted TOON spec version, e.g. "4.1.2".
 var SpecVersion = binding.SpecVersion
 
 // ---------------------------------------------------------------------------

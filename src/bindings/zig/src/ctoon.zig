@@ -390,11 +390,11 @@ fn valueToMut(doc: *c.mut_doc, v: Value) Error!*c.mut_val {
 
 /// The TOON spec version this build targets (spec §13), obtained by calling
 /// `ctoon_spec_version()` in the C core.
-pub const SpecVersion = struct { major: u8, minor: u8 };
+pub const SpecVersion = struct { major: u8, minor: u8, patch: u8 };
 
 pub fn specVersion() SpecVersion {
     const v = c.ctoon_spec_version();
-    return .{ .major = @intCast(v >> 8), .minor = @intCast(v & 0xff) };
+    return .{ .major = @intCast(v >> 16), .minor = @intCast((v >> 8) & 0xff), .patch = @intCast(v & 0xff) };
 }
 
 /// Parses a TOON string into a `Value`, allocated with `gpa`. Call

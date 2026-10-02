@@ -300,12 +300,12 @@ end
 """
     CToon.spec_version() -> String
 
-The TOON spec version this build targets, e.g. `"4.1"` (spec §13), obtained
+The TOON spec version this build targets, e.g. `"4.1.2"` (spec §13), obtained
 by calling `ctoon_spec_version()` in the C core.
 """
 function spec_version()
     v = @ccall libctoon_jl.ctoon_spec_version()::UInt32
-    return string(v >> 8, ".", v & 0xff)
+    return string(v >> 16, ".", (v >> 8) & 0xff, ".", v & 0xff)
 end
 
 export dumps, to_json, parse_toon

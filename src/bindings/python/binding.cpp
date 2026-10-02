@@ -153,8 +153,14 @@ static void write_filelike(nb::handle fp, const ctoon::write_result &result) {
 NB_MODULE(ctoon_py, m) {
     m.doc() = "CToon – Compact TOON serialisation (C++ nanobind backend)";
     m.attr("__version__") = ctoon::version::string().data();
-    // TOON spec version this build targets (spec §13).
-    m.attr("__toon_spec__") = ctoon::spec::string().data();
+    // TOON spec version this build targets (spec §13), e.g. "4.1.2".
+    {
+        const uint32_t v = ctoon_spec_version();
+        const std::string spec = std::to_string((v >> 16) & 0xFFu) + "." +
+                                 std::to_string((v >> 8) & 0xFFu) + "." +
+                                 std::to_string(v & 0xFFu);
+        m.attr("__toon_spec__") = nb::str(spec.c_str());
+    }
 
     /* ------------------------------------------------------------------
      * ReadFlag enum

@@ -99,11 +99,11 @@ func DefaultEncodeOptions() EncodeOptions {
 	}
 }
 
-// SpecVersion returns the TOON spec version this build targets, e.g. "4.1"
+// SpecVersion returns the TOON spec version this build targets, e.g. "4.1.2"
 // (spec §13), obtained by calling ctoon_spec_version() in the C core.
 func SpecVersion() string {
 	v := uint32(C.ctoon_spec_version())
-	return fmt.Sprintf("%d.%d", v>>8, v&0xff)
+	return fmt.Sprintf("%d.%d.%d", v>>16, (v>>8)&0xff, v&0xff)
 }
 
 // DefaultDecodeOptions returns lenient TOON5 parsing.

@@ -333,7 +333,8 @@ static void do_spec(int nlhs, mxArray *plhs[],
 
     uint32_t v = ctoon_spec_version();
     char buf[32];
-    snprintf(buf, sizeof(buf), "%u.%u", (v >> 8) & 0xFFu, v & 0xFFu);
+    snprintf(buf, sizeof(buf), "%u.%u.%u",
+             (v >> 16) & 0xFFu, (v >> 8) & 0xFFu, v & 0xFFu);
 
     if (nlhs > 0) {
         plhs[0] = mxCreateString(buf);

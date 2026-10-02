@@ -24,8 +24,8 @@ class TestModule:
         # Spec §13: the TOON spec version we target must match supported_spec.conf
         from pathlib import Path
         conf = (Path(__file__).resolve().parents[2] / "supported_spec.conf").read_text()
-        expected = dict(l.split("=", 1) for l in conf.split() if "=" in l)["CTOON_SPEC_VERSION"]
-        assert ctoon.__toon_spec__ == expected
+        tag = dict(l.split("=", 1) for l in conf.split() if "=" in l)["CTOON_SPEC_TAG"]
+        assert ctoon.__toon_spec__ == tag.removeprefix("v")
 
     def test_functions_exist(self):
         for fn in ("encode", "decode", "loads", "dumps", "load", "dump",

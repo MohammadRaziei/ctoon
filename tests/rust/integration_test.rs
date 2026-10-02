@@ -129,7 +129,7 @@ fn spec_version_matches_supported_spec_conf() {
     let conf = std::fs::read_to_string(path).unwrap();
     let want = conf
         .lines()
-        .find_map(|l| l.strip_prefix("CTOON_SPEC_VERSION="))
+        .find_map(|l| l.strip_prefix("CTOON_SPEC_TAG=v"))
         .unwrap();
     assert_eq!(ctoon::spec_version(), want);
 }
