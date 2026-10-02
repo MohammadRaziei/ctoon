@@ -34,6 +34,13 @@ pub use error::Error;
 pub use options::{flags, Delimiter, WriteOptions};
 pub use value::Value;
 
+/// TOON spec version this build targets (spec §13), e.g. `"4.1"` — obtained
+/// by calling `ctoon_spec_version()` in the C core.
+pub fn spec_version() -> String {
+    let v = unsafe { ffi::ctoon_spec_version() };
+    format!("{}.{}", v >> 8, v & 0xff)
+}
+
 use ffi::*;
 use std::ffi::CStr;
 use std::os::raw::c_char;

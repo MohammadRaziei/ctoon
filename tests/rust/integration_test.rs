@@ -122,3 +122,14 @@ fn indexing_missing_key_returns_null() {
     let v = Value::Object(vec![("a".into(), Value::Uint(1))]);
     assert_eq!(v["missing"], Value::Null);
 }
+
+#[test]
+fn spec_version_matches_supported_spec_conf() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/supported_spec.conf");
+    let conf = std::fs::read_to_string(path).unwrap();
+    let want = conf
+        .lines()
+        .find_map(|l| l.strip_prefix("CTOON_SPEC_VERSION="))
+        .unwrap();
+    assert_eq!(ctoon::spec_version(), want);
+}

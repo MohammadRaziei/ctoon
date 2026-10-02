@@ -21,6 +21,7 @@ target_include_directories(test_ctoon_cpp PRIVATE
 
 target_compile_definitions(test_ctoon_cpp PRIVATE
     CTOON_VERSION_NUMBER=${PROJECT_VERSION}
+    CTOON_EXPECTED_SPEC_VERSION="${CTOON_SPEC_VERSION}"
 )
 
 # toon-format/spec's fixtures are fetched centrally in the parent

@@ -58,3 +58,9 @@ end
     json = CToon.to_json(CToon.parse_toon(toon))
     @test CToon.parse(json) == value
 end
+
+@testset "CToon.spec_version matches supported_spec.conf" begin
+    conf = read(joinpath(@__DIR__, "..", "..", "..", "..", "supported_spec.conf"), String)
+    want = match(r"^CTOON_SPEC_VERSION=(.*)$"m, conf).captures[1]
+    @test CToon.spec_version() == want
+end

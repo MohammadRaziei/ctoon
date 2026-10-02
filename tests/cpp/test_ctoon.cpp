@@ -210,6 +210,17 @@ UTEST(ctoon_cpp_tests, test_version) {
     ASSERT_FALSE(ctoon::version::string().empty());
 }
 
+UTEST(ctoon_cpp_tests, test_spec_version) {
+    ASSERT_EQ(ctoon::spec::hex(), ctoon_spec_version());
+    std::string v = std::to_string(ctoon::spec::major()) + "." +
+                    std::to_string(ctoon::spec::minor());
+    ASSERT_TRUE(ctoon::spec::string() == v);
+#ifdef CTOON_EXPECTED_SPEC_VERSION
+    // must match supported_spec.conf
+    ASSERT_TRUE(ctoon::spec::string() == CTOON_EXPECTED_SPEC_VERSION);
+#endif
+}
+
 UTEST(ctoon_cpp_tests, test_bitwise_flags) {
     using ctoon::write_flag;
     

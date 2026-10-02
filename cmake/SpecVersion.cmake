@@ -32,7 +32,8 @@
 #      the tag is fine and move on. An actual HTTP error (404 etc.) IS
 #      treated as a real failure, though.
 #   3. Success -> write supported_spec.conf to both the build tree (marker)
-#      and the source tree (cache). Anything short of that -> fall back to
+#      and the source tree (cache), and update the CTOON_SPEC_* macros in
+#      include/ctoon.h to match. Anything short of that -> fall back to
 #      reading the source tree's supported_spec.conf if it exists, else
 #      WARN (non-fatal) and leave the output variables empty.
 
@@ -125,6 +126,24 @@ function(_sv_read_conf path out_tag out_version out_date)
     set(${out_date} "${_date}" PARENT_SCOPE)
 endfunction()
 
+# Rewrite the CTOON_SPEC_* macros in the header (only touches the file if
+# something actually changed, so it doesn't trigger needless rebuilds).
+function(_sv_write_header header tag version date)
+    if(NOT EXISTS "${header}" OR NOT version MATCHES "^([0-9]+)\\.([0-9]+)$")
+        return()
+    endif()
+    set(_major "${CMAKE_MATCH_1}")
+    set(_minor "${CMAKE_MATCH_2}")
+    file(READ "${header}" _old)
+    string(REGEX REPLACE "(#define CTOON_SPEC_VERSION_MAJOR )[0-9]+" "\\1${_major}" _new "${_old}")
+    string(REGEX REPLACE "(#define CTOON_SPEC_VERSION_MINOR )[0-9]+" "\\1${_minor}" _new "${_new}")
+    string(REGEX REPLACE "(#define CTOON_SPEC_TAG )\"[^\"]*\"" "\\1\"${tag}\"" _new "${_new}")
+    string(REGEX REPLACE "(#define CTOON_SPEC_DATE )\"[^\"]*\"" "\\1\"${date}\"" _new "${_new}")
+    if(NOT _new STREQUAL _old)
+        file(WRITE "${header}" "${_new}")
+    endif()
+endfunction()
+
 # -------------------------- public API --------------------------
 
 function(resolve_spec_version)
@@ -155,6 +174,7 @@ function(resolve_spec_version)
         if(_resolved)
             _sv_write_conf("${_build_conf}" "${_tag}" "${_version}" "${_date}")
             _sv_write_conf("${_root_conf}" "${_tag}" "${_version}" "${_date}")
+            _sv_write_header("${PROJECT_SOURCE_DIR}/include/ctoon.h" "${_tag}" "${_version}" "${_date}")
         elseif(EXISTS "${_root_conf}")
             _sv_read_conf("${_root_conf}" _tag _version _date)
         else()

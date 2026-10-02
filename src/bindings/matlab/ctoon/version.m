@@ -23,6 +23,13 @@ function [verStr, info] = version()
         vInfo.Version = '__unknown__ (MEX not built)';
     end
 
+    % --- TOON spec version this build targets (spec section 13) ---
+    try
+        vInfo.Spec = ctoon_mex('spec');
+    catch
+        vInfo.Spec = '__unknown__ (MEX not built)';
+    end
+
     if nargout == 0
         % --- Console Output Logic ---
         isGUI = usejava('desktop');
@@ -31,12 +38,14 @@ function [verStr, info] = version()
             % Rich text formatting for MATLAB Desktop
             fprintf('\n  <strong>%s</strong> (v%s)\n', vInfo.Name, vInfo.Version);
             fprintf('  %s\n', vInfo.Description);
+            fprintf('  TOON spec: %s\n', vInfo.Spec);
             fprintf('  Author: %s\n', vInfo.Author);
             fprintf('  URL:    <a href="matlab:web(''%s'')">%s</a>\n\n', vInfo.URL, vInfo.URL);
         else
             % Plain text formatting for Terminal / CLI / Batch mode
             fprintf('\n  %s (v%s)\n', vInfo.Name, vInfo.Version);
             fprintf('  %s\n', vInfo.Description);
+            fprintf('  TOON spec: %s\n', vInfo.Spec);
             fprintf('  Author: %s\n', vInfo.Author);
             fprintf('  URL:    %s\n\n', vInfo.URL);
         end

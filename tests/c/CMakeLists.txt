@@ -15,6 +15,10 @@ add_executable(test_ctoon_c
     ${PROJECT_SOURCE_DIR}/src/ctoon.c
 )
 
+# The version recorded in supported_spec.conf (see cmake/SpecVersion.cmake)
+target_compile_definitions(test_ctoon_c PRIVATE
+    CTOON_EXPECTED_SPEC_VERSION="${CTOON_SPEC_VERSION}")
+
 target_include_directories(test_ctoon_c PRIVATE
     "${CTOON_TEST_SOURCE_DIR}"
     "${PROJECT_SOURCE_DIR}/include"

@@ -514,6 +514,50 @@ extern "C" {
 ctoon_api uint32_t ctoon_version(void);
 
 
+/*==============================================================================
+ * MARK: - TOON Spec
+ *
+ * The toon-format/spec release this build targets (spec §13: implementations
+ * SHOULD declare the specification version they target).
+ *
+ * These macros are rewritten by CMake (cmake/SpecVersion.cmake) at the same
+ * moment it refreshes supported_spec.conf. Do not edit them manually.
+ * Other languages read the version at runtime via ctoon_spec_version().
+ *============================================================================*/
+
+/** The major version of the targeted TOON spec. */
+#define CTOON_SPEC_VERSION_MAJOR 4
+
+/** The minor version of the targeted TOON spec. */
+#define CTOON_SPEC_VERSION_MINOR 1
+
+#define CTOON_SPEC_VERSION_ENCODE(maj,min) (((maj)*100)+(min))
+/** The targeted TOON spec version as an integer, e.g. 401 for spec 4.1. */
+#define CTOON_SPEC_VERSION \
+    CTOON_SPEC_VERSION_ENCODE(CTOON_SPEC_VERSION_MAJOR,CTOON_SPEC_VERSION_MINOR)
+
+/** The targeted TOON spec version in hex: `(major << 8) | (minor)`. */
+#define CTOON_SPEC_VERSION_HEX \
+    ((CTOON_SPEC_VERSION_MAJOR << 8) | CTOON_SPEC_VERSION_MINOR)
+
+/* Internal helpers for CTOON_SPEC_VERSION_STRING */
+#define _CTOON_SPEC_VERSION_XSTR(a,b) #a"."#b
+#define _CTOON_SPEC_VERSION_STR(a,b)  _CTOON_SPEC_VERSION_XSTR(a,b)
+
+/** The targeted TOON spec version string, e.g. "4.1". */
+#define CTOON_SPEC_VERSION_STRING \
+    _CTOON_SPEC_VERSION_STR(CTOON_SPEC_VERSION_MAJOR,CTOON_SPEC_VERSION_MINOR)
+
+/** The toon-format/spec git tag this build was resolved against. */
+#define CTOON_SPEC_TAG "v4.1.2"
+
+/** The release date of the targeted spec version (YYYY-MM-DD). */
+#define CTOON_SPEC_DATE "2026-07-26"
+
+/** The targeted TOON spec version in hex, same as `CTOON_SPEC_VERSION_HEX`. */
+ctoon_api uint32_t ctoon_spec_version(void);
+
+
 
 /*==============================================================================
  * MARK: - TOON Types

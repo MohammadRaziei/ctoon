@@ -720,3 +720,23 @@ func TestCustomWriteFlag_NewlineAtEnd(t *testing.T) {
 		t.Errorf("expected trailing newline, got: %q", toon)
 	}
 }
+// ---------------------------------------------------------------------------
+// TOON spec version (spec §13)
+// ---------------------------------------------------------------------------
+
+func TestSpecVersion(t *testing.T) {
+	// Must match the version recorded in supported_spec.conf.
+	conf, err := os.ReadFile(filepath.Join("..", "..", "supported_spec.conf"))
+	if err != nil {
+		t.Fatalf("cannot read supported_spec.conf: %v", err)
+	}
+	want := ""
+	for _, line := range strings.Split(string(conf), "\n") {
+		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "CTOON_SPEC_VERSION="); ok {
+			want = v
+		}
+	}
+	if got := ctoon.SpecVersion(); got != want {
+		t.Errorf("SpecVersion() = %q, supported_spec.conf says %q", got, want)
+	}
+}

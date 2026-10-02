@@ -97,6 +97,20 @@ private:
 };
 
 /* -----------------------------------------------------------------------
+ * TOON spec (the toon-format/spec release this build targets)
+ * -------------------------------------------------------------------- */
+
+class spec {
+public:
+    static unsigned int major()  CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_MAJOR; }
+    static unsigned int minor()  CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_MINOR; }
+    static unsigned int hex()    CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_HEX; }
+    static string_view  string() CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_STRING; }
+private:
+    spec();
+};
+
+/* -----------------------------------------------------------------------
  * Exception hierarchy
  * -------------------------------------------------------------------- */
 

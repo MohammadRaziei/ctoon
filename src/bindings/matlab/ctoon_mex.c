@@ -323,6 +323,25 @@ static void do_version(int nlhs, mxArray *plhs[],
     }
 }
 
+static void do_spec(int nlhs, mxArray *plhs[],
+                    int nrhs, const mxArray *prhs[]) {
+    (void)prhs;
+    if (nrhs > 1) {
+        mexErrMsgIdAndTxt("ctoon:spec:tooManyArgs",
+                          "ctoon spec takes no input arguments.");
+    }
+
+    uint32_t v = ctoon_spec_version();
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%u.%u", (v >> 8) & 0xFFu, v & 0xFFu);
+
+    if (nlhs > 0) {
+        plhs[0] = mxCreateString(buf);
+    } else {
+        mexPrintf("TOON spec: %s\n", buf);
+    }
+}
+
 /* =========================================================================
  * MEX entry point
  * ========================================================================= */
@@ -343,6 +362,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
     else if (strcmp(cmd, "read")    == 0) do_read(nlhs, plhs, nrhs, prhs);
     else if (strcmp(cmd, "write")   == 0) do_write(nlhs, plhs, nrhs, prhs);
     else if (strcmp(cmd, "version") == 0) do_version(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "spec")    == 0) do_spec(nlhs, plhs, nrhs, prhs);
     else {
         char msg[256];
         snprintf(msg, sizeof(msg), "Unknown internal command '%s'.", cmd);

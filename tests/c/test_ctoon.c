@@ -47,6 +47,17 @@ UTEST(ctoon_tests, test_parse_basic_object) {
     ctoon_doc_free(doc);
 }
 
+UTEST(ctoon_tests, test_spec_version) {
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d.%d", CTOON_SPEC_VERSION_MAJOR, CTOON_SPEC_VERSION_MINOR);
+    ASSERT_STREQ(CTOON_SPEC_VERSION_STRING, buf);
+    ASSERT_EQ(ctoon_spec_version(), (uint32_t)CTOON_SPEC_VERSION_HEX);
+#ifdef CTOON_EXPECTED_SPEC_VERSION
+    /* must match supported_spec.conf */
+    ASSERT_STREQ(CTOON_SPEC_VERSION_STRING, CTOON_EXPECTED_SPEC_VERSION);
+#endif
+}
+
 UTEST(ctoon_tests, test_parse_string) {
     ctoon_doc *doc = parse("Hello World");
     ASSERT_TRUE(doc != NULL);

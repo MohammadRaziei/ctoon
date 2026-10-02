@@ -88,6 +88,7 @@ const c = struct {
     };
 
     // Genuinely `extern` in ctoon.h — real names, no shim needed.
+    pub extern fn ctoon_spec_version() u32;
     pub extern fn ctoon_read_opts(dat: [*]u8, len: usize, flg: read_flag, alc_: ?*const alc, err: *read_err) ?*doc;
     pub extern fn ctoon_read_json(dat: [*]u8, len: usize, flg: read_flag, alc_: ?*const alc, err: *read_err) ?*doc;
     pub extern fn ctoon_mut_doc_new(alc_: ?*const alc) ?*mut_doc;
@@ -385,6 +386,15 @@ fn valueToMut(doc: *c.mut_doc, v: Value) Error!*c.mut_val {
         },
     };
     return ptr orelse Error.UnsupportedValue;
+}
+
+/// The TOON spec version this build targets (spec §13), obtained by calling
+/// `ctoon_spec_version()` in the C core.
+pub const SpecVersion = struct { major: u8, minor: u8 };
+
+pub fn specVersion() SpecVersion {
+    const v = c.ctoon_spec_version();
+    return .{ .major = @intCast(v >> 8), .minor = @intCast(v & 0xff) };
 }
 
 /// Parses a TOON string into a `Value`, allocated with `gpa`. Call
