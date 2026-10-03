@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from ctoon.manager import main
 
-main()
+sys.exit(main())
