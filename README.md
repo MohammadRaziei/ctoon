@@ -6,6 +6,7 @@
 
 <div align="center">
 
+[![Documentation](https://img.shields.io/badge/Documentation-online-blue.svg)](https://mohammadraziei.github.io/ctoon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CMake 3.19+](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)<!-- BEGIN CTOON_SPEC_BADGE -->
 [![TOON spec v4.1.2](https://img.shields.io/badge/TOON%20spec-v4.1.2-blue.svg)](https://github.com/toon-format/spec/tree/v4.1.2)<!-- END CTOON_SPEC_BADGE -->
@@ -18,8 +19,6 @@
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Rust 1.70+](https://img.shields.io/badge/Rust-1.70+-blue.svg)](https://www.rust-lang.org/)
 [![Zig 0.16.0+](https://img.shields.io/badge/Zig-0.16.0+-blue.svg)](https://ziglang.org/)
-
-**[Documentation](https://mohammadraziei.github.io/ctoon)**
 
 </div>
 
