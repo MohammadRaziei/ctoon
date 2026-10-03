@@ -15,7 +15,8 @@
 [![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-blue.svg)](https://www.mathworks.com/products/matlab.html)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Rust 1.70+](https://img.shields.io/badge/Rust-1.70+-blue.svg)](https://www.rust-lang.org/)
-[![Zig 0.16.0+](https://img.shields.io/badge/Zig-0.16.0+-blue.svg)](https://ziglang.org/)
+[![Zig 0.16.0+](https://img.shields.io/badge/Zig-0.16.0+-blue.svg)](https://ziglang.org/)<!-- BEGIN CTOON_SPEC_BADGE -->
+[![TOON spec v4.1.2](https://img.shields.io/badge/TOON%20spec-v4.1.2-blue.svg)](https://github.com/toon-format/spec/tree/v4.1.2)<!-- END CTOON_SPEC_BADGE -->
 
 **[Documentation](https://mohammadraziei.github.io/ctoon)**
 
