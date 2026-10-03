@@ -9,6 +9,9 @@
 | `loadsJson` | `fn(gpa: Allocator, s: []const u8) Error!Value` | Parse a JSON string into a `Value` (using ctoon's own JSON reader). |
 | `dumpsJson` | `fn(gpa: Allocator, v: Value, indent: i32) Error![]u8` | Serialise a `Value` to a JSON string. |
 | `lastError` | `fn() ErrorInfo` | Details of the most recent `ParseError`/`WriteError` on this thread. |
+| `specVersion` | `fn() []const u8` | The TOON spec version this build targets, e.g. `"4.1"`. |
+| `specTag` | `fn() SpecTag` | The toon-format/spec tag this build targets (`major`, `minor`, `patch` as `u8`), e.g. v4.1.2. |
+| `specDate` | `fn() []const u8` | Release date of the targeted spec, e.g. `"2026-07-26"`. |
 
 ## `Value`
 

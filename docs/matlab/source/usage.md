@@ -41,6 +41,20 @@ cfg = ctoon.read('config.toon');
 > **Note:** Integer values encoded as `uint` or `sint` in TOON are decoded
 > back as `uint64` or `int64` in MATLAB. Use `double()` to convert if needed.
 
+## TOON spec version
+
+The [toon-format/spec](https://github.com/toon-format/spec) release this build
+targets is returned in the metadata struct of `ctoon.version`:
+
+```matlab
+[~, info] = ctoon.version();
+info.Spec.Version   % → '4.1'
+info.Spec.Tag       % → 'v4.1.2'
+info.Spec.Date      % → '2026-07-26'
+```
+
+`ctoon.version()` with no output also prints it.
+
 ## Error handling
 
 All functions throw MATLAB errors with structured identifiers:

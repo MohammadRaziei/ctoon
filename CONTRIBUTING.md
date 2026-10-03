@@ -256,6 +256,13 @@ tag with `FetchContent`. The resolved version is logged at configure time and
 shown on the documentation landing page. You normally don't need to touch
 this.
 
+At the same moment it writes `supported_spec.conf`, CMake also regenerates the
+`CTOON_SPEC_*` block in `include/ctoon.h` (between the `BEGIN/END CTOON_SPEC`
+markers) — **don't edit that block by hand**. Other languages read the values
+through `ctoon_spec_version_string()`, `ctoon_spec_tag_hex()` and
+`ctoon_spec_date_string()` rather than parsing the header, and every
+language's test-suite checks them against `supported_spec.conf`.
+
 ---
 
 ## 5. Editing or adding a feature to an existing language

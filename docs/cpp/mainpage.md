@@ -55,6 +55,17 @@ int main() {
 }
 ```
 
+## TOON spec version
+
+The toon-format/spec release the library targets:
+
+```cpp
+ctoon::spec::version::string();   // "4.1"
+ctoon::spec::tag::string();       // "v4.1.2"
+ctoon::spec::tag::major();        // 4   (also minor(), patch(), hex())
+ctoon::spec::date::string();      // "2026-07-26"
+```
+
 See the `ctoon` namespace reference for the full API — `ctoon::document`,
 `ctoon::value`, `ctoon::make_document`, and the `EncodeOptions` /
 `DecodeOptions` structs.

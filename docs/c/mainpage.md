@@ -55,6 +55,20 @@ int main(void) {
 }
 ```
 
+## TOON spec version
+
+The toon-format/spec release the library targets (written by CMake into
+`ctoon.h`, same time as `supported_spec.conf`):
+
+```c
+CTOON_SPEC_VERSION_STRING   // "4.1"
+CTOON_SPEC_TAG_STRING       // "v4.1.2"  (CTOON_SPEC_TAG_MAJOR / _MINOR / _PATCH, CTOON_SPEC_TAG_HEX)
+CTOON_SPEC_DATE_STRING      // "2026-07-26"
+```
+
+The same values are available at runtime through `ctoon_spec_version_string()`,
+`ctoon_spec_tag_hex()` and `ctoon_spec_date_string()`.
+
 See @ref ctoon.h for the full function reference — document I/O
 (`ctoon_read`, `ctoon_write`), the object/array accessors
 (`ctoon_obj_get`, `ctoon_arr_get`, ...), and JSON interop

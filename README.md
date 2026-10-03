@@ -219,6 +219,25 @@ const toon = try ctoon.dumps(gpa, val);
 
 ---
 
+## TOON Spec Version
+
+The [toon-format/spec](https://github.com/toon-format/spec) release a build targets is exposed in every language (spec §13: implementations SHOULD declare it). It is resolved at CMake configure time and recorded in `supported_spec.conf`; the bindings read it from the C core, so it can't drift. Each language gives you the **version** (`4.1`), the **tag** (`v4.1.2`) and the **release date**:
+
+| Language | Version | Tag | Date |
+|---|---|---|---|
+| C | `CTOON_SPEC_VERSION_STRING` | `CTOON_SPEC_TAG_STRING` | `CTOON_SPEC_DATE_STRING` |
+| C++ | `ctoon::spec::version::string()` | `ctoon::spec::tag::string()` | `ctoon::spec::date::string()` |
+| Go | `ctoon.SpecVersion()` | `ctoon.SpecTag()` | `ctoon.SpecDate()` |
+| Julia | `CToon.spec_version()` | `CToon.spec_tag()` | `CToon.spec_date()` |
+| MATLAB | `info.Spec.Version` | `info.Spec.Tag` | `info.Spec.Date` (`[~, info] = ctoon.version()`) |
+| Python | `ctoon.__toon_spec__` | `ctoon.__toon_spec_tag__` | `ctoon.__toon_spec_date__` |
+| Rust | `ctoon::spec_version()` | `ctoon::spec_tag()` | `ctoon::spec_date()` |
+| Zig | `ctoon.specVersion()` | `ctoon.specTag()` (`major`/`minor`/`patch`) | `ctoon.specDate()` |
+
+In C and C++ the tag is also available as numbers (`CTOON_SPEC_TAG_MAJOR/MINOR/PATCH`, `CTOON_SPEC_TAG_HEX`; `ctoon::spec::tag::major()` etc.).
+
+---
+
 ## Building & Testing From Source
 
 Each binding can be built, run and tested entirely with its own native
