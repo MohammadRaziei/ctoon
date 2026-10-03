@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import stat
 import sys
 
@@ -31,7 +32,13 @@ def _make_install(root, release="R2024a", with_mex=True, xml=None):
         p = bin_dir / name
         p.write_text("#!/bin/sh\nexit 0\n")
         p.chmod(p.stat().st_mode | stat.S_IXUSR)
-    (bin_dir.parent / "VersionInfo.xml").write_text(
+    # The gist looks for VersionInfo.xml in <root>/Contents/ on macOS and in
+    # <root>/ everywhere else; mirror that so the fake install is valid on
+    # whichever OS the tests run (platform.system() is read at call time, so
+    # a test that patches it gets that OS's layout).
+    xml_dir = bin_dir.parent / "Contents" if platform.system() == "Darwin" else bin_dir.parent
+    xml_dir.mkdir(exist_ok=True)
+    (xml_dir / "VersionInfo.xml").write_text(
         xml if xml is not None else VERSION_XML.format(release=release)
     )
     return bin_dir
@@ -72,6 +79,16 @@ def test_detect_not_found(env, monkeypatch):
     info = probe.detect()
     assert info["found"] is False
     assert "could not be found" in info["error"]
+
+
+@pytest.mark.parametrize("system", ["Linux", "Darwin"])
+def test_detect_release_xml_layout_per_os(env, monkeypatch, system):
+    # Both layouts get exercised on every CI OS, not only on the matching one.
+    monkeypatch.setattr(probe._gist.platform, "system", lambda: system)
+    tmp_path, link_dir = env
+    bin_dir = _make_install(tmp_path)
+    _link(bin_dir, link_dir)
+    assert probe.detect()["release"] == "R2024a"
 
 
 def test_detect_missing_mex(env):

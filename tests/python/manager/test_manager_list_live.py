@@ -1,8 +1,10 @@
-"""`ctoon.manager list` against the REAL release (not run by default).
+"""`ctoon.manager list` against the REAL release.
 
-Run after a deploy, from an environment where ctoon is installed:
+tests/python/manager/ is skipped by a plain `pytest tests/python` (see
+norecursedirs in pyproject.toml). Run this one by hand after a deploy, from an
+environment where ctoon is installed:
 
-    pytest -m live tests/python/live
+    pytest tests/python/manager/test_manager_list_live.py
 
 Uses the `github-repo` config value (default MohammadRaziei/ctoon), so a fork
 points it at its own releases first:  ctoon.manager config set github-repo me/ctoon
@@ -14,11 +16,7 @@ from __future__ import annotations
 
 import urllib.request
 
-import pytest
-
 from ctoon.manager import main
-
-pytestmark = pytest.mark.live
 
 
 def _fetchable(url: str) -> int:
