@@ -211,7 +211,9 @@ UTEST(ctoon_cpp_tests, test_version) {
 }
 
 UTEST(ctoon_cpp_tests, test_spec_version) {
-    ASSERT_EQ(ctoon::spec::tag::hex(), ctoon_spec_version());
+    ASSERT_EQ(ctoon::spec::tag::hex(), ctoon_spec_tag_hex());
+    ASSERT_TRUE(ctoon::spec::version::string() == ctoon_spec_version_string());
+    ASSERT_TRUE(ctoon::spec::date::string() == ctoon_spec_date_string());
     std::string tag = "v" + std::to_string(ctoon::spec::tag::major()) + "." +
                       std::to_string(ctoon::spec::tag::minor()) + "." +
                       std::to_string(ctoon::spec::tag::patch());

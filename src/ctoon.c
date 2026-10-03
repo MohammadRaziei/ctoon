@@ -36,8 +36,16 @@ uint32_t ctoon_version(void) {
     return CTOON_VERSION_HEX;
 }
 
-uint32_t ctoon_spec_version(void) {
+uint32_t ctoon_spec_tag_hex(void) {
     return CTOON_SPEC_TAG_HEX;
+}
+
+const char *ctoon_spec_version_string(void) {
+    return CTOON_SPEC_VERSION_STRING;
+}
+
+const char *ctoon_spec_date_string(void) {
+    return CTOON_SPEC_DATE_STRING;
 }
 
 

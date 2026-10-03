@@ -59,8 +59,10 @@ end
     @test CToon.parse(json) == value
 end
 
-@testset "CToon.spec_version matches supported_spec.conf" begin
+@testset "CToon.spec_* matches supported_spec.conf" begin
     conf = read(joinpath(@__DIR__, "..", "..", "..", "..", "supported_spec.conf"), String)
-    want = match(r"^CTOON_SPEC_TAG=v(.*)$"m, conf).captures[1]
-    @test CToon.spec_version() == want
+    get(key) = match(Regex("^" * key * "=(.*)\$", "m"), conf).captures[1]
+    @test CToon.spec_version() == get("CTOON_SPEC_VERSION")
+    @test CToon.spec_tag() == get("CTOON_SPEC_TAG")
+    @test CToon.spec_date() == get("CTOON_SPEC_DATE")
 end

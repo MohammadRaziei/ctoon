@@ -96,7 +96,9 @@ pub struct ctoon_obj_iter {
 }
 
 extern "C" {
-    pub fn ctoon_spec_version() -> u32;
+    pub fn ctoon_spec_tag_hex() -> u32;
+    pub fn ctoon_spec_version_string() -> *const std::os::raw::c_char;
+    pub fn ctoon_spec_date_string() -> *const std::os::raw::c_char;
     // ── Genuinely `extern` in ctoon.h — real names, no shim needed ────
     pub fn ctoon_read_opts(
         dat: *mut c_char,

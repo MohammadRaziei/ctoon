@@ -88,7 +88,9 @@ const c = struct {
     };
 
     // Genuinely `extern` in ctoon.h — real names, no shim needed.
-    pub extern fn ctoon_spec_version() u32;
+    pub extern fn ctoon_spec_tag_hex() u32;
+    pub extern fn ctoon_spec_version_string() [*:0]const u8;
+    pub extern fn ctoon_spec_date_string() [*:0]const u8;
     pub extern fn ctoon_read_opts(dat: [*]u8, len: usize, flg: read_flag, alc_: ?*const alc, err: *read_err) ?*doc;
     pub extern fn ctoon_read_json(dat: [*]u8, len: usize, flg: read_flag, alc_: ?*const alc, err: *read_err) ?*doc;
     pub extern fn ctoon_mut_doc_new(alc_: ?*const alc) ?*mut_doc;
@@ -388,13 +390,22 @@ fn valueToMut(doc: *c.mut_doc, v: Value) Error!*c.mut_val {
     return ptr orelse Error.UnsupportedValue;
 }
 
-/// The TOON spec version this build targets (spec §13), obtained by calling
-/// `ctoon_spec_version()` in the C core.
-pub const SpecVersion = struct { major: u8, minor: u8, patch: u8 };
+/// The toon-format/spec tag this build targets (spec §13), e.g. v4.1.2.
+pub const SpecTag = struct { major: u8, minor: u8, patch: u8 };
 
-pub fn specVersion() SpecVersion {
-    const v = c.ctoon_spec_version();
+pub fn specTag() SpecTag {
+    const v = c.ctoon_spec_tag_hex();
     return .{ .major = @intCast(v >> 16), .minor = @intCast((v >> 8) & 0xff), .patch = @intCast(v & 0xff) };
+}
+
+/// The TOON spec version this build targets, e.g. "4.1".
+pub fn specVersion() []const u8 {
+    return std.mem.span(c.ctoon_spec_version_string());
+}
+
+/// Release date of the targeted spec, e.g. "2026-07-26".
+pub fn specDate() []const u8 {
+    return std.mem.span(c.ctoon_spec_date_string());
 }
 
 /// Parses a TOON string into a `Value`, allocated with `gpa`. Call

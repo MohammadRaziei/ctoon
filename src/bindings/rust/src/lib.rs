@@ -34,11 +34,24 @@ pub use error::Error;
 pub use options::{flags, Delimiter, WriteOptions};
 pub use value::Value;
 
-/// TOON spec version this build targets (spec §13), e.g. `"4.1.2"` — obtained
-/// by calling `ctoon_spec_version()` in the C core.
-pub fn spec_version() -> String {
-    let v = unsafe { ffi::ctoon_spec_version() };
-    format!("{}.{}.{}", v >> 16, (v >> 8) & 0xff, v & 0xff)
+/// TOON spec version this build targets (spec §13), e.g. `"4.1"` — from the C core.
+pub fn spec_version() -> &'static str {
+    unsafe { std::ffi::CStr::from_ptr(ffi::ctoon_spec_version_string()) }
+        .to_str()
+        .unwrap()
+}
+
+/// toon-format/spec git tag this build targets, e.g. `"v4.1.2"`.
+pub fn spec_tag() -> String {
+    let v = unsafe { ffi::ctoon_spec_tag_hex() };
+    format!("v{}.{}.{}", v >> 16, (v >> 8) & 0xff, v & 0xff)
+}
+
+/// Release date of the targeted spec, e.g. `"2026-07-26"`.
+pub fn spec_date() -> &'static str {
+    unsafe { std::ffi::CStr::from_ptr(ffi::ctoon_spec_date_string()) }
+        .to_str()
+        .unwrap()
 }
 
 use ffi::*;

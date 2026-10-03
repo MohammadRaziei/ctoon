@@ -52,7 +52,9 @@ UTEST(ctoon_tests, test_spec_version) {
     snprintf(buf, sizeof(buf), "v%d.%d.%d", CTOON_SPEC_TAG_MAJOR,
              CTOON_SPEC_TAG_MINOR, CTOON_SPEC_TAG_PATCH);
     ASSERT_STREQ(CTOON_SPEC_TAG_STRING, buf);
-    ASSERT_EQ(ctoon_spec_version(), (uint32_t)CTOON_SPEC_TAG_HEX);
+    ASSERT_EQ(ctoon_spec_tag_hex(), (uint32_t)CTOON_SPEC_TAG_HEX);
+    ASSERT_STREQ(ctoon_spec_version_string(), CTOON_SPEC_VERSION_STRING);
+    ASSERT_STREQ(ctoon_spec_date_string(), CTOON_SPEC_DATE_STRING);
     ASSERT_EQ(strlen(CTOON_SPEC_DATE_STRING), 10U);
 #ifdef CTOON_EXPECTED_SPEC_TAG
     /* must match supported_spec.conf */

@@ -99,12 +99,18 @@ func DefaultEncodeOptions() EncodeOptions {
 	}
 }
 
-// SpecVersion returns the TOON spec version this build targets, e.g. "4.1.2"
-// (spec §13), obtained by calling ctoon_spec_version() in the C core.
-func SpecVersion() string {
-	v := uint32(C.ctoon_spec_version())
-	return fmt.Sprintf("%d.%d.%d", v>>16, (v>>8)&0xff, v&0xff)
+// SpecVersion returns the TOON spec version this build targets, e.g. "4.1"
+// (spec §13), obtained from the C core.
+func SpecVersion() string { return C.GoString(C.ctoon_spec_version_string()) }
+
+// SpecTag returns the toon-format/spec git tag this build targets, e.g. "v4.1.2".
+func SpecTag() string {
+	v := uint32(C.ctoon_spec_tag_hex())
+	return fmt.Sprintf("v%d.%d.%d", v>>16, (v>>8)&0xff, v&0xff)
 }
+
+// SpecDate returns the release date of the targeted spec, e.g. "2026-07-26".
+func SpecDate() string { return C.GoString(C.ctoon_spec_date_string()) }
 
 // DefaultDecodeOptions returns lenient TOON5 parsing.
 func DefaultDecodeOptions() DecodeOptions {

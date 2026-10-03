@@ -5,7 +5,11 @@ from __future__ import annotations
 # Import the native extension module
 from .ctoon_py import *  # noqa: F401, F403
 from .ctoon_py import __version__  # noqa: F401
-from .ctoon_py import __toon_spec__  # noqa: F401
+from .ctoon_py import (  # noqa: F401
+    __toon_spec__,
+    __toon_spec_tag__,
+    __toon_spec_date__,
+)
 
 __all__ = [
     # TOON serialisation

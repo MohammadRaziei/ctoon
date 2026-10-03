@@ -300,13 +300,26 @@ end
 """
     CToon.spec_version() -> String
 
-The TOON spec version this build targets, e.g. `"4.1.2"` (spec §13), obtained
-by calling `ctoon_spec_version()` in the C core.
+The TOON spec version this build targets, e.g. `"4.1"` (spec §13), from the C core.
 """
-function spec_version()
-    v = @ccall libctoon_jl.ctoon_spec_version()::UInt32
-    return string(v >> 16, ".", (v >> 8) & 0xff, ".", v & 0xff)
+spec_version() = unsafe_string(@ccall libctoon_jl.ctoon_spec_version_string()::Cstring)
+
+"""
+    CToon.spec_tag() -> String
+
+The toon-format/spec git tag this build targets, e.g. `"v4.1.2"`.
+"""
+function spec_tag()
+    v = @ccall libctoon_jl.ctoon_spec_tag_hex()::UInt32
+    return string("v", v >> 16, ".", (v >> 8) & 0xff, ".", v & 0xff)
 end
+
+"""
+    CToon.spec_date() -> String
+
+The release date of the targeted spec, e.g. `"2026-07-26"`.
+"""
+spec_date() = unsafe_string(@ccall libctoon_jl.ctoon_spec_date_string()::Cstring)
 
 export dumps, to_json, parse_toon
 

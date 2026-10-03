@@ -730,13 +730,19 @@ func TestSpecVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cannot read supported_spec.conf: %v", err)
 	}
-	want := ""
+	want := map[string]string{}
 	for _, line := range strings.Split(string(conf), "\n") {
-		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "CTOON_SPEC_TAG=v"); ok {
-			want = v
+		if k, v, ok := strings.Cut(strings.TrimSpace(line), "="); ok {
+			want[k] = v
 		}
 	}
-	if got := ctoon.SpecVersion(); got != want {
-		t.Errorf("SpecVersion() = %q, supported_spec.conf says %q", got, want)
+	if got := ctoon.SpecVersion(); got != want["CTOON_SPEC_VERSION"] {
+		t.Errorf("SpecVersion() = %q, supported_spec.conf says %q", got, want["CTOON_SPEC_VERSION"])
+	}
+	if got := ctoon.SpecTag(); got != want["CTOON_SPEC_TAG"] {
+		t.Errorf("SpecTag() = %q, supported_spec.conf says %q", got, want["CTOON_SPEC_TAG"])
+	}
+	if got := ctoon.SpecDate(); got != want["CTOON_SPEC_DATE"] {
+		t.Errorf("SpecDate() = %q, supported_spec.conf says %q", got, want["CTOON_SPEC_DATE"])
 	}
 }

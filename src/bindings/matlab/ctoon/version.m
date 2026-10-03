@@ -27,7 +27,7 @@ function [verStr, info] = version()
     try
         vInfo.Spec = ctoon_mex('spec');
     catch
-        vInfo.Spec = '__unknown__ (MEX not built)';
+        vInfo.Spec = struct('Version', '__unknown__ (MEX not built)', 'Tag', 'n/a', 'Date', 'n/a');
     end
 
     if nargout == 0
@@ -38,14 +38,14 @@ function [verStr, info] = version()
             % Rich text formatting for MATLAB Desktop
             fprintf('\n  <strong>%s</strong> (v%s)\n', vInfo.Name, vInfo.Version);
             fprintf('  %s\n', vInfo.Description);
-            fprintf('  TOON spec: %s\n', vInfo.Spec);
+            fprintf('  TOON spec: %s (%s, %s)\n', vInfo.Spec.Version, vInfo.Spec.Tag, vInfo.Spec.Date);
             fprintf('  Author: %s\n', vInfo.Author);
             fprintf('  URL:    <a href="matlab:web(''%s'')">%s</a>\n\n', vInfo.URL, vInfo.URL);
         else
             % Plain text formatting for Terminal / CLI / Batch mode
             fprintf('\n  %s (v%s)\n', vInfo.Name, vInfo.Version);
             fprintf('  %s\n', vInfo.Description);
-            fprintf('  TOON spec: %s\n', vInfo.Spec);
+            fprintf('  TOON spec: %s (%s, %s)\n', vInfo.Spec.Version, vInfo.Spec.Tag, vInfo.Spec.Date);
             fprintf('  Author: %s\n', vInfo.Author);
             fprintf('  URL:    %s\n\n', vInfo.URL);
         end

@@ -72,8 +72,14 @@ const (
 // TOON spec this build targets  (spec §13)
 // ---------------------------------------------------------------------------
 
-// SpecVersion returns the targeted TOON spec version, e.g. "4.1.2".
+// SpecVersion returns the targeted TOON spec version, e.g. "4.1".
 var SpecVersion = binding.SpecVersion
+
+// SpecTag returns the targeted toon-format/spec git tag, e.g. "v4.1.2".
+var SpecTag = binding.SpecTag
+
+// SpecDate returns the release date of the targeted spec, e.g. "2026-07-26".
+var SpecDate = binding.SpecDate
 
 // ---------------------------------------------------------------------------
 // Default options constructors

@@ -165,3 +165,10 @@ test "parse error propagates message and position" {
     try testing.expectError(ctoon.Error.ParseError, result);
     try testing.expect(ctoon.lastError().message.len > 0);
 }
+
+test "spec version" {
+    const tag = ctoon.specTag();
+    try testing.expect(tag.major >= 1);
+    try testing.expect(std.mem.startsWith(u8, ctoon.specVersion(), "4."));
+    try testing.expectEqual(@as(usize, 10), ctoon.specDate().len);
+}

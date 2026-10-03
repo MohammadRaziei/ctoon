@@ -124,12 +124,16 @@ fn indexing_missing_key_returns_null() {
 }
 
 #[test]
-fn spec_version_matches_supported_spec_conf() {
+fn spec_matches_supported_spec_conf() {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/supported_spec.conf");
     let conf = std::fs::read_to_string(path).unwrap();
-    let want = conf
-        .lines()
-        .find_map(|l| l.strip_prefix("CTOON_SPEC_TAG=v"))
-        .unwrap();
-    assert_eq!(ctoon::spec_version(), want);
+    let get = |key: &str| {
+        conf.lines()
+            .find_map(|l| l.strip_prefix(&format!("{}=", key)))
+            .unwrap()
+            .to_string()
+    };
+    assert_eq!(ctoon::spec_version(), get("CTOON_SPEC_VERSION"));
+    assert_eq!(ctoon::spec_tag(), get("CTOON_SPEC_TAG"));
+    assert_eq!(ctoon::spec_date(), get("CTOON_SPEC_DATE"));
 }

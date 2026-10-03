@@ -331,15 +331,21 @@ static void do_spec(int nlhs, mxArray *plhs[],
                           "ctoon spec takes no input arguments.");
     }
 
-    uint32_t v = ctoon_spec_version();
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%u.%u.%u",
+    uint32_t v = ctoon_spec_tag_hex();
+    char tag[32];
+    snprintf(tag, sizeof(tag), "v%u.%u.%u",
              (v >> 16) & 0xFFu, (v >> 8) & 0xFFu, v & 0xFFu);
 
     if (nlhs > 0) {
-        plhs[0] = mxCreateString(buf);
+        /* struct with fields: Version ("4.1"), Tag ("v4.1.2"), Date */
+        const char *fields[] = {"Version", "Tag", "Date"};
+        plhs[0] = mxCreateStructMatrix(1, 1, 3, fields);
+        mxSetField(plhs[0], 0, "Version", mxCreateString(ctoon_spec_version_string()));
+        mxSetField(plhs[0], 0, "Tag",     mxCreateString(tag));
+        mxSetField(plhs[0], 0, "Date",    mxCreateString(ctoon_spec_date_string()));
     } else {
-        mexPrintf("TOON spec: %s\n", buf);
+        mexPrintf("TOON spec: %s (%s, %s)\n", ctoon_spec_version_string(),
+                  tag, ctoon_spec_date_string());
     }
 }
 
