@@ -100,37 +100,38 @@ private:
  * TOON spec (the toon-format/spec release this build targets)
  * -------------------------------------------------------------------- */
 
-namespace spec {
-
-/** The toon-format/spec git tag, e.g. v4.1.2 */
-class tag {
+class spec {
 public:
-    static unsigned int major()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_MAJOR; }
-    static unsigned int minor()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_MINOR; }
-    static unsigned int patch()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_PATCH; }
-    static unsigned int hex()    CTOON_NOEXCEPT { return CTOON_SPEC_TAG_HEX; }
-    static string_view  string() CTOON_NOEXCEPT { return CTOON_SPEC_TAG_STRING; }
-private:
-    tag();
-};
+    /** The toon-format/spec git tag, e.g. "v4.1.2" */
+    class tag {
+    public:
+        static unsigned int major()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_MAJOR; }
+        static unsigned int minor()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_MINOR; }
+        static unsigned int patch()  CTOON_NOEXCEPT { return CTOON_SPEC_TAG_PATCH; }
+        static unsigned int hex()    CTOON_NOEXCEPT { return CTOON_SPEC_TAG_HEX; }
+        static string_view  string() CTOON_NOEXCEPT { return CTOON_SPEC_TAG_STRING; }
+    private:
+        tag();
+    };
 
-/** The spec version, e.g. "4.1" */
-class version {
-public:
-    static string_view string() CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_STRING; }
-private:
-    version();
-};
+    /** The spec version, e.g. "4.1" */
+    class version {
+    public:
+        static string_view string() CTOON_NOEXCEPT { return CTOON_SPEC_VERSION_STRING; }
+    private:
+        version();
+    };
 
-/** The spec release date, e.g. "2026-07-26" */
-class date {
-public:
-    static string_view string() CTOON_NOEXCEPT { return CTOON_SPEC_DATE_STRING; }
+    /** The spec release date, e.g. "2026-07-26" */
+    class date {
+    public:
+        static string_view string() CTOON_NOEXCEPT { return CTOON_SPEC_DATE_STRING; }
+    private:
+        date();
+    };
 private:
-    date();
+    spec();
 };
-
-} // namespace spec
 
 /* -----------------------------------------------------------------------
  * Exception hierarchy

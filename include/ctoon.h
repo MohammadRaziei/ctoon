@@ -533,13 +533,9 @@ ctoon_api uint32_t ctoon_version(void);
 #define CTOON_SPEC_TAG_PATCH 2
 /* END CTOON_SPEC */
 
-/* Internal helpers for CTOON_SPEC_TAG_STRING */
-#define _CTOON_SPEC_TAG_XSTR(a,b,c) "v"#a"."#b"."#c
-#define _CTOON_SPEC_TAG_STR(a,b,c)  _CTOON_SPEC_TAG_XSTR(a,b,c)
-
 /** The toon-format/spec git tag this build targets, e.g. "v4.1.2". */
 #define CTOON_SPEC_TAG_STRING \
-    _CTOON_SPEC_TAG_STR(CTOON_SPEC_TAG_MAJOR,CTOON_SPEC_TAG_MINOR,CTOON_SPEC_TAG_PATCH)
+    "v" _CTOON_VERSION_STR(CTOON_SPEC_TAG_MAJOR,CTOON_SPEC_TAG_MINOR,CTOON_SPEC_TAG_PATCH)
 
 /** The targeted spec tag in hex: `(major << 16) | (minor << 8) | patch`. */
 #define CTOON_SPEC_TAG_HEX \
