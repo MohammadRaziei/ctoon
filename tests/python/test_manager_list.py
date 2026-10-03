@@ -23,7 +23,8 @@ def host(tmp_path, monkeypatch):
     """Serve tmp_path as the releases/ root: <root>/download/<tag>/<file>."""
     handler = functools.partial(_Quiet, directory=str(tmp_path))
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
     base = f"http://127.0.0.1:{server.server_address[1]}"
     monkeypatch.setenv("CTOON_RELEASE_BASE", base)
     monkeypatch.setattr(release, "installed_version", lambda: "0.8.3")
@@ -36,6 +37,8 @@ def host(tmp_path, monkeypatch):
     publish.base = base
     yield publish
     server.shutdown()
+    server.server_close()  # pyproject has filterwarnings=error: an unclosed socket fails the run
+    thread.join(timeout=5)
 
 
 def test_beta_lists_files_and_warns(host, capsys):

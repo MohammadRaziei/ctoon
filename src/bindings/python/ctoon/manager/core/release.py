@@ -87,6 +87,7 @@ def fetch_text(url: str) -> str:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
             return resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
+        e.close()  # an HTTPError owns the response socket
         if e.code == 404:
             raise NotAvailable(url) from None
         raise ReleaseError(f"HTTP {e.code} from {url}") from None
