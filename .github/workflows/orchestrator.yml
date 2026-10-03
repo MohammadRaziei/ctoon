@@ -155,6 +155,37 @@ jobs:
           files: dist/*
 
 
+  # Runs LAST. Every release-* job above publishes its own files, so this is
+  # the only place that sees the complete set: it reads the real asset list
+  # of the release and uploads it as lists.txt (one file name per line).
+  # `ctoon.manager list` reads it; because it is uploaded after everything
+  # else (and `init` deletes all __beta__ assets, lists.txt included, at the
+  # start of each run), its presence means "this release is complete".
+  # NOTE: add every new release-* job to `needs` below.
+  release-list:
+    needs: [init, release-wheels, release-crate, release-zig]
+    runs-on: ubuntu-latest
+    steps:
+      - name: List published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ needs.init.outputs.release_name }}" \
+            --repo "${{ github.repository }}" --json assets --jq '.assets[].name' \
+            | grep -vx 'lists.txt' | LC_ALL=C sort > lists.txt
+          echo "---- lists.txt"; cat lists.txt
+          test -s lists.txt
+
+      - name: Publish lists.txt
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.init.outputs.release_name }}
+          name: ${{ needs.init.outputs.release_name }}
+          draft: false
+          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: lists.txt
+
   deploy-pages:
     needs: [cmake]
     runs-on: ubuntu-latest

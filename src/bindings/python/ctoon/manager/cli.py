@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from .commands import COMMANDS
 from .langs import LANGS
 
 
@@ -13,9 +14,9 @@ def build_parser() -> argparse.ArgumentParser:
         description="CToon serialization manager",
     )
     parser.add_argument("-v", "--version", action="store_true", help="show version and exit")
-    subparsers = parser.add_subparsers(dest="lang", metavar="<lang>")
-    for lang in LANGS:
-        lang.add_parser(subparsers)
+    subparsers = parser.add_subparsers(dest="command", metavar="<command|lang>")
+    for mod in (*COMMANDS, *LANGS):
+        mod.add_parser(subparsers)
     return parser
 
 
