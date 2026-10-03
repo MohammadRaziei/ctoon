@@ -18,6 +18,12 @@ class _Quiet(http.server.SimpleHTTPRequestHandler):
         pass
 
 
+@pytest.fixture(autouse=True)
+def _isolated_config(tmp_path_factory, monkeypatch):
+    # never read a developer's real config file
+    monkeypatch.setenv("CTOON_CONFIG", str(tmp_path_factory.mktemp("cfg") / "config.json"))
+
+
 @pytest.fixture
 def host(tmp_path, monkeypatch):
     """Serve tmp_path as the releases/ root: <root>/download/<tag>/<file>."""
@@ -26,7 +32,7 @@ def host(tmp_path, monkeypatch):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     base = f"http://127.0.0.1:{server.server_address[1]}"
-    monkeypatch.setenv("CTOON_RELEASE_BASE", base)
+    monkeypatch.setattr(release, "base_url", lambda: base)
     monkeypatch.setattr(release, "installed_version", lambda: "0.8.3")
 
     def publish(tag, text):
@@ -88,7 +94,7 @@ def test_empty_list_is_error(host, capsys):
 
 
 def test_unreachable_host(monkeypatch, capsys):
-    monkeypatch.setenv("CTOON_RELEASE_BASE", "http://127.0.0.1:9")  # closed port
+    monkeypatch.setattr(release, "base_url", lambda: "http://127.0.0.1:9")  # closed port
     monkeypatch.setattr(release, "installed_version", lambda: "0.8.3")
     assert main(["list", "--beta"]) == 1
     assert "could not reach" in capsys.readouterr().err

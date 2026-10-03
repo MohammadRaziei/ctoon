@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from .commands import COMMANDS
+from .core.errors import ManagerError
 from .langs import LANGS
 
 
@@ -32,4 +34,8 @@ def main(argv=None) -> int:
     if not getattr(args, "func", None):
         parser.print_help()
         return 0
-    return args.func(args)
+    try:
+        return args.func(args)
+    except ManagerError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1

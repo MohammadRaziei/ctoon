@@ -1,16 +1,17 @@
 """Tiny JSON state file: what the manager detected / downloaded / installed.
 
-stdlib only. Default location is per environment (sys.prefix), so each venv
-keeps its own record; CTOON_STATE overrides it.
+Machine-written (contrast config.py, which the user edits). Default location
+is per environment (sys.prefix), so each venv keeps its own record;
+CTOON_STATE overrides it.
 """
 
 from __future__ import annotations
 
 import datetime
-import json
 import os
 import sys
-import tempfile
+
+from . import jsonfile
 
 SCHEMA = 1
 
@@ -24,11 +25,9 @@ def path() -> str:
 
 def load() -> dict:
     try:
-        with open(path(), "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"schema": SCHEMA}
-    return data if isinstance(data, dict) else {"schema": SCHEMA}
+        return jsonfile.read(path())
+    except ValueError:
+        return {}  # unreadable state is just rebuilt on the next detect
 
 
 def update(section: str, value: dict) -> str:
@@ -40,16 +39,5 @@ def update(section: str, value: dict) -> str:
         detected_at=datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
     )
     target = path()
-    folder = os.path.dirname(target) or "."
-    os.makedirs(folder, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=folder, prefix=".state-", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, sort_keys=True)
-            f.write("\n")
-        os.replace(tmp, target)
-    except BaseException:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
+    jsonfile.write_atomic(target, state)
     return target

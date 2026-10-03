@@ -8,13 +8,14 @@ networks hit that quickly).
 
 from __future__ import annotations
 
-import os
 import socket
 import sys
 import urllib.error
 import urllib.request
 
-REPO = "MohammadRaziei/ctoon"
+from . import config
+from .errors import ManagerError
+
 BETA_TAG = "__beta__"
 LIST_FILE = "lists.txt"
 TIMEOUT = 20
@@ -25,7 +26,7 @@ BETA_WARNING = (
 )
 
 
-class ReleaseError(Exception):
+class ReleaseError(ManagerError):
     """Something went wrong talking to the release host."""
 
 
@@ -34,8 +35,8 @@ class NotAvailable(ReleaseError):
 
 
 def base_url() -> str:
-    # Overridable so tests (and mirrors) can point somewhere else.
-    return (os.environ.get("CTOON_RELEASE_BASE") or f"https://github.com/{REPO}/releases").rstrip("/")
+    # The repo comes from config (`github-repo`), so forks only change config.
+    return f"https://github.com/{config.get('github-repo')}/releases"
 
 
 def add_channel_args(parser) -> None:
