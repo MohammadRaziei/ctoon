@@ -39,6 +39,21 @@ if(TARGET ctoon_build_python)
         add_dependencies(ctoon_test_python ctoon_build_python)
         add_dependencies(ctoon_test_python ctoon_cli)
         add_dependencies(ctoon_test ctoon_test_python)
+
+        # ctoon.manager tests (tests/python/manager/) are run by hand, not by CI:
+        # they read the real MATLAB install and the real GitHub release.
+        # Unlike the ctoon_test_<lang> targets above, this one is deliberately
+        # NOT added to ctoon_test / ctest -- it is the other way round: it
+        # depends on ctoon_test_python, so it only runs once the python
+        # package is built/installed and the python tests have passed.
+        #   cmake --build build --target ctoon_test_manager
+        add_custom_target(ctoon_test_manager
+            COMMAND ${CMAKE_COMMAND} -E echo "-- Running ctoon.manager tests..."
+            COMMAND ${Python3_EXECUTABLE} -m pytest -v ${CMAKE_CURRENT_SOURCE_DIR}/manager
+            WORKING_DIRECTORY ${CTOON_PYTHON_INSTALL_DIR}
+            USES_TERMINAL
+        )
+        add_dependencies(ctoon_test_manager ctoon_test_python)
     endif()
 
     # Check for pytest-cov (coverage tool)

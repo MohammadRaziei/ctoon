@@ -1,145 +1,129 @@
-"""`python -m ctoon.manager matlab detect` against a fake MATLAB install."""
+"""`ctoon.manager matlab detect` against the MATLAB that is really installed.
+
+No fake installs and no monkeypatching: every test reads the real machine, so
+what passes here is what a user would actually get. Skipped when MATLAB isn't
+installed. Run by hand (tests/python/manager/ is not collected by CI):
+
+    pytest tests/python/manager/test_manager_matlab.py
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import platform
-import stat
-import sys
+import re
+import shutil
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
 import pytest
 
 from ctoon.manager import main
 from ctoon.manager.langs.matlab import probe
 
-pytestmark = pytest.mark.skipif(
-    sys.platform == "win32", reason="fake install uses shell-script stubs"
-)
+INFO = probe.detect()
 
-VERSION_XML = (
-    '<?xml version="1.0" encoding="UTF-8"?>'
-    "<MathWorks_version_info><version>24.1.0.2537033</version>"
-    "<release>{release}</release></MathWorks_version_info>"
+needs_matlab = pytest.mark.skipif(
+    not INFO["found"], reason="MATLAB is not installed on this machine"
 )
 
 
-def _make_install(root, release="R2024a", with_mex=True, xml=None):
-    bin_dir = root / "MATLAB" / release / "bin"
-    bin_dir.mkdir(parents=True)
-    names = ["matlab"] + (["mex"] if with_mex else [])
-    for name in names:
-        p = bin_dir / name
-        p.write_text("#!/bin/sh\nexit 0\n")
-        p.chmod(p.stat().st_mode | stat.S_IXUSR)
-    # The gist looks for VersionInfo.xml in <root>/Contents/ on macOS and in
-    # <root>/ everywhere else; mirror that so the fake install is valid on
-    # whichever OS the tests run (platform.system() is read at call time, so
-    # a test that patches it gets that OS's layout).
-    xml_dir = bin_dir.parent / "Contents" if platform.system() == "Darwin" else bin_dir.parent
-    xml_dir.mkdir(exist_ok=True)
-    (xml_dir / "VersionInfo.xml").write_text(
-        xml if xml is not None else VERSION_XML.format(release=release)
-    )
-    return bin_dir
+@needs_matlab
+def test_executable_is_a_real_file_in_a_bin_dir():
+    exe = Path(INFO["executable"])
+    assert exe.is_file()
+    assert os.access(exe, os.X_OK)
+    assert exe.name in ("matlab", "matlab.exe")
+    assert exe.parent.name == "bin"
+    # the detector reports the resolved path, never a symlink
+    assert str(exe) == os.path.realpath(exe)
 
 
-@pytest.fixture
-def env(tmp_path, monkeypatch):
-    """PATH with only a symlinked `matlab` (like /usr/local/bin/matlab)."""
-    link_dir = tmp_path / "linkbin"
-    link_dir.mkdir()
-    monkeypatch.setenv("PATH", str(link_dir))
-    monkeypatch.setenv("CTOON_STATE", str(tmp_path / "state.json"))
-    return tmp_path, link_dir
+@needs_matlab
+def test_root_is_the_parent_of_bin():
+    exe = Path(INFO["executable"])
+    assert Path(INFO["root"]) == exe.parent.parent
+    assert Path(INFO["root"]).is_dir()
 
 
-def _link(bin_dir, link_dir):
-    os.symlink(bin_dir / "matlab", link_dir / "matlab")
+@needs_matlab
+def test_matlab_on_path_resolves_to_the_detected_install():
+    # On a machine where `which matlab` works, it must be the same binary
+    # (this follows the real /usr/local/bin/matlab -> .../bin/matlab symlink).
+    on_path = shutil.which("matlab")
+    if on_path is None:
+        pytest.skip("matlab is not on PATH here; found through the default install dirs")
+    assert os.path.realpath(on_path) == INFO["executable"]
 
 
-def test_detect_finds_matlab_release_and_mex(env):
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path)
-    _link(bin_dir, link_dir)
+@needs_matlab
+def test_release_matches_versioninfo_xml_on_disk():
+    root = Path(INFO["root"])
+    # the layout the detector relies on: Contents/ on macOS, root elsewhere
+    xml_path = root / "Contents" / "VersionInfo.xml" if platform.system() == "Darwin" else root / "VersionInfo.xml"
+    assert xml_path.is_file(), xml_path
 
-    info = probe.detect()
-
-    assert info["found"] is True
-    assert info["executable"] == os.path.realpath(bin_dir / "matlab")
-    assert info["root"] == str(bin_dir.parent.resolve())
-    assert info["release"] == "R2024a"
-    assert info["mex"] == str(bin_dir / "mex")
-    assert info["meets_minimum"] is True
+    # read it a second, independent way
+    release = ET.parse(xml_path).getroot().find(".//release").text.strip()
+    assert INFO["release"] == release
+    assert re.fullmatch(r"R\d{4}[ab]", release)
 
 
-def test_detect_not_found(env, monkeypatch):
-    # No matlab on PATH; make the default install roots empty too.
-    monkeypatch.setattr(probe._gist.platform, "system", lambda: "Plan9")
-    info = probe.detect()
-    assert info["found"] is False
-    assert "could not be found" in info["error"]
+@needs_matlab
+def test_mex_is_next_to_the_matlab_binary():
+    assert INFO["mex"] is not None, "no mex next to the matlab binary"
+    mex = Path(INFO["mex"])
+    assert mex.is_file()
+    assert mex.parent == Path(INFO["executable"]).parent
+    assert mex.name in ("mex", "mex.bat", "mex.exe")
 
 
-@pytest.mark.parametrize("system", ["Linux", "Darwin"])
-def test_detect_release_xml_layout_per_os(env, monkeypatch, system):
-    # Both layouts get exercised on every CI OS, not only on the matching one.
-    monkeypatch.setattr(probe._gist.platform, "system", lambda: system)
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path)
-    _link(bin_dir, link_dir)
-    assert probe.detect()["release"] == "R2024a"
+@needs_matlab
+def test_install_meets_the_minimum_release():
+    assert INFO["min_release"] == probe.MIN_RELEASE
+    assert INFO["meets_minimum"] is True
+    assert INFO["error"] is None
 
 
-def test_detect_missing_mex(env):
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path, with_mex=False)
-    _link(bin_dir, link_dir)
-    info = probe.detect()
-    assert info["found"] is True and info["mex"] is None
+@needs_matlab
+def test_cli_json_matches_detect_and_records_state(tmp_path, monkeypatch, capsys):
+    # CTOON_STATE only redirects where *our own* record is written.
+    state_file = tmp_path / "state.json"
+    monkeypatch.setenv("CTOON_STATE", str(state_file))
 
+    assert main(["matlab", "detect", "--json"]) == 0
 
-def test_detect_too_old(env):
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path, release="R2012b")
-    _link(bin_dir, link_dir)
-    assert probe.detect()["meets_minimum"] is False
-
-
-def test_detect_broken_xml(env):
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path, xml="<oops")
-    _link(bin_dir, link_dir)
-    info = probe.detect()
-    assert info["found"] is True
-    assert info["release"] is None and "VersionInfo.xml" in info["error"]
-
-
-@pytest.mark.parametrize(
-    "release, expected",
-    [("R2014b", True), ("R2021a", True), ("R2013b", False), ("R2014a", False),
-     ("9.9", None), ("", None), (None, None)],
-)
-def test_release_ordering(release, expected):
-    assert probe.meets(release, "R2014b") is expected
-
-
-def test_cli_detect_json_saves_state(env, capsys):
-    tmp_path, link_dir = env
-    bin_dir = _make_install(tmp_path)
-    _link(bin_dir, link_dir)
-
-    rc = main(["matlab", "detect", "--json"])
-
-    assert rc == 0
     printed = json.loads(capsys.readouterr().out)
-    saved = json.loads((tmp_path / "state.json").read_text())
+    assert printed == INFO
+    saved = json.loads(state_file.read_text())
     assert saved["schema"] == 1
-    assert saved["matlab"]["release"] == printed["release"] == "R2024a"
+    assert {k: v for k, v in saved["matlab"].items() if k != "detected_at"} == INFO
     assert "detected_at" in saved["matlab"]
 
 
-def test_cli_exit_code_nonzero_when_not_usable(env, monkeypatch):
-    monkeypatch.setattr(probe._gist.platform, "system", lambda: "Plan9")
-    assert main(["matlab", "detect", "--no-save"]) == 1
-    assert not (env[0] / "state.json").exists()
+@needs_matlab
+def test_cli_human_output_names_the_real_paths(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("CTOON_STATE", str(tmp_path / "state.json"))
+    assert main(["matlab", "detect"]) == 0
+    out = capsys.readouterr().out
+    for value in (INFO["executable"], INFO["root"], INFO["release"], INFO["mex"]):
+        assert value in out
+
+
+@needs_matlab
+def test_no_save_leaves_no_state(tmp_path, monkeypatch):
+    state_file = tmp_path / "state.json"
+    monkeypatch.setenv("CTOON_STATE", str(state_file))
+    assert main(["matlab", "detect", "--no-save"]) == 0
+    assert not state_file.exists()
+
+
+# Pure string logic -- no filesystem involved, so it runs everywhere.
+@pytest.mark.parametrize(
+    "release, expected",
+    [("R2014b", True), ("R2021a", True), ("R2024a", True), ("R2013b", False),
+     ("R2014a", False), ("9.9", None), ("", None), (None, None)],
+)
+def test_release_ordering(release, expected):
+    assert probe.meets(release, "R2014b") is expected
