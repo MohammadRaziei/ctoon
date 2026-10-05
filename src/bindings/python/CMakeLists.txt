@@ -6,9 +6,31 @@
 # silently falls back to a normal per-version build with no error.
 # OPTIONAL_COMPONENTS so this doesn't break configuration on Python < 3.12,
 # where the limited-API SABI library isn't available anyway.
+# pip / scikit-build builds must fail loudly if Python is missing; every other
+# way of getting here only warns and skips (see the check below).
+if(DEFINED SKBUILD)
+    set(_ctoon_python_required REQUIRED)
+else()
+    set(_ctoon_python_required "")
+endif()
 find_package(Python COMPONENTS Interpreter Development.Module
     OPTIONAL_COMPONENTS Development.SABIModule
-    REQUIRED)
+    ${_ctoon_python_required})
+
+# Python found, and at least the minimum version? Otherwise WARN and skip this
+# binding (return() leaves this file only, so the rest of the project still
+# configures). Not for pip/scikit-build builds: there Python is REQUIRED above
+# and requires-python in pyproject.toml gates the version; skipping would
+# silently produce an empty wheel.
+if(NOT DEFINED SKBUILD)
+    if(NOT Python_FOUND)
+        message(WARNING
+            "Python (Interpreter + Development.Module) not found — skipping "
+            "Python. Install Python 3.9 or newer with its development files.")
+        return()
+    endif()
+    ctoon_require_lang_version("${Python_VERSION}" 3.9 "Python")
+endif()
 
 if(DEFINED SKBUILD)
 

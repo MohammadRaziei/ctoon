@@ -114,7 +114,7 @@ set_target_properties(ctoon_cli PROPERTIES OUTPUT_NAME ctoon)
 # Apply optimization flags to CLI
 apply_optimization_flags(ctoon_cli)
 
-if(CTOON_BUILD_PYTHON OR DEFINED SKBUILD)
+if(CTOON_BUILD_PYTHON OR CTOON_BUILD_ALL_LANGS OR DEFINED SKBUILD)
     add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/python)
     if(DEFINED SKBUILD)
         return()
