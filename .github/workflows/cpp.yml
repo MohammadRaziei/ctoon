@@ -1,0 +1,81 @@
+name: c/cpp package
+
+# Builds libctoon (C) + ctoon.hpp (C++) + the CLI, runs `cmake --install` and
+# zips the install tree, CMake package files included, once per platform:
+#   ctoon-c-cpp-<version>-<platform>.zip
+# Each zip is then consumed like a user would (find_package(ctoon CONFIG)):
+# tests/c/install_check and tests/cpp/install_check.
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - CMakeLists.txt
+      - cmake/**
+      - include/**
+      - src/*.c
+      - src/sources/**
+      - src/bindings/cpp/**
+      - src/cli/**
+      - tests/c/install_check/**
+      - tests/cpp/install_check/**
+      - .github/workflows/cpp.yml
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-x86_64,   os: ubuntu-latest }
+          - { platform: linux-aarch64,  os: ubuntu-24.04-arm }
+          - { platform: macos-x86_64,   os: macos-15-intel }
+          - { platform: macos-arm64,    os: macos-latest }
+          - { platform: windows-x86_64, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Read version
+        id: ver
+        run: |
+          part() { sed -n "s/^#define CTOON_VERSION_$1[[:space:]]*\([0-9][0-9]*\).*/\1/p" include/ctoon.h | head -n 1; }
+          v="$(part MAJOR).$(part MINOR).$(part PATCH)"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "name=ctoon-c-cpp-$v-${{ matrix.platform }}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCTOON_BUILD_TESTS=OFF -DCTOON_BUILD_EXAMPLES=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Install
+        run: cmake --install build --config Release --prefix "pkg/${{ steps.ver.outputs.name }}"
+
+      - name: Check the installed package like a user would
+        run: |
+          for lang in c cpp; do
+            cmake -S "tests/$lang/install_check" -B "consume-$lang" -DCMAKE_PREFIX_PATH="$PWD/pkg/${{ steps.ver.outputs.name }}"
+            cmake --build "consume-$lang" --config Release
+            ctest --test-dir "consume-$lang" -C Release --output-on-failure
+          done
+
+      - name: List package
+        run: find "pkg/${{ steps.ver.outputs.name }}" -type f | sort
+
+      - name: Zip
+        working-directory: pkg
+        run: cmake -E tar cf "../${{ steps.ver.outputs.name }}.zip" --format=zip "${{ steps.ver.outputs.name }}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cpp-lib-${{ matrix.platform }}
+          path: ${{ steps.ver.outputs.name }}.zip
+          if-no-files-found: error

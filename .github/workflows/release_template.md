@@ -7,3 +7,22 @@
 | **macOS** | [![macosx_10__15_universal2-cp314](https://img.shields.io/badge/macosx_10__15_universal2-cp314-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314-macosx_10_15_universal2.whl) [![macosx_10__15_universal2-cp314t](https://img.shields.io/badge/macosx_10__15_universal2-cp314t-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp314-cp314t-macosx_10_15_universal2.whl) [![macosx_10__13_universal2-cp313](https://img.shields.io/badge/macosx_10__13_universal2-cp313-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp313-cp313-macosx_10_13_universal2.whl) [![macosx_10__13_universal2-cp312](https://img.shields.io/badge/macosx_10__13_universal2-cp312-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp312-cp312-macosx_10_13_universal2.whl) [![macosx_10__13_universal2-cp311](https://img.shields.io/badge/macosx_10__13_universal2-cp311-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp311-cp311-macosx_10_13_universal2.whl) [![macosx_10__13_universal2-cp310](https://img.shields.io/badge/macosx_10__13_universal2-cp310-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp310-cp310-macosx_10_13_universal2.whl) [![macosx_10__13_universal2-cp39](https://img.shields.io/badge/macosx_10__13_universal2-cp39-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING-cp39-cp39-macosx_10_13_universal2.whl) |
 | **Source** | [![sdist-tar](https://img.shields.io/badge/sdist-tar-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-VERSION_STRING.tar.gz) [![source-zip](https://img.shields.io/badge/source-zip-blue)](https://github.com/MohammadRaziei/ctoon/archive/refs/tags/RELEASE_NAME.zip) [![source-tar](https://img.shields.io/badge/source-tar-blue)](https://github.com/MohammadRaziei/ctoon/archive/refs/tags/RELEASE_NAME.tar.gz) |
 
+### C / C++ (`cmake --install` tree: library, headers, CLI, CMake package)
+
+| Platform | Download |
+| :--- | :--- |
+| **Linux x86_64** | [![linux-x86_64](https://img.shields.io/badge/linux--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-c-cpp-VERSION_STRING-linux-x86_64.zip) |
+| **Linux aarch64** | [![linux-aarch64](https://img.shields.io/badge/linux--aarch64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-c-cpp-VERSION_STRING-linux-aarch64.zip) |
+| **macOS x86_64** | [![macos-x86_64](https://img.shields.io/badge/macos--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-c-cpp-VERSION_STRING-macos-x86_64.zip) |
+| **macOS arm64** | [![macos-arm64](https://img.shields.io/badge/macos--arm64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-c-cpp-VERSION_STRING-macos-arm64.zip) |
+| **Windows x86_64** | [![windows-x86_64](https://img.shields.io/badge/windows--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-c-cpp-VERSION_STRING-windows-x86_64.zip) |
+
+### MATLAB
+
+| Platform | Download |
+| :--- | :--- |
+| **Linux x86_64** | [![linux-x86_64](https://img.shields.io/badge/linux--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-linux-x86_64.zip) |
+| **macOS x86_64** | [![macos-x86_64](https://img.shields.io/badge/macos--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-macos-x86_64.zip) |
+| **macOS arm64** | [![macos-arm64](https://img.shields.io/badge/macos--arm64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-macos-arm64.zip) |
+| **Windows x86_64** | [![windows-x86_64](https://img.shields.io/badge/windows--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-windows-x86_64.zip) |
+| **Source (build with `mex`)** | [![src](https://img.shields.io/badge/src-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-src.zip) |

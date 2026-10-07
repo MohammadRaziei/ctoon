@@ -69,6 +69,10 @@ jobs:
     uses: ./.github/workflows/matlab.yml
     needs: [init]
 
+  cpp:
+    uses: ./.github/workflows/cpp.yml
+    needs: [init]
+
   release-wheels:
     needs: [wheel,init]
     runs-on: ubuntu-latest
@@ -182,6 +186,31 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: dist/*
 
+  release-cpp:
+    needs: [cpp, init]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          # cpp-lib-<platform> (install tree zips: lib, headers, CLI, CMake package)
+          pattern: cpp-*
+          path: dist
+          merge-multiple: true
+
+      - name: List dist directory
+        run: ls -la dist
+
+      - name: create release body
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.init.outputs.release_name }}
+          name: ${{ needs.init.outputs.release_name }}
+          draft: false
+          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: dist/*
+
   # Runs LAST. Every release-* job above publishes its own files, so this is
   # the only place that sees the complete set: it reads the real asset list
   # of the release and uploads it as lists.txt (one file name per line).
@@ -189,19 +218,8 @@ jobs:
   # else (and `init` deletes all __beta__ assets, lists.txt included, at the
   # start of each run), its presence means "this release is complete".
   # NOTE: add every new release-* job to `needs` below.
-  #
-  # matlab.yml has not been proven on real CI yet, so a MATLAB failure must not
-  # take lists.txt (and with it `ctoon.manager list`) down: the MATLAB job is
-  # allowed to be skipped, everything else must have succeeded. Once matlab.yml
-  # is stable, drop this `if` so that the default (all needs succeeded) applies.
   release-list:
-    needs: [init, release-wheels, release-crate, release-zig, release-matlab]
-    if: >-
-      ${{ !cancelled()
-          && needs.release-wheels.result == 'success'
-          && needs.release-crate.result == 'success'
-          && needs.release-zig.result == 'success'
-          && contains(fromJSON('["success","skipped"]'), needs.release-matlab.result) }}
+    needs: [init, release-wheels, release-crate, release-zig, release-matlab, release-cpp]
     runs-on: ubuntu-latest
     steps:
       - name: List published assets

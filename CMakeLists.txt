@@ -72,7 +72,9 @@ set_target_properties(ctoon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # Include directories
 target_include_directories(ctoon 
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/sources
 )
 
@@ -82,7 +84,8 @@ add_library(ctoonpp INTERFACE)
 add_library(ctoon::ctoonpp ALIAS ctoonpp)
 
 target_include_directories(ctoonpp INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/bindings/cpp
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/bindings/cpp>
+    $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(ctoonpp INTERFACE ctoon::ctoon)
@@ -136,8 +139,38 @@ if(CTOON_BUILD_TESTS)
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
-# Installation
+# Installation: C library (ctoon::ctoon), C++ header (ctoon::ctoonpp), the CLI
+# and a CMake package, so that after `cmake --install` a consumer only needs
+#   find_package(ctoon CONFIG REQUIRED)
+#   target_link_libraries(app PRIVATE ctoon::ctoon)   # or ctoon::ctoonpp
 install(DIRECTORY include DESTINATION .)
+install(FILES ${PROJECT_SOURCE_DIR}/src/bindings/cpp/ctoon.hpp DESTINATION include)
+install(TARGETS ctoon ctoonpp EXPORT ctoonTargets
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+install(EXPORT ctoonTargets
+    NAMESPACE ctoon::
+    DESTINATION lib/cmake/ctoon
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    ${PROJECT_SOURCE_DIR}/cmake/ctoonConfig.cmake.in
+    ${PROJECT_BINARY_DIR}/ctoonConfig.cmake
+    INSTALL_DESTINATION lib/cmake/ctoon
+)
+write_basic_package_version_file(
+    ${PROJECT_BINARY_DIR}/ctoonConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+install(FILES
+    ${PROJECT_BINARY_DIR}/ctoonConfig.cmake
+    ${PROJECT_BINARY_DIR}/ctoonConfigVersion.cmake
+    DESTINATION lib/cmake/ctoon
+)
 
 # Print optimization summary
 # print_optimization_summary()
