@@ -184,13 +184,25 @@ endfunction()
 
 # -------------------------- public API --------------------------
 
+# CTOON_SPEC_PIN=ON: use exactly what is committed in supported_spec.conf.
+# No network access, and supported_spec.conf, include/ctoon.h and README.md
+# are left untouched. Default OFF: a fresh build tree resolves the newest
+# release of toon-format/spec (see below).
+option(CTOON_SPEC_PIN "Use the committed supported_spec.conf; do not resolve the latest toon-format/spec" OFF)
+
 function(resolve_spec_version)
     cmake_parse_arguments(RSV "" "TAG_VAR;VERSION_VAR;DATE_VAR" "" ${ARGN})
 
     set(_build_conf "${CMAKE_BINARY_DIR}/supported_spec.conf")
     set(_root_conf "${PROJECT_SOURCE_DIR}/supported_spec.conf")
 
-    if(EXISTS "${_build_conf}")
+    if(CTOON_SPEC_PIN)
+        if(NOT EXISTS "${_root_conf}")
+            message(FATAL_ERROR "SpecVersion: CTOON_SPEC_PIN=ON but ${_root_conf} does not exist.")
+        endif()
+        _sv_read_conf("${_root_conf}" _tag _version _date)
+        message(STATUS "TOON spec: ${_tag} (${_date}) [pinned by CTOON_SPEC_PIN]")
+    elseif(EXISTS "${_build_conf}")
         # Already resolved earlier in this build tree - trust the
         # committed cache, no network calls on every reconfigure.
         if(EXISTS "${_root_conf}")
@@ -221,7 +233,7 @@ function(resolve_spec_version)
 
     # Whatever branch we took, make the header match the resolved values.
     # Nothing is written if it is already identical.
-    if(_tag)
+    if(_tag AND NOT CTOON_SPEC_PIN)
         _sv_write_header("${PROJECT_SOURCE_DIR}/include/ctoon.h" "${_tag}" "${_version}" "${_date}")
         _sv_write_readme("${PROJECT_SOURCE_DIR}/README.md" "${_tag}")
     endif()
