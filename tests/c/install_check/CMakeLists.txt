@@ -7,6 +7,12 @@ project(ctoon_install_check_c LANGUAGES C)
 
 find_package(ctoon CONFIG REQUIRED)
 
+# CI passes -DCTOON_EXPECT_C_ONLY=ON for the C package: it must not ship the C++ header
+option(CTOON_EXPECT_C_ONLY "fail if ctoon::ctoonpp exists in the installed package" OFF)
+if(CTOON_EXPECT_C_ONLY AND TARGET ctoon::ctoonpp)
+    message(FATAL_ERROR "ctoon::ctoonpp must not exist in the C package")
+endif()
+
 add_executable(check_c check.c)
 target_link_libraries(check_c PRIVATE ctoon::ctoon)
 

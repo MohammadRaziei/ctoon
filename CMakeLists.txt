@@ -127,6 +127,7 @@ endif()
 # Installation
 install(TARGETS ctoon_cli
     RUNTIME DESTINATION bin
+    COMPONENT c
 )
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/matlab)
@@ -139,13 +140,16 @@ if(CTOON_BUILD_TESTS)
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
-# Installation: C library (ctoon::ctoon), C++ header (ctoon::ctoonpp), the CLI
-# and a CMake package, so that after `cmake --install` a consumer only needs
+# Installation, split in two components so that CI can ship them separately:
+#   c   : libctoon (ctoon::ctoon), ctoon.h, the CLI and the CMake package
+#   cpp : ctoon.hpp (ctoon::ctoonpp); it only wraps the C API, so a C++ package
+#         is installed as `c` + `cpp`
+# A plain `cmake --install` installs both. A consumer only needs
 #   find_package(ctoon CONFIG REQUIRED)
 #   target_link_libraries(app PRIVATE ctoon::ctoon)   # or ctoon::ctoonpp
-install(DIRECTORY include DESTINATION .)
-install(FILES ${PROJECT_SOURCE_DIR}/src/bindings/cpp/ctoon.hpp DESTINATION include)
-install(TARGETS ctoon ctoonpp EXPORT ctoonTargets
+install(DIRECTORY include DESTINATION . COMPONENT c)
+install(TARGETS ctoon EXPORT ctoonTargets
+    COMPONENT c   # before the artifact kinds, so that it applies to all of them
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
@@ -153,6 +157,17 @@ install(TARGETS ctoon ctoonpp EXPORT ctoonTargets
 install(EXPORT ctoonTargets
     NAMESPACE ctoon::
     DESTINATION lib/cmake/ctoon
+    COMPONENT c
+)
+install(FILES ${PROJECT_SOURCE_DIR}/src/bindings/cpp/ctoon.hpp
+    DESTINATION include
+    COMPONENT cpp
+)
+install(TARGETS ctoonpp EXPORT ctoonppTargets COMPONENT cpp)
+install(EXPORT ctoonppTargets
+    NAMESPACE ctoon::
+    DESTINATION lib/cmake/ctoon
+    COMPONENT cpp
 )
 
 include(CMakePackageConfigHelpers)
@@ -170,6 +185,7 @@ install(FILES
     ${PROJECT_BINARY_DIR}/ctoonConfig.cmake
     ${PROJECT_BINARY_DIR}/ctoonConfigVersion.cmake
     DESTINATION lib/cmake/ctoon
+    COMPONENT c
 )
 
 # Print optimization summary

@@ -1,8 +1,10 @@
 name: c/cpp package
 
-# Builds libctoon (C) + ctoon.hpp (C++) + the CLI, runs `cmake --install` and
-# zips the install tree, CMake package files included, once per platform:
-#   ctoon-c-cpp-<version>-<platform>.zip
+# Builds libctoon (C) + ctoon.hpp (C++) + the CLI, runs `cmake --install` per
+# component and zips each install tree, CMake package files included, once per
+# platform:
+#   ctoon-c-<version>-<platform>.zip    component `c`  : lib, ctoon.h, CLI, ctoon::ctoon
+#   ctoon-cpp-<version>-<platform>.zip  components `c` + `cpp` : the above + ctoon.hpp, ctoon::ctoonpp
 # Each zip is then consumed like a user would (find_package(ctoon CONFIG)):
 # tests/c/install_check and tests/cpp/install_check.
 
@@ -48,7 +50,8 @@ jobs:
           part() { sed -n "s/^#define CTOON_VERSION_$1[[:space:]]*\([0-9][0-9]*\).*/\1/p" include/ctoon.h | head -n 1; }
           v="$(part MAJOR).$(part MINOR).$(part PATCH)"
           echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "name=ctoon-c-cpp-$v-${{ matrix.platform }}" >> "$GITHUB_OUTPUT"
+          echo "c=ctoon-c-$v-${{ matrix.platform }}" >> "$GITHUB_OUTPUT"
+          echo "cpp=ctoon-cpp-$v-${{ matrix.platform }}" >> "$GITHUB_OUTPUT"
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCTOON_BUILD_TESTS=OFF -DCTOON_BUILD_EXAMPLES=OFF
@@ -57,25 +60,33 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Install
-        run: cmake --install build --config Release --prefix "pkg/${{ steps.ver.outputs.name }}"
-
-      - name: Check the installed package like a user would
         run: |
-          for lang in c cpp; do
-            cmake -S "tests/$lang/install_check" -B "consume-$lang" -DCMAKE_PREFIX_PATH="$PWD/pkg/${{ steps.ver.outputs.name }}"
-            cmake --build "consume-$lang" --config Release
-            ctest --test-dir "consume-$lang" -C Release --output-on-failure
-          done
+          cmake --install build --config Release --component c   --prefix "pkg/${{ steps.ver.outputs.c }}"
+          cmake --install build --config Release --component c   --prefix "pkg/${{ steps.ver.outputs.cpp }}"
+          cmake --install build --config Release --component cpp --prefix "pkg/${{ steps.ver.outputs.cpp }}"
 
-      - name: List package
-        run: find "pkg/${{ steps.ver.outputs.name }}" -type f | sort
+      - name: Check the installed packages like a user would
+        run: |
+          cmake -S tests/c/install_check -B consume-c -DCTOON_EXPECT_C_ONLY=ON -DCMAKE_PREFIX_PATH="$PWD/pkg/${{ steps.ver.outputs.c }}"
+          cmake --build consume-c --config Release
+          ctest --test-dir consume-c -C Release --output-on-failure
+          cmake -S tests/cpp/install_check -B consume-cpp -DCMAKE_PREFIX_PATH="$PWD/pkg/${{ steps.ver.outputs.cpp }}"
+          cmake --build consume-cpp --config Release
+          ctest --test-dir consume-cpp -C Release --output-on-failure
+
+      - name: List packages
+        run: find pkg -type f | sort
 
       - name: Zip
         working-directory: pkg
-        run: cmake -E tar cf "../${{ steps.ver.outputs.name }}.zip" --format=zip "${{ steps.ver.outputs.name }}"
+        run: |
+          cmake -E tar cf "../${{ steps.ver.outputs.c }}.zip"   --format=zip "${{ steps.ver.outputs.c }}"
+          cmake -E tar cf "../${{ steps.ver.outputs.cpp }}.zip" --format=zip "${{ steps.ver.outputs.cpp }}"
 
       - uses: actions/upload-artifact@v7
         with:
           name: cpp-lib-${{ matrix.platform }}
-          path: ${{ steps.ver.outputs.name }}.zip
+          path: |
+            ${{ steps.ver.outputs.c }}.zip
+            ${{ steps.ver.outputs.cpp }}.zip
           if-no-files-found: error
