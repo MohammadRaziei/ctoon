@@ -54,7 +54,7 @@ jobs:
           echo "cpp=ctoon-cpp-$v-${{ matrix.platform }}" >> "$GITHUB_OUTPUT"
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCTOON_BUILD_TESTS=OFF -DCTOON_BUILD_EXAMPLES=OFF
+        run: cmake -S . -B build -DCTOON_SPEC_PIN=ON -DCMAKE_BUILD_TYPE=Release -DCTOON_BUILD_TESTS=OFF -DCTOON_BUILD_EXAMPLES=OFF
 
       - name: Build
         run: cmake --build build --config Release

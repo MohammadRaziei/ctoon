@@ -186,8 +186,8 @@ endfunction()
 
 # CTOON_SPEC_PIN=ON: use exactly what is committed in supported_spec.conf.
 # No network access, and supported_spec.conf, include/ctoon.h and README.md
-# are left untouched. Default OFF: a fresh build tree resolves the newest
-# release of toon-format/spec (see below).
+# are left untouched. Default OFF (local builds keep resolving the newest
+# release of toon-format/spec, see below); CI passes -DCTOON_SPEC_PIN=ON.
 option(CTOON_SPEC_PIN "Use the committed supported_spec.conf; do not resolve the latest toon-format/spec" OFF)
 
 function(resolve_spec_version)

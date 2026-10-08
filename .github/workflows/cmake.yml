@@ -194,6 +194,7 @@ jobs:
     - name: Configure CMake with coverage
       run: |
         cmake -B build \
+          -DCTOON_SPEC_PIN=ON \
           -DCTOON_BUILD_EXAMPLES=OFF \
           -DCTOON_BUILD_PYTHON=ON \
           -DCTOON_BUILD_TESTS=ON \

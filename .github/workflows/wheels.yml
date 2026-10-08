@@ -64,6 +64,11 @@ jobs:
       env:
         MACOSX_DEPLOYMENT_TARGET: "10.13"
         CIBW_ARCHS_MACOS: universal2
+        # Wheels use the committed spec. scikit-build-core passes CMAKE_ARGS to
+        # CMake; Linux wheels build inside containers, which only see the
+        # variables listed in CIBW_ENVIRONMENT_PASS_LINUX.
+        CMAKE_ARGS: -DCTOON_SPEC_PIN=ON
+        CIBW_ENVIRONMENT_PASS_LINUX: CMAKE_ARGS
 #          CIBW_ARCHS_WINDOWS: auto ARM64
         # 3.9-3.11: normal per-version build (nanobind has no stable-ABI
         # support below 3.12, it silently builds a regular extension there).
