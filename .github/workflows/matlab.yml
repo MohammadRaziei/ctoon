@@ -99,6 +99,8 @@ jobs:
           # First MATLAB release with native Apple silicon support.
           - { platform: macos-arm64,    os: macos-latest,    release: R2023b }
     steps:
+
+
     - uses: actions/download-artifact@v8
       with:
         name: matlab-dist
@@ -110,6 +112,11 @@ jobs:
         import glob, zipfile
         z = glob.glob("dl/*.zip")[0]
         zipfile.ZipFile(z).extractall("src-dist")
+
+
+    - name: Set up MinGW (Windows)
+      if: runner.os == 'Windows'
+      run: choco install mingw -y
 
     - name: Set up MATLAB
       uses: matlab-actions/setup-matlab@v2
