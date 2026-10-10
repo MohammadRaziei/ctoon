@@ -123,17 +123,16 @@ jobs:
       with:
         release: ${{ matrix.release }}
 
-    # Same entry point an end user runs on the source dist: ctoon_build
-    # compiles ctoon_mex.c + ctoon.c with `mex` into <out>/+ctoon/private.
-    - name: Build MEX from the source dist and smoke-test it
+    # Build only. Same entry point an end user runs on the source dist:
+    # ctoon_build compiles ctoon_mex.c + ctoon.c with `mex` into
+    # <out>/+ctoon/private. Testing is the `test` job's business, which loads
+    # the zip produced below without compiling anything.
+    - name: Build MEX from the source dist
       uses: matlab-actions/run-command@v2
       with:
         command: >-
           addpath('${{ github.workspace }}/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src');
           ctoon_build('${{ github.workspace }}/out', true);
-          v = ctoon.decode(ctoon.encode(struct('x', 1.5)));
-          assert(isstruct(v) && abs(double(v.x) - 1.5) < 1e-10);
-          disp(['MATLAB ' version ' / mexext ' mexext]);
 
     - name: Package prebuilt binding
       shell: python
