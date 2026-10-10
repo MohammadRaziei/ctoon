@@ -2698,18 +2698,41 @@ static void ctoon_ctn_stack_pop(ctoon_ctn_stack *st) {
  * Parse context
  *===========================================================================*/
 
+/* One prepared content line (spec §12 line preparation already applied):
+ * LF split, a single trailing CR dropped, trailing spaces dropped; comment
+ * lines and blank lines never become a ctoon_line. */
+typedef struct {
+    const u8 *s;      /* first content byte, past the indentation */
+    const u8 *e;      /* one past the last content byte */
+    const u8 *next;   /* start of the following raw line */
+    int       depth;  /* indentation depth, before any §14.4 depth-jump shift */
+} ctoon_line;
+
+/* Nesting guard: every level of indentation is one level of parser
+ * recursion, so cap it instead of letting hostile input exhaust the stack. */
+#ifndef CTOON_READ_MAX_DEPTH
+#define CTOON_READ_MAX_DEPTH 1000
+#endif
+
 typedef struct {
     const u8       *hdr;     /* start of (padded) input */
-    const u8       *cur;     /* read cursor */
+    const u8       *cur;     /* TOON: start of the next unread raw line; JSON: read cursor */
     const u8       *eof;     /* one past last real byte */
+    const u8       *epos;    /* error position hint (NULL = use cur) */
     int             indent;  /* spaces per level */
-    char            delim;   /* active delimiter: ',' '|' '\t' */
     ctoon_read_flag flags;
     ctoon_read_vpool       vp;
     ctoon_ctn_stack       st;
     ctoon_str_pool_buf       sp;
     ctoon_read_err *err;
     usize           hdr_slots; /* val slots consumed by ctoon_doc */
+
+    /* TOON line reader state */
+    ctoon_line      ln;            /* peeked content line, valid while ln_ok */
+    bool            ln_ok;
+    bool            blank_pending; /* blank lines were skipped before ln */
+    int             shift;         /* §14.4 depth-jump shift currently in force */
+    int             span_floor;    /* smallest header depth among open, started header spans */
 } ctoon_read_ctx;
 
 /* Non-strict (spec §13 `strict: false`) is CTOON_READ_NON_STRICT.
@@ -2720,96 +2743,240 @@ static bool ctoon_read_is_strict(const ctoon_read_ctx *c) {
 }
 
 /*----------------------------------------------------------------------------
- * Cursor helpers
- *---------------------------------------------------------------------------*/
-
-static bool ctoon_cur_at_eof(const ctoon_read_ctx *c) { return c->cur >= c->eof; }
-static u8   ctoon_cur_peek  (const ctoon_read_ctx *c) { return c->cur < c->eof ? *c->cur : 0; }
-
-static void ctoon_cur_skip_spaces(ctoon_read_ctx *c) {
-    while (c->cur < c->eof && *c->cur == ' ') c->cur++;
-}
-
-static void ctoon_cur_skip_to_eol(ctoon_read_ctx *c) {
-    while (c->cur < c->eof && *c->cur != '\n') c->cur++;
-}
-
-static void ctoon_cur_skip_nl(ctoon_read_ctx *c) {
-    if (c->cur < c->eof && *c->cur == '\r') c->cur++;
-    if (c->cur < c->eof && *c->cur == '\n') c->cur++;
-}
-
-static bool ctoon_cur_at_eol(const ctoon_read_ctx *c) {
-    return c->cur >= c->eof || *c->cur == '\n' || *c->cur == '\r';
-}
-
-static int ctoon_cur_measure_indent(const ctoon_read_ctx *c) {
-    const u8 *p = c->cur;
-    while (p < c->eof && *p == ' ') p++;
-    int from_spaces = (int)((p - c->cur) / (usize)c->indent);
-    if (p < c->eof && *p == '\t' && !ctoon_read_is_strict(c)) {
-        /*
-         * §12 non-strict mode: "implementations MAY accept tab characters
-         * in indentation... depth computation for tabs is implementation-
-         * defined and MUST be documented." This implementation counts
-         * each leading tab as one full indentation level (in addition to
-         * any complete indentSize-multiples of spaces already counted),
-         * so a document can mix "spaces then tabs" leading whitespace and
-         * still reach a deeper level.
-         */
-        int tabs = 0;
-        while (p < c->eof && *p == '\t') { tabs++; p++; }
-        return from_spaces + tabs;
-    }
-    return from_spaces;
-}
-
-static bool ctoon_cur_consume_indent(ctoon_read_ctx *c, int depth) {
-    if (!ctoon_read_is_strict(c)) {
-        const u8 *p = c->cur;
-        int sp = 0, tabs = 0;
-        while (p < c->eof && *p == ' ') { sp++; p++; }
-        while (p < c->eof && *p == '\t') { tabs++; p++; }
-        if (tabs > 0) {
-            /* Matches ctoon_cur_measure_indent's tab-leniency formula
-             * above: if that formula says this whitespace reaches (at
-             * least) `depth`, consume ALL of it — the whole leading
-             * space+tab run is this line's indentation in the tab case,
-             * not just an exact indentSize multiple of it. */
-            if (sp / c->indent + tabs < depth) return false;
-            c->cur = p;
-            while (c->cur < c->eof && *c->cur == ' ') c->cur++;
-            return true;
-        }
-    }
-    int spaces = depth * c->indent;
-    for (int i = 0; i < spaces; i++) {
-        if (c->cur >= c->eof || *c->cur != ' ') return false;
-        c->cur++;
-    }
-    if (!ctoon_read_is_strict(c)) {
-        /* §12 non-strict leniency: indentation that isn't an exact
-         * multiple of indentSize is tolerated (strict mode rejects it
-         * elsewhere) — swallow any extra leading spaces past this exact
-         * multiple too, so they don't bleed into the following key/value
-         * text as if they were part of it. */
-        while (c->cur < c->eof && *c->cur == ' ') c->cur++;
-    }
-    return true;
-}
-
-/*----------------------------------------------------------------------------
  * Error helper
  *---------------------------------------------------------------------------*/
 
 static bool ctoon_read_set_err(ctoon_read_ctx *c, ctoon_read_code code, const char *msg) {
     if (c->err) {
+        const u8 *at = c->epos ? c->epos : c->cur;
         c->err->code = code;
         c->err->msg  = msg;
-        c->err->pos  = (usize)(c->cur - c->hdr);
+        c->err->pos  = (at >= c->hdr) ? (usize)(at - c->hdr) : 0;
     }
     return false;
 }
+
+/*----------------------------------------------------------------------------
+ * Line reader (spec §5.1, §12)
+ *
+ * c->cur always sits at the start of a raw line that has not been looked at
+ * yet. ctoon_peek() prepares lines in the order §12 prescribes (split at LF,
+ * drop one trailing CR, drop trailing spaces, remove comment lines, identify
+ * blank lines) until it reaches the next content line, caches it in c->ln and
+ * leaves c->cur on that line; ctoon_consume() steps past it.
+ *---------------------------------------------------------------------------*/
+
+#define CTOON_U64_MAX ((u64)~(u64)0)
+
+/* 1: c->ln holds the next content line.  0: end of input.  -1: error. */
+static int ctoon_peek(ctoon_read_ctx *c) {
+    if (c->ln_ok) return 1;
+    const bool strict = ctoon_read_is_strict(c);
+    while (c->cur < c->eof) {
+        const u8 *p    = c->cur;
+        const u8 *nl   = (const u8 *)memchr(p, '\n', (usize)(c->eof - p));
+        const u8 *e    = nl ? nl : c->eof;
+        const u8 *next = nl ? nl + 1 : c->eof;
+        if (e > p && e[-1] == '\r') e--;            /* §12: one CR before LF */
+        while (e > p && e[-1] == ' ') e--;          /* §12: trailing spaces */
+
+        const u8 *s = p;
+        usize sp = 0, tabs = 0;
+        while (s < e && (*s == ' ' || *s == '\t')) {
+            if (*s == ' ') sp++; else tabs++;
+            s++;
+        }
+        if (s == e) {
+            /* empty, or nothing but spaces and tabs (§14.4: blank in
+             * non-strict mode; a tab in strict-mode indentation is an error) */
+            if (tabs && strict) {
+                c->epos = p;
+                ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "tab in indentation");
+                return -1;
+            }
+            c->blank_pending = true;
+            c->cur = next;
+            continue;
+        }
+        if (tabs == 0 && *s == '#') { c->cur = next; continue; }   /* §5.1 comment */
+
+        usize depth;
+        if (strict) {
+            if (tabs) {
+                c->epos = p;
+                ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "tab in indentation");
+                return -1;
+            }
+            if (sp % (usize)c->indent) {
+                c->epos = p;
+                ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                                   "indentation is not a multiple of the indent size");
+                return -1;
+            }
+            depth = sp / (usize)c->indent;
+        } else {
+            depth = tabs + sp / (usize)c->indent;   /* §14.4 indentation recovery */
+        }
+        if (depth > (usize)CTOON_READ_MAX_DEPTH) {
+            c->epos = p;
+            ctoon_read_set_err(c, CTOON_READ_ERROR_DEPTH, "document is nested too deeply");
+            return -1;
+        }
+
+        c->cur = p;
+        c->ln.s = s; c->ln.e = e; c->ln.next = next; c->ln.depth = (int)depth;
+        c->ln_ok = true;
+
+        /* §12: a blank line inside a header span is an error (non-strict
+         * mode ignores it, §14.4). It is inside the span of an open, started
+         * header whenever the line after it is still deeper than that header. */
+        if (c->blank_pending && strict && c->ln.depth - c->shift > c->span_floor) {
+            c->epos = p;
+            ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "blank line inside header span");
+            return -1;
+        }
+        return 1;
+    }
+    return 0;
+}
+
+static void ctoon_consume(ctoon_read_ctx *c) {
+    c->cur = c->ln.next;
+    c->ln_ok = false;
+    c->blank_pending = false;
+}
+
+/*----------------------------------------------------------------------------
+ * Scopes: the lines that belong to a nested object, list, table or entry list.
+ *
+ * `c` is the content depth the scope expects (header depth + 1). When the
+ * first line stands deeper (a depth jump, §8) strict mode errors and
+ * non-strict mode adopts that depth (§14.4 recovery 5) by shifting every
+ * depth in the scope down; a later line between c and the adopted depth is
+ * an error. shift0 is the shift to restore when the scope closes.
+ *---------------------------------------------------------------------------*/
+
+typedef struct { int c; int shift0; } ctoon_scope;
+
+/* 1: scope has lines (first one peeked).  0: empty scope.  -1: error. */
+static int ctoon_scope_open(ctoon_read_ctx *c, int content_depth, ctoon_scope *sc) {
+    sc->c = content_depth;
+    sc->shift0 = c->shift;
+    int r = ctoon_peek(c);
+    if (r <= 0) return r;
+    int e = c->ln.depth - c->shift;
+    if (e < content_depth) return 0;
+    if (e > content_depth) {
+        if (ctoon_read_is_strict(c)) {
+            c->epos = c->ln.s;
+            ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                               "indentation depth jump");
+            return -1;
+        }
+        c->shift += e - content_depth;
+    }
+    return 1;
+}
+
+/* 1: next line of the scope is peeked, at exactly the content depth.
+ * 0: scope ended.  -1: error. */
+static int ctoon_scope_next(ctoon_read_ctx *c, const ctoon_scope *sc) {
+    int r = ctoon_peek(c);
+    if (r <= 0) return r;
+    if (c->ln.depth - sc->shift0 < sc->c) return 0;
+    int e = c->ln.depth - c->shift;
+    if (e < sc->c) {
+        c->epos = c->ln.s;
+        ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                           "line is shallower than the adopted scope depth");
+        return -1;
+    }
+    if (e > sc->c) {
+        c->epos = c->ln.s;
+        ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "unexpected over-indented line");
+        return -1;
+    }
+    return 1;
+}
+
+static void ctoon_scope_close(ctoon_read_ctx *c, const ctoon_scope *sc) {
+    c->shift = sc->shift0;
+}
+
+/*----------------------------------------------------------------------------
+ * Line scanning (spec §5.2): a `"` opens a quoted span wherever it occurs; the
+ * next `"` that is not part of an escape closes it, and an unclosed span runs
+ * to the end of the line. Colons, delimiters, brackets and braces inside a
+ * span are quoted.
+ *---------------------------------------------------------------------------*/
+
+/* First unquoted occurrence of `want` in [p, e), or NULL. */
+static const u8 *ctoon_find_unq(const u8 *p, const u8 *e, u8 want) {
+    bool inq = false;
+    for (; p < e; p++) {
+        u8 ch = *p;
+        if (inq) {
+            if (ch == '\\') { if (p + 1 < e) p++; }
+            else if (ch == '"') inq = false;
+            continue;
+        }
+        if (ch == '"') { inq = true; continue; }
+        if (ch == want) return p;
+    }
+    return NULL;
+}
+
+/* First unquoted colon of [p, e) (returned), and the first unquoted '[' that
+ * precedes it (*bracket, NULL if none). */
+static const u8 *ctoon_scan_line(const u8 *p, const u8 *e, const u8 **bracket) {
+    bool inq = false;
+    *bracket = NULL;
+    for (; p < e; p++) {
+        u8 ch = *p;
+        if (inq) {
+            if (ch == '\\') { if (p + 1 < e) p++; }
+            else if (ch == '"') inq = false;
+            continue;
+        }
+        if (ch == '"') { inq = true; continue; }
+        if (ch == ':') return p;
+        if (ch == '[' && !*bracket) *bracket = p;
+    }
+    *bracket = NULL;   /* no colon: the line is a scalar, never a header */
+    return NULL;
+}
+
+/*----------------------------------------------------------------------------
+ * UTF-8 validation (spec §4: ill-formed UTF-8 MUST error)
+ *---------------------------------------------------------------------------*/
+
+#if !CTOON_DISABLE_UTF8_VALIDATION
+static bool ctoon_utf8_valid(const u8 *p, const u8 *e) {
+    while (p < e) {
+        u8 b = *p;
+        if (b < 0x80) { p++; continue; }
+        usize rem = (usize)(e - p);
+        if (b >= 0xC2 && b <= 0xDF) {
+            if (rem < 2 || (p[1] & 0xC0) != 0x80) return false;
+            p += 2;
+        } else if (b >= 0xE0 && b <= 0xEF) {
+            if (rem < 3 || (p[1] & 0xC0) != 0x80 || (p[2] & 0xC0) != 0x80) return false;
+            if (b == 0xE0 && p[1] < 0xA0) return false;      /* overlong */
+            if (b == 0xED && p[1] > 0x9F) return false;      /* surrogates */
+            p += 3;
+        } else if (b >= 0xF0 && b <= 0xF4) {
+            if (rem < 4 || (p[1] & 0xC0) != 0x80 || (p[2] & 0xC0) != 0x80 ||
+                (p[3] & 0xC0) != 0x80) return false;
+            if (b == 0xF0 && p[1] < 0x90) return false;      /* overlong */
+            if (b == 0xF4 && p[1] > 0x8F) return false;      /* > U+10FFFF */
+            p += 4;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 /*----------------------------------------------------------------------------
  * Container open / close
@@ -2854,7 +3021,8 @@ static usize ctoon_dedup_obj_lww(ctoon_read_ctx *c, ctoon_val *cv, usize count) 
     const ctoon_val *blk_end[MAX_KV];
     const char      *keys[MAX_KV];
     usize            keylens[MAX_KV];
-    bool             keep[MAX_KV];
+    usize            last_of[MAX_KV];   /* index of the last block carrying this key */
+    bool             first[MAX_KV];     /* is this the first block carrying its key */
 
     const ctoon_val *kv = cv + 1;
     for (usize i = 0; i < count; i++) {
@@ -2864,30 +3032,61 @@ static usize ctoon_dedup_obj_lww(ctoon_read_ctx *c, ctoon_val *cv, usize count) 
         const ctoon_val *v = ctoon_val_next_sibling(kv);
         const ctoon_val *next_kv = ctoon_val_next_sibling(v);
         blk_end[i] = next_kv;
-        keep[i] = true;
+        first[i] = true;
+        last_of[i] = i;
         kv = next_kv;
     }
 
     bool any_dup = false;
     for (usize i = 0; i < count; i++) {
+        if (!first[i]) continue;
         for (usize j = i + 1; j < count; j++) {
             if (keylens[j] == keylens[i] &&
                 memcmp(keys[j], keys[i], keylens[i]) == 0) {
-                keep[i] = false;
+                first[j] = false;
+                last_of[i] = j;
                 any_dup = true;
-                break;
             }
         }
     }
     if (!any_dup) return count;
 
-    u8 *write = (u8 *)(const void *)(cv + 1);
+    /* §14.4 recovery 2: last write wins, and the key keeps the position of its
+     * first occurrence. Blocks are moved as units (all internal offsets are
+     * relative), through a scratch copy because their sizes differ. */
+    u8 *base = (u8 *)(void *)(cv + 1);
+    usize total = (usize)((u8 *)(void *)c->vp.cur - base);
+    u8 *tmp = (u8 *)c->vp.alc.malloc(c->vp.alc.ctx, total ? total : 1);
     usize new_count = 0;
+    if (tmp) {
+        u8 *w = tmp;
+        for (usize i = 0; i < count; i++) {
+            if (!first[i]) continue;
+            const ctoon_val *b = blk_start[last_of[i]];
+            usize blen = (usize)((const u8 *)blk_end[last_of[i]] - (const u8 *)b);
+            memcpy(w, b, blen);
+            w += blen;
+            new_count++;
+        }
+        usize used = (usize)(w - tmp);
+        memcpy(base, tmp, used);
+        c->vp.cur = (ctoon_val *)(void *)(base + used);
+        c->vp.alc.free(c->vp.alc.ctx, tmp);
+        return new_count;
+    }
+
+    /* Out of memory for the scratch copy: keep only the last occurrence of
+     * each key, in place (key order may differ from §14.4 in this case). */
+    u8 *write = base;
     for (usize i = 0; i < count; i++) {
-        if (!keep[i]) continue;
+        bool keep = true;
+        for (usize j = i + 1; j < count; j++) {
+            if (keylens[j] == keylens[i] &&
+                memcmp(keys[j], keys[i], keylens[i]) == 0) { keep = false; break; }
+        }
+        if (!keep) continue;
         usize blen = (usize)((const u8 *)blk_end[i] - (const u8 *)blk_start[i]);
-        if ((const u8 *)blk_start[i] != write)
-            memmove(write, blk_start[i], blen);
+        if ((const u8 *)blk_start[i] != write) memmove(write, blk_start[i], blen);
         write += blen;
         new_count++;
     }
@@ -2965,230 +3164,207 @@ static void ctoon_ctn_child_added(ctoon_read_ctx *c) {
  * Scalar parsers
  *===========================================================================*/
 
-/* Parse a quoted string starting at cur (must be '"').
-   Decodes escape sequences into a temporary buffer, then copies into the
-   spool.  Sets val->tag and val->uni.str on success. */
 /* Quoted-string reader shared by the TOON parser and the JSON reader.
  *
+ * `src` points just past the opening quote and `lim` bounds the readable
+ * bytes (the end of the line for TOON, end of input for JSON). The decoded
+ * string is written straight into the string pool (decoding never grows the
+ * text) and the pointer just past the closing quote is returned, or NULL with
+ * c->err set.
+ *
  * Which escapes are valid depends on the FORMAT being read, not on the
- * string: TOON (spec 4.1) has exactly \\ \" \n \r \t and \uXXXX, and a
- * decoder MUST reject every other escape; JSON (RFC 8259) additionally has
- * \b \f and \/. So `json` only widens the accepted set -- it never lets
- * TOON input through with JSON-only escapes. */
-static bool ctoon_parse_str_quoted_impl(ctoon_read_ctx *c, ctoon_val *val, bool json) {
-    c->cur++;   /* skip opening '"' */
-    const u8 *src = c->cur;
+ * string: TOON (spec 4.4, §7.1) has exactly \\ \" \n \r \t and \uXXXX, must
+ * reject every other escape and every surrogate \uXXXX escape, lone or paired.
+ * JSON (RFC 8259) additionally has \b \f \/ and surrogate pairs. So `json`
+ * only widens the accepted set. */
+static const u8 *ctoon_decode_quoted(ctoon_read_ctx *c, const u8 *src, const u8 *lim,
+                                     bool json, ctoon_val *val) {
+#define CTOON_QERR(pos, code, msg) \
+    do { c->epos = (pos); ctoon_read_set_err(c, (code), (msg)); return NULL; } while (0)
 
-    /* First pass: compute worst-case decoded length */
-    usize dec_len = 0;
-    {
-        const u8 *s = src;
-        while (s < c->eof && *s != '"' && *s != '\n') {
-            if (*s == '\\') {
-                s++;
-                if (s >= c->eof) break;
-                dec_len += (*s == 'u') ? 3 : 1;
-                if (*s == 'u') s += 4; else s++;
-                continue;
-            }
-            dec_len++;
-            s++;
+    /* Find the closing quote: a backslash escapes the next byte. */
+    const u8 *q = src;
+    while (q < lim && *q != '"' && *q != '\n') {
+        if (*q == '\\') {
+            q++;
+            if (q >= lim || *q == '\n') break;
         }
+        q++;
     }
+    if (q >= lim || *q != '"')
+        CTOON_QERR(src, CTOON_READ_ERROR_INVALID_STRING, "unterminated string");
 
-    /* Decode into a temporary heap buffer (freed before return) */
-    char *tmp_buf = (char *)c->vp.alc.malloc(c->vp.alc.ctx, dec_len + 1);
-    if (!tmp_buf)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-    char *dst_cur = tmp_buf;
+    usize need = (usize)(q - src) + 1;
+    if (c->sp.cap - c->sp.used < need)
+        CTOON_QERR(src, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
 
-    while (src < c->eof && *src != '"' && *src != '\n') {
-        if (likely(*src != '\\')) {
-            *dst_cur++ = (char)*src++;
-            continue;
-        }
-        src++;  /* skip backslash */
-        if (src >= c->eof)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING, "truncated escape");
-        switch (*src) {
-            case '"':  *dst_cur++ = '"';  src++; break;
-            case '\\': *dst_cur++ = '\\'; src++; break;
-            case 'n':  *dst_cur++ = '\n'; src++; break;
-            case 'r':  *dst_cur++ = '\r'; src++; break;
-            case 't':  *dst_cur++ = '\t'; src++; break;
+    char *d0  = c->sp.buf + c->sp.used;
+    char *dst = d0;
+    const u8 *p = src;
+    while (p < q) {
+        if (likely(*p != '\\')) { *dst++ = (char)*p++; continue; }
+        p++;                                   /* backslash; an escaped byte follows */
+        switch (*p) {
+            case '"':  *dst++ = '"';  p++; break;
+            case '\\': *dst++ = '\\'; p++; break;
+            case 'n':  *dst++ = '\n'; p++; break;
+            case 'r':  *dst++ = '\r'; p++; break;
+            case 't':  *dst++ = '\t'; p++; break;
             case '/': case 'b': case 'f':
-                if (!json) {                      /* TOON: not a valid escape (spec 4.1) */
-                    c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                    "invalid escape sequence");
-                }
-                *dst_cur++ = (*src == '/') ? '/' : (*src == 'b') ? '\b' : '\f';
-                src++;
+                if (!json)                      /* TOON: not a valid escape */
+                    CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "invalid escape sequence");
+                *dst++ = (*p == '/') ? '/' : (*p == 'b') ? '\b' : '\f';
+                p++;
                 break;
             case 'u': {
-                if (src + 4 >= c->eof) {
-                    c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING, "truncated \\u");
-                }
-                src++;
+                if (p + 4 >= q)
+                    CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "truncated \\u escape");
                 u32 cp = 0;
-                for (int k = 0; k < 4; k++) {
-                    u8  ch  = *src++;
+                for (int k = 1; k <= 4; k++) {
+                    u8 ch = p[k];
                     u32 nib;
                     if      (ch >= '0' && ch <= '9') nib = (u32)(ch - '0');
                     else if (ch >= 'a' && ch <= 'f') nib = (u32)(ch - 'a' + 10);
                     else if (ch >= 'A' && ch <= 'F') nib = (u32)(ch - 'A' + 10);
-                    else {
-                        c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING, "bad \\u hex");
-                    }
+                    else CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "bad \\u hex digit");
                     cp = (cp << 4) | nib;
                 }
-                if (cp >= 0xDC00 && cp <= 0xDFFF) {
-                    /* lone low surrogate: never valid on its own */
-                    c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                    "lone low surrogate");
-                }
-                if (cp >= 0xD800 && cp <= 0xDBFF) {
-                    /* high surrogate: MUST be immediately followed by a
-                     * "\uDCxx".."\uDFxx" low surrogate to form a valid pair. */
-                    if (src + 6 > c->eof || src[0] != '\\' || src[1] != 'u') {
-                        c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                        "lone high surrogate");
-                    }
+                p += 5;                         /* past 'u' and the four digits */
+                if (cp >= 0xD800 && cp <= 0xDFFF) {
+                    if (!json)
+                        CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING,
+                                   "surrogate \\u escape is not allowed");
+                    if (cp >= 0xDC00)
+                        CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "lone low surrogate");
+                    /* high surrogate: must be followed by a \uDC00-\uDFFF low one */
+                    if (p + 6 > q || p[0] != '\\' || p[1] != 'u')
+                        CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "lone high surrogate");
                     u32 lo = 0;
-                    const u8 *lp = src + 2;
-                    for (int k = 0; k < 4; k++) {
-                        u8 ch = lp[k];
+                    for (int k = 2; k <= 5; k++) {
+                        u8 ch = p[k];
                         u32 nib;
                         if      (ch >= '0' && ch <= '9') nib = (u32)(ch - '0');
                         else if (ch >= 'a' && ch <= 'f') nib = (u32)(ch - 'a' + 10);
                         else if (ch >= 'A' && ch <= 'F') nib = (u32)(ch - 'A' + 10);
-                        else {
-                            c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                            return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                            "bad \\u hex");
-                        }
+                        else CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "bad \\u hex digit");
                         lo = (lo << 4) | nib;
                     }
-                    if (lo < 0xDC00 || lo > 0xDFFF) {
-                        c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                        "lone high surrogate");
-                    }
+                    if (lo < 0xDC00 || lo > 0xDFFF)
+                        CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "lone high surrogate");
                     cp = 0x10000 + ((cp - 0xD800) << 10) + (lo - 0xDC00);
-                    src = lp + 4; /* consumed the low-surrogate escape too */
+                    p += 6;
                 }
                 if (cp < 0x80) {
-                    *dst_cur++ = (char)(u8)cp;
+                    *dst++ = (char)(u8)cp;
                 } else if (cp < 0x800) {
-                    *dst_cur++ = (char)(u8)(0xC0 | (cp >> 6));
-                    *dst_cur++ = (char)(u8)(0x80 | (cp & 0x3F));
+                    *dst++ = (char)(u8)(0xC0 | (cp >> 6));
+                    *dst++ = (char)(u8)(0x80 | (cp & 0x3F));
                 } else if (cp < 0x10000) {
-                    *dst_cur++ = (char)(u8)(0xE0 | (cp >> 12));
-                    *dst_cur++ = (char)(u8)(0x80 | ((cp >> 6) & 0x3F));
-                    *dst_cur++ = (char)(u8)(0x80 | (cp & 0x3F));
+                    *dst++ = (char)(u8)(0xE0 | (cp >> 12));
+                    *dst++ = (char)(u8)(0x80 | ((cp >> 6) & 0x3F));
+                    *dst++ = (char)(u8)(0x80 | (cp & 0x3F));
                 } else {
-                    *dst_cur++ = (char)(u8)(0xF0 | (cp >> 18));
-                    *dst_cur++ = (char)(u8)(0x80 | ((cp >> 12) & 0x3F));
-                    *dst_cur++ = (char)(u8)(0x80 | ((cp >> 6) & 0x3F));
-                    *dst_cur++ = (char)(u8)(0x80 | (cp & 0x3F));
+                    *dst++ = (char)(u8)(0xF0 | (cp >> 18));
+                    *dst++ = (char)(u8)(0x80 | ((cp >> 12) & 0x3F));
+                    *dst++ = (char)(u8)(0x80 | ((cp >> 6) & 0x3F));
+                    *dst++ = (char)(u8)(0x80 | (cp & 0x3F));
                 }
                 break;
             }
             default:
-                c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING,
-                                "invalid escape sequence");
+                CTOON_QERR(p, CTOON_READ_ERROR_INVALID_STRING, "invalid escape sequence");
         }
     }
-    if (src >= c->eof || *src != '"') {
-        c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_INVALID_STRING, "unterminated string");
-    }
 
-    usize actual_len = (usize)(dst_cur - tmp_buf);
-    const char *interned = ctoon_str_pool_buf_put(&c->sp, (const u8 *)tmp_buf, actual_len);
-    c->vp.alc.free(c->vp.alc.ctx, tmp_buf);
-    if (!interned)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+    usize len = (usize)(dst - d0);
+    *dst = '\0';
+    c->sp.used += len + 1;
+    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NONE, len);
+    val->uni.str = d0;
+    return q + 1;
+#undef CTOON_QERR
+}
 
-    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NONE, actual_len);
-    val->uni.str = interned;
-    c->cur = src + 1;   /* skip closing '"' */
+/* JSON reader entry point: c->cur is at the opening quote. */
+static bool ctoon_parse_str_quoted_json(ctoon_read_ctx *c, ctoon_val *val) {
+    const u8 *after = ctoon_decode_quoted(c, c->cur + 1, c->eof, true, val);
+    if (!after) return false;
+    c->cur = after;
     return true;
 }
 
-static bool ctoon_parse_str_quoted(ctoon_read_ctx *c, ctoon_val *val) {
-    return ctoon_parse_str_quoted_impl(c, val, false);   /* TOON */
-}
-static bool ctoon_parse_str_quoted_json(ctoon_read_ctx *c, ctoon_val *val) {
-    return ctoon_parse_str_quoted_impl(c, val, true);    /* JSON */
-}
+/*============================================================================
+ * Token parsers (TOON): keys, field names and values
+ *===========================================================================*/
 
-/* Parse an unquoted token (key or value).
-   stop_chars: additional characters that terminate the token (besides EOL).
-   Sets val->tag/uni on success. */
-static bool ctoon_parse_str_raw(ctoon_read_ctx *c, ctoon_val *val,
-                                const char *stop_chars) {
-    ctoon_cur_skip_spaces(c);
-    if (ctoon_cur_at_eol(c))
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER, "expected value");
-
-    /* Quoted string: dispatch to the proper quoted parser */
-    if (ctoon_cur_peek(c) == '"') {
-        if (!ctoon_parse_str_quoted(c, val)) return false;
-        if (!stop_chars) {
-            /* Whole-value context (not a delimited cell): §14.2 "characters
-             * after a quoted token's closing quote" is an error in ANY
-             * mode, not just strict. */
-            ctoon_cur_skip_spaces(c);
-            if (!ctoon_cur_at_eol(c))
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
-                                "characters after closing quote");
-        }
-        return true;
+/* Copies an unquoted token into the string pool. */
+static bool ctoon_put_raw_str(ctoon_read_ctx *c, ctoon_val *val, const u8 *s, usize len) {
+    if (c->sp.cap - c->sp.used < len + 1) {
+        c->epos = s;
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
     }
-
-    const u8 *start = c->cur;
-    while (c->cur < c->eof && *c->cur != '\n' && *c->cur != '\r') {
-        if (stop_chars && strchr(stop_chars, (char)*c->cur)) break;
-        c->cur++;
+    bool noesc = true;
+    for (usize k = 0; k < len; k++) {
+        if (s[k] == '"' || s[k] == '\\' || s[k] < 0x20) { noesc = false; break; }
     }
-    usize len = (usize)(c->cur - start);
-    while (len > 0 && start[len - 1] == ' ') len--;
-    if (len == 0) {
-        /*
-         * §9.1: an empty token between delimiters (or before the row's
-         * final delimiter) decodes as an empty string, not an error.
-         * Reaching here with stop_chars == NULL is unreachable: that mode
-         * only stops at a real EOL, which the ctoon_cur_at_eol() check
-         * above already caught before any scanning happened. So whenever
-         * we get here, the loop broke on an immediate stop-char match —
-         * always a delimited context (inline array cell or tabular/
-         * keyed-tabular row cell), where an empty cell is valid.
-         */
+    const char *p = ctoon_str_pool_buf_put(&c->sp, s, len);
+    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, noesc ? CTOON_SUBTYPE_NOESC : CTOON_SUBTYPE_NONE, len);
+    val->uni.str = p;
+    return true;
+}
+
+/* A token whose first character is `"` MUST be one complete quoted token: its
+ * closing quote is the token's last character (§7.4). [s, e) is trimmed. */
+static bool ctoon_parse_quoted_tok(ctoon_read_ctx *c, const u8 *s, const u8 *e, ctoon_val *val) {
+    const u8 *after = ctoon_decode_quoted(c, s + 1, e, false, val);
+    if (!after) return false;
+    if (after != e) {
+        c->epos = after;
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
+                                  "characters after closing quote");
+    }
+    return true;
+}
+
+/* Key or field-name token (§7.4): trimmed of spaces; empty is the empty key;
+ * a quoted token is unescaped; anything else is the literal text. */
+static bool ctoon_parse_key_tok(ctoon_read_ctx *c, const u8 *s, const u8 *e, ctoon_val *val) {
+    while (s < e && *s == ' ') s++;
+    while (e > s && e[-1] == ' ') e--;
+    if (s == e) {
         val->uni.str = "";
         unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, 0);
         return true;
     }
+    if (*s == '"') return ctoon_parse_quoted_tok(c, s, e, val);
+    return ctoon_put_raw_str(c, val, s, (usize)(e - s));
+}
+
+/* Primitive value token (§4). An empty token (an empty cell) is the empty
+ * string. The `[]` empty-array literal is NOT recognised here: it only exists
+ * in field-value, list-item and root position, never in cells (§9.3). */
+static bool ctoon_parse_scalar_tok(ctoon_read_ctx *c, const u8 *s, const u8 *e, ctoon_val *val) {
+    while (s < e && *s == ' ') s++;
+    while (e > s && e[-1] == ' ') e--;
+    if (s == e) {
+        val->uni.str = "";
+        unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, 0);
+        return true;
+    }
+    if (*s == '"') return ctoon_parse_quoted_tok(c, s, e, val);
+
+    const u8 *start = s;
+    usize len = (usize)(e - s);
 
     /* null / true / false */
-    if (len == 4
-        && start[0]=='n' && start[1]=='u'
-        && start[2]=='l' && start[3]=='l') {
+    if (len == 4 && start[0]=='n' && start[1]=='u' && start[2]=='l' && start[3]=='l') {
         val->tag = CTOON_TYPE_NULL; val->uni.u64 = 0; return true;
     }
-    if (len == 4
-        && start[0]=='t' && start[1]=='r'
-        && start[2]=='u' && start[3]=='e') {
+    if (len == 4 && start[0]=='t' && start[1]=='r' && start[2]=='u' && start[3]=='e') {
         val->tag = CTOON_TYPE_BOOL | CTOON_SUBTYPE_TRUE; val->uni.u64 = 0; return true;
     }
-    if (len == 5
-        && start[0]=='f' && start[1]=='a' && start[2]=='l'
-        && start[3]=='s' && start[4]=='e') {
+    if (len == 5 && start[0]=='f' && start[1]=='a' && start[2]=='l'
+                 && start[3]=='s' && start[4]=='e') {
         val->tag = CTOON_TYPE_BOOL | CTOON_SUBTYPE_FALSE; val->uni.u64 = 0; return true;
     }
 
@@ -3199,13 +3375,11 @@ static bool ctoon_parse_str_raw(ctoon_read_ctx *c, ctoon_val *val,
         tmp[len] = '\0';
 
         /*
-         * §4 normative number grammar: an unquoted token decodes as a
-         * number iff it matches /^-?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/
-         * AND does not carry a forbidden leading zero in the integer part
-         * (more than one digit starting with '0', e.g. "05", "-0001" — but
-         * "0", "0.5", "0e1" remain valid). Anything else (".5", "1.", "+5",
-         * "Infinity", "0x10", "1_000", ...) is a string; we must not
-         * delegate this decision to strtod/strtoll's wider host grammar.
+         * §4 normative number grammar: an unquoted token decodes as a number
+         * iff it matches /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$/.
+         * Anything else (".5", "1.", "+5", "05", "Infinity", "0x10", "1_000",
+         * ...) is a string; we must not delegate this decision to
+         * strtod/strtoll's wider host grammar.
          */
         usize p = 0;
         bool neg = false;
@@ -3270,37 +3444,11 @@ static bool ctoon_parse_str_raw(ctoon_read_ctx *c, ctoon_val *val,
         }
     }
 
-    /* unquoted string — copy into pool */
-    const char *s = ctoon_str_pool_buf_put(&c->sp, start, len);
-    if (!s) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, len);
-    val->uni.str = s;
-    return true;
-}
-
-/* Parse a key token (stops at ':' or '[').
-   Writes result directly into *val. */
-static bool ctoon_parse_key(ctoon_read_ctx *c, ctoon_val *val) {
-    if (ctoon_cur_peek(c) == '"') return ctoon_parse_str_quoted(c, val);
-
-    const u8 *start = c->cur;
-    while (c->cur < c->eof
-           && *c->cur != ':' && *c->cur != '['
-           && *c->cur != '\n')
-        c->cur++;
-    usize len = (usize)(c->cur - start);
-    while (len > 0 && start[len - 1] == ' ') len--;
-    if (len == 0)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER, "empty key");
-    const char *s = ctoon_str_pool_buf_put(&c->sp, start, len);
-    if (!s) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, len);
-    val->uni.str = s;
-    return true;
+    return ctoon_put_raw_str(c, val, start, len);
 }
 
 /*============================================================================
- * Array content parsers
+ * Headers (spec §6)
  *===========================================================================*/
 
 /*
@@ -3311,6 +3459,7 @@ static bool ctoon_parse_key(ctoon_read_ctx *c, ctoon_val *val) {
  */
 typedef struct ctoon_tab_field {
     const char *name;
+    u64         tag;          /* string tag (type, subtype, length) of the name */
     usize       name_len;
     bool        is_group;
     int         first_child;  /* arena index, or -1 for a leaf */
@@ -3319,96 +3468,139 @@ typedef struct ctoon_tab_field {
 
 #define CTOON_TAB_ARENA_MAX 128
 
-/* Parses a comma/delimiter-separated field list up to (not including) the
- * closing '}' — recursing into nested "name{...}" groups. On success,
- * *out_first sits at the arena index of the first field in this list. */
-static bool ctoon_parse_tab_fields(ctoon_read_ctx *c, ctoon_tab_field *arena,
-                                    int *arena_n, int *out_first) {
-    int prev = -1;
-    int n_this_level = 0;
+static bool ctoon_header_err(ctoon_read_ctx *c, const u8 *pos, const char *msg) {
+    c->epos = pos;
+    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, msg);
+}
+
+typedef struct {
+    bool       keyed;      /* [N:...] keyed tabular header (§9.5) */
+    char       delim;      /* active delimiter */
+    u64        n;          /* declared length, saturating (§6: no upper bound) */
+    const u8  *after_seg;  /* just past the closing ']' */
+} ctoon_brk;
+
+/* Parses the bracket segment starting at `lb` (a '['). */
+static bool ctoon_parse_bracket(ctoon_read_ctx *c, const u8 *lb, const u8 *e, ctoon_brk *b) {
+    const u8 *p = lb + 1;
+    u64 n = 0;
+    if (p >= e) return ctoon_header_err(c, lb, "unclosed bracket segment");
+    if (*p == '0') {
+        p++;
+        if (p < e && *p >= '0' && *p <= '9')
+            return ctoon_header_err(c, lb, "array length has a leading zero");
+    } else if (*p >= '1' && *p <= '9') {
+        while (p < e && *p >= '0' && *p <= '9') {
+            u64 d = (u64)(*p - '0');
+            if (n > (CTOON_U64_MAX - d) / 10) n = CTOON_U64_MAX;   /* saturate */
+            else n = n * 10 + d;
+            p++;
+        }
+    } else {
+        return ctoon_header_err(c, lb, "invalid array length");
+    }
+    b->keyed = false;
+    if (p < e && *p == ':') { b->keyed = true; p++; }
+    b->delim = ',';
+    if (p < e && (*p == '|' || *p == '\t')) { b->delim = (char)*p; p++; }
+    if (p >= e || *p != ']')
+        return ctoon_header_err(c, lb, "malformed bracket segment");
+    b->n = n;
+    b->after_seg = p + 1;
+    return true;
+}
+
+/*
+ * Parses a field list. *pp is just past '{'; on success it is just past the
+ * matching '}'. Entries are keys (§7.4) separated by the active delimiter,
+ * trimmed of spaces, each optionally followed directly by a nested group.
+ */
+static bool ctoon_parse_field_list(ctoon_read_ctx *c, const u8 **pp, const u8 *e, char delim,
+                                   ctoon_tab_field *arena, int *arena_n, int *out_first) {
+    const bool strict = ctoon_read_is_strict(c);
+    const u8 *p = *pp;
+    int prev = -1, n = 0;
     *out_first = -1;
+
     for (;;) {
-        ctoon_cur_skip_spaces(c);
-        if (ctoon_cur_peek(c) == '}') break;
+        const u8 *ts = p;
+        const u8 *q = p;
+        bool inq = false;
+        for (; q < e; q++) {
+            u8 ch = *q;
+            if (inq) {
+                if (ch == '\\') { if (q + 1 < e) q++; }
+                else if (ch == '"') inq = false;
+                continue;
+            }
+            if (ch == '"') { inq = true; continue; }
+            if (ch == ',' || ch == '\t' || ch == '|' || ch == '{' || ch == '}') break;
+        }
+        if (q >= e) return ctoon_header_err(c, ts, "unmatched '{' in field list");
+        if ((*q == ',' || *q == '\t' || *q == '|') && (char)*q != delim)
+            return ctoon_header_err(c, q, "field list uses a delimiter other than the "
+                                          "one declared by the bracket segment");
+
+        const u8 *tb = ts;
+        while (tb < q && *tb == ' ') tb++;
+        const u8 *te = q;
+        if (*q == '{') {
+            if (te > tb && te[-1] == ' ')
+                return ctoon_header_err(c, q, "whitespace between a field name and its field group");
+        } else {
+            while (te > tb && te[-1] == ' ') te--;
+        }
+        if (tb == te) {
+            if (*q == '{') return ctoon_header_err(c, q, "nameless nested field group");
+            if (n == 0 && *q == '}') return ctoon_header_err(c, q, "empty field list");
+            return ctoon_header_err(c, q, "empty field entry");
+        }
         if (*arena_n >= CTOON_TAB_ARENA_MAX)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "too many tabular header fields");
+            return ctoon_header_err(c, ts, "too many tabular header fields");
+
         int idx = (*arena_n)++;
         ctoon_tab_field *node = &arena[idx];
         node->first_child  = -1;
         node->next_sibling = -1;
-        node->is_group      = false;
-
-        if (ctoon_cur_peek(c) == '"') {
-            /* quoted field/subfield name — may itself contain the active
-             * delimiter, ':', '{' or '}' (§9.3/§14.2). */
+        node->is_group     = false;
+        {
             ctoon_val tmp;
-            if (!ctoon_parse_str_quoted(c, &tmp)) return false;
+            if (!ctoon_parse_key_tok(c, tb, te, &tmp)) return false;
             node->name     = tmp.uni.str;
+            node->tag      = tmp.tag;
             node->name_len = unsafe_ctoon_get_len((void *)&tmp);
-            ctoon_cur_skip_spaces(c);
-        } else {
-            const u8 *fs = c->cur;
-            while (c->cur < c->eof && *c->cur != (u8)c->delim &&
-                   *c->cur != '{' && *c->cur != '}') c->cur++;
-            usize fl = (usize)(c->cur - fs);
-            while (fl > 0 && fs[fl - 1] == ' ') fl--;
-            if (fl == 0)
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "empty tabular header field name");
-            /* §6: "a field list containing an unquoted delimiter character
-             * other than the one declared by the bracket segment is a
-             * header syntax error" — e.g. bracket declares tab but the
-             * field list uses commas. */
-            if (ctoon_read_is_strict(c) && c->delim != ',') {
-                for (usize k = 0; k < fl; k++)
-                    if (fs[k] == ',')
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                        "field list uses a delimiter other than "
-                                        "the one declared by the bracket segment");
-            }
-            const char *fn = ctoon_str_pool_buf_put(&c->sp, fs, fl);
-            if (!fn) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-            node->name = fn;
-            node->name_len = fl;
         }
 
-        if (ctoon_cur_peek(c) == '{') {
-            c->cur++;
+        if (*q == '{') {
+            const u8 *gp = q + 1;
             node->is_group = true;
-            if (!ctoon_parse_tab_fields(c, arena, arena_n, &node->first_child)) return false;
-            if (node->first_child == -1 && ctoon_read_is_strict(c))
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "empty nested field group");
-            if (ctoon_cur_peek(c) != '}')
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "expected '}' to close nested field group");
-            c->cur++;
+            if (!ctoon_parse_field_list(c, &gp, e, delim, arena, arena_n, &node->first_child))
+                return false;
+            while (gp < e && *gp == ' ') gp++;
+            if (gp >= e) return ctoon_header_err(c, gp, "unmatched '{' in field list");
+            q = gp;
+            if (*q != '}' && (char)*q != delim)
+                return ctoon_header_err(c, q, "unexpected character after a nested field group");
         }
 
-        /* §14.2: a field name repeated within the SAME field-list level
-         * (this call's own siblings — nested groups are checked
-         * independently by their own recursive call) is a header syntax
-         * error in strict mode, diagnosed from the header alone. */
-        if (ctoon_read_is_strict(c)) {
+        /* §14.2: a field name repeated within one field list is a header
+         * syntax error in strict mode, diagnosed from the header alone
+         * (§14.4 recovery 2: last write wins otherwise). */
+        if (strict) {
             for (int pidx = *out_first; pidx != -1; pidx = arena[pidx].next_sibling) {
                 if (arena[pidx].name_len == node->name_len &&
                     memcmp(arena[pidx].name, node->name, node->name_len) == 0)
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                    "duplicate field name in header field list");
+                    return ctoon_header_err(c, ts, "duplicate field name in header field list");
             }
         }
-
         if (prev == -1) *out_first = idx; else arena[prev].next_sibling = idx;
         prev = idx;
-        n_this_level++;
+        n++;
 
-        if (ctoon_cur_peek(c) == (u8)c->delim) { c->cur++; continue; }
-        break;
+        if (*q == '}') { p = q + 1; break; }
+        p = q + 1;                           /* past the delimiter */
     }
-    if (n_this_level == 0 && ctoon_read_is_strict(c))
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                        "empty field list");
+    *pp = p;
     return true;
 }
 
@@ -3420,882 +3612,381 @@ static long ctoon_tab_count_leaves(const ctoon_tab_field *arena, int first) {
     return n;
 }
 
+/*============================================================================
+ * Structure: tables, lists, objects (spec §8-§10)
+ *===========================================================================*/
+
+static bool ctoon_parse_field(ctoon_read_ctx *c, const u8 *s, const u8 *e, int fdepth);
+static bool ctoon_parse_array_value(ctoon_read_ctx *c, const u8 *lb, const u8 *e,
+                                    int hdr_depth, bool allow_fields);
+
 /*
- * Consumes one row's cells for the field list starting at `first`, building
- * kv-pairs into the OBJ container currently open on the stack (the caller
- * ctoon_ctn_open()'d it). Nested field groups recursively open/close their
- * own OBJ. `leaf_idx`/`total_leaves` track which cell in the whole row this
- * is, since only the row's very last leaf cell stops at EOL instead of the
- * active delimiter.
+ * Consumes one row's (or entry row's) cells for the field list starting at
+ * `first`, building kv-pairs into the OBJ container currently open on the
+ * stack. Nested field groups open/close their own OBJ. *pp walks the cells of
+ * the line; every row must have exactly one cell per leaf field (§14.1 -- an
+ * error in both strict and non-strict mode).
  */
-static bool ctoon_parse_tab_row_fields(ctoon_read_ctx *c, const ctoon_tab_field *arena,
-                                        int first, long *leaf_idx, long total_leaves) {
-    char delim_stop[2] = { c->delim, '\0' };
+static bool ctoon_parse_row_fields(ctoon_read_ctx *c, const ctoon_tab_field *arena, int first,
+                                   long *leaf_idx, long total_leaves,
+                                   const u8 **pp, const u8 *e, char delim) {
     for (int idx = first; idx != -1; idx = arena[idx].next_sibling) {
         const ctoon_tab_field *node = &arena[idx];
         ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
         if (!kv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-        unsafe_ctoon_set_tag(kv, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, node->name_len);
+        kv->tag = node->tag;
         kv->uni.str = node->name;
 
         if (node->is_group) {
             if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-            if (!ctoon_parse_tab_row_fields(c, arena, node->first_child, leaf_idx, total_leaves))
+            if (!ctoon_parse_row_fields(c, arena, node->first_child, leaf_idx,
+                                        total_leaves, pp, e, delim))
                 return false;
             if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
         } else {
-            ctoon_cur_skip_spaces(c);
             ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
             if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
             bool is_last = (*leaf_idx == total_leaves - 1);
-            if (!ctoon_parse_str_raw(c, vv, is_last ? NULL : delim_stop)) return false;
-            (*leaf_idx)++;
-            if (!is_last) {
-                if (ctoon_cur_peek(c) != (u8)c->delim)
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER,
-                                    "expected delimiter in tabular row");
-                c->cur++;
+            const u8 *q = ctoon_find_unq(*pp, e, (u8)delim);
+            if (is_last) {
+                if (q) return ctoon_header_err(c, q, "row has more cells than the header has fields");
+                q = e;
+            } else if (!q) {
+                return ctoon_header_err(c, e, "row has fewer cells than the header has fields");
             }
+            if (!ctoon_parse_scalar_tok(c, *pp, q, vv)) return false;
+            *pp = is_last ? e : q + 1;
+            (*leaf_idx)++;
         }
         ctoon_ctn_stack_top(&c->st)->count++; /* one kv-pair in the current OBJ */
     }
     return true;
 }
-enum { CTOON_LINE_CONTENT = 0, CTOON_LINE_COMMENT = 1, CTOON_LINE_BLANK = 2 };
-
-/* Classifies the line at the cursor WITHOUT consuming it. Per §5.1/§12: a
- * line whose content trims to empty is blank; a line starting with '#'
- * (after leading spaces) is a comment. */
-static int ctoon_peek_line_kind(const ctoon_read_ctx *c) {
-    const u8 *sc = c->cur;
-    while (sc < c->eof && *sc == ' ') sc++;
-    if (sc >= c->eof || *sc == '\n' || *sc == '\r') return CTOON_LINE_BLANK;
-    if (*sc == '#') return CTOON_LINE_COMMENT;
-    return CTOON_LINE_CONTENT;
-}
 
 /*
- * Non-consuming check: does the text at `p` (which must be exactly at
- * '[') match the array/tabular header grammar all the way through to a
- * final ':' with nothing extraneous — length segment (no leading zero,
- * no sign, no decimal/exponent), optional ':' keyed marker, optional
- * single delimiter char, ']', optional balanced "{...}" field list (may
- * itself contain nested "{...}" groups), then ':'? Per §14.1/§14.2, any
- * deviation disqualifies the WHOLE thing from header interpretation.
+ * §6, §9.3, §9.5: a header carrying a field list (keyed or not) and its rows.
+ * Kept out of line so the field arena does not sit in the frames of the
+ * recursive list/object parsers.
  */
-static bool ctoon_looks_like_array_header_at(const u8 *p, const u8 *eof) {
-    if (p >= eof || *p != '[') return false;
-    p++;
-    if (p >= eof || *p < '0' || *p > '9') return false;
-    if (*p == '0') {
-        p++;
-        if (p < eof && *p >= '0' && *p <= '9') return false; /* leading zero */
-    } else {
-        while (p < eof && *p >= '0' && *p <= '9') p++;
-    }
-    if (p < eof && *p == ':') p++; /* keyed marker */
-    if (p < eof && *p != ']') {
-        if (*p != '|' && *p != '\t' && *p != ',') return false;
-        p++;
-    }
-    if (p >= eof || *p != ']') return false;
-    p++;
-    bool has_fields = false;
-    if (p < eof && *p == '{') {
-        has_fields = true;
-        int depth_b = 0;
-        do {
-            if (p >= eof || *p == '\n' || *p == '\r') return false;
-            if (*p == '{') depth_b++;
-            else if (*p == '}') depth_b--;
-            p++;
-        } while (depth_b > 0);
-    }
-    if (p >= eof || *p != ':') return false;
-    p++;
-    if (has_fields) {
-        /* §9.3/§9.5/§14.2: a tabular or keyed-tabular header's colon must
-         * have nothing after it but the end of the line — rows always
-         * start on the next line. Content here disqualifies the WHOLE
-         * bracket segment from header interpretation (falls back to a
-         * literal key in non-strict mode, errors in strict mode) rather
-         * than being silently discarded. */
-        while (p < eof && *p == ' ') p++;
-        if (!(p >= eof || *p == '\n' || *p == '\r')) return false;
-    }
-    return true;
-}
-
-/*
- * Classifies how an object-field line at c->cur should be parsed, per
- * §14.1/§14.2: array-header interpretation requires the bracket segment
- * to immediately follow the key text (no whitespace) and validate fully.
- * Does not consume `c`. Returns:
- *   0 -> plain "key: value" (first unquoted special char is ':')
- *   1 -> valid array/tabular header ('[' immediately after key text,
- *        and ctoon_looks_like_array_header_at succeeds)
- *   2 -> malformed/displaced bracket segment: a '[' was found but
- *        disqualified (preceding whitespace, or failed validation) —
- *        a strict-mode error, or a whole-line literal-key fallback in
- *        non-strict mode (§14.1's documented policy)
- */
-static int ctoon_classify_field_header(const ctoon_read_ctx *c) {
-    const u8 *p = c->cur;
-    bool in_quotes = false;
-    bool prev_space = false;
-    while (p < c->eof && *p != '\n' && *p != '\r') {
-        if (*p == '"') { in_quotes = !in_quotes; prev_space = false; p++; continue; }
-        if (in_quotes) { p++; continue; }
-        if (*p == ':') return 0;
-        if (*p == '[') {
-            if (p == c->cur || prev_space) return 2;
-            return ctoon_looks_like_array_header_at(p, c->eof) ? 1 : 2;
-        }
-        prev_space = (*p == ' ');
-        p++;
-    }
-    return 0; /* no ':' or '[' at all on the line — let existing code
-                 handle it (already errors/ends the item appropriately) */
-}
-
-/*
- * Looks ahead past comment/blank lines to decide whether the array/list/
- * tabular/keyed-tabular scope at `depth` continues, per §12's "header
- * span" rule. Comment lines are always permanently consumed (§5.1: they
- * never affect scope). A blank line is only "inside the span" — and thus
- * a strict-mode error — if a continuation of THIS scope follows it; a
- * blank line right before the scope truly ends (dedent to something else)
- * is outside the span and left for the enclosing context to skip.
- *
- * `require_dash`: true for plain list items (the continuation must be a
- * "- " marker at `depth`); false for tabular/keyed-tabular rows and for a
- * list-item object's own continuation fields, where any content at
- * exactly `depth` counts.
- *
- * Returns 1 (continuation: cursor now sits at that content line), 0 (scope
- * ends: comments consumed, blank lines left unconsumed), or -1 (strict
- * error, c->err set).
- */
-/*
- * §12 strict-mode indentation validation for the line at c->cur (does not
- * consume). A tab anywhere in leading indentation is always an error; the
- * leading-space count must be an exact multiple of c->indent. A no-op
- * (always true) in non-strict mode.
- */
-static bool ctoon_check_indent_strict(ctoon_read_ctx *c) {
-    if (!ctoon_read_is_strict(c)) return true;
-    const u8 *p = c->cur;
-    usize n_spaces = 0;
-    while (p < c->eof && (*p == ' ' || *p == '\t')) {
-        if (*p == '\t')
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "tab character in indentation");
-        n_spaces++; p++;
-    }
-    if (n_spaces % (usize)c->indent != 0)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                        "indentation is not a multiple of the indent size");
-    return true;
-}
-
-static int ctoon_lookahead_span_continues(ctoon_read_ctx *c, int depth,
-                                           bool require_dash, const bool *started) {
-    const u8 *save = c->cur;
-    bool saw_blank = false;
-    for (;;) {
-        /* EOF is the end of input, not a "blank line" — ctoon_peek_line_kind
-         * misclassifies it as blank, and skip_to_eol()/skip_nl() are both
-         * no-ops once c->cur >= c->eof, so without this check the loop
-         * would never advance and spin forever. */
-        if (c->cur >= c->eof) break;
-        int kind = ctoon_peek_line_kind(c);
-        if (kind == CTOON_LINE_CONTENT) break;
-        if (kind == CTOON_LINE_COMMENT) {
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-            save = c->cur; /* comments are never restored */
-            continue;
-        }
-        saw_blank = true;
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-    }
-
-    if (c->cur < c->eof && !ctoon_check_indent_strict(c)) return -1;
-
-    bool continues = false;
-    if (c->cur < c->eof && ctoon_cur_measure_indent(c) == depth) {
-        if (require_dash) {
-            const u8 *probe = c->cur;
-            if (ctoon_cur_consume_indent(c, depth)) {
-                continues = (c->cur < c->eof && *c->cur == '-' &&
-                             (c->cur + 1 >= c->eof || *(c->cur + 1) == '\n' ||
-                              *(c->cur + 1) == '\r' || *(c->cur + 1) == ' '));
-            }
-            c->cur = probe;
-        } else {
-            continues = true;
-        }
-    }
-
-    if (continues) {
-        if (saw_blank && *started && ctoon_read_is_strict(c)) {
-            ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "blank line inside header span");
-            return -1;
-        }
-        return 1;
-    }
-    c->cur = save; /* not a continuation: leave any blank lines unconsumed */
-    return 0;
-}
-
-/* §9.3 tabular rows: one OBJ per line at `depth`, per the header's field tree. */
-static bool ctoon_parse_tabular(ctoon_read_ctx *c, int depth, long expected,
-                                 const ctoon_tab_field *arena, int root_first,
-                                 long total_leaves) {
-    long parsed = 0;
-    bool started = false;
-    /* §14.1: "a declared [N] never truncates a scope" — in non-strict
-     * mode, keep consuming rows past the declared count instead of
-     * stopping early; strict mode still bounds the loop at `expected`
-     * (a mismatch there is reported elsewhere). */
-    while (ctoon_read_is_strict(c) ? parsed < expected : true) {
-        /* EOF with rows still expected: stop instead of looping forever —
-         * skip_to_eol()/skip_nl() are no-ops once c->cur >= c->eof, and an
-         * empty region at EOF otherwise looks identical to a blank line. */
-        if (c->cur >= c->eof) break;
-
-        int lr = ctoon_lookahead_span_continues(c, depth, false, &started);
-        if (lr < 0) return false;
-        if (lr == 0) break;
-        if (!ctoon_cur_consume_indent(c, depth)) break;
-
-        if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-        long leaf_idx = 0;
-        if (!ctoon_parse_tab_row_fields(c, arena, root_first, &leaf_idx, total_leaves))
-            return false;
-        if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
-        ctoon_ctn_stack_top(&c->st)->count++; /* row added to parent ARR */
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-        parsed++;
-        started = true;
-    }
-    return true;
-}
-
-/* Parses a keyed-tabular entry key: everything up to the first unquoted
- * ':' is the key (§9.5) — unlike object-field keys (ctoon_parse_key), a
- * '[' here has no special header meaning and is just literal key text. */
-static bool ctoon_parse_entry_key(ctoon_read_ctx *c, ctoon_val *val) {
-    if (ctoon_cur_peek(c) == '"') return ctoon_parse_str_quoted(c, val);
-    const u8 *start = c->cur;
-    while (c->cur < c->eof && *c->cur != ':' && *c->cur != '\n') c->cur++;
-    usize len = (usize)(c->cur - start);
-    while (len > 0 && start[len - 1] == ' ') len--;
-    if (len == 0)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CHARACTER, "empty key");
-    const char *s = ctoon_str_pool_buf_put(&c->sp, start, len);
-    if (!s) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-    unsafe_ctoon_set_tag(val, CTOON_TYPE_STR, CTOON_SUBTYPE_NOESC, len);
-    val->uni.str = s;
-    return true;
-}
-
-/*
- * §9.5 keyed tabular entry rows: one "entrykey: c1,c2,..." per line at
- * `depth`, building kv-pairs into the OBJ container the caller opened.
- */
-static bool ctoon_parse_keyed_tab_rows(ctoon_read_ctx *c, int depth, long expected,
-                                        const ctoon_tab_field *arena, int root_first,
-                                        long total_leaves) {
-    long parsed = 0;
-    bool started = false;
-    while (ctoon_read_is_strict(c) ? parsed < expected : true) {
-        if (c->cur >= c->eof) break;
-
-        int lr = ctoon_lookahead_span_continues(c, depth, false, &started);
-        if (lr < 0) return false;
-        if (lr == 0) break;
-        if (!ctoon_cur_consume_indent(c, depth)) break;
-
-        /* §9.5/§14.1 (non-strict): a line at entry depth with no unquoted
-         * colon at all can't be an "entrykey: ..." row — non-strict mode
-         * skips it silently instead of erroring. */
-        {
-            const u8 *p = c->cur;
-            bool in_q = false, has_colon = false;
-            while (p < c->eof && *p != '\n' && *p != '\r') {
-                if (in_q && *p == '\\' && p + 1 < c->eof) { p += 2; continue; }
-                if (*p == '"') { in_q = !in_q; }
-                else if (*p == ':' && !in_q) { has_colon = true; break; }
-                p++;
-            }
-            if (!has_colon) {
-                if (ctoon_read_is_strict(c))
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                    "expected ':' after keyed tabular entry key");
-                ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-                continue;
-            }
-        }
-
-        /* entry key */
-        ctoon_val *ekv = ctoon_read_vpool_alloc(&c->vp);
-        if (!ekv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-        if (!ctoon_parse_entry_key(c, ekv)) return false;
-        ctoon_cur_skip_spaces(c);
-        if (ctoon_cur_peek(c) != ':')
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "expected ':' after keyed tabular entry key");
-        c->cur++;
-        ctoon_cur_skip_spaces(c);
-
-        if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-        long leaf_idx = 0;
-        if (!ctoon_parse_tab_row_fields(c, arena, root_first, &leaf_idx, total_leaves))
-            return false;
-        if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
-        ctoon_ctn_stack_top(&c->st)->count++; /* entrykey: entryobj added to parent OBJ */
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-        parsed++;
-        started = true;
-    }
-    return true;
-}
-
-/*============================================================================
- * Forward declarations
- *===========================================================================*/
-
-static bool ctoon_parse_object    (ctoon_read_ctx *c, int depth);
-static bool ctoon_parse_array(ctoon_read_ctx *c, int arr_depth, bool *out_mid_line);
-static bool ctoon_parse_key(ctoon_read_ctx *c, ctoon_val *kv);
-
-
-
-/* List items: each line starts with "- " at the given indent depth */
-static bool ctoon_parse_list(ctoon_read_ctx *c, int depth) {
-    char delim_stop[2] = { c->delim, '\0' };
-    bool started = false;
-    while (!ctoon_cur_at_eof(c)) {
-        int lr = ctoon_lookahead_span_continues(c, depth, true, &started);
-        if (lr < 0) return false;
-        if (lr == 0) break;
-
-        const u8 *row_start = c->cur;
-        if (!ctoon_cur_consume_indent(c, depth)) { c->cur = row_start; break; }
-        if (c->cur >= c->eof || *c->cur != '-') { c->cur = row_start; break; }
-        bool bare_hyphen;
-        if (c->cur + 1 >= c->eof || *(c->cur + 1) == '\n' || *(c->cur + 1) == '\r') {
-            bare_hyphen = true;
-        } else if (*(c->cur + 1) != ' ') {
-            c->cur = row_start; break; /* not "- " nor a bare "-": no list item here */
-        } else {
-            /* "- " followed by real content, OR by nothing but trailing
-             * spaces before EOL — §12: "trailing spaces are stripped
-             * before line classification", so the latter is ALSO the
-             * bare/empty-object marker, not a first field. */
-            const u8 *sc = c->cur + 1;
-            while (sc < c->eof && *sc == ' ') sc++;
-            bare_hyphen = (sc >= c->eof || *sc == '\n' || *sc == '\r');
-        }
-        started = true; /* a real list-item line begins here — from now on
-                          * a blank line is inside this header's span. */
-        if (bare_hyphen) {
-            /* A hyphen with nothing after it is an empty-object list item
-             * (the mirror of the encoder's bare "-" for {}), e.g.
-             * "items[3]:\n  - first\n  - second\n  -" — the third item is {}. */
-            c->cur += 1;
-            if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-            if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
-            ctoon_ctn_child_added(c);
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-            continue;
-        }
-        c->cur += 2;
-        ctoon_cur_skip_spaces(c);
-
-        /*
-         * A key can never start with '[' (an unquoted key token stops at
-         * the first '[' or ':', so a key there would be empty) — so a list
-         * item starting with '[' is always a bare (keyless) array element,
-         * never "key[...]". Handle it directly, including the §9.2 empty-
-         * array literal "- []", before the object/primitive shape scan
-         * below (which is only for "- key: v" / "- key[N]: v" shapes).
-         */
-        if (ctoon_cur_peek(c) == '[') {
-            c->cur++;
-            bool mid_line = false;
-            if (ctoon_cur_peek(c) == ']') {
-                /* "- []": empty inner array, encoders still emit "- [0]:"
-                 * but decoders MUST accept this literal too (§9.2). */
-                c->cur++;
-                mid_line = true;
-                if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
-                if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
-            } else {
-                /*
-                 * §6/§14.2: a keyless header carrying a field list
-                 * (tabular or keyed) is valid ONLY as the document root —
-                 * never as a list item. Peek past the bracket segment
-                 * (full validation happens inside ctoon_parse_array
-                 * itself; this only needs to know whether a '{' follows
-                 * the ']').
-                 */
-                if (ctoon_read_is_strict(c)) {
-                    const u8 *pk = c->cur;
-                    while (pk < c->eof && *pk >= '0' && *pk <= '9') pk++;
-                    if (pk < c->eof && *pk == ':') pk++;  /* keyed marker */
-                    if (pk < c->eof && *pk != ']') pk++;  /* delim char */
-                    if (pk < c->eof && *pk == ']') pk++;
-                    if (pk < c->eof && *pk == '{')
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                        "keyless fields-bearing header as list item");
-                }
-                /*
-                 * Pass `depth` (this hyphen line's own depth), matching the
-                 * object-field call pattern (ctoon_parse_object calls
-                 * ctoon_parse_array(c, depth) for "key[N]:"), since
-                 * ctoon_parse_array's own list/tabular branches already add
-                 * the +1 needed for their rows' depth. Passing depth+1
-                 * here would double that offset for nested list-form
-                 * arrays (e.g. "- [2]:\n    - x: 1").
-                 */
-                if (!ctoon_parse_array(c, depth, &mid_line)) return false;
-            }
-            ctoon_ctn_child_added(c);
-            /*
-             * For the list/tabular/keyed sub-forms, ctoon_parse_array()
-             * already left the cursor at the start of the following line
-             * — skipping here would swallow a sibling's whole line. Only
-             * the "[]" literal and inline ("[N]: a,b") sub-forms leave the
-             * cursor mid-line on their own unconsumed terminator; `mid_line`
-             * says explicitly which happened (an ctoon_cur_at_eol() check
-             * here is NOT reliable: a genuinely blank following line with
-             * zero leading spaces is indistinguishable from "my own
-             * unconsumed newline" by cursor position alone).
-             */
-            if (mid_line) { ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c); }
-            continue;
-        }
-
-        /* determine item shape: does the rest of this line have ':' or '['? */
-        bool has_colon = false, has_bracket = false;
-        bool in_quotes = false;
-        for (const u8 *sc = c->cur;
-             sc < c->eof && *sc != '\n' && *sc != '\r'; sc++) {
-            if (*sc == '"')  { in_quotes = !in_quotes; continue; }
-            if (in_quotes)   continue;
-            if (*sc == ':')  { has_colon   = true; break; }
-            if (*sc == '[')  { has_bracket = true; break; }
-        }
-
-        if (!has_colon && !has_bracket) {
-            /* primitive item */
-            ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
-            if (!vv)
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-            if (!ctoon_parse_str_raw(c, vv, NULL)) return false;
-            ctoon_ctn_child_added(c);
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-        } else {
-            /* object item: first field on this line, continuations at depth+1 */
-            if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-            bool first_field = true;
-            for (;;) {
-                if (!first_field) {
-                    /*
-                     * We're between this same item's own field lines —
-                     * inherently mid-span already — so use the same
-                     * lookahead as arrays/tabular/keyed rows to tell a
-                     * genuine continuation (error on a blank line in
-                     * strict mode) from the item's fields simply ending
-                     * (dedent to the next list item or outer content,
-                     * where a blank line is fine).
-                     */
-                    static const bool always_started = true;
-                    int lr = ctoon_lookahead_span_continues(c, depth + 1, false, &always_started);
-                    if (lr < 0) return false;
-                    if (lr == 0) goto obj_item_done;
-                    const u8 *cont = c->cur;
-                    if (!ctoon_cur_consume_indent(c, depth + 1)) {
-                        c->cur = cont; goto obj_item_done;
-                    }
-                } else {
-                    first_field = false;
-                }
-                /* §14.1/§14.2: same malformed/displaced bracket segment
-                 * handling as plain object fields. */
-                int hdr_kind = ctoon_classify_field_header(c);
-                if (hdr_kind == 2 && ctoon_read_is_strict(c))
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                    "malformed or displaced bracket segment");
-
-                /* key */
-                ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
-                if (!kv)
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION,
-                                    MSG_MALLOC);
-
-                if (hdr_kind == 2) {
-                    /* non-strict fallback: literal key up to first
-                     * unquoted colon, plain raw-string value. */
-                    if (!ctoon_parse_entry_key(c, kv)) return false;
-                    ctoon_cur_skip_spaces(c);
-                    if (ctoon_cur_peek(c) != ':')
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                        "expected ':' after key");
-                    c->cur++;
-                    ctoon_cur_skip_spaces(c);
-                    ctoon_val *vv2 = ctoon_read_vpool_alloc(&c->vp);
-                    if (!vv2)
-                        return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION,
-                                        MSG_MALLOC);
-                    if (!ctoon_parse_str_raw(c, vv2, NULL)) return false;
-                    ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-                    ctoon_ctn_stack_top(&c->st)->count++;
-                    continue;
-                }
-
-                if (!ctoon_parse_key(c, kv)) return false;
-                ctoon_cur_skip_spaces(c);
-                int fd = depth + 1;
-
-                if (ctoon_cur_peek(c) == '[') {
-                    c->cur++;
-                    bool mid_line = false;
-                    if (!ctoon_parse_array(c, fd, &mid_line)) return false;
-                    /* Same fix as the bare-array-list-item case above: an
-                     * explicit flag, not an ambiguous ctoon_cur_at_eol()
-                     * check (a genuinely blank following line with zero
-                     * leading spaces is indistinguishable from "my own
-                     * unconsumed newline" by cursor position alone). Only
-                     * the inline sub-form ("tags[2]: a,b") needs finishing
-                     * here; list/tabular/keyed already left the cursor at
-                     * the start of the next line. */
-                    if (mid_line) { ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c); }
-                } else if (ctoon_cur_peek(c) == ':') {
-                    c->cur++; ctoon_cur_skip_spaces(c);
-                    if (ctoon_cur_at_eol(c)) {
-                        ctoon_cur_skip_nl(c);
-                        if (!ctoon_parse_object(c, fd + 1)) return false;
-                    } else if (ctoon_cur_peek(c) == '[' &&
-                               c->cur + 1 < c->eof && *(c->cur + 1) == ']') {
-                        /* §9.1: "key: []" is the empty-array literal. */
-                        c->cur += 2;
-                        if (!ctoon_cur_at_eol(c))
-                            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                            "unexpected content after []");
-                        if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
-                        if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
-                        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-                    } else {
-                        ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
-                        if (!vv)
-                            return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION,
-                                            MSG_MALLOC);
-                        if (!ctoon_parse_str_raw(c, vv, NULL)) return false;
-                        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-                    }
-                } else {
-                    goto obj_item_done;
-                }
-                ctoon_ctn_stack_top(&c->st)->count++; /* one kv-pair */
-            }
-obj_item_done:
-            if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
-            ctoon_ctn_child_added(c); /* item added to parent ARR */
-        }
-    }
-    (void)delim_stop;
-    return true;
-}
-
-/*============================================================================
- * Array body (called after '[' consumed)
- *===========================================================================*/
-
-static bool ctoon_parse_array(ctoon_read_ctx *c, int arr_depth, bool *out_mid_line) {
-    if (out_mid_line) *out_mid_line = false;
-    /* read length digits */
-    const u8 *ns = c->cur;
-    while (c->cur < c->eof && (unsigned)(*c->cur - '0') <= 9) c->cur++;
-    usize nl = (usize)(c->cur - ns);
-    if (nl == 0 || nl >= 20)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "invalid array length");
-    if (nl > 1 && ns[0] == '0')
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                        "array length has a leading zero");
-    char nbuf[24];
-    memcpy(nbuf, ns, nl); nbuf[nl] = '\0';
-    long expected = atol(nbuf);
-
-    /* §9.5: a ':' right after the length is the keyed-tabular marker —
-     * NOT a (bogus) delimiter marker. Consuming it as a delimiter char here
-     * used to also leave the header parse in a broken state that could
-     * hang the tabular row reader; now handled properly below. */
-    bool keyed = false;
-    if (c->cur < c->eof && *c->cur == ':') {
-        keyed = true;
-        c->cur++;
-    }
-
-    /* optional delimiter marker inside brackets: only HTAB or '|' select a
-     * non-comma delimiter (§6's ABNF: delimsym = HTAB / "|"); ANY other
-     * character here — including an explicit ',' — is a malformed bracket
-     * segment, strict-mode error (§14.2). */
-    if (c->cur < c->eof && *c->cur != ']') {
-        char d = (char)*c->cur;
-        if (d != '|' && d != '\t') {
-            if (ctoon_read_is_strict(c))
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "malformed delimiter marker in bracket segment");
-            c->delim = ',';
-        } else {
-            c->delim = d;
-        }
-        c->cur++;
-    } else {
-        c->delim = ',';
-    }
-    if (ctoon_cur_peek(c) != ']')
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "expected ']'");
-    c->cur++;
-
-    /* optional {field1,field2{sub1,sub2},...} — nested groups per §9.3 */
+static_noinline bool ctoon_parse_tabular_value(ctoon_read_ctx *c, const ctoon_brk *b,
+                                                     const u8 *e, int hdr_depth) {
+    const u8 *fields_at = b->after_seg;           /* the '{' */
     ctoon_tab_field arena[CTOON_TAB_ARENA_MAX];
-    int arena_n = 0;
-    int root_first = -1;
-    bool has_fields = false;
-    if (ctoon_cur_peek(c) == '{') {
-        c->cur++;
-        has_fields = true;
-        if (!ctoon_parse_tab_fields(c, arena, &arena_n, &root_first)) return false;
-        if (ctoon_cur_peek(c) != '}')
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "expected '}'");
-        c->cur++;
+    int arena_n = 0, root_first = -1;
+    const u8 *p = fields_at + 1;
+    const char delim = b->delim;
+
+    if (!ctoon_parse_field_list(c, &p, e, delim, arena, &arena_n, &root_first)) return false;
+    if (p >= e || *p != ':')
+        return ctoon_header_err(c, p, "expected ':' after the field list");
+    p++;
+    while (p < e && *p == ' ') p++;
+    if (p < e)                                    /* §6: fields-bearing header has no inline content */
+        return ctoon_header_err(c, p, "unexpected content after a fields-bearing header");
+
+    const long total_leaves = ctoon_tab_count_leaves(arena, root_first);
+    const u8 ctype = b->keyed ? CTOON_TYPE_OBJ : CTOON_TYPE_ARR;
+    if (!ctoon_ctn_open(c, ctype)) return false;
+
+    ctoon_scope sc;
+    int r = ctoon_scope_open(c, hdr_depth + 1, &sc);
+    if (r < 0) return false;
+    if (r > 0) {
+        const int saved_floor = c->span_floor;
+        bool started = false;
+        for (;;) {
+            r = ctoon_scope_next(c, &sc);
+            if (r < 0) return false;
+            if (r == 0) break;
+            const u8 *ls = c->ln.s, *le = c->ln.e;
+            const u8 *colon = ctoon_find_unq(ls, le, ':');
+
+            if (!b->keyed && colon) {
+                /* §9.3 row disambiguation: a colon before the first unquoted
+                 * delimiter (or with no delimiter at all) ends the rows. */
+                const u8 *dl = ctoon_find_unq(ls, le, (u8)delim);
+                if (!dl || dl > colon) break;
+            }
+            if (b->keyed && !colon)               /* §9.5, §14.2: any mode */
+                return ctoon_header_err(c, ls, "expected ':' after keyed tabular entry key");
+
+            ctoon_consume(c);
+            if (!started) {
+                started = true;
+                if (hdr_depth < c->span_floor) c->span_floor = hdr_depth;
+            }
+
+            long leaf_idx = 0;
+            if (b->keyed) {
+                ctoon_val *ekv = ctoon_read_vpool_alloc(&c->vp);
+                if (!ekv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+                if (!ctoon_parse_key_tok(c, ls, colon, ekv)) return false;
+                const u8 *cells = colon + 1;
+                while (cells < le && *cells == ' ') cells++;
+                if (cells >= le)                  /* bare `key:` has zero cells */
+                    return ctoon_header_err(c, colon, "entry row has no cells");
+                if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+                if (!ctoon_parse_row_fields(c, arena, root_first, &leaf_idx, total_leaves,
+                                            &cells, le, delim))
+                    return false;
+                if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+                ctoon_ctn_stack_top(&c->st)->count++;   /* entrykey: entryobj in the parent OBJ */
+            } else {
+                const u8 *cells = ls;
+                if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+                if (!ctoon_parse_row_fields(c, arena, root_first, &leaf_idx, total_leaves,
+                                            &cells, le, delim))
+                    return false;
+                if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+                ctoon_ctn_stack_top(&c->st)->count++;   /* row added to the parent ARR */
+            }
+        }
+        c->span_floor = saved_floor;
+        ctoon_scope_close(c, &sc);
     }
 
-    if (keyed && !has_fields)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                        "keyed tabular header requires a field list");
+    /* §14.1: strict mode checks the row / entry count; non-strict never lets
+     * the declared length truncate or reject the scope (recovery 1). */
+    if (ctoon_read_is_strict(c) && (u64)ctoon_ctn_stack_top(&c->st)->count != b->n)
+        return ctoon_header_err(c, e, b->keyed ? "declared entry count does not match actual entries"
+                                               : "declared array length does not match actual row count");
+    return ctoon_ctn_close(c, ctype);
+}
 
-    ctoon_cur_skip_spaces(c);
-    if (ctoon_cur_peek(c) != ':')
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE, "expected ':'");
-    c->cur++;
-    ctoon_cur_skip_spaces(c);
+/* One list item. [s, e) is the hyphen line content (s at '-'); h is the depth
+ * of the hyphen line. The caller already consumed the line. */
+static bool ctoon_parse_list_item(ctoon_read_ctx *c, const u8 *s, const u8 *e, int h) {
+    const u8 *rs = s + 1;                     /* §5.2: extra spaces may follow the hyphen */
+    while (rs < e && *rs == ' ') rs++;
+    c->epos = s;
 
-    if (keyed) {
-        /*
-         * §9.5: a keyed tabular header decodes as an OBJECT — its "rows"
-         * are entrykey: cell,cell,... pairs, not array elements.
-         * ctoon_parse_array() still opening/closing this container itself
-         * (here as OBJ instead of ARR) is fine: none of its callers
-         * inspect the produced value's type, only whether parsing
-         * succeeded and how many child slots it consumed.
-         */
-        if (!ctoon_cur_at_eol(c))
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "unexpected content after keyed tabular header");
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
+    if (rs == e) {                            /* bare marker: an empty object (§10) */
         if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-        long total_leaves = ctoon_tab_count_leaves(arena, root_first);
-        if (!ctoon_parse_keyed_tab_rows(c, arr_depth + 1, expected, arena, root_first, total_leaves))
-            return false;
-        if (ctoon_read_is_strict(c) &&
-            (long)ctoon_ctn_stack_top(&c->st)->count != expected)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "declared entry count does not match actual entries");
         if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+        ctoon_ctn_child_added(c);
         return true;
     }
 
-    if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
+    const u8 *lb;
+    const u8 *colon = ctoon_scan_line(rs, e, &lb);
 
-    if (has_fields) {
-        /* tabular */
-        /* §9.3/§14.2: nothing may follow a tabular header's colon on the
-         * same line — rows start on the next line. Silently skipping any
-         * inline content here (the old behavior) could also leave the
-         * cursor at EOF with rows still expected, which made the blank-line
-         * skip below loop forever. */
-        if (!ctoon_cur_at_eol(c))
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "unexpected content after tabular header");
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-        long total_leaves = ctoon_tab_count_leaves(arena, root_first);
-        if (!ctoon_parse_tabular(c, arr_depth + 1, expected, arena, root_first, total_leaves))
-            return false;
-        if (ctoon_read_is_strict(c) &&
-            (long)ctoon_ctn_stack_top(&c->st)->count != expected)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "declared array length does not match actual row count");
-    } else if (!ctoon_cur_at_eol(c)) {
-        /* inline primitives */
-        if (out_mid_line) *out_mid_line = true;
-        char stop[2] = { c->delim, '\0' };
-        while (!ctoon_cur_at_eol(c)) {
-            ctoon_cur_skip_spaces(c);
-            if (ctoon_cur_at_eol(c)) break;
+    if (!colon) {                             /* primitive item, or `- []` (§9.2) */
+        if (e - rs == 2 && rs[0] == '[' && rs[1] == ']') {
+            if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
+            if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
+        } else {
             ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
-            if (!vv)
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-            if (!ctoon_parse_str_raw(c, vv, stop)) return false;
-            ctoon_ctn_child_added(c);
-            ctoon_cur_skip_spaces(c);
-            if (ctoon_cur_peek(c) == (u8)c->delim) {
-                c->cur++; ctoon_cur_skip_spaces(c);
-            } else break;
+            if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+            if (!ctoon_parse_scalar_tok(c, rs, e, vv)) return false;
         }
-        if (ctoon_read_is_strict(c) &&
-            (long)ctoon_ctn_stack_top(&c->st)->count != expected)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "declared array length does not match actual element count");
-    } else {
-        /* list items on next lines */
-        ctoon_cur_skip_nl(c);
-        if (!ctoon_parse_list(c, arr_depth + 1)) return false;
-        if (ctoon_read_is_strict(c) &&
-            (long)ctoon_ctn_stack_top(&c->st)->count != expected)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "declared array length does not match actual element count");
+        ctoon_ctn_child_added(c);
+        return true;
     }
 
-    if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
+    if (lb && lb == rs) {
+        /* Keyless header: the item is itself an array and stands at depth h,
+         * its items at h+1 (§9.4, §10). Fields-bearing ones are root-only (§6). */
+        if (!ctoon_parse_array_value(c, lb, e, h, false)) return false;
+        ctoon_ctn_child_added(c);
+        return true;
+    }
+
+    /* Object item: the first field stands on the hyphen line at depth h+1; a
+     * scope it opens has its content at h+2; further fields are at h+1 (§10). */
+    if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+    if (!ctoon_parse_field(c, rs, e, h + 1)) return false;
+    for (;;) {
+        int r = ctoon_peek(c);
+        if (r < 0) return false;
+        if (r == 0) break;
+        int d = c->ln.depth - c->shift;
+        if (d < h + 1) break;
+        if (d > h + 1) {
+            c->epos = c->ln.s;
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                                      "unexpected over-indented line");
+        }
+        const u8 *fs = c->ln.s, *fe = c->ln.e;
+        ctoon_consume(c);
+        if (!ctoon_parse_field(c, fs, fe, h + 1)) return false;
+    }
+    if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+    ctoon_ctn_child_added(c);
     return true;
 }
 
-/*============================================================================
- * Object (key: value per indented line)
- *===========================================================================*/
-
-static bool ctoon_parse_object(ctoon_read_ctx *c, int depth) {
-    if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
-
-    while (!ctoon_cur_at_eof(c)) {
-        /* skip blank lines */
-        bool blank = true;
-        for (const u8 *bl = c->cur;
-             bl < c->eof && *bl != '\n' && *bl != '\r'; bl++)
-            if (*bl != ' ') { blank = false; break; }
-        if (blank) { ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c); continue; }
-
-        /* skip comment lines */
-        const u8 *tmp = c->cur;
-        while (tmp < c->eof && *tmp == ' ') tmp++;
-        if (tmp < c->eof && *tmp == '#') {
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c); continue;
+/* §9.2, §9.4: list-form items under a header at hdr_depth. The caller opened
+ * the ARR container. */
+static bool ctoon_parse_list_scope(ctoon_read_ctx *c, int hdr_depth) {
+    ctoon_scope sc;
+    int r = ctoon_scope_open(c, hdr_depth + 1, &sc);
+    if (r < 0) return false;
+    if (r == 0) return true;
+    const int saved_floor = c->span_floor;
+    bool started = false;
+    for (;;) {
+        r = ctoon_scope_next(c, &sc);
+        if (r < 0) return false;
+        if (r == 0) break;
+        const u8 *s = c->ln.s, *e = c->ln.e;
+        /* §5.2 class 2: "-" alone, or "-" followed by a space. Any other line
+         * at item depth ends the list and belongs to no scope. */
+        if (!(*s == '-' && (s + 1 == e || s[1] == ' '))) break;
+        ctoon_consume(c);
+        if (!started) {
+            started = true;
+            if (hdr_depth < c->span_floor) c->span_floor = hdr_depth;
         }
-
-        if (c->cur < c->eof && !ctoon_check_indent_strict(c)) return false;
-
-        int ind = ctoon_cur_measure_indent(c);
-        if (ind < depth) break;               /* dedent → end of this object */
-        if (ind > depth) {
-            /* §9.4/§12: nothing may be indented past the current field's
-             * own depth here — a valid document never leaves unconsumed
-             * over-indented content at this point (nested values are
-             * always parsed by a recursive call before we get back to
-             * this loop). Strict mode must reject it; non-strict
-             * tolerates it ONLY when it still has some recognizable
-             * structural shape (a key:value line, a list item, or a
-             * bracket header) — a truly bare, shapeless token line is a
-             * §5.2/§14.2 error in ANY mode, not just strict. */
-            if (ctoon_read_is_strict(c))
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "unexpected over-indented line");
-            {
-                const u8 *sc = c->cur;
-                bool inq = false, has_shape = false;
-                while (sc < c->eof && *sc != '\n' && *sc != '\r') {
-                    if (*sc == '"') { inq = !inq; sc++; continue; }
-                    if (!inq && (*sc == ':' || *sc == '-' || *sc == '[')) {
-                        has_shape = true; break;
-                    }
-                    sc++;
-                }
-                if (!has_shape)
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                    "bare token line inside a structured scope");
-            }
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c); continue;
-        }
-        if (!ctoon_cur_consume_indent(c, depth)) break;
-
-        /* §14.1/§14.2: decide whether a '[' after the key is a genuine
-         * array/tabular header before committing to that interpretation —
-         * a malformed or displaced bracket segment (whitespace before it,
-         * or invalid contents) is a strict-mode error, and falls back to
-         * treating the ENTIRE line as a literal "key: value" (key text
-         * running up to the first unquoted colon) in non-strict mode. */
-        int hdr_kind = ctoon_classify_field_header(c);
-        if (hdr_kind == 2 && ctoon_read_is_strict(c))
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "malformed or displaced bracket segment");
-
-        /* key */
-        ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
-        if (!kv)
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-
-        if (hdr_kind == 2) {
-            /* non-strict fallback: whole line is a literal key: value,
-             * key running up to the first unquoted colon (bracket text
-             * included verbatim in the key). */
-            if (!ctoon_parse_entry_key(c, kv)) return false;
-            ctoon_cur_skip_spaces(c);
-            if (ctoon_cur_peek(c) != ':')
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                "expected ':' after key");
-            c->cur++;
-            ctoon_cur_skip_spaces(c);
-            ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
-            if (!vv)
-                return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-            if (!ctoon_parse_str_raw(c, vv, NULL)) return false;
-            ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-            ctoon_ctn_stack_top(&c->st)->count++;
-            continue;
-        }
-
-        if (!ctoon_parse_key(c, kv)) return false;
-        ctoon_cur_skip_spaces(c);
-
-        if (ctoon_cur_peek(c) == '[') {
-            c->cur++;
-            if (!ctoon_parse_array(c, depth, NULL)) return false;
-        } else if (ctoon_cur_peek(c) == ':') {
-            c->cur++;
-            ctoon_cur_skip_spaces(c);
-            if (ctoon_cur_at_eol(c)) {
-                ctoon_cur_skip_nl(c);
-                if (!ctoon_parse_object(c, depth + 1)) return false;
-            } else if (ctoon_cur_peek(c) == '[' &&
-                       c->cur + 1 < c->eof && *(c->cur + 1) == ']') {
-                /* §9.1: "key: []" is the empty-array literal. */
-                c->cur += 2;
-                if (!ctoon_cur_at_eol(c))
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                                    "unexpected content after []");
-                if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
-                if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
-                ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-            } else {
-                ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
-                if (!vv)
-                    return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION,
-                                    MSG_MALLOC);
-                if (!ctoon_parse_str_raw(c, vv, NULL)) return false;
-                ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-            }
-        } else {
-            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                            "expected ':' or '[' after key");
-        }
-        ctoon_ctn_stack_top(&c->st)->count++; /* one kv-pair */
+        if (!ctoon_parse_list_item(c, s, e, sc.c)) return false;
     }
+    c->span_floor = saved_floor;
+    ctoon_scope_close(c, &sc);
+    return true;
+}
 
-    if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+/*
+ * Parses an array header (or keyed tabular header) whose bracket segment
+ * starts at `lb` in the line content ending at `e`, plus the value it
+ * introduces, leaving one closed ARR (OBJ for a keyed header) in the pool.
+ * hdr_depth is the header's depth. The caller counts the result in its parent.
+ */
+static bool ctoon_parse_array_value(ctoon_read_ctx *c, const u8 *lb, const u8 *e,
+                                    int hdr_depth, bool allow_fields) {
+    ctoon_brk b;
+    if (!ctoon_parse_bracket(c, lb, e, &b)) return false;
+    const u8 *p = b.after_seg;
+
+    if (p < e && *p == '{') {
+        if (!allow_fields)
+            return ctoon_header_err(c, p, "keyless fields-bearing header outside the document root");
+        return ctoon_parse_tabular_value(c, &b, e, hdr_depth);
+    }
+    if (p >= e || *p != ':')
+        return ctoon_header_err(c, p, "expected ':' after the bracket segment");
+    if (b.keyed)
+        return ctoon_header_err(c, lb, "keyed tabular header requires a field list");
+    p++;
+    while (p < e && *p == ' ') p++;
+
+    if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
+    if (p < e) {
+        /* §9.1 inline primitive array: split on the active delimiter only,
+         * preserving empty tokens; `[]` in a cell is just a string. */
+        for (;;) {
+            const u8 *q = ctoon_find_unq(p, e, (u8)b.delim);
+            ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+            if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+            if (!ctoon_parse_scalar_tok(c, p, q ? q : e, vv)) return false;
+            ctoon_ctn_child_added(c);
+            if (!q) break;
+            p = q + 1;
+        }
+    } else {
+        if (!ctoon_parse_list_scope(c, hdr_depth)) return false;
+    }
+    if (ctoon_read_is_strict(c) && (u64)ctoon_ctn_stack_top(&c->st)->count != b.n)
+        return ctoon_header_err(c, e, "declared array length does not match actual element count");
+    return ctoon_ctn_close(c, CTOON_TYPE_ARR);
+}
+
+/* The lines of a nested object, after the scope was opened and its container
+ * created by the caller. */
+static bool ctoon_parse_object_scope(ctoon_read_ctx *c, const ctoon_scope *sc) {
+    for (;;) {
+        int r = ctoon_scope_next(c, sc);
+        if (r < 0) return false;
+        if (r == 0) return true;
+        const u8 *s = c->ln.s, *e = c->ln.e;
+        ctoon_consume(c);
+        if (!ctoon_parse_field(c, s, e, sc->c)) return false;
+    }
+}
+
+/*
+ * One object field. [s, e) is the line content (or the remainder of a
+ * list-item hyphen line); the line was consumed already. fdepth is the depth
+ * the field stands at: a scope it opens has its content at fdepth + 1.
+ * Appends the key and its value to the OBJ on top of the stack.
+ */
+static bool ctoon_parse_field(ctoon_read_ctx *c, const u8 *s, const u8 *e, int fdepth) {
+    const u8 *lb;
+    const u8 *colon = ctoon_scan_line(s, e, &lb);
+    c->epos = s;
+    if (!colon)                               /* §5.2 class 6, §14.2: a scalar line */
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                                  "expected a key-value line");
+
+    ctoon_val *kv = ctoon_read_vpool_alloc(&c->vp);
+    if (!kv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+
+    if (lb) {                                 /* §5.2 class 4: must be a valid header */
+        if (lb == s)
+            return ctoon_header_err(c, s, "keyless array header in object-field position");
+        if (lb[-1] == ' ' || lb[-1] == '\t')
+            return ctoon_header_err(c, lb, "whitespace between a key and its bracket segment");
+        if (!ctoon_parse_key_tok(c, s, lb, kv)) return false;
+        if (!ctoon_parse_array_value(c, lb, e, fdepth, true)) return false;
+    } else {
+        if (!ctoon_parse_key_tok(c, s, colon, kv)) return false;
+        const u8 *v = colon + 1;
+        while (v < e && *v == ' ') v++;
+        if (v == e) {
+            /* `key:` opens a nested object (§8); with no line in its scope the
+             * value is {}, never an empty array. */
+            ctoon_scope sc;
+            int r = ctoon_scope_open(c, fdepth + 1, &sc);
+            if (r < 0) return false;
+            if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+            if (r > 0) {
+                if (!ctoon_parse_object_scope(c, &sc)) return false;
+                ctoon_scope_close(c, &sc);
+            }
+            if (!ctoon_ctn_close(c, CTOON_TYPE_OBJ)) return false;
+        } else if (e - v == 2 && v[0] == '[' && v[1] == ']') {
+            /* §9.1: `key: []` is the empty-array literal. */
+            if (!ctoon_ctn_open(c, CTOON_TYPE_ARR)) return false;
+            if (!ctoon_ctn_close(c, CTOON_TYPE_ARR)) return false;
+        } else {
+            ctoon_val *vv = ctoon_read_vpool_alloc(&c->vp);
+            if (!vv) return ctoon_read_set_err(c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+            if (!ctoon_parse_scalar_tok(c, v, e, vv)) return false;
+        }
+    }
+    ctoon_ctn_stack_top(&c->st)->count++;     /* one kv-pair */
+    return true;
+}
+
+/* Root object: every line of the document is a field at depth 0. */
+static bool ctoon_parse_root_object(ctoon_read_ctx *c) {
+    if (!ctoon_ctn_open(c, CTOON_TYPE_OBJ)) return false;
+    for (;;) {
+        int r = ctoon_peek(c);
+        if (r < 0) return false;
+        if (r == 0) break;
+        if (c->ln.depth != 0) {
+            c->epos = c->ln.s;
+            return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                                      "unexpected over-indented line");
+        }
+        const u8 *s = c->ln.s, *e = c->ln.e;
+        ctoon_consume(c);
+        if (!ctoon_parse_field(c, s, e, 0)) return false;
+    }
+    return ctoon_ctn_close(c, CTOON_TYPE_OBJ);
+}
+
+/*
+ * §5/§14.2: a root array, root `[]` or keyed tabular root object is the whole
+ * document; only blank and comment lines may follow it.
+ */
+static bool ctoon_check_no_trailing_root_content(ctoon_read_ctx *c) {
+    int r = ctoon_peek(c);
+    if (r < 0) return false;
+    if (r > 0) {
+        c->epos = c->ln.s;
+        return ctoon_read_set_err(c, CTOON_READ_ERROR_UNEXPECTED_CONTENT,
+                                  "unexpected content after root value");
+    }
     return true;
 }
 
@@ -4348,34 +4039,6 @@ static char *ctoon_read_file_to_buf(FILE *file, usize *out_len, ctoon_alc alc) {
  * Document builder
  *===========================================================================*/
 
-/*
- * §5/§14.2: only ONE non-blank, non-comment top-level construct may exist
- * at the document root (array/tabular, keyed-tabular, object, or a single
- * scalar). Call after parsing that construct: errors if anything besides
- * blank/comment lines remains.
- */
-static bool ctoon_check_no_trailing_root_content(ctoon_read_ctx *c) {
-    while (c->cur < c->eof) {
-        bool blank = true;
-        for (const u8 *bl = c->cur; bl < c->eof && *bl != '\n' && *bl != '\r'; bl++)
-            if (*bl != ' ') { blank = false; break; }
-        if (!blank) {
-            const u8 *t = c->cur;
-            while (t < c->eof && *t == ' ') t++;
-            if (t < c->eof && *t == '#') {
-                ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-                continue;
-            }
-            break;
-        }
-        ctoon_cur_skip_to_eol(c); ctoon_cur_skip_nl(c);
-    }
-    if (c->cur < c->eof)
-        return ctoon_read_set_err(c, CTOON_READ_ERROR_TOON_STRUCTURE,
-                        "unexpected content after root value");
-    return true;
-}
-
 static ctoon_doc *ctoon_read_build_doc(char *dat, usize len,
                                  ctoon_read_flag flags,
                                  ctoon_alc alc,
@@ -4387,8 +4050,8 @@ static ctoon_doc *ctoon_read_build_doc(char *dat, usize len,
     memset(&c, 0, sizeof(c));
     c.flags  = flags;
     c.indent = (indent_size > 0) ? indent_size : 2;
-    c.delim  = ',';
     c.err    = err;
+    c.span_floor = 0x7FFFFFFF;
 
     /* ---- padded input buffer ---- */
     if (insitu) {
@@ -4410,11 +4073,18 @@ static ctoon_doc *ctoon_read_build_doc(char *dat, usize len,
         c.hdr = buf; c.eof = buf + len; c.cur = buf;
     }
 
-    /* §5: strip a leading UTF-8 BOM (EF BB BF) before any parsing. */
-    if ((usize)(c.eof - c.cur) >= 3 &&
-        (u8)c.cur[0] == 0xEF && (u8)c.cur[1] == 0xBB && (u8)c.cur[2] == 0xBF) {
-        c.cur += 3;
+    /* §12: remove a single U+FEFF at the very start of the document; one
+     * anywhere else is content. */
+    if ((usize)(c.eof - c.cur) >= 3 && is_utf8_bom(c.cur)) c.cur += 3;
+
+#if !CTOON_DISABLE_UTF8_VALIDATION
+    /* §4: ill-formed UTF-8 MUST error; it is never replaced with U+FFFD. */
+    if (!ctoon_utf8_valid(c.cur, c.eof)) {
+        c.epos = c.cur;
+        ctoon_read_set_err(&c, CTOON_READ_ERROR_INVALID_STRING, MSG_ERR_UTF8);
+        goto fail_input;
     }
+#endif
 
     /* ---- val pool ---- */
     usize hdr_slots = (sizeof(ctoon_doc) + sizeof(ctoon_val) - 1)
@@ -4440,74 +4110,62 @@ static ctoon_doc *ctoon_read_build_doc(char *dat, usize len,
         goto fail_stack;
     }
 
-    /* ---- BOM ---- */
-    if (ctoon_read_has_flag(flags, CTOON_READ_ALLOW_BOM)
-        && len >= 3 && is_utf8_bom(c.cur))
-        c.cur += 3;
-
-    /* ---- skip leading blank / comment lines ---- */
-    while (c.cur < c.eof) {
-        bool blank = true;
-        for (const u8 *bl = c.cur;
-             bl < c.eof && *bl != '\n' && *bl != '\r'; bl++)
-            if (*bl != ' ') { blank = false; break; }
-        if (!blank) {
-            const u8 *tmp = c.cur;
-            while (tmp < c.eof && *tmp == ' ') tmp++;
-            if (tmp < c.eof && *tmp == '#') {
-                ctoon_cur_skip_to_eol(&c); ctoon_cur_skip_nl(&c); continue;
-            }
-            break;
-        }
-        ctoon_cur_skip_to_eol(&c); ctoon_cur_skip_nl(&c);
-    }
-
-    /* ---- empty document → empty object ---- */
-    if (c.cur >= c.eof) {
-        ctoon_val *rv = ctoon_read_vpool_alloc(&c.vp);
-        if (!rv) {
-            ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
-            goto fail_spool;
-        }
-        rv->tag     = (u64)CTOON_TYPE_OBJ;
-        rv->uni.ofs = sizeof(ctoon_val);
-        goto done;
-    }
-
-    /* ---- dispatch on first real line ---- */
+    /* ---- root form discovery (§5) ---- */
     {
-        bool has_colon = false;
-        bool in_quotes = false;
-        for (const u8 *sc = c.cur;
-             sc < c.eof && *sc != '\n' && *sc != '\r'; sc++) {
-            if (*sc == '"') { in_quotes = !in_quotes; continue; }
-            if (!in_quotes && *sc == ':') { has_colon = true; break; }
-        }
-        if (*c.cur == '[') {
-            c.cur++;
-            if (*c.cur == ']') {
-                /* §9.1: "[]" at the root is the empty-array literal. */
-                c.cur++;
-                if (!ctoon_ctn_open(&c, CTOON_TYPE_ARR)) goto fail_spool;
-                if (!ctoon_ctn_close(&c, CTOON_TYPE_ARR)) goto fail_spool;
-            } else if (!ctoon_parse_array(&c, 0, NULL)) goto fail_spool;
-
-            /* §5/§14.2: a root-level array/tabular value is the whole
-             * document; nothing may follow it (besides blank/comments). */
-            if (!ctoon_check_no_trailing_root_content(&c)) goto fail_spool;
-        } else if (has_colon) {
-            if (!ctoon_parse_object(&c, 0)) goto fail_spool;
-        } else {
+        int r = ctoon_peek(&c);
+        if (r < 0) goto fail_spool;
+        if (r == 0) {
+            /* empty document (or only blank and comment lines) -> {} */
             ctoon_val *rv = ctoon_read_vpool_alloc(&c.vp);
             if (!rv) {
                 ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
                 goto fail_spool;
             }
-            if (!ctoon_parse_str_raw(&c, rv, NULL)) goto fail_spool;
-            /* §14.2: "two or more non-blank depth-0 lines that are
-             * neither headers nor key-value lines" (any mode) — a root
-             * scalar is likewise the whole document. */
+            rv->tag     = (u64)CTOON_TYPE_OBJ;
+            rv->uni.ofs = sizeof(ctoon_val);
+            goto done;
+        }
+        if (c.ln.depth != 0) {      /* §8: the document's first line at depth 1+ */
+            c.epos = c.ln.s;
+            ctoon_read_set_err(&c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                               "unexpected over-indented line");
+            goto fail_spool;
+        }
+
+        const u8 *s = c.ln.s, *e = c.ln.e;
+        const u8 *lb;
+        const u8 *colon = ctoon_scan_line(s, e, &lb);
+
+        if (e - s == 2 && s[0] == '[' && s[1] == ']') {
+            /* §9.1: `[]` is the empty root array. */
+            ctoon_consume(&c);
+            if (!ctoon_ctn_open(&c, CTOON_TYPE_ARR)) goto fail_spool;
+            if (!ctoon_ctn_close(&c, CTOON_TYPE_ARR)) goto fail_spool;
             if (!ctoon_check_no_trailing_root_content(&c)) goto fail_spool;
+        } else if (colon && lb && lb == s) {
+            /* keyless header: root array or keyed tabular root object */
+            ctoon_consume(&c);
+            if (!ctoon_parse_array_value(&c, lb, e, 0, true)) goto fail_spool;
+            if (!ctoon_check_no_trailing_root_content(&c)) goto fail_spool;
+        } else if (!colon) {
+            /* a scalar line is a valid document only as the sole line */
+            ctoon_consume(&c);
+            int r2 = ctoon_peek(&c);
+            if (r2 < 0) goto fail_spool;
+            if (r2 > 0) {
+                c.epos = s;
+                ctoon_read_set_err(&c, CTOON_READ_ERROR_TOON_STRUCTURE,
+                                   "expected a key-value line");
+                goto fail_spool;
+            }
+            ctoon_val *rv = ctoon_read_vpool_alloc(&c.vp);
+            if (!rv) {
+                ctoon_read_set_err(&c, CTOON_READ_ERROR_MEMORY_ALLOCATION, MSG_MALLOC);
+                goto fail_spool;
+            }
+            if (!ctoon_parse_scalar_tok(&c, s, e, rv)) goto fail_spool;
+        } else {
+            if (!ctoon_parse_root_object(&c)) goto fail_spool;
         }
     }
 
@@ -4643,7 +4301,7 @@ ctoon_doc *ctoon_read_fp(FILE *file,
  * both without any conversion step.
  *
  * Reuses all reader infrastructure: ctoon_read_ctx, ctoon_ctn_open/close,
- * ctoon_read_vpool, ctoon_str_pool_buf, ctoon_parse_str_quoted.
+ * ctoon_read_vpool, ctoon_str_pool_buf, ctoon_decode_quoted.
  *============================================================================*/
 
 #if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
@@ -5159,6 +4817,7 @@ static_inline bool ctoon_write_str_lit(ctoon_write_ctx *w, const char *s) {
 
 static_inline bool ctoon_write_indent(ctoon_write_ctx *w, int depth) {
     int sp = depth * w->indent;
+    if (sp <= 0) return true;   /* nothing to write; w->buf may still be NULL */
     if (!ctoon_write_buf_reserve(w, (usize)sp)) return false;
     memset(w->buf + w->len, ' ', (usize)sp);
     w->len += (usize)sp;
@@ -5794,6 +5453,28 @@ static_noinline u8 *write_f64_ryu(f64 val, u8 *buf) {
 
 #endif /* !CTOON_DISABLE_FAST_FP_CONV */
 
+/*
+ * Writes an integer-valued double with 1e15 <= |val| < 1e21 as a plain integer
+ * built from its shortest round-trip decimal digits, zero-padded up to the
+ * magnitude. At most 22 bytes (sign, 21 digits).
+ */
+static u8 *write_f64_big_integer(f64 val, u8 *buf) {
+    char tmp[40];
+    for (int prec = 1; prec <= 17; prec++) {
+        snprintf(tmp, sizeof(tmp), "%.*e", prec - 1, val);
+        if (strtod(tmp, NULL) == val) break;     /* 17 digits always round-trip */
+    }
+    const char *t = tmp;
+    if (*t == '-') { *buf++ = '-'; t++; }
+    int ndigits = 0;
+    for (; *t && *t != 'e' && *t != 'E'; t++) {
+        if (*t >= '0' && *t <= '9') { *buf++ = (u8)*t; ndigits++; }  /* skips the radix point */
+    }
+    int exp10 = (*t) ? atoi(t + 1) : 0;
+    for (int z = exp10 + 1 - ndigits; z > 0; z--) *buf++ = '0';
+    return buf;
+}
+
 static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
     /* need at most 40 bytes: sign + 19 digits + dot + 15 frac + e+308 */
     if (!ctoon_write_buf_reserve(w, 40)) return false;
@@ -5842,10 +5523,12 @@ static_noinline bool ctoon_write_num(ctoon_write_ctx *w, const ctoon_val *val) {
                  * Integer-valued double outside the fast int64 path (e.g. 1e20).
                  * Per spec §2: "If the fractional part is zero after
                  * normalization, emit as an integer" for the whole canonical
-                 * range |n| < 1e21, not just values that fit in an i64.
+                 * range |n| < 1e21, not just values that fit in an i64, using
+                 * the shortest round-trip digits (spec 4.2, §2) padded with
+                 * zeros -- not the exact binary value ("%.0f" would print
+                 * 123456789012345683968 for 123456789012345680000).
                  */
-                int n = snprintf((char *)p, 32, "%.0f", d);
-                p += (n > 0) ? (usize)n : 0;
+                p = write_f64_big_integer(d, p);
             } else {
 #if !CTOON_DISABLE_FAST_FP_CONV
                 p = write_f64_ryu(d, p);

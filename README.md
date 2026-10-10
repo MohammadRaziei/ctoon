@@ -9,7 +9,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-online-blue.svg)](https://mohammadraziei.github.io/ctoon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CMake 3.19+](https://img.shields.io/badge/CMake-3.19+-blue.svg)](https://cmake.org/)<!-- BEGIN CTOON_SPEC_BADGE -->
-[![TOON spec v4.1.2](https://img.shields.io/badge/TOON%20spec-v4.1.2-blue.svg)](https://github.com/toon-format/spec/tree/v4.1.2)<!-- END CTOON_SPEC_BADGE -->
+[![TOON spec v4.4.0](https://img.shields.io/badge/TOON%20spec-v4.4.0-blue.svg)](https://github.com/toon-format/spec/tree/v4.4.0)<!-- END CTOON_SPEC_BADGE -->
 
 [![C](https://img.shields.io/badge/C-99-blue.svg)](https://en.cppreference.com/w/c)
 [![C++11](https://img.shields.io/badge/C++-11-blue.svg)](https://en.cppreference.com/w/cpp/11)

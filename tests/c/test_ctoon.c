@@ -744,3 +744,273 @@ UTEST(ctoon_tests, test_deeply_nested) {
 
     ctoon_doc_free(doc);
 }
+/* =========================================================================
+ * Spec 4.4 decoder regressions (strict / non-strict, header spans, tokens)
+ * ========================================================================= */
+
+static ctoon_doc *parse_lax(const char *toon) {
+    return ctoon_read(toon, strlen(toon), CTOON_READ_NON_STRICT);
+}
+
+/* Reads with a custom indentSize; copies the text because the reader API wants a char *. */
+static ctoon_doc *parse_indent(const char *toon, int indent, ctoon_read_flag flags) {
+    size_t n = strlen(toon);
+    char *copy = (char *)malloc(n + 1);
+    memcpy(copy, toon, n + 1);
+    ctoon_doc *doc = ctoon_read_opts_indent(copy, n, flags, indent, NULL, NULL);
+    free(copy);
+    return doc;
+}
+
+/* Both modes must reject: §14 keeps only five non-strict recoveries. The
+ * helper reports and returns false (utest's ASSERT_* only works inside a
+ * UTEST body); the macro asserts on it. */
+static bool rejected_in_both_modes(const char *toon, int line) {
+    ctoon_doc *s = parse(toon);
+    ctoon_doc *l = parse_lax(toon);
+    bool ok = (s == NULL && l == NULL);
+    if (!ok) fprintf(stderr, "line %d: expected a parse error in %s mode: %s\n",
+                     line, s ? "strict" : "non-strict", toon);
+    if (s) ctoon_doc_free(s);
+    if (l) ctoon_doc_free(l);
+    return ok;
+}
+#define expect_error_both_modes(toon, line) ASSERT_TRUE(rejected_in_both_modes((toon), (line)))
+
+UTEST(ctoon_tests, test_spec44_empty_cells_are_preserved) {
+    ctoon_doc *doc = parse("items[4]: a,,c,");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *arr = ctoon_obj_get(ctoon_doc_get_root(doc), "items");
+    ASSERT_EQ(4, (int)ctoon_arr_size(arr));
+    ASSERT_STREQ("a", ctoon_get_str(ctoon_arr_get(arr, 0)));
+    ASSERT_STREQ("",  ctoon_get_str(ctoon_arr_get(arr, 1)));
+    ASSERT_STREQ("c", ctoon_get_str(ctoon_arr_get(arr, 2)));
+    ASSERT_STREQ("",  ctoon_get_str(ctoon_arr_get(arr, 3)));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_row_width_mismatch_errors_in_both_modes) {
+    expect_error_both_modes("items[1]{a}:\n  1,2", __LINE__);       /* too many cells */
+    expect_error_both_modes("items[1]{a,b}:\n  1", __LINE__);       /* too few cells */
+    expect_error_both_modes("m[1:]{a,b}:\n  k: 1", __LINE__);       /* keyed entry */
+    expect_error_both_modes("m[1:]{a}:\n  k:", __LINE__);           /* bare `k:` has zero cells */
+}
+
+UTEST(ctoon_tests, test_spec44_quoted_spans_hide_delimiters_and_colons) {
+    ctoon_doc *doc = parse("k[2]: a\"b,c\",d\nu[1]: x\"y,z");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+    ctoon_val *k = ctoon_obj_get(root, "k");
+    ASSERT_EQ(2, (int)ctoon_arr_size(k));
+    ASSERT_STREQ("a\"b,c\"", ctoon_get_str(ctoon_arr_get(k, 0)));
+    ASSERT_STREQ("d", ctoon_get_str(ctoon_arr_get(k, 1)));
+    ASSERT_STREQ("x\"y,z", ctoon_get_str(ctoon_arr_get(ctoon_obj_get(root, "u"), 0)));
+    ctoon_doc_free(doc);
+
+    doc = parse("a\"b:c\"d: 1\n\"has \\\"[2]\\\" in it\"[3]: 3,4,5");
+    ASSERT_TRUE(doc != NULL);
+    root = ctoon_doc_get_root(doc);
+    ASSERT_EQ(1, (int)ctoon_get_int(ctoon_obj_get(root, "a\"b:c\"d")));
+    ASSERT_EQ(3, (int)ctoon_arr_size(ctoon_obj_get(root, "has \"[2]\" in it")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_empty_key_and_nbsp_is_content) {
+    ctoon_doc *doc = parse(": 1\nn\xC2\xA0[1]: y");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+    ASSERT_EQ(1, (int)ctoon_get_int(ctoon_obj_get(root, "")));
+    ASSERT_TRUE(ctoon_is_arr(ctoon_obj_get(root, "n\xC2\xA0")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_crlf_strips_only_one_cr) {
+    ctoon_doc *doc = parse("a: x\r\r\nb: 1");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+    ASSERT_STREQ("x\r", ctoon_get_str(ctoon_obj_get(root, "a")));
+    ASSERT_EQ(1, (int)ctoon_get_int(ctoon_obj_get(root, "b")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_header_syntax_errors_in_both_modes) {
+    expect_error_both_modes("foo [2]: bar,baz", __LINE__);          /* space before bracket */
+    expect_error_both_modes("t\t[1]: x", __LINE__);                 /* tab before bracket */
+    expect_error_both_modes("a[2:]{x}", __LINE__);                  /* no colon after header */
+    expect_error_both_modes("b[1]{c}: x", __LINE__);                /* content after fields header */
+    expect_error_both_modes("a:\n  [2]: 1,2", __LINE__);            /* keyless header in field position */
+    expect_error_both_modes("items[1]:\n  - [0]{x}:", __LINE__);    /* keyless fields header as item */
+    expect_error_both_modes("a[0]{x,}:", __LINE__);                 /* empty field entry */
+    expect_error_both_modes("a[0]{b {c}}:", __LINE__);              /* space before field group */
+    expect_error_both_modes("a[0|]{x\ty}:", __LINE__);              /* wrong delimiter in field list */
+    expect_error_both_modes("a[03]: 1", __LINE__);                  /* leading zero length */
+    expect_error_both_modes("a[2]extra: 1,2", __LINE__);            /* junk after bracket */
+}
+
+UTEST(ctoon_tests, test_spec44_indentation_errors_in_both_modes) {
+    expect_error_both_modes("a: 1\n  b: 2", __LINE__);              /* over-indented */
+    expect_error_both_modes("  hello", __LINE__);                   /* indented root primitive */
+    expect_error_both_modes("  a: 1\n  b: 2", __LINE__);            /* whole document indented */
+    expect_error_both_modes("u[1]{a}:\n  1\n    junk: 9", __LINE__);
+    expect_error_both_modes("items[1]:\n  - a\n  x: 1", __LINE__);  /* non-item at item depth */
+    expect_error_both_modes("items[1]:\n  - a: 1\n      b: 2", __LINE__);
+    expect_error_both_modes("u[2:]{x}:\n  a: 1\n  boom", __LINE__); /* entry without colon */
+    expect_error_both_modes("hello\nworld", __LINE__);              /* second scalar line */
+}
+
+UTEST(ctoon_tests, test_spec44_depth_jump_is_a_non_strict_recovery_only) {
+    const char *toon = "a:\n    b: 1\n    c: 2";
+    ASSERT_TRUE(parse(toon) == NULL);
+    ctoon_doc *doc = parse_lax(toon);
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *a = ctoon_obj_get(ctoon_doc_get_root(doc), "a");
+    ASSERT_EQ(1, (int)ctoon_get_int(ctoon_obj_get(a, "b")));
+    ASSERT_EQ(2, (int)ctoon_get_int(ctoon_obj_get(a, "c")));
+    ctoon_doc_free(doc);
+
+    /* a line between the original and the adopted depth still errors */
+    ASSERT_TRUE(parse_lax("a:\n    b: 1\n  c: 2") == NULL);
+}
+
+UTEST(ctoon_tests, test_spec44_blank_line_inside_header_span) {
+    const char *in_span = "a[2]:\n  - x\n\n  - y";
+    ASSERT_TRUE(parse(in_span) == NULL);
+    ctoon_doc *doc = parse_lax(in_span);
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_EQ(2, (int)ctoon_arr_size(ctoon_obj_get(ctoon_doc_get_root(doc), "a")));
+    ctoon_doc_free(doc);
+
+    /* blank lines between a header and its first item, between plain fields,
+     * and at the end of the document are not inside any span */
+    doc = parse("a[1]:\n\n  - x\n\nb:\n  c: 1\n\n  d: 2\n\n");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_doc_free(doc);
+
+    ASSERT_TRUE(parse("a[1]:\n  - k:\n\n      x: 1") == NULL);        /* span of the outer list */
+    ASSERT_TRUE(parse("t[2]{a}:\n  1\n\n  2") == NULL);               /* between rows */
+}
+
+UTEST(ctoon_tests, test_spec44_tab_only_line_is_blank_in_non_strict) {
+    const char *toon = "a: 1\n\t\nb: 2";
+    ASSERT_TRUE(parse(toon) == NULL);
+    ctoon_doc *doc = parse_lax(toon);
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_EQ(2, (int)ctoon_get_int(ctoon_obj_get(ctoon_doc_get_root(doc), "b")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_declared_count_recovery) {
+    ASSERT_TRUE(parse("a[99999999999999999999]: 1") == NULL);        /* strict: count unmet */
+    ctoon_doc *doc = parse_lax("a[99999999999999999999]: 1");
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_EQ(1, (int)ctoon_arr_size(ctoon_obj_get(ctoon_doc_get_root(doc), "a")));
+    ctoon_doc_free(doc);
+
+    doc = parse_lax("a[1]:\n  - x\n  - y\n  - z");                   /* N never truncates */
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_EQ(3, (int)ctoon_arr_size(ctoon_obj_get(ctoon_doc_get_root(doc), "a")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_duplicate_keys_keep_first_position_last_value) {
+    ASSERT_TRUE(parse("a: 1\nb: 2\na: 3") == NULL);
+    ctoon_doc *doc = parse_lax("a: 1\nb: 2\na: 3");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_val *root = ctoon_doc_get_root(doc);
+    ASSERT_EQ(2, (int)ctoon_obj_size(root));
+    ASSERT_EQ(3, (int)ctoon_get_int(ctoon_obj_get(root, "a")));
+    size_t jlen = 0;
+    char *json = ctoon_doc_to_json(doc, 0, CTOON_WRITE_NOFLAG, NULL, &jlen, NULL);
+    ASSERT_TRUE(json != NULL);
+    const char *pa = strstr(json, "\"a\""), *pb = strstr(json, "\"b\"");
+    ASSERT_TRUE(pa != NULL && pb != NULL);
+    ASSERT_TRUE(pa < pb);                       /* `a` keeps the position of its first occurrence */
+    free(json);
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_surrogate_escapes_rejected_in_toon_not_json) {
+    ASSERT_TRUE(parse("val: \"\\ud83d\\ude00\"") == NULL);          /* paired */
+    ASSERT_TRUE(parse("val: \"\\ud83d\"") == NULL);                 /* lone high */
+    ASSERT_TRUE(parse("val: \"\\ude00\"") == NULL);                 /* lone low */
+    ctoon_doc *doc = parse("val: \"\xF0\x9F\x98\x80\"");           /* literal UTF-8 is fine */
+    ASSERT_TRUE(doc != NULL);
+    ctoon_doc_free(doc);
+
+    const char *json = "{\"v\":\"\\ud83d\\ude00\"}";               /* RFC 8259 still allows pairs */
+    char *copy = strdup(json);
+    ctoon_doc *jd = ctoon_read_json(copy, strlen(json), 0, NULL, NULL);
+    ASSERT_TRUE(jd != NULL);
+    ASSERT_STREQ("\xF0\x9F\x98\x80", ctoon_get_str(ctoon_obj_get(ctoon_doc_get_root(jd), "v")));
+    ctoon_doc_free(jd);
+    free(copy);
+}
+
+UTEST(ctoon_tests, test_spec44_ill_formed_utf8_is_an_error) {
+    ASSERT_TRUE(parse("a: \xFF") == NULL);                          /* invalid byte */
+    ASSERT_TRUE(parse("a: \xC3") == NULL);                          /* truncated sequence */
+    ASSERT_TRUE(parse("a: \xED\xA0\x80") == NULL);                  /* encoded surrogate */
+    ASSERT_TRUE(parse("a: \xC0\xAF") == NULL);                      /* overlong */
+    ASSERT_TRUE(parse_lax("a: \xFF") == NULL);                      /* no U+FFFD recovery */
+    ctoon_doc *doc = parse("a: caf\xC3\xA9");
+    ASSERT_TRUE(doc != NULL);
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_custom_indent_size) {
+    ASSERT_TRUE(parse_indent("a:\n  b: 1", 4, 0) == NULL);          /* 2 spaces under indentSize 4 */
+    ctoon_doc *doc = parse_indent("a:\n    b: 1", 4, 0);
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_EQ(1, (int)ctoon_get_int(ctoon_obj_get(ctoon_obj_get(ctoon_doc_get_root(doc), "a"), "b")));
+    ctoon_doc_free(doc);
+}
+
+UTEST(ctoon_tests, test_spec44_root_forms) {
+    ctoon_doc *doc = parse("[]");
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_TRUE(ctoon_is_arr(ctoon_doc_get_root(doc)));
+    ASSERT_EQ(0, (int)ctoon_arr_size(ctoon_doc_get_root(doc)));
+    ctoon_doc_free(doc);
+
+    doc = parse("hello");
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_STREQ("hello", ctoon_get_str(ctoon_doc_get_root(doc)));
+    ctoon_doc_free(doc);
+
+    doc = parse("# only a comment\n\n");
+    ASSERT_TRUE(doc != NULL);
+    ASSERT_TRUE(ctoon_is_obj(ctoon_doc_get_root(doc)));
+    ctoon_doc_free(doc);
+
+    expect_error_both_modes("[2]: 1,2\nx: 1", __LINE__);            /* trailing content after root array */
+}
+
+UTEST(ctoon_tests, test_spec44_deep_nesting_is_rejected_not_a_stack_overflow) {
+    enum { LEVELS = 5000 };
+    size_t cap = (size_t)LEVELS * (LEVELS + 8) + 64;
+    char *buf = (char *)malloc(cap);
+    size_t n = 0;
+    for (int i = 0; i < LEVELS; i++) {
+        for (int k = 0; k < i * 2; k++) buf[n++] = ' ';
+        buf[n++] = 'k'; buf[n++] = ':'; buf[n++] = '\n';
+    }
+    buf[n] = '\0';
+    ASSERT_TRUE(ctoon_read(buf, n, 0) == NULL);
+    free(buf);
+}
+
+UTEST(ctoon_tests, test_spec44_large_integer_valued_numbers_use_shortest_digits) {
+    const char *json = "{\"n\":123456789012345680000,\"m\":-1e20,\"k\":1e15}";
+    char *copy = strdup(json);
+    ctoon_doc *doc = ctoon_read_json(copy, strlen(json), 0, NULL, NULL);
+    ASSERT_TRUE(doc != NULL);
+    size_t len = 0;
+    char *toon = ctoon_write(doc, &len);
+    ASSERT_TRUE(toon != NULL);
+    ASSERT_TRUE(strstr(toon, "n: 123456789012345680000") != NULL);  /* not ...683968 */
+    ASSERT_TRUE(strstr(toon, "m: -100000000000000000000") != NULL);
+    ASSERT_TRUE(strstr(toon, "k: 1000000000000000") != NULL);
+    free(toon);
+    ctoon_doc_free(doc);
+    free(copy);
+}
