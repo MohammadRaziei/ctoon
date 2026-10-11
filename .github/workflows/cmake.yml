@@ -46,6 +46,16 @@ jobs:
       with:
         version: "1"
 
+    # Octave is exercised on Linux here (apt gives Octave + mkoctfile in one
+    # go). macOS/older+newer Octave releases are covered by mex.yml; Windows
+    # has no Octave job (CTOON_BUILD_OCTAVE is OFF there, so it is skipped
+    # instead of failing the configure).
+    - name: Set up Octave (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends octave octave-dev
+
     - name: Fix Xcode SDK selection (macOS)
       if: runner.os == 'macOS'
       # Zig's own build-runner (the process that runs build.zig itself)
@@ -73,6 +83,7 @@ jobs:
           CTOON_BUILD_ZIG=ON
           CTOON_BUILD_GO=ON
           CTOON_BUILD_JULIA=ON
+          CTOON_BUILD_OCTAVE=${{ runner.os == 'Linux' && 'ON' || 'OFF' }}
 
     - name: Build
       run: cmake --build build -j4 --config Release
@@ -186,10 +197,10 @@ jobs:
     - name: Install Coverage.jl
       run: julia -e 'import Pkg; Pkg.add("Coverage")'
 
-    - name: Install coverage tools
+    - name: Install coverage tools and Octave
       run: |
         sudo apt-get update
-        sudo apt-get install -y lcov
+        sudo apt-get install -y lcov octave octave-dev
 
     - name: Configure CMake with coverage
       run: |
@@ -201,7 +212,8 @@ jobs:
           -DCTOON_BUILD_DOCS=OFF \
           -DCTOON_BUILD_RUST=ON \
           -DCTOON_BUILD_GO=ON \
-          -DCTOON_BUILD_JULIA=ON
+          -DCTOON_BUILD_JULIA=ON \
+          -DCTOON_BUILD_OCTAVE=ON
 
     - name: Generate coverage report
       run: cmake --build build --target ctoon_coverage

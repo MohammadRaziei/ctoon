@@ -33,14 +33,26 @@ if ~isfolder(buildDir), mkdir(buildDir); end
 buildDir = info.Name;
 
 % Define Destination Package Structure
+isOctave      = exist('OCTAVE_VERSION', 'builtin') ~= 0;
 dstPkgDir     = fullfile(buildDir, '+ctoon');
 dstPrivateDir = fullfile(dstPkgDir, 'private');
 mexFileName   = ['ctoon_mex.' mexext];
-targetMexPath = fullfile(dstPrivateDir, mexFileName);
+if isOctave
+    % Octave does not resolve a private/ folder inside a +package folder,
+    % so the gateway lives next to the package, in buildDir itself:
+    %   <buildDir>/ctoon_mex.mex   <buildDir>/+ctoon/*.m
+    % and addpath(buildDir) alone is enough, same as on MATLAB.
+    mexOutDir = buildDir;
+else
+    % MATLAB: <buildDir>/+ctoon/private/ctoon_mex.<mexext>
+    mexOutDir = dstPrivateDir;
+end
+targetMexPath = fullfile(mexOutDir, mexFileName);
 
 % ---- 3. Export Package Structure (Source -> Build) -----------------------
 fprintf('  [Build] Creating package structure in: %s\n', dstPkgDir);
-if ~isfolder(dstPrivateDir), mkdir(dstPrivateDir); end
+if ~isfolder(mexOutDir), mkdir(mexOutDir); end
+if ~isfolder(dstPkgDir), mkdir(dstPkgDir); end
 
 % Copy .m files from ctoon/ to +ctoon/
 if isfolder(srcMDir)
@@ -71,18 +83,39 @@ else
     if ~isfile(mexGateway), error('Build:NotFound', 'MEX Gateway not found: %s', mexGateway); end
     if ~isfile(ctoonCoreSrc), error('Build:NotFound', 'Core source not found: %s', ctoonCoreSrc); end
 
-    fprintf('  [Build] Compiling MEX binary directly to private/...\n');
-    
-    % Compile directly into build/+ctoon/private/
-    mex(mexGateway, ctoonCoreSrc, ...
-        ['-I', coreIncDir], ...
-        '-outdir', dstPrivateDir, ...
-        '-output', 'ctoon_mex');
-        
+    fprintf('  [Build] Compiling MEX binary into %s ...\n', mexOutDir);
+
+    if isOctave
+        % GNU Octave: its mex wrapper has no -outdir/-output, so call
+        % mkoctfile directly (needs the octave-dev / liboctave-dev package;
+        % only the build needs it -- the resulting binary does not).
+        [st, ~] = system('mkoctfile --version');
+        if st ~= 0
+            error('Build:NoMkoctfile', ...
+                  'mkoctfile not found. Install octave-dev (Debian/Ubuntu) or liboctave-dev.');
+        end
+        cmd = sprintf('mkoctfile --mex -I"%s" -o "%s" "%s" "%s"', ...
+                      coreIncDir, fullfile(mexOutDir, 'ctoon_mex'), ...
+                      mexGateway, ctoonCoreSrc);
+        [st, out] = system(cmd);
+        if st ~= 0
+            error('Build:CompileFailed', 'mkoctfile failed:\n%s', out);
+        end
+    else
+        mex(mexGateway, ctoonCoreSrc, ...
+            ['-I', coreIncDir], ...
+            '-outdir', mexOutDir, ...
+            '-output', 'ctoon_mex');
+    end
+
     fprintf('  [Build] Compilation successful.\n');
 end
 
 % ---- 6. Finalize ---------------------------------------------------------
+if isOctave
+    % Octave's built-in load() is shadowed by ctoon.load; silence the notice.
+    warning('off', 'Octave:shadowed-function');
+end
 addpath(buildDir);
 rehash;
 fprintf('  [Build] Ready. You can now use "ctoon.version".\n');

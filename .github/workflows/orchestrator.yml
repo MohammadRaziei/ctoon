@@ -65,8 +65,8 @@ jobs:
     uses: ./.github/workflows/zig.yml
     needs: [init]
 
-  matlab:
-    uses: ./.github/workflows/matlab.yml
+  mex:
+    uses: ./.github/workflows/mex.yml
     needs: [init]
 
   cpp:
@@ -161,14 +161,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: dist/*
 
-  release-matlab:
-    needs: [matlab, init]
+  release-mex:
+    needs: [mex, init]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
-          # matlab-dist (source zip) + matlab-lib-<platform> (prebuilt MEX zips)
+          # matlab-dist (source zip, also what Octave builds from) +
+          # matlab-lib-<platform> (prebuilt MATLAB MEX zips). Octave has no
+          # prebuilt release; mex.yml's octave-* artifacts are internal.
           pattern: matlab-*
           path: dist
           merge-multiple: true
@@ -219,7 +221,7 @@ jobs:
   # start of each run), its presence means "this release is complete".
   # NOTE: add every new release-* job to `needs` below.
   release-list:
-    needs: [init, release-wheels, release-crate, release-zig, release-matlab, release-cpp]
+    needs: [init, release-wheels, release-crate, release-zig, release-mex, release-cpp]
     runs-on: ubuntu-latest
     steps:
       - name: List published assets

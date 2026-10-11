@@ -8,8 +8,12 @@ networks hit that quickly).
 
 from __future__ import annotations
 
+import contextlib
+import os
+import shutil
 import socket
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -82,11 +86,11 @@ def asset_url(tag: str, name: str) -> str:
     return f"{base_url()}/download/{tag}/{name}"
 
 
-def fetch_text(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": "ctoon-manager"})
+@contextlib.contextmanager
+def _network_errors(url: str):
+    """Turn urllib/socket failures while talking to `url` into ReleaseError."""
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return resp.read().decode("utf-8")
+        yield
     except urllib.error.HTTPError as e:
         e.close()  # an HTTPError owns the response socket
         if e.code == 404:
@@ -96,3 +100,30 @@ def fetch_text(url: str) -> str:
         raise ReleaseError(f"could not reach {url}: {e.reason}") from None
     except (socket.timeout, TimeoutError):
         raise ReleaseError(f"timed out fetching {url}") from None
+
+
+def _request(url: str) -> urllib.request.Request:
+    return urllib.request.Request(url, headers={"User-Agent": "ctoon-manager"})
+
+
+def fetch_text(url: str) -> str:
+    with _network_errors(url):
+        with urllib.request.urlopen(_request(url), timeout=TIMEOUT) as resp:
+            return resp.read().decode("utf-8")
+
+
+def fetch_file(url: str, dest: str) -> None:
+    """Download `url` to `dest` (written atomically; nothing is left behind on failure)."""
+    folder = os.path.dirname(dest) or "."
+    os.makedirs(folder, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=folder, prefix=".ctoon-", suffix=".part")
+    try:
+        with os.fdopen(fd, "wb") as out:
+            with _network_errors(url):
+                with urllib.request.urlopen(_request(url), timeout=TIMEOUT) as resp:
+                    shutil.copyfileobj(resp, out)
+        os.replace(tmp, dest)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise

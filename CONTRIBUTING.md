@@ -5,7 +5,7 @@ change, how the build system works, and what you must run before opening a
 pull request.
 
 CToon is a C99 core library (`src/ctoon.c`, `include/ctoon.h`) with bindings
-for C++, Python, Go, Rust, Zig, Julia and MATLAB, plus a CLI. **CMake is the
+for C++, Python, Go, Rust, Zig, Julia, MATLAB and GNU Octave, plus a CLI. **CMake is the
 single entry point for building, testing, coverage and documentation across
 all of them** — you do not need to learn each language's tooling separately
 to check your work.
@@ -58,7 +58,7 @@ issue tracker first.
 | Path | What lives there |
 |------|------------------|
 | `src/ctoon.c`, `include/ctoon.h` | The C core. The library version is defined in `ctoon.h`. |
-| `src/bindings/<lang>/` | One folder per language binding (`cpp`, `python`, `go`, `rust`, `zig`, `julia`, `matlab`). |
+| `src/bindings/<lang>/` | One folder per language binding (`cpp`, `python`, `go`, `rust`, `zig`, `julia`, `matlab`, `octave`). Octave has no sources of its own: it builds the `matlab` gateway with `mkoctfile`, so `octave/` holds only CMake glue. |
 | `src/cli/` | The `ctoon` command-line tool. |
 | `tests/<lang>/` | Tests for each language. **All languages' tests live under the root `tests/` folder**, each with its own `CMakeLists.txt`. |
 | `tests/data/` | Shared paired `*.json` / `*.toon` sample files used by round-trip tests. |
@@ -91,6 +91,7 @@ everything (see [Configure options](#41-configure-options)):
 | Zig | Zig 0.16.0 |
 | Julia | Julia 1.x and a C compiler |
 | MATLAB | MATLAB with a MEX-capable compiler |
+| Octave | GNU Octave ≥ 8.1 with `mkoctfile` (Debian/Ubuntu: `apt install octave octave-dev`) and a C compiler. Only the *build* needs `mkoctfile` and the compiler; running and testing the built binding needs just Octave. The test framework, [MOxUnit](https://github.com/MOxUnit/MOxUnit), is fetched by CMake (or pass `-DCTOON_MOXUNIT_DIR=<checkout>` offline). |
 
 For coverage: `lcov` + `genhtml`, `cargo-llvm-cov` (Rust, plus
 `rustup component add llvm-tools-preview`), and the `Coverage` Julia package.
@@ -113,12 +114,12 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 | `CTOON_BUILD_EXAMPLES` | ON (top-level) | Build the examples. |
 | `CTOON_BUILD_DOCS` | OFF | Enable the documentation targets. |
 | `CTOON_BUILD_PYTHON` | OFF | Build the Python extension (nanobind) through CMake. |
-| `CTOON_BUILD_GO` / `_RUST` / `_ZIG` / `_JULIA` / `_MATLAB` | OFF | **Require** that language's toolchain. |
+| `CTOON_BUILD_GO` / `_RUST` / `_ZIG` / `_JULIA` / `_MATLAB` / `_OCTAVE` | OFF | **Require** that language's toolchain. |
 | `CTOON_BUILD_ALL_LANGS` | OFF | Require *every* language's toolchain. |
 
-**How the per-language flags actually work.** Go, Rust, Zig, Julia and MATLAB
-are compiled by their *own* toolchains (`go`, `cargo`, `zig build`, Julia
-`Pkg`, MEX) — not by CMake's own build graph. The `CTOON_BUILD_<LANG>` flags
+**How the per-language flags actually work.** Go, Rust, Zig, Julia, MATLAB and
+Octave are compiled by their *own* toolchains (`go`, `cargo`, `zig build`,
+Julia `Pkg`, MEX / `mkoctfile`) — not by CMake's own build graph. The `CTOON_BUILD_<LANG>` flags
 therefore don't add a build step; they control what `tests/` and `docs/` do
 when they look for that language:
 
@@ -177,6 +178,7 @@ cmake --build build --target ctoon_test_go
 cmake --build build --target ctoon_test_rust
 cmake --build build --target ctoon_test_zig
 cmake --build build --target ctoon_test_julia
+cmake --build build --target ctoon_test_octave
 # ...and so on; `cmake --build build --target help | grep ctoon_test`
 ```
 
@@ -211,14 +213,18 @@ into a total, and generates a dashboard:
 ```
 build/coverage/
 ├── index.html          # dashboard linking every report
-├── total/              # merged lcov + HTML (C, C++, Python, Go, Rust, Julia)
-├── c/  cpp/  python/  go/  rust/  julia/
+├── total/              # merged lcov + HTML (C, C++, Python, Go, Rust, Julia, Octave)
+├── c/  cpp/  python/  go/  rust/  julia/  octave/
 └── (MATLAB coverage is Cobertura XML from its own build tool)
 ```
 
 Individual targets: `ctoon_coverage_c`, `ctoon_coverage_cpp`,
 `ctoon_coverage_python`, `ctoon_coverage_go`, `ctoon_coverage_rust`,
-`ctoon_coverage_julia`, and `ctoon_coverage_total`.
+`ctoon_coverage_julia`, `ctoon_coverage_octave`, and `ctoon_coverage_total`.
+
+Octave coverage is gcc/gcov on the C gateway and core (Linux only): the target
+builds its own instrumented MEX and runs the MOxUnit suite against it, so it
+needs `lcov`, `mkoctfile` and `gcc`.
 
 Requirements: `lcov`/`genhtml` are needed for the merged report. Rust needs
 `cargo-llvm-cov`; Julia needs the `Coverage` package. If a coverage tool is
@@ -354,6 +360,7 @@ CI is split into small workflows under `.github/workflows/`:
 | `wheels.yml` | Python — builds the sdist and wheels and uploads them as artifacts. |
 | `crates.yml` | Rust — runs `cargo test`, then `cargo package` / `cargo publish --dry-run`, and uploads the `.crate` as an artifact. |
 | `zig.yml` | Zig — cross-compiles release libraries and uploads them as artifacts. |
+| `mex.yml` | MATLAB + Octave (formerly `matlab.yml`) — packs the MATLAB source distribution (`ctoon-matlab-<ver>-src.zip`), builds prebuilt MEX zips and tests them on several MATLAB releases. For Octave it builds that same source zip with `mkoctfile` once per Octave release (Linux in the official `gnuoctave/octave` images, macOS via Homebrew) and tests each build in a separate job that installs no compiler. Octave has no release binary; it builds from the source zip. |
 | `orchestrator.yml` | Runs on pushes to `master` and version tags. Calls the workflows above, creates the release, attaches every artifact, publishes to PyPI/crates.io on tags, and deploys the docs + coverage site to GitHub Pages. |
 
 ### The per-language workflow pattern

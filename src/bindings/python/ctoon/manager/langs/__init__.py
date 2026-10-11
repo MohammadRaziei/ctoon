@@ -6,6 +6,6 @@ LANGS below and it shows up as `ctoon.manager <NAME> ...`.
 
 from __future__ import annotations
 
-from . import matlab
+from . import matlab, octave
 
-LANGS = (matlab,)
+LANGS = (matlab, octave)

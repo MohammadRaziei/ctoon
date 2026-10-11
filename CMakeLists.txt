@@ -39,10 +39,10 @@ option(CTOON_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(CTOON_BUILD_DOCS "Build documentation" OFF)
 
-# Self-building language bindings (Go, Rust, Zig, MATLAB, Julia): each has its
+# Self-building language bindings (Go, Rust, Zig, MATLAB, Octave, Julia): each has its
 # own external toolchain and is never compiled by this project's own
 # CMake graph the way Python is — these flags don't turn on a build step
-# here, they tell tests/, docs/, and src/bindings/matlab (each of which
+# here, they tell tests/, docs/, src/bindings/matlab and src/bindings/octave (each of which
 # detects these toolchains independently) that a missing toolchain
 # should be a hard error instead of a silent skip. See
 # cmake/CtoonLangGuard.cmake. This is the main ctoon project only —
@@ -55,6 +55,7 @@ option(CTOON_BUILD_GO "Require the Go toolchain" OFF)
 option(CTOON_BUILD_RUST "Require the Rust toolchain" OFF)
 option(CTOON_BUILD_ZIG "Require the Zig toolchain" OFF)
 option(CTOON_BUILD_MATLAB "Require the MATLAB toolchain" OFF)
+option(CTOON_BUILD_OCTAVE "Require GNU Octave (+ mkoctfile) for the Octave binding" OFF)
 option(CTOON_BUILD_JULIA "Require the Julia toolchain" OFF)
 
 include(CtoonLangGuard)
@@ -131,6 +132,7 @@ install(TARGETS ctoon_cli
 )
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/matlab)
+add_subdirectory(${PROJECT_SOURCE_DIR}/src/bindings/octave)
 
 
 # Tests

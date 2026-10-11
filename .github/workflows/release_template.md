@@ -26,3 +26,5 @@
 | **macOS arm64** | [![macos-arm64](https://img.shields.io/badge/macos--arm64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-macos-arm64.zip) |
 | **Windows x86_64** | [![windows-x86_64](https://img.shields.io/badge/windows--x86_64-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-windows-x86_64.zip) |
 | **Source (build with `mex`)** | [![src](https://img.shields.io/badge/src-blue)](https://github.com/MohammadRaziei/ctoon/releases/download/RELEASE_NAME/ctoon-matlab-VERSION_STRING-src.zip) |
+
+**GNU Octave** has no prebuilt binary: it builds from the same `Source` zip above (`ctoon_build`, which calls `mkoctfile` — needs `octave-dev` and a C compiler once, at build time; nothing at run time), or run `ctoon.manager octave install`.

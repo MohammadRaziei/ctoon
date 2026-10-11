@@ -16,7 +16,7 @@ import re
 from . import _matlab_version as _gist
 
 # Oldest release the MATLAB binding supports (CMake: MATLAB >= 8.4 == R2014b).
-# Not what CI covers (setup-matlab starts at R2021a) -- see matlab.yml.
+# Not what CI covers (setup-matlab starts at R2021a) -- see mex.yml.
 MIN_RELEASE = "R2014b"
 
 _RELEASE_RE = re.compile(r"^R\d{4}[ab]$")

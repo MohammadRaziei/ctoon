@@ -1,0 +1,444 @@
+name: mex build & test (MATLAB + Octave)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'src/ctoon.c'
+      - 'include/ctoon.h'
+      - 'src/bindings/matlab/**'
+      - 'src/bindings/octave/**'
+      - 'tests/matlab/**'
+      - 'tests/octave/**'
+      - 'tests/data/**'
+      - 'version.py'
+      - 'supported_spec.conf'
+      - '.github/workflows/mex.yml'
+
+env:
+  FORCE_COLOR: 3
+
+concurrency:
+  group: mex-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow covers both MEX consumers of src/bindings/matlab: MATLAB and
+# GNU Octave (same ctoon_mex.c gateway and +ctoon wrappers; Octave compiles
+# them with `mkoctfile --mex` instead of `mex`). The file used to be called
+# matlab.yml.
+#
+# Release artifacts produced here (picked up by the orchestrator the same
+# way zig-lib-* is):
+#
+#   matlab-dist       ctoon-matlab-<ver>-src.zip
+#       Self-contained SOURCE distribution (the "sdist" of the MATLAB
+#       binding): ctoon/*.m, ctoon_mex.c, ctoon.c, ctoon.h and the
+#       ctoon_build/_install/_clean .m scripts side by side. Anyone with a
+#       MATLAB + C compiler (including releases CI cannot run) builds it
+#       with `ctoon_build`, which compiles with `mex`.
+#
+#   matlab-lib-<platform>   ctoon-matlab-<ver>-<platform>.zip
+#       Prebuilt "wheel": a ready-to-addpath folder containing +ctoon/ with
+#       the MEX binary for one platform. No compiler needed.
+#
+# Build matrix and test matrix are deliberately separate. The MEX is plain
+# C and is built ONCE per platform with the oldest MATLAB release CI can run
+# there; the test matrix then loads that same prebuilt zip under many MATLAB
+# releases WITHOUT rebuilding. If some release turns out not to load the
+# prebuilt binary, add a per-release build job for just that release.
+#
+# Not covered by CI: releases older than R2021a (setup-matlab's floor).
+# CMake still accepts MATLAB >= R2014b (8.4); those users build from the
+# source dist.
+#
+# Octave has NO prebuilt-binary release (by design). Octave users (and
+# `ctoon.manager octave`) build from the same matlab-dist source zip instead,
+# which only needs a C compiler + mkoctfile at BUILD time; running and
+# testing the result needs no compiler. Octave does not promise a stable MEX
+# ABI across releases the way MATLAB does, so CI builds from source once per
+# Octave release and tests that exact build -- the octave-* jobs below. Their
+# artifacts (octave-build-*, octave-junit-*) are internal and deliberately do
+# not match the `matlab-*` pattern the orchestrator releases.
+
+jobs:
+
+  dist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pack.outputs.version }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Stage self-contained source dist
+      id: pack
+      run: |
+        V="$(python version.py | tr -d '\n')"
+        D="ctoon-matlab-${V}-src"
+        M=src/bindings/matlab
+        # Keep in sync with the `ctoon_matlab_export` target in
+        # src/bindings/matlab/CMakeLists.txt (that one needs MATLAB found at
+        # configure time, this job deliberately doesn't).
+        mkdir -p "${D}" dist
+        cp -r "${M}/ctoon" "${D}/ctoon"
+        cp "${M}/ctoon_build.m" "${M}/ctoon_install.m" "${M}/ctoon_clean.m" \
+           "${M}/ctoon_mex.c" src/ctoon.c include/ctoon.h LICENSE "${D}/"
+        echo "version=${V}" >> "$GITHUB_OUTPUT"
+        echo "name=${D}" >> "$GITHUB_OUTPUT"
+
+    # recursive: false keeps the folder itself in the archive
+    # (ctoon-matlab-<ver>-src/...), which is the layout the build job,
+    # `ctoon.manager` and users rely on. The next step fails loudly if the
+    # action ever lays the zip out differently.
+    - name: Zip source dist
+      uses: vimtor/action-zip@v1.3
+      with:
+        files: ${{ steps.pack.outputs.name }}
+        recursive: false
+        dest: dist/${{ steps.pack.outputs.name }}.zip
+
+    - name: Check source dist layout
+      run: |
+        python3 - <<'PY'
+        import sys, zipfile
+        name = "${{ steps.pack.outputs.name }}"
+        names = zipfile.ZipFile(f"dist/{name}.zip").namelist()
+        bad = [n for n in names if not n.startswith(name + "/")]
+        required = [f"{name}/{f}" for f in
+                    ("ctoon_build.m", "ctoon_mex.c", "ctoon.c", "ctoon.h", "ctoon/encode.m")]
+        missing = [r for r in required if r not in names]
+        if bad or missing:
+            sys.exit(f"bad zip layout: outside {name}/: {bad[:5]}, missing: {missing}")
+        print(f"ok: {len(names)} entries, all under {name}/")
+        PY
+        ls -la dist
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: matlab-dist
+        path: dist/*.zip
+        overwrite: true
+
+  build:
+    name: Build MEX (${{ matrix.platform }}, ${{ matrix.release }})
+    needs: [dist]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # `release` = oldest MATLAB release this platform's prebuilt MEX is
+          # built with. Chosen per platform, see notes:
+          - { platform: linux-x86_64,   os: ubuntu-latest,   release: R2021a }
+          # R2021a's mex does not know Visual Studio 2022 (what windows-latest
+          # ships), so Windows starts later. Adjust if mex -setup still fails.
+          - { platform: windows-x86_64, os: windows-latest,  release: R2022b }
+          # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
+          - { platform: macos-x86_64,   os: macos-15-intel,  release: R2021a }
+          # First MATLAB release with native Apple silicon support.
+          - { platform: macos-arm64,    os: macos-latest,    release: R2023b }
+    steps:
+
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: matlab-dist
+        path: dl
+
+    - name: Unpack source dist
+      shell: python
+      run: |
+        import glob, zipfile
+        z = glob.glob("dl/*.zip")[0]
+        zipfile.ZipFile(z).extractall("src-dist")
+
+
+    - name: Set up MinGW (Windows)
+      if: runner.os == 'Windows'
+      run: choco install mingw -y
+
+    - name: Set up MATLAB
+      uses: matlab-actions/setup-matlab@v2
+      with:
+        release: ${{ matrix.release }}
+
+    # Build only. Same entry point an end user runs on the source dist:
+    # ctoon_build compiles ctoon_mex.c + ctoon.c with `mex` into
+    # <out>/+ctoon/private. Testing is the `test` job's business, which loads
+    # the zip produced below without compiling anything.
+    - name: Build MEX from the source dist
+      uses: matlab-actions/run-command@v2
+      with:
+        command: >-
+          addpath('${{ github.workspace }}/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src');
+          ctoon_build('${{ github.workspace }}/out', true);
+
+    - name: Package prebuilt binding
+      shell: python
+      run: |
+        import os, shutil
+        os.makedirs("dist", exist_ok=True)
+        base = "dist/ctoon-matlab-${{ needs.dist.outputs.version }}-${{ matrix.platform }}"
+        shutil.make_archive(base, "zip", "out", "+ctoon")
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: matlab-lib-${{ matrix.platform }}
+        path: dist/*.zip
+        overwrite: true
+        if-no-files-found: error
+
+  test:
+    name: Test (${{ matrix.platform }}, ${{ matrix.release }})
+    needs: [build]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2021a }
+          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2022b }
+          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2024b }
+          - { platform: linux-x86_64,   os: ubuntu-latest,  release: latest }
+          - { platform: windows-x86_64, os: windows-latest, release: R2022b }
+          - { platform: windows-x86_64, os: windows-latest, release: latest }
+          - { platform: macos-x86_64,   os: macos-15-intel, release: R2021a }
+          - { platform: macos-arm64,    os: macos-latest,   release: R2023b }
+          - { platform: macos-arm64,    os: macos-latest,   release: latest }
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: matlab-lib-${{ matrix.platform }}
+        path: dl
+
+    # Test exactly the zip that ships, not a rebuilt copy.
+    - name: Unpack prebuilt binding
+      shell: python
+      run: |
+        import glob, zipfile
+        z = glob.glob("dl/*.zip")[0]
+        zipfile.ZipFile(z).extractall("lib")
+
+    - name: Set up MATLAB
+      uses: matlab-actions/setup-matlab@v2
+      with:
+        release: ${{ matrix.release }}
+
+    # tests/matlab/test_ctoon.m skips (assumeTrue) the spec-fixture cases when
+    # CTOON_SPEC_FIXTURES_DIR is unset, so they are not exercised here yet.
+    - name: Run tests
+      uses: matlab-actions/run-tests@v2
+      with:
+        source-folder: lib
+        select-by-folder: tests/matlab
+
+
+  # ===========================================================================
+  # Octave
+  #
+  # Build = compile the matlab-dist source zip with mkoctfile (needs a C
+  # compiler). Test = a separate job that only LOADS that build: it installs no
+  # compiler and sets CC/CXX to nothing, so anything that tried to compile
+  # would fail loudly. Windows has no Octave job yet.
+  #
+  # Linux runs in the official gnuoctave/octave images, one per Octave
+  # release (tags: https://hub.docker.com/r/gnuoctave/octave/tags). macOS
+  # uses the current Homebrew Octave. The marketplace actions
+  # joergbrech/moxunit-action and repos4u/octave-action are not used on
+  # purpose: both are Docker actions pinned to one old/latest Octave, with no
+  # mkoctfile/compiler guarantee, so they cannot cover this matrix. MOxUnit
+  # itself (the test framework) is checked out at the commit pinned in
+  # tests/octave/CMakeLists.txt.
+  #
+  # Paths below use $GITHUB_WORKSPACE (the in-container path), not
+  # ${{ github.workspace }}, which is the host path inside container jobs.
+  # ===========================================================================
+
+  octave-build-linux:
+    name: Build MEX (Octave ${{ matrix.octave }}, linux-x86_64)
+    needs: [dist]
+    runs-on: ubuntu-latest
+    container:
+      image: gnuoctave/octave:${{ matrix.octave }}
+      options: --user root
+    strategy:
+      fail-fast: false
+      matrix:
+        octave: ['8.4.0', '9.4.0', '10.3.0', '11.3.0']
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: matlab-dist
+        path: dl
+
+    # Build-time tools only; the test job never installs them.
+    - name: Install build tools
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends build-essential unzip
+
+    - name: Unpack source dist
+      run: unzip -q dl/*.zip -d src-dist
+
+    # Same entry point an end user (or `ctoon.manager octave`) runs on the
+    # source dist: ctoon_build -> mkoctfile --mex.
+    - name: Build MEX from the source dist
+      run: |
+        W="$GITHUB_WORKSPACE"
+        octave-cli --no-gui --norc --quiet --eval "addpath('$W/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src'); ctoon_build('$W/octave-lib', true);"
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: octave-build-linux-${{ matrix.octave }}
+        path: octave-lib
+        retention-days: 1
+        if-no-files-found: error
+
+  octave-test-linux:
+    name: Test (Octave ${{ matrix.octave }}, linux-x86_64)
+    needs: [octave-build-linux]
+    runs-on: ubuntu-latest
+    container:
+      image: gnuoctave/octave:${{ matrix.octave }}
+      options: --user root
+    strategy:
+      fail-fast: false
+      matrix:
+        octave: ['8.4.0', '9.4.0', '10.3.0', '11.3.0']
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Read the TOON spec tag
+      id: spec
+      run: echo "tag=$(grep '^CTOON_SPEC_TAG=' supported_spec.conf | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v6
+      with:
+        repository: toon-format/spec
+        ref: ${{ steps.spec.outputs.tag }}
+        path: _deps/spec
+
+    - uses: actions/checkout@v6
+      with:
+        repository: MOxUnit/MOxUnit
+        ref: 77efb9190bc279de54de3e45780f2f148035affe
+        path: _deps/MOxUnit
+
+    # Test exactly the build from the previous job, not a rebuilt copy.
+    - uses: actions/download-artifact@v8
+      with:
+        name: octave-build-linux-${{ matrix.octave }}
+        path: octave-lib
+
+    - name: Run tests (no compiler involved)
+      run: |
+        W="$GITHUB_WORKSPACE"
+        export CTOON_SPEC_FIXTURES_DIR="$W/_deps/spec/tests/fixtures"
+        export CC=/nonexistent CXX=/nonexistent
+        octave-cli --no-gui --norc --quiet --eval "addpath('$W/tests/octave'); run_tests('$W/_deps/MOxUnit', '$W/octave-lib', '$W/junit.xml');"
+
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: octave-junit-linux-${{ matrix.octave }}
+        path: junit.xml
+        retention-days: 5
+        if-no-files-found: ignore
+
+  octave-build-macos:
+    name: Build MEX (Octave, ${{ matrix.platform }})
+    needs: [dist]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-arm64,  os: macos-latest }
+          - { platform: macos-x86_64, os: macos-15-intel }
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: matlab-dist
+        path: dl
+
+    - name: Install Octave (Homebrew)
+      run: brew install octave
+
+    - name: Unpack source dist
+      run: unzip -q dl/*.zip -d src-dist
+
+    - name: Build MEX from the source dist
+      run: |
+        W="$GITHUB_WORKSPACE"
+        octave-cli --no-gui --norc --quiet --eval "addpath('$W/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src'); ctoon_build('$W/octave-lib', true);"
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: octave-build-${{ matrix.platform }}
+        path: octave-lib
+        retention-days: 1
+        if-no-files-found: error
+
+  octave-test-macos:
+    name: Test (Octave, ${{ matrix.platform }})
+    needs: [octave-build-macos]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-arm64,  os: macos-latest }
+          - { platform: macos-x86_64, os: macos-15-intel }
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: false
+
+    - name: Read the TOON spec tag
+      id: spec
+      run: echo "tag=$(grep '^CTOON_SPEC_TAG=' supported_spec.conf | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/checkout@v6
+      with:
+        repository: toon-format/spec
+        ref: ${{ steps.spec.outputs.tag }}
+        path: _deps/spec
+
+    - uses: actions/checkout@v6
+      with:
+        repository: MOxUnit/MOxUnit
+        ref: 77efb9190bc279de54de3e45780f2f148035affe
+        path: _deps/MOxUnit
+
+    - uses: actions/download-artifact@v8
+      with:
+        name: octave-build-${{ matrix.platform }}
+        path: octave-lib
+
+    - name: Install Octave (Homebrew)
+      run: brew install octave
+
+    - name: Run tests (no compiler involved)
+      run: |
+        W="$GITHUB_WORKSPACE"
+        export CTOON_SPEC_FIXTURES_DIR="$W/_deps/spec/tests/fixtures"
+        export CC=/nonexistent CXX=/nonexistent
+        octave-cli --no-gui --norc --quiet --eval "addpath('$W/tests/octave'); run_tests('$W/_deps/MOxUnit', '$W/octave-lib', '$W/junit.xml');"
+
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: octave-junit-${{ matrix.platform }}
+        path: junit.xml
+        retention-days: 5
+        if-no-files-found: ignore

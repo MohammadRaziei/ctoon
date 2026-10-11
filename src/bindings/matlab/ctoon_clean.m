@@ -24,7 +24,7 @@ function ctoon_clean(buildDir)
     clear('mex');
 
     % 3. Path Management: Remove from MATLAB Path
-    p = split(path, pathsep);
+    p = strsplit(path, pathsep);
     if any(strcmpi(buildDir, p))
         rmpath(buildDir);
         savepath;
@@ -44,6 +44,12 @@ function ctoon_clean(buildDir)
         if isfolder(generatedPkg)
             rmdir(generatedPkg, 's');
             fprintf('  [Clean] Deleted package: %s\n', generatedPkg);
+        end
+        % Octave builds put the MEX gateway next to the package, not in private/
+        octaveMex = fullfile(here, ['ctoon_mex.' mexext]);
+        if exist('OCTAVE_VERSION', 'builtin') ~= 0 && isfile(octaveMex)
+            delete(octaveMex);
+            fprintf('  [Clean] Deleted MEX: %s\n', octaveMex);
         end
     end
     fprintf('  [Clean] Artifacts cleared.\n');

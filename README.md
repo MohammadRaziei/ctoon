@@ -166,6 +166,16 @@ v.name    % 'Alice'
 
 → [Full MATLAB reference](https://mohammadraziei.github.io/ctoon/matlab/index.html) (type mapping, `ctoon.read`/`ctoon.write`, Python-style aliases, ...)
 
+**GNU Octave 8.1+** uses the very same binding. There is no prebuilt Octave binary: build once with `mkoctfile` (Debian/Ubuntu: `apt install octave octave-dev`; needs a C compiler to build only), then load it with a single `addpath`:
+
+```octave
+cd src/bindings/matlab
+ctoon_build('/path/to/ctoon-octave')
+addpath('/path/to/ctoon-octave')
+```
+
+Or, without a checkout: `python -m ctoon.manager octave install` (builds a release's MATLAB source distribution).
+
 ### Python
 
 Requires Python 3.9+. Pre-built wheels for Linux, macOS and Windows — no compiler needed.
@@ -285,6 +295,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release \
 | `CTOON_BUILD_ZIG` | OFF | Require the Zig toolchain (error instead of skip if missing). |
 | `CTOON_BUILD_JULIA` | OFF | Require the Julia toolchain (error instead of skip if missing). |
 | `CTOON_BUILD_MATLAB` | OFF | Require the MATLAB toolchain (error instead of skip if missing). |
+| `CTOON_BUILD_OCTAVE` | OFF | Require GNU Octave + `mkoctfile` (error instead of skip if missing). |
 | `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain at once. |
 
 JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off — no external JSON library is required either way.
@@ -305,7 +316,7 @@ cmake --build build --target ctoon_test
 
 Per-language targets, for iterating on one binding at a time:
 `ctoon_test_c`, `ctoon_test_cpp`, `ctoon_test_go`, `ctoon_test_julia`,
-`ctoon_test_matlab`, `ctoon_test_python`, `ctoon_test_rust`, `ctoon_test_zig`
+`ctoon_test_matlab`, `ctoon_test_octave`, `ctoon_test_python`, `ctoon_test_rust`, `ctoon_test_zig`
 — each also runnable as a single `ctest` case, e.g. `ctest --test-dir build -R rust`.
 
 ### Coverage
@@ -315,9 +326,9 @@ cmake --build build --target ctoon_coverage
 ```
 
 Per-language: `ctoon_coverage_c`, `ctoon_coverage_cpp`, `ctoon_coverage_go`,
-`ctoon_coverage_julia`, `ctoon_coverage_matlab`, `ctoon_coverage_python`,
-`ctoon_coverage_rust`, plus `ctoon_coverage_total` (merged C/C++/Python/Go/Rust/Julia
-lcov report). Output lands in `build/coverage/`, with `build/coverage/index.html`
+`ctoon_coverage_julia`, `ctoon_coverage_matlab`, `ctoon_coverage_octave`,
+`ctoon_coverage_python`, `ctoon_coverage_rust`, plus `ctoon_coverage_total` (merged
+C/C++/Python/Go/Rust/Julia/Octave lcov report). Output lands in `build/coverage/`, with `build/coverage/index.html`
 as the dashboard — published at
 [mohammadraziei.github.io/ctoon/coverage](https://mohammadraziei.github.io/ctoon/coverage/index.html).
 (Zig has no coverage target yet — see the comment in `tests/zig/CMakeLists.txt`.)
