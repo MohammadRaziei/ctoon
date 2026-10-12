@@ -335,15 +335,41 @@ binding (Rust or Go are the closest templates) as a guide. You will need to:
      standard layout;
    then register it: `add_subdirectory(.../<lang>)` in `tests/CMakeLists.txt`,
    add the `CTOON_BUILD_<LANG>` option in the root `CMakeLists.txt`, and (for
-   coverage) the dashboard entry in `tests/CMakeLists.txt`.
+   coverage) the dashboard entry **and** the lcov-merge block in
+   `tests/CMakeLists.txt`, so the language counts in the combined total.
+   If the toolchain needs discovering (interpreter, compiler wrapper,
+   version probe), put that in a `cmake/Ctoon<Lang>.cmake` find module with
+   a minimum version and an install hint, rather than inline.
 4. **Docs** — a `docs/<lang>/` folder with `index-docs.json`,
    `index-install.txt` and `index-example.txt`, an entry in
-   `docs/supported_langs.json`, and a docs target in `docs/CMakeLists.txt`
-   (see the existing languages for the exact shape).
-5. **CI** — see the next section. This part is mandatory.
-6. **Benchmarks** *(optional but welcome)* — `benchmarks/<lang>/`.
-7. **Version sync** — if the manifest needs a literal version string, add it
+   `docs/supported_langs.json` (display order and `role` are described in
+   that file), and in `docs/CMakeLists.txt` a `ctoon_add_section(...)` plus a
+   `ctoon_docs_<lang>` target added to the `ctoon_docs` dependencies. The
+   landing page text (language list, binding count) follows the registry
+   automatically. Then list the new target in the docs sections of
+   `README.md` and this file. Generate the docs once locally before opening
+   the PR.
+5. **`ctoon.manager`** *(if the language ships an installable package)* — a
+   `langs/<lang>/` package under `src/bindings/python/ctoon/manager/` with
+   `add_parser`, registered in `langs/__init__.py`, plus tests in
+   `tests/python/manager/`.
+6. **README, release notes and top-level lists** — the supported-language
+   list and install snippets in `README.md`, and `release_template.md` when
+   the release assets need an explanation.
+7. **CI** — see the next section. This part is mandatory.
+8. **Benchmarks** *(optional but welcome)* — `benchmarks/<lang>/`.
+9. **Version sync** — if the manifest needs a literal version string, add it
    to `version.py` so it stays in sync with `ctoon.h`.
+
+### Build-time versus run-time requirements
+
+State clearly, in the docs and the CMake messages, what is needed to
+*build* the binding and what is needed to *use and test* it. A compiler is
+acceptable at build time only; running the tests must work with just the
+language runtime. In CI this means separate build and test jobs, with the
+test job installing no compiler. Third-party test frameworks and Actions
+are pinned (a version or a commit), and a pin that appears in both CMake
+and a workflow is kept in sync with a comment at each place.
 
 A new-language PR that doesn't include CI changes will not be merged, because
 the language's tests would silently never run.
@@ -401,8 +427,13 @@ artifacts and attaches them to a release. Key conventions:
      (e.g. `cargo-llvm-cov`, `Coverage.jl`) and `-DCTOON_BUILD_<LANG>=ON`
      if the language supports coverage.
 
-3. Verify the result across the OS matrix in the PR's CI run; fix
+3. Add the language's paths (and any binding it shares sources with) to the
+   `paths:` filters, run `actionlint` on the changed workflows, and add a
+   `release-<lang>` job to `orchestrator.yml` if it produces assets.
+4. Verify the result across the OS matrix in the PR's CI run; fix
    platform-specific issues rather than excluding an OS without discussion.
+   Local runs only prove the platform you are on, so say in the PR which
+   platforms you could not try.
 
 Editing an *existing* language normally needs no CI changes.
 
