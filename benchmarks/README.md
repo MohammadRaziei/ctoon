@@ -1,7 +1,7 @@
 # CToon Benchmarks
 
 Throughput benchmarks for every CToon binding — C, C++, Python, Go,
-Rust, Zig, MATLAB. Every language runs alongside every maintained
+Rust, Zig, MATLAB, Octave. Every language runs alongside every maintained
 competing implementation that exists for that language. This project
 has **no relationship to the repository root**, not even for ctoon
 itself: every language fetches ctoon the exact same way it fetches any
@@ -54,6 +54,7 @@ cmake --build build-bench --target ctoon_benchmarks_go
 cmake --build build-bench --target ctoon_benchmarks_rust
 cmake --build build-bench --target ctoon_benchmarks_zig
 cmake --build build-bench --target ctoon_benchmarks_matlab
+cmake --build build-bench --target ctoon_benchmarks_octave
 ```
 
 The report lands in **`benchmarks/results/report.html`**, and that file is
@@ -212,7 +213,7 @@ docstrings), and reads that one process's peak with `/usr/bin/time -v`.
 C++ has no competing implementation at all, so its ordinary run is
 already isolated and needs no such flag.
 
-Python, Go, Rust, Zig, MATLAB, and Julia don't have the `CTOON_BENCH_ONLY`
+Python, Go, Rust, Zig, MATLAB, Octave, and Julia don't have the `CTOON_BENCH_ONLY`
 isolation flag yet, so they're not part of `ctoon_bench_memory` — same
 "only what's actually wired up" convention as the rest of this suite.
 Adding it to a language means: (1) an env var in that language's bench
@@ -239,6 +240,7 @@ benchmarks/
   rust/            main.rs        — ctoon, toon-rust
   zig/             main.zig       — ctoon (toon-zig doesn't compile on Zig 0.16 yet)
   matlab/          bench.m        — ctoon (no competitor exists)
+  octave/          bench.m        — ctoon (no competitor exists; same method as matlab/)
   node/            bench.mjs      — @toon-format/toon (the reference);
                    verify_outputs.mjs — judges every recorded output (see Success vs. correctness)
 ```
@@ -368,7 +370,7 @@ into this repo.
 ## Toolchain detection
 
 A language is **skipped with a warning** only when its toolchain itself
-isn't found (no Go compiler, no MATLAB installation, etc.) — or, for Go
+isn't found (no Go compiler, no MATLAB installation, no Octave with `mkoctfile`, etc.) — or, for Go
 and Rust specifically, when the version found is too old:
 
 - The single Go `go.mod` here tests ctoon, gotoon, and toon-go together as

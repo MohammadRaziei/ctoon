@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.19)
 #   cmake --build build-bench --target ctoon_benchmarks
 #
 # Layout mirrors tests/: one folder per language (c, cpp, python, go,
-# rust, zig, matlab), each with its own CMakeLists.txt that fetches its
+# rust, zig, matlab, octave), each with its own CMakeLists.txt that fetches its
 # own dependencies and defines a ctoon_benchmarks_<lang> target. A
 # language is skipped with a warning only when its toolchain isn't found
 # — see "Toolchain detection" below.
@@ -120,6 +120,8 @@ find_program(JULIA_EXECUTABLE julia)
 find_program(NODE_EXECUTABLE node)
 find_program(NPM_EXECUTABLE npm)
 find_package(Matlab COMPONENTS MAIN_PROGRAM MX_LIBRARY MEX_COMPILER QUIET)
+find_program(OCTAVE_EXECUTABLE NAMES octave-cli octave)
+find_program(MKOCTFILE_EXECUTABLE mkoctfile)
 
 add_custom_target(ctoon_bench_langs
     COMMENT "Running all available CToon language benchmarks"
@@ -163,6 +165,15 @@ if(Matlab_FOUND)
 else()
     message(WARNING "MATLAB not found — MATLAB benchmark skipped. "
                      "Set Matlab_ROOT_DIR or the MATLAB_DIR environment variable.")
+endif()
+
+# GNU Octave needs both the interpreter and mkoctfile (the MEX gateway is
+# compiled with it, at build time only).
+if(OCTAVE_EXECUTABLE AND MKOCTFILE_EXECUTABLE)
+    add_subdirectory(octave)
+else()
+    message(WARNING "GNU Octave (octave-cli + mkoctfile) not found — Octave "
+                     "benchmark skipped. On Debian/Ubuntu: apt install octave octave-dev.")
 endif()
 
 if(CARGO_EXECUTABLE AND RUSTC_EXECUTABLE)

@@ -37,7 +37,7 @@ OP_TITLES = {
 }
 LANG_TITLES = {
     "c": "C", "cpp": "C++", "python": "Python", "go": "Go",
-    "rust": "Rust", "zig": "Zig", "matlab": "MATLAB", "julia": "Julia",
+    "rust": "Rust", "zig": "Zig", "matlab": "MATLAB", "octave": "Octave", "julia": "Julia",
     "node": "Node.js",
 }
 PALETTE = ["#ff6b81", "#35d0ba", "#ffb454", "#b98bff", "#8b93a7", "#4dd0e1"]
@@ -278,7 +278,7 @@ def build(results_dir, output_path, chartjs_path):
         headline="ctoon, measured honestly",
         subhead=(
             "Every ctoon language binding &mdash; C, C++, Python, Go, Rust, Zig, "
-            "MATLAB &mdash; benchmarked head-to-head against every maintained "
+            "MATLAB, Octave &mdash; benchmarked head-to-head against every maintained "
             "competing TOON implementation that exists for that language."
         ),
         sections=sections,
