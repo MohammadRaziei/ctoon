@@ -186,6 +186,35 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
 
 <div class="divider"></div>
 
+<!-- What is CToon? -->
+<div class="section">
+    <div class="section-header">
+        <div class="section-label">About</div>
+        <div class="section-title">What is CToon?</div>
+        <div class="section-desc">
+            CToon is <strong>not</strong> a new format. We did not invent TOON; the format and its specification
+            belong to the
+            <a class="inline-link" href="https://github.com/toon-format/toon" target="_blank">TOON project</a>.
+        </div>
+    </div>
+
+    <p class="compare-caption">
+        Our goal was a different one: a <strong>high-performance library</strong> that supports many programming
+        languages in a <strong>uniform</strong> way, with the same behaviour, the same options and the same
+        output on every platform, instead of a separate implementation per language that drifts apart over time.
+        CToon currently supports
+        <a class="inline-link" href="https://github.com/toon-format/spec" target="_blank"><strong>TOON Spec @SPEC_VERSION@</strong></a>,
+        the official specification of the format.
+    </p>
+    <p class="compare-caption">
+        That is why the core is written in <strong>C</strong>. C has a stable ABI and every language can call it,
+        so one small, fast core can be bound to all the others. Each binding on this page is a thin, idiomatic
+        layer over that same core: fix a bug or add a speed-up once, and every language gets it.
+    </p>
+</div>
+
+<div class="divider"></div>
+
 <!-- API References -->
 <div class="section">
     <div class="section-header">
