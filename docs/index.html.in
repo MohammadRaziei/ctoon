@@ -288,23 +288,8 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
                 <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
                     <i class="fa-brands fa-github"></i> Source code
                 </a>
-                <a class="footer-link" href="cpp/html/index.html">
-                    <i class="fa-solid fa-book"></i> C / C++ reference
-                </a>
-                <a class="footer-link" href="python/html/index.html">
-                    <i class="fa-brands fa-python"></i> Python reference
-                </a>
-                <a class="footer-link" href="go/index.html">
-                    <i class="fa-brands fa-golang"></i> Go reference
-                </a>
-                <a class="footer-link" href="rust/doc/ctoon/index.html">
-                    <i class="fa-brands fa-rust"></i> Rust reference
-                </a>
-                <a class="footer-link" href="zig/index.html">
-                    <i class="fa-solid fa-file-lines"></i> Zig reference
-                </a>
-                <a class="footer-link" href="matlab/index.html">
-                    <i class="fa-solid fa-square-root-variable"></i> MATLAB reference
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon/issues" target="_blank">
+                    <i class="fa-solid fa-bug"></i> Report issue
                 </a>
                 <a class="footer-link" href="benchmarks/index.html">
                     <i class="fa-solid fa-gauge-high"></i> Benchmarks
