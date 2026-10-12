@@ -341,7 +341,7 @@ cmake --build build --target ctoon_docs
 ```
 
 Per-language: `ctoon_docs_c`, `ctoon_docs_cpp`, `ctoon_docs_julia`,
-`ctoon_docs_matlab`, `ctoon_docs_python`, `ctoon_docs_rust`, plus
+`ctoon_docs_matlab`, `ctoon_docs_octave`, `ctoon_docs_python`, `ctoon_docs_rust`, plus
 `ctoon_docs_index` for the landing page (CLI and Zig are assembled straight
 from Markdown, no external doc tool needed). Output lands in `build/docs/out/`.
 

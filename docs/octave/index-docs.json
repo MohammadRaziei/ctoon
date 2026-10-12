@@ -1,0 +1,9 @@
+{
+  "title": "Octave Installation",
+  "badge": "8.1+",
+  "description": "GNU Octave loads the same MEX binding as MATLAB, built from source with <code>mkoctfile</code> (no prebuilt binary; only the build needs a compiler). This section covers installation only: usage and the API reference are the <a href=\"matlab/index.html\">MATLAB documentation</a>.",
+  "meta_icon": "fa-solid fa-file-lines",
+  "meta_label": "Installation guide; API: see MATLAB",
+  "link_href": "octave/index.html",
+  "link_label": "Open Octave Installation"
+}

@@ -58,37 +58,10 @@ target machine.
 GNU Octave
 ----------
 
-The same MEX gateway and ``+ctoon`` wrappers also run under GNU Octave 8.1 or
-newer. There is **no prebuilt Octave binary**: you build once from source with
-``mkoctfile``, and only that build needs a C compiler. Using the result (and
-running the tests) needs nothing but Octave.
-
-- Octave 8.1+ with its development files (Debian/Ubuntu:
-  ``apt install octave octave-dev``; Homebrew: ``brew install octave``)
-- A C compiler (only to build)
-
-.. code-block:: octave
-
-   cd src/bindings/matlab
-   ctoon_build('/path/to/ctoon-octave')   % compiles with mkoctfile
-   addpath('/path/to/ctoon-octave')       % that one folder is all Octave needs
-
-``ctoon_install`` works too, but Octave's ``savepath`` stores your *whole*
-current path in ``~/.octaverc``, not just CToon's. To make the binding
-permanent more tidily, put the ``addpath(...)`` line above into
-``~/.octaverc`` yourself.
-
-Without a checkout, ``ctoon.manager`` builds it from a release's MATLAB source
-distribution (``ctoon-matlab-<version>-src.zip``):
-
-.. code-block:: bash
-
-   python -m ctoon.manager octave detect    # Octave version, mkoctfile, compiler
-   python -m ctoon.manager octave install   # download + build; prints the addpath line
-
-With CMake: ``cmake -B build -DCTOON_BUILD_OCTAVE=ON``, then
-``ctest --test-dir build -R octave`` (tests use
-`MOxUnit <https://github.com/MOxUnit/MOxUnit>`_).
+The same MEX gateway and ``+ctoon`` wrappers also run under GNU Octave 8.1+,
+but Octave has no prebuilt binary and is built from source. See the
+`Octave installation guide <../octave/index.html>`_; usage and the API are the
+same as in this section.
 
 Verify
 ------

@@ -242,7 +242,7 @@ cmake --build build --target ctoon_docs     # everything
 
 Sub-targets: `ctoon_docs_c`, `ctoon_docs_cpp`, `ctoon_docs_python`,
 `ctoon_docs_rust`, `ctoon_docs_julia`, `ctoon_docs_matlab`,
-`ctoon_docs_index` (the landing page). Output goes to `build/docs/out/`.
+`ctoon_docs_octave`, `ctoon_docs_index` (the landing page). Output goes to `build/docs/out/`.
 
 Docs are built by each language's own doc tool (Doxygen for C/C++, Sphinx for
 Python, `cargo doc` for Rust, Documenter.jl for Julia, ...), then assembled

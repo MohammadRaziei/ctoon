@@ -344,6 +344,19 @@ add_dependencies(ctoon_docs_section_matlab ctoon_docs_matlab_extract)
 add_custom_target(ctoon_docs_matlab)
 add_dependencies(ctoon_docs_matlab ctoon_docs_section_matlab)
 
+# ── Octave Documentation ──────────────────────────────────────────────────────
+# Installation only; usage and API are the MATLAB pages (same binding).
+
+ctoon_add_section(
+    NAME  octave
+    TITLE "GNU Octave Binding"
+    SOURCES
+        "octave/index.md:Installation"
+)
+
+add_custom_target(ctoon_docs_octave)
+add_dependencies(ctoon_docs_octave ctoon_docs_section_octave)
+
 # ── Master target ─────────────────────────────────────────────
 
 add_custom_target(ctoon_docs
@@ -351,7 +364,7 @@ add_custom_target(ctoon_docs
     COMMENT "Building all documentation"
 )
 
-add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_rust ctoon_docs_julia ctoon_docs_index ctoon_docs_matlab)
+add_dependencies(ctoon_docs ctoon_docs_c ctoon_docs_cpp ctoon_docs_python ctoon_docs_rust ctoon_docs_julia ctoon_docs_index ctoon_docs_matlab ctoon_docs_octave)
 ctoon_finalize_pages(ctoon_docs)
 
 

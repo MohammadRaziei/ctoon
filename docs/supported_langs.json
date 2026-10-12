@@ -34,6 +34,7 @@
     { "folder": "go",     "name": "Go",     "icon": { "kind": "fa",  "value": "fa-brands fa-golang" } },
     { "folder": "julia",  "name": "Julia",  "icon": { "kind": "svg", "value": "layers" } },
     { "folder": "matlab", "name": "MATLAB", "icon": { "kind": "fa",  "value": "fa-solid fa-square-root-variable" } },
+    { "folder": "octave", "name": "Octave", "icon": { "kind": "fa",  "value": "fa-solid fa-square-root-variable" } },
     { "folder": "python", "name": "Python", "icon": { "kind": "fa",  "value": "fa-brands fa-python" } },
     { "folder": "rust",   "name": "Rust",   "icon": { "kind": "fa",  "value": "fa-brands fa-rust" } },
     { "folder": "zig",    "name": "Zig",    "icon": { "kind": "svg", "value": "layers" } }
