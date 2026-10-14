@@ -83,10 +83,14 @@ jobs:
           cmake -E tar cf "../${{ steps.ver.outputs.c }}.zip"   --format=zip "${{ steps.ver.outputs.c }}"
           cmake -E tar cf "../${{ steps.ver.outputs.cpp }}.zip" --format=zip "${{ steps.ver.outputs.cpp }}"
 
-      - uses: actions/upload-artifact@v7
+      - uses: Wandalen/wretry.action@v3.8.0
         with:
-          name: cpp-lib-${{ matrix.platform }}
-          path: |
-            ${{ steps.ver.outputs.c }}.zip
-            ${{ steps.ver.outputs.cpp }}.zip
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            name: cpp-lib-${{ matrix.platform }}
+            path: |
+              ${{ steps.ver.outputs.c }}.zip
+              ${{ steps.ver.outputs.cpp }}.zip
+            if-no-files-found: error

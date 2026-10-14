@@ -66,8 +66,12 @@ jobs:
         mkdir -p dist
         tar -czf dist/ctoon-zig-${{ matrix.target }}.tar.gz -C zig-out .
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: zig-lib-${{ matrix.target }}
-        path: dist/*.tar.gz
-        overwrite: true
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: zig-lib-${{ matrix.target }}
+          path: dist/*.tar.gz
+          overwrite: true

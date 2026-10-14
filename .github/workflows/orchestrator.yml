@@ -40,14 +40,18 @@ jobs:
       
 
       - name: Initialize release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ steps.init.outputs.release_name }}
-          name: ${{ steps.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ steps.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          body_path: .github/workflows/release_template.md
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ steps.init.outputs.release_name }}
+            name: ${{ steps.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ steps.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            body_path: .github/workflows/release_template.md
 
   cmake:
     uses: ./.github/workflows/cmake.yml
@@ -78,24 +82,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          pattern: wheelhouse-*
-          path: dist
-          merge-multiple: true
+          action: actions/download-artifact@v8
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            pattern: wheelhouse-*
+            path: dist
+            merge-multiple: true
           
       - name: List dist directory
         run: tree --du -shaC . 
 
       - name: create release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: dist/*
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: dist/*
 
       - name: Publishing to PyPi
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -112,20 +124,28 @@ jobs:
         with:
           submodules: false
 
-      - uses: actions/download-artifact@v8
+      - uses: Wandalen/wretry.action@v3.8.0
         with:
-          name: crate-package
-          path: target/package
+          action: actions/download-artifact@v8
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            name: crate-package
+            path: target/package
 
       - name: create release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: target/package/*.crate
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: target/package/*.crate
 
       - name: Install Rust toolchain
         if: startsWith(github.ref, 'refs/tags/')
@@ -142,76 +162,100 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          pattern: zig-lib-*
-          path: dist
-          merge-multiple: true
+          action: actions/download-artifact@v8
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            pattern: zig-lib-*
+            path: dist
+            merge-multiple: true
 
       - name: List dist directory
         run: ls -la dist
 
       - name: create release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: dist/*
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: dist/*
 
   release-mex:
     needs: [mex, init]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          # matlab-dist (source zip, also what Octave builds from) +
-          # matlab-lib-<platform> (prebuilt MATLAB MEX zips). Octave has no
-          # prebuilt release; mex.yml's octave-* artifacts are internal.
-          pattern: matlab-*
-          path: dist
-          merge-multiple: true
+          action: actions/download-artifact@v8
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            # matlab-dist (source zip, also what Octave builds from) +
+            # matlab-lib-<platform> (prebuilt MATLAB MEX zips). Octave has no
+            # prebuilt release; mex.yml's octave-* artifacts are internal.
+            pattern: matlab-*
+            path: dist
+            merge-multiple: true
 
       - name: List dist directory
         run: ls -la dist
 
       - name: create release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: dist/*
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: dist/*
 
   release-cpp:
     needs: [cpp, init]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v8
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          # cpp-lib-<platform> (install tree zips: lib, headers, CLI, CMake package)
-          pattern: cpp-*
-          path: dist
-          merge-multiple: true
+          action: actions/download-artifact@v8
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            # cpp-lib-<platform> (install tree zips: lib, headers, CLI, CMake package)
+            pattern: cpp-*
+            path: dist
+            merge-multiple: true
 
       - name: List dist directory
         run: ls -la dist
 
       - name: create release body
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: dist/*
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: dist/*
 
   # Runs LAST. Every release-* job above publishes its own files, so this is
   # the only place that sees the complete set: it reads the real asset list
@@ -235,14 +279,18 @@ jobs:
           test -s lists.txt
 
       - name: Publish lists.txt
-        uses: softprops/action-gh-release@v3
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          tag_name: ${{ needs.init.outputs.release_name }}
-          name: ${{ needs.init.outputs.release_name }}
-          draft: false
-          prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: lists.txt
+          action: softprops/action-gh-release@v3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            tag_name: ${{ needs.init.outputs.release_name }}
+            name: ${{ needs.init.outputs.release_name }}
+            draft: false
+            prerelease: ${{ needs.init.outputs.is_tag == 'false' }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            files: lists.txt
 
   deploy-pages:
     needs: [cmake]
@@ -254,16 +302,24 @@ jobs:
     
     steps:
     - name: Download documentation artifact
-      uses: actions/download-artifact@v8
+      uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: cmake-documentation
-        path: ./pages
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: cmake-documentation
+          path: ./pages
 
     - name: Download coverage artifact
-      uses: actions/download-artifact@v8
+      uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: cmake-coverage-report
-        path: ./pages/coverage   
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: cmake-coverage-report
+          path: ./pages/coverage   
         
     - name: List pages directory
       run: tree --du -shaC pages

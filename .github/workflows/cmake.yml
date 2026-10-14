@@ -147,11 +147,15 @@ jobs:
       run: tree --du -shaC build/docs/out
 
     - name: Upload documentation artifacts
-      uses: actions/upload-artifact@v7
+      uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: cmake-documentation
-        path: build/docs/out
-        retention-days: 5
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: cmake-documentation
+          path: build/docs/out
+          retention-days: 5
 
   build-coverage:
     # needs: build-and-test
@@ -228,8 +232,12 @@ jobs:
         verbose: true
 
     - name: Upload coverage artifacts
-      uses: actions/upload-artifact@v7
+      uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: cmake-coverage-report
-        path: build/coverage/
-        retention-days: 5
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: cmake-coverage-report
+          path: build/coverage/
+          retention-days: 5

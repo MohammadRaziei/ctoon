@@ -37,11 +37,15 @@ jobs:
     - name: Check metadata
       run: pipx run twine check dist/*
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: wheelhouse-sdist
-        path: dist/*.tar.gz
-        overwrite: true
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: wheelhouse-sdist
+          path: dist/*.tar.gz
+          overwrite: true
 
 
   build_wheels:
@@ -82,9 +86,13 @@ jobs:
         CIBW_SKIP: pp*
 #         CIBW_PRERELEASE_PYTHONS: true
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: wheelhouse-${{ matrix.os }}
-        path: wheelhouse/*.whl
-        overwrite: false
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: wheelhouse-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          overwrite: false
 

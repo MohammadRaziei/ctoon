@@ -117,11 +117,15 @@ jobs:
         PY
         ls -la dist
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-dist
-        path: dist/*.zip
-        overwrite: true
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-dist
+          path: dist/*.zip
+          overwrite: true
 
   build:
     name: Build MEX (${{ matrix.platform }}, ${{ matrix.release }})
@@ -146,10 +150,14 @@ jobs:
     steps:
 
 
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-dist
-        path: dl
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-dist
+          path: dl
 
     - name: Unpack source dist
       shell: python
@@ -215,12 +223,16 @@ jobs:
         base = "dist/ctoon-matlab-${{ needs.dist.outputs.version }}-${{ matrix.platform }}"
         shutil.make_archive(base, "zip", "out", "+ctoon")
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-lib-${{ matrix.platform }}
-        path: dist/*.zip
-        overwrite: true
-        if-no-files-found: error
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-lib-${{ matrix.platform }}
+          path: dist/*.zip
+          overwrite: true
+          if-no-files-found: error
 
   test:
     name: Test (${{ matrix.platform }}, ${{ matrix.release }})
@@ -245,10 +257,14 @@ jobs:
       with:
         submodules: false
 
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-lib-${{ matrix.platform }}
-        path: dl
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-lib-${{ matrix.platform }}
+          path: dl
 
     # Test exactly the zip that ships, not a rebuilt copy.
     - name: Unpack prebuilt binding
@@ -305,10 +321,14 @@ jobs:
       matrix:
         octave: ['8.4.0', '9.4.0', '10.3.0', '11.3.0']
     steps:
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-dist
-        path: dl
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-dist
+          path: dl
 
     # Build-time tools only; the test job never installs them.
     - name: Install build tools
@@ -326,12 +346,16 @@ jobs:
         W="$GITHUB_WORKSPACE"
         octave-cli --no-gui --norc --quiet --eval "addpath('$W/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src'); ctoon_build('$W/octave-lib', true);"
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: octave-build-linux-${{ matrix.octave }}
-        path: octave-lib
-        retention-days: 1
-        if-no-files-found: error
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-build-linux-${{ matrix.octave }}
+          path: octave-lib
+          retention-days: 1
+          if-no-files-found: error
 
   octave-test-linux:
     name: Test (Octave ${{ matrix.octave }}, linux-x86_64)
@@ -366,10 +390,14 @@ jobs:
         path: _deps/MOxUnit
 
     # Test exactly the build from the previous job, not a rebuilt copy.
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: octave-build-linux-${{ matrix.octave }}
-        path: octave-lib
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-build-linux-${{ matrix.octave }}
+          path: octave-lib
 
     - name: Run tests (no compiler involved)
       run: |
@@ -378,13 +406,17 @@ jobs:
         export CC=/nonexistent CXX=/nonexistent
         octave-cli --no-gui --norc --quiet --eval "addpath('$W/tests/octave'); run_tests('$W/_deps/MOxUnit', '$W/octave-lib', '$W/junit.xml');"
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       if: always()
       with:
-        name: octave-junit-linux-${{ matrix.octave }}
-        path: junit.xml
-        retention-days: 5
-        if-no-files-found: ignore
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-junit-linux-${{ matrix.octave }}
+          path: junit.xml
+          retention-days: 5
+          if-no-files-found: ignore
 
   octave-build-macos:
     name: Build MEX (Octave, ${{ matrix.platform }})
@@ -397,10 +429,14 @@ jobs:
           - { platform: macos-arm64,  os: macos-latest }
           - { platform: macos-x86_64, os: macos-15-intel }
     steps:
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: matlab-dist
-        path: dl
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: matlab-dist
+          path: dl
 
     - name: Install Octave (Homebrew)
       run: brew install octave
@@ -413,12 +449,16 @@ jobs:
         W="$GITHUB_WORKSPACE"
         octave-cli --no-gui --norc --quiet --eval "addpath('$W/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src'); ctoon_build('$W/octave-lib', true);"
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: octave-build-${{ matrix.platform }}
-        path: octave-lib
-        retention-days: 1
-        if-no-files-found: error
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-build-${{ matrix.platform }}
+          path: octave-lib
+          retention-days: 1
+          if-no-files-found: error
 
   octave-test-macos:
     name: Test (Octave, ${{ matrix.platform }})
@@ -451,10 +491,14 @@ jobs:
         ref: 77efb9190bc279de54de3e45780f2f148035affe
         path: _deps/MOxUnit
 
-    - uses: actions/download-artifact@v8
+    - uses: Wandalen/wretry.action@v3.8.0
       with:
-        name: octave-build-${{ matrix.platform }}
-        path: octave-lib
+        action: actions/download-artifact@v8
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-build-${{ matrix.platform }}
+          path: octave-lib
 
     - name: Install Octave (Homebrew)
       run: brew install octave
@@ -466,10 +510,14 @@ jobs:
         export CC=/nonexistent CXX=/nonexistent
         octave-cli --no-gui --norc --quiet --eval "addpath('$W/tests/octave'); run_tests('$W/_deps/MOxUnit', '$W/octave-lib', '$W/junit.xml');"
 
-    - uses: actions/upload-artifact@v7
+    - uses: Wandalen/wretry.action@v3.8.0
       if: always()
       with:
-        name: octave-junit-${{ matrix.platform }}
-        path: junit.xml
-        retention-days: 5
-        if-no-files-found: ignore
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: octave-junit-${{ matrix.platform }}
+          path: junit.xml
+          retention-days: 5
+          if-no-files-found: ignore
