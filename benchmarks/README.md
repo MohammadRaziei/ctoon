@@ -36,13 +36,14 @@ or network to view and is safe to send around on its own.
 Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
 same CMake-fetched Chart.js, same jinja2-rendered single-file output.
 
-The report draws **three line charts per language** — one per operation
-(JSON→TOON, TOON→JSON, roundtrip) — with one line per library, markers
-at each point, x-axis = input size. That size axis comes from splitting
-the corpus into 5 equal-count buckets by file size and re-measuring each
-bucket on its own (fewer reps than the main comparison); see "Scaling"
-below. Peak-memory-per-library is a separate, **opt-in** bar chart — see
-"Memory" below.
+Every language gets the same **bar chart**: one bar per library, grouped by
+operation (JSON→TOON, TOON→JSON, JSON→TOON→JSON), over the whole corpus.
+**C alone** additionally draws three **line charts** — one per operation,
+one line per library, markers at each point, x-axis = input size. That
+size axis comes from splitting the corpus into 5 equal-count buckets by
+file size and re-measuring each bucket on its own (fewer reps than the main
+comparison); see "Scaling" below. Peak-memory-per-library is a separate,
+**opt-in** bar chart — see "Memory" below.
 
 To run just one language (skips the report):
 
@@ -113,7 +114,7 @@ JSON file to `build-bench/results/<language>.json`:
     ...
   ],   // (after verification each row also has "verified", "verify" and "raw"
        //  -- see Success vs. correctness below)
-  "scaling": [ ... ]   // optional, C and C++ only, see Scaling below
+  "scaling": [ ... ]   // optional, C only, see Scaling below
 }
 ```
 
@@ -149,16 +150,17 @@ threw or crashed).
 
 ## Scaling
 
-Wired up for C and C++ so far. Each of those, after the normal
-whole-corpus comparison, sorts the corpus by file size, splits it into
+Deliberately **C only**: every other language (C++ included) shows just the
+shared bar chart, so the size-scaling line charts are the one thing that
+sets C's section apart. After the normal whole-corpus comparison, `bench.c`
+sorts the corpus by file size, splits it into
 `SCALING_NBUCKETS` (5) equal-*count* buckets, and re-measures every
 (library, operation) pair on each bucket at a reduced `SCALING_REPS` (5,
 vs. the normal `REPEATS`/20) — a bucket's x-axis position is the
 *median* file size within it. This is what feeds the report's three
-line charts per language (one per operation, one line per library,
-marker per bucket).
+line charts (one per operation, one line per library, marker per bucket).
 
-Adding it to a language not yet wired up means: (1) sort the loaded
+Adding it to another language means: (1) sort the loaded
 corpus by size and split into `SCALING_NBUCKETS` slices — `bench.c` does
 this via a sorted array of pointers so it never has to duplicate or
 reorder the original file data; (2) re-run each (library, operation) on each slice at
@@ -259,7 +261,7 @@ shared manifest file generated once by the top-level `CMakeLists.txt`):
 4. **Timed — toon_to_json**: repeatedly parse the TOON text from step 2
    (ctoon's own output) and re-serialise to JSON, `x20` over the whole
    corpus. This measures **interop** with ctoon's specific TOON output.
-5. **Timed — roundtrip**: parse JSON → encode TOON → parse that same
+5. **Timed — JSON→TOON→JSON** (`roundtrip` in the result JSON): parse JSON → encode TOON → parse that same
    TOON → encode JSON, all four steps chained as **one** operation per
    file using each library's *own* encoder and decoder together — not
    the two legs above run separately, and not cross-library. This
