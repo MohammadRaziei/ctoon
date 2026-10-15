@@ -31,3 +31,11 @@
 import Pkg
 Pkg.instantiate()
 Pkg.update("CToon")
+
+# Explicit build, belt and braces: on Julia >= 1.12 the precompile that
+# instantiate()/update() trigger can run BEFORE CToon's deps/build.jl, fail
+# with "CToon is not built", and leave the native library unbuilt -- the
+# benchmark then dies at `using CToon`. Pkg.build is idempotent, so running
+# it unconditionally costs one cheap C compile and always leaves a loadable
+# package behind.
+Pkg.build("CToon")
