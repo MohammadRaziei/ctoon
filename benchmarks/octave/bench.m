@@ -38,7 +38,7 @@ function bench(manifestPath, resultsJsonPath, logPath)
     fclose(fid);
     paths = lines{1};
 
-    files = struct('path', {}, 'json', {}, 'toon', {});
+    files = struct('path', {}, 'json', {}, 'toon', {}, 'native', {}, 'hasNative', {});
     for i = 1:numel(paths)
         p = strtrim(paths{i});
         if isempty(p)
@@ -54,7 +54,7 @@ function bench(manifestPath, resultsJsonPath, logPath)
         catch
             continue;
         end
-        files(end+1) = struct('path', p, 'json', raw, 'toon', ''); %#ok<AGROW>
+        files(end+1) = struct('path', p, 'json', raw, 'toon', '', 'native', [], 'hasNative', false); %#ok<AGROW>
     end
 
     if isempty(files)
@@ -77,6 +77,8 @@ function bench(manifestPath, resultsJsonPath, logPath)
     for i = 1:numel(files)
         try
             val = jsondecode(files(i).json);
+            files(i).native = val;          % untimed input for struct_to_toon
+            files(i).hasNative = true;      % (built by MATLAB's own JSON parser, not ctoon)
             files(i).toon = ctoon.dumps(val);
         catch err
             logFail(logFid, 'ctoon', 'pre_pass', files(i).path, err);
@@ -92,8 +94,7 @@ function bench(manifestPath, resultsJsonPath, logPath)
     for r = 1:repeats
         for i = 1:numel(files)
             try
-                val = jsondecode(files(i).json);
-                ctoon.dumps(val);
+                ctoon.json_to_toon(files(i).json);
                 opsA = opsA + 1;
                 bytesA = bytesA + numel(files(i).json);
             catch err
@@ -115,8 +116,7 @@ function bench(manifestPath, resultsJsonPath, logPath)
                 continue;
             end
             try
-                val = ctoon.loads(files(i).toon);
-                jsonencode(val);
+                ctoon.toon_to_json(files(i).toon);
                 opsB = opsB + 1;
                 bytesB = bytesB + numel(files(i).toon);
             catch err
@@ -129,16 +129,14 @@ function bench(manifestPath, resultsJsonPath, logPath)
     tB = toc;
     results{end+1} = record('ctoon', 'toon_to_json', bytesB, opsB, tB, numel(files) * repeats, repeats); %#ok<AGROW>
 
-    % -- ctoon: roundtrip (json -> toon -> parse toon -> json, chained) --
+    % -- ctoon: roundtrip (ctoon.json_to_toon then ctoon.toon_to_json, chained) --
     tic;
     opsC = 0; bytesC = 0;
     for r = 1:repeats
         for i = 1:numel(files)
             try
-                val = jsondecode(files(i).json);
-                toon = ctoon.dumps(val);
-                val2 = ctoon.loads(toon);
-                jsonencode(val2);
+                toon = ctoon.json_to_toon(files(i).json);
+                ctoon.toon_to_json(toon);
                 opsC = opsC + 1;
                 bytesC = bytesC + numel(files(i).json);
             catch err
@@ -150,6 +148,51 @@ function bench(manifestPath, resultsJsonPath, logPath)
     end
     tC = toc;
     results{end+1} = record('ctoon', 'roundtrip', bytesC, opsC, tC, numel(files) * repeats, repeats); %#ok<AGROW>
+
+    % -- ctoon: toon_to_struct (parse TOON into a native MATLAB value, nothing else) --
+    tic;
+    opsS = 0; bytesS = 0;
+    for r = 1:repeats
+        for i = 1:numel(files)
+            if isempty(files(i).toon)
+                continue;
+            end
+            try
+                ctoon.loads(files(i).toon);
+                opsS = opsS + 1;
+                bytesS = bytesS + numel(files(i).toon);
+            catch err
+                if r == 1
+                    logFail(logFid, 'ctoon', 'toon_to_struct', files(i).path, err);
+                end
+            end
+        end
+    end
+    tS = toc;
+    results{end+1} = record('ctoon', 'toon_to_struct', bytesS, opsS, tS, numel(files) * repeats, repeats); %#ok<AGROW>
+
+    % -- ctoon: struct_to_toon (serialise the pre-built native value, nothing else;
+    %    weighted by the JSON size, same convention as json_to_toon) --
+    tic;
+    opsW = 0; bytesW = 0;
+    for r = 1:repeats
+        for i = 1:numel(files)
+            if ~files(i).hasNative
+                continue;
+            end
+            try
+                ctoon.dumps(files(i).native);
+                opsW = opsW + 1;
+                bytesW = bytesW + numel(files(i).json);
+            catch err
+                if r == 1
+                    logFail(logFid, 'ctoon', 'struct_to_toon', files(i).path, err);
+                end
+            end
+        end
+    end
+    tW = toc;
+    results{end+1} = record('ctoon', 'struct_to_toon', bytesW, opsW, tW, numel(files) * repeats, repeats); %#ok<AGROW>
 
     write_results_json(resultsJsonPath, numel(files), totalJSONBytes, results);
 
@@ -175,26 +218,37 @@ function dumpOutputs(resultsJsonPath, files)
         if exist(root, 'dir')
             rmdir(root, 's');
         end
-        ops = {'json_to_toon', 'toon_to_json', 'roundtrip'};
+        ops = {'json_to_toon', 'toon_to_json', 'roundtrip', 'toon_to_struct', 'struct_to_toon'};
         for k = 1:numel(ops)
             mkdir(fullfile(root, 'ctoon', ops{k}));
         end
 
         for i = 1:numel(files)
             try
-                val = jsondecode(files(i).json);
-                toon = ctoon.dumps(val);
+                toon = ctoon.json_to_toon(files(i).json);
                 writeOutput(root, 'json_to_toon', i, toon);
             catch
                 continue;
             end
             try
-                writeOutput(root, 'roundtrip', i, jsonencode(ctoon.loads(toon)));
+                writeOutput(root, 'roundtrip', i, ctoon.toon_to_json(toon));
             catch
             end
             if ~isempty(files(i).toon)
                 try
-                    writeOutput(root, 'toon_to_json', i, jsonencode(ctoon.loads(files(i).toon)));
+                    writeOutput(root, 'toon_to_json', i, ctoon.toon_to_json(files(i).toon));
+                catch
+                end
+                % toon_to_struct: the decoded value, serialised to JSON (untimed)
+                % only so the verifier can compare it to the original document.
+                try
+                    writeOutput(root, 'toon_to_struct', i, jsonencode(ctoon.loads(files(i).toon)));
+                catch
+                end
+            end
+            if files(i).hasNative
+                try
+                    writeOutput(root, 'struct_to_toon', i, ctoon.dumps(files(i).native));
                 catch
                 end
             end

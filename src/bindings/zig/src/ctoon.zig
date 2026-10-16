@@ -87,6 +87,18 @@ const c = struct {
         obj: ?*val,
     };
 
+    pub const write_options = extern struct {
+        flag: write_flag,
+        delimiter: u32,
+        indent: c_int,
+    };
+
+    // Direct JSON <-> TOON conversion — genuinely `extern` in ctoon.h.
+    pub extern fn ctoon_json_to_toon_opts(json: [*]const u8, len: usize, rflg: read_flag, wopts: ?*const write_options, alc_: ?*const alc, out_len: *usize, rerr: *read_err, werr: *write_err) ?[*]u8;
+    pub extern fn ctoon_toon_to_json_opts(toon: [*]const u8, len: usize, rflg: read_flag, indent: c_int, wflg: write_flag, alc_: ?*const alc, out_len: *usize, rerr: *read_err, werr: *write_err) ?[*]u8;
+    pub extern fn ctoon_json_to_toon_file_opts(json_path: [*:0]const u8, toon_path: [*:0]const u8, rflg: read_flag, wopts: ?*const write_options, alc_: ?*const alc, rerr: *read_err, werr: *write_err) bool;
+    pub extern fn ctoon_toon_to_json_file_opts(toon_path: [*:0]const u8, json_path: [*:0]const u8, rflg: read_flag, indent: c_int, wflg: write_flag, alc_: ?*const alc, rerr: *read_err, werr: *write_err) bool;
+
     // Genuinely `extern` in ctoon.h — real names, no shim needed.
     pub extern fn ctoon_spec_tag_hex() u32;
     pub extern fn ctoon_spec_version_string() [*:0]const u8;
@@ -445,6 +457,77 @@ pub fn dumps(gpa: Allocator, v: Value) Error![]u8 {
     };
     defer c.free(raw);
     return gpa.dupe(u8, raw[0..len]);
+}
+
+// ── Direct JSON <-> TOON text conversion ───────────────────────────────
+//
+// One call into the C core. No `Value` tree is built: the input slice's own
+// bytes are passed to C read-only (the in-situ flag is never set), and the
+// only allocation besides C's temporary arena is the returned slice.
+
+/// Array value delimiter used when writing TOON.
+pub const Delimiter = enum(u32) { comma = 0, tab = 1, pipe = 2 };
+
+/// TOON write options for `jsonToToon` / `jsonToToonFile`.
+pub const WriteOptions = struct {
+    indent: i32 = 2,
+    delimiter: Delimiter = .comma,
+    /// `CTOON_WRITE_*` flag bits (see ctoon.h).
+    flags: u32 = 0,
+
+    fn toC(self: WriteOptions) c.write_options {
+        return .{ .flag = self.flags, .delimiter = @intFromEnum(self.delimiter), .indent = self.indent };
+    }
+};
+
+fn convertError(rerr: c.read_err, werr: c.write_err) Error {
+    if (rerr.code != 0) {
+        setErrorFromRead(rerr);
+        return Error.ParseError;
+    }
+    setErrorFromWrite(werr);
+    return Error.WriteError;
+}
+
+/// Converts JSON text to TOON text. Free the result with `gpa.free(...)`.
+pub fn jsonToToon(gpa: Allocator, json: []const u8, opts: WriteOptions) Error![]u8 {
+    const wo = opts.toC();
+    var rerr: c.read_err = std.mem.zeroes(c.read_err);
+    var werr: c.write_err = std.mem.zeroes(c.write_err);
+    var len: usize = 0;
+    const raw = c.ctoon_json_to_toon_opts(json.ptr, json.len, c.READ_NOFLAG, &wo, null, &len, &rerr, &werr) orelse
+        return convertError(rerr, werr);
+    defer c.free(raw);
+    return gpa.dupe(u8, raw[0..len]);
+}
+
+/// Converts TOON text to JSON text (`indent` 0 = compact). Free the result
+/// with `gpa.free(...)`.
+pub fn toonToJson(gpa: Allocator, toon: []const u8, indent: i32) Error![]u8 {
+    var rerr: c.read_err = std.mem.zeroes(c.read_err);
+    var werr: c.write_err = std.mem.zeroes(c.write_err);
+    var len: usize = 0;
+    const raw = c.ctoon_toon_to_json_opts(toon.ptr, toon.len, c.READ_NOFLAG, indent, c.WRITE_NOFLAG, null, &len, &rerr, &werr) orelse
+        return convertError(rerr, werr);
+    defer c.free(raw);
+    return gpa.dupe(u8, raw[0..len]);
+}
+
+/// Converts a JSON file into a TOON file.
+pub fn jsonToToonFile(json_path: [:0]const u8, toon_path: [:0]const u8, opts: WriteOptions) Error!void {
+    const wo = opts.toC();
+    var rerr: c.read_err = std.mem.zeroes(c.read_err);
+    var werr: c.write_err = std.mem.zeroes(c.write_err);
+    if (!c.ctoon_json_to_toon_file_opts(json_path.ptr, toon_path.ptr, c.READ_NOFLAG, &wo, null, &rerr, &werr))
+        return convertError(rerr, werr);
+}
+
+/// Converts a TOON file into a JSON file (`indent` 0 = compact).
+pub fn toonToJsonFile(toon_path: [:0]const u8, json_path: [:0]const u8, indent: i32) Error!void {
+    var rerr: c.read_err = std.mem.zeroes(c.read_err);
+    var werr: c.write_err = std.mem.zeroes(c.write_err);
+    if (!c.ctoon_toon_to_json_file_opts(toon_path.ptr, json_path.ptr, c.READ_NOFLAG, indent, c.WRITE_NOFLAG, null, &rerr, &werr))
+        return convertError(rerr, werr);
 }
 
 /// Parses a JSON string into a `Value` (using ctoon's own JSON reader —

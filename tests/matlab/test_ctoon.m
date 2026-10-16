@@ -363,6 +363,44 @@ end
 end
 
 %% -------------------------------------------------------------------------
+%  Direct JSON <-> TOON text conversion (no MATLAB value in between)
+%% -------------------------------------------------------------------------
+
+function testJsonToToonBasic(testCase)
+got = ctoon.json_to_toon('{"name":"Alice","age":30,"tags":["a","b"]}');
+verifyEqual(testCase, got, sprintf('name: Alice\nage: 30\ntags[2]: a,b'));
+got = ctoon.json_to_toon('{"u":[{"id":1,"n":"x"},{"id":2,"n":"y"}]}');
+verifyEqual(testCase, got, sprintf('u[2]{id,n}:\n  1,x\n  2,y'));
+end
+
+function testToonToJsonBasic(testCase)
+got = ctoon.toon_to_json(sprintf('name: Alice\nage: 30\ntags[2]: a,b'));
+verifyEqual(testCase, got, '{"name":"Alice","age":30,"tags":["a","b"]}');
+got = ctoon.toon_to_json('a: 1', 2);
+verifyEqual(testCase, got, sprintf('{\n  "a": 1\n}'));
+end
+
+function testConvertErrors(testCase)
+verifyError(testCase, @() ctoon.json_to_toon('{"a":'), 'ctoon:convertError');
+verifyError(testCase, @() ctoon.toon_to_json('a[2]: 1'), 'ctoon:convertError');
+end
+
+function testConvertFiles(testCase)
+d = tempname; mkdir(d);
+cleanup = onCleanup(@() rmdir(d, 's'));
+j = fullfile(d, 'in.json'); t = fullfile(d, 'out.toon'); b = fullfile(d, 'back.json');
+fid = fopen(j, 'w'); fwrite(fid, '{"k":[1,2],"s":"hi"}'); fclose(fid);
+ctoon.json_to_toon_file(j, t);
+verifyEqual(testCase, fileread(t), sprintf('k[2]: 1,2\ns: hi'));
+ctoon.toon_to_json_file(t, b);
+verifyEqual(testCase, fileread(b), '{"k":[1,2],"s":"hi"}');
+bad = fullfile(d, 'bad.json'); never = fullfile(d, 'never.toon');
+fid = fopen(bad, 'w'); fwrite(fid, '{"a":'); fclose(fid);
+verifyError(testCase, @() ctoon.json_to_toon_file(bad, never), 'ctoon:convertError');
+verifyFalse(testCase, isfile(never));
+end
+
+%% -------------------------------------------------------------------------
 %  Helpers
 %% -------------------------------------------------------------------------
 

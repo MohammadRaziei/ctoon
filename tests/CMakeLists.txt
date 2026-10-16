@@ -52,7 +52,9 @@ FetchContent_Declare(
     toon_format_spec
     GIT_REPOSITORY https://github.com/toon-format/spec.git
     GIT_TAG        ${CTOON_SPEC_TAG}
-    GIT_SHALLOW    TRUE
+    # NOT GIT_SHALLOW: a shallow clone only contains the branch tip, so a
+    # pinned commit that is no longer the tip fails with "reference is not
+    # a tree". The spec repo is tiny, a full clone is cheap.
     GIT_PROGRESS   TRUE
 )
 FetchContent_MakeAvailable(toon_format_spec)

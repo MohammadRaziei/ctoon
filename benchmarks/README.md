@@ -36,14 +36,14 @@ or network to view and is safe to send around on its own.
 Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) —
 same CMake-fetched Chart.js, same jinja2-rendered single-file output.
 
-Every language gets the same **bar chart**: one bar per library, grouped by
-operation (JSON→TOON, TOON→JSON, JSON→TOON→JSON), over the whole corpus.
-**C alone** additionally draws three **line charts** — one per operation,
-one line per library, markers at each point, x-axis = input size. That
-size axis comes from splitting the corpus into 5 equal-count buckets by
-file size and re-measuring each bucket on its own (fewer reps than the main
-comparison); see "Scaling" below. Peak-memory-per-library is a separate,
-**opt-in** bar chart — see "Memory" below.
+The report draws, for **every language**, one bar chart of throughput per
+operation (JSON→TOON, TOON→JSON, JSON→TOON→JSON, TOON→struct, struct→TOON),
+one bar per library, so all languages look the same. **C alone** adds line
+charts on top, one per operation, with x-axis = input size: the corpus is
+split into 5 equal-count buckets by file size and each bucket is re-measured
+on its own (fewer reps than the main comparison); see "Scaling" below.
+Peak-memory-per-library is a separate, **opt-in** bar chart — see
+"Memory" below.
 
 To run just one language (skips the report):
 
@@ -150,17 +150,17 @@ threw or crashed).
 
 ## Scaling
 
-Deliberately **C only**: every other language (C++ included) shows just the
-shared bar chart, so the size-scaling line charts are the one thing that
-sets C's section apart. After the normal whole-corpus comparison, `bench.c`
-sorts the corpus by file size, splits it into
+Wired up for **C only**, on purpose: the speed-vs-size curve is a C-specific
+extra, every other language is reported as the same whole-corpus bar chart so
+languages stay comparable. The C benchmark, after the normal
+whole-corpus comparison, sorts the corpus by file size, splits it into
 `SCALING_NBUCKETS` (5) equal-*count* buckets, and re-measures every
 (library, operation) pair on each bucket at a reduced `SCALING_REPS` (5,
 vs. the normal `REPEATS`/20) — a bucket's x-axis position is the
-*median* file size within it. This is what feeds the report's three
-line charts (one per operation, one line per library, marker per bucket).
+*median* file size within it. This is what feeds the report's line
+charts for C (one per operation, one line per library, marker per bucket).
 
-Adding it to another language means: (1) sort the loaded
+Adding it to a language not yet wired up means: (1) sort the loaded
 corpus by size and split into `SCALING_NBUCKETS` slices — `bench.c` does
 this via a sorted array of pointers so it never has to duplicate or
 reorder the original file data; (2) re-run each (library, operation) on each slice at
@@ -257,20 +257,38 @@ shared manifest file generated once by the top-level `CMakeLists.txt`):
    library in most of these benchmarks with its own JSON parser), to have
    TOON input ready for step 4. Not timed.
 3. **Timed — json_to_toon**: repeatedly parse JSON and re-serialise to
-   TOON, `x20` over the whole corpus.
+   TOON, `x20` over the whole corpus. For **ctoon** this is a single call
+   to its one-shot text conversion function in every language
+   (`ctoon_json_to_toon`, `ctoon::json_to_toon`, `ctoon.json_to_toon`,
+   `ctoon.JSONToToon`, `ctoon::json_to_toon`, `ctoon.jsonToToon`,
+   `CToon.json_to_toon`, …) -- no language-level dict/struct is built in
+   between. Libraries without such a function go through their own value
+   type, as before. `toon_to_json` and `roundtrip` likewise use
+   `toon_to_json` / `json_to_toon` + `toon_to_json` for ctoon.
 4. **Timed — toon_to_json**: repeatedly parse the TOON text from step 2
    (ctoon's own output) and re-serialise to JSON, `x20` over the whole
    corpus. This measures **interop** with ctoon's specific TOON output.
-5. **Timed — JSON→TOON→JSON** (`roundtrip` in the result JSON): parse JSON → encode TOON → parse that same
+5. **Timed — roundtrip**: parse JSON → encode TOON → parse that same
    TOON → encode JSON, all four steps chained as **one** operation per
    file using each library's *own* encoder and decoder together — not
    the two legs above run separately, and not cross-library. This
    measures a library's **self-consistency**: can it read back what it
    itself just wrote.
-6. **Untimed — record outputs**: each harness writes what every
+6. **Timed — toon_to_struct / struct_to_toon**: the two halves of the
+   above with the text format taken out, i.e. **load** and **dump** against
+   the language's own in-memory structure (a Python `dict`, a Go
+   `map`/struct value, a MATLAB `struct`, a ctoon document in C/C++, …):
+   `toon_to_struct` parses the pre-pass TOON into that structure and stops;
+   `struct_to_toon` serialises an already-built structure to TOON. The
+   structure fed to `struct_to_toon` is built **untimed, before the clock
+   starts, by the language's own independent JSON parser** (never by
+   ctoon's CLI or the library under test), so the two operations isolate the
+   TOON reader and writer from JSON parsing. Languages/libraries with no
+   such in-memory API simply have no row for these two operations.
+7. **Untimed — record outputs**: each harness writes what every
    (library, operation) actually produced for every file (see
    [Success vs. correctness](#success-vs-correctness) below).
-7. **Verify** (`ctoon_bench_verify`, once, after all languages): one script
+8. **Verify** (`ctoon_bench_verify`, once, after all languages): one script
    judges every recorded output against one shared criterion and rewrites
    the numbers: it adds `correct_rate` and makes MB/s count only *correct*
    conversions.
@@ -312,6 +330,8 @@ script (`node/verify_outputs.mjs`) applies it to all of them:
 | `json_to_toon` | the **official reference decoder** (`@toon-format/toon`) decodes it to the original document |
 | `toon_to_json` | it parses as JSON to the original document                                         |
 | `roundtrip`    | it parses as JSON to the original document                                         |
+| `struct_to_toon` | the **official reference decoder** decodes it to the original document           |
+| `toon_to_struct` | the harness serialises the decoded structure to JSON (untimed, with the language's own JSON writer) and that parses to the original document |
 
 - The TOON is decoded by the *reference* decoder, **not by the library's own**,
   on purpose: a lenient decoder hides encoder bugs from its own round trip

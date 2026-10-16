@@ -17,7 +17,12 @@ Methodology (same across every language benchmark in this repo):
      together. Measures self-consistency, not interop — see the top-level
      README for why a library's toon_to_json and roundtrip success rates
      can legitimately differ a lot.
-  6. Report throughput (MB/s of bytes actually read by successful
+  6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
+     with the text format taken out -- load the pre-pass TOON into the
+     language's native structure (dict/list/...) and dump an already-built
+     native structure to TOON. The native structure for struct_to_toon is
+     built untimed with the stdlib json parser, never by ctoon.
+  7. Report throughput (MB/s of bytes actually read by successful
      conversions only) and documents/sec.
 
 Implementations:
@@ -59,7 +64,7 @@ def load_corpus(manifest_path):
     for path in paths:
         try:
             with open(path, "r", encoding="utf-8") as f:
-                files.append({"path": path, "json": f.read(), "toon": None})
+                files.append({"path": path, "json": f.read(), "toon": None, "native": None})
         except OSError:
             continue
     return files
@@ -105,6 +110,31 @@ def bench_toon_to_json(files, toon_to_json_fn, log_file, library, reps=REPEATS):
     return time.perf_counter() - t0, ops, bytes_done
 
 
+def bench_struct_op(files, fn, field, bytes_field, log_file, library, operation, reps=REPEATS):
+    """Shared loop for the two native-structure operations. `field` is the
+    per-file input (f["toon"] text for toon_to_struct, the untimed-prebuilt
+    f["native"] object for struct_to_toon); `bytes_field` is the text whose
+    size is the throughput weight (the TOON text for toon_to_struct, the
+    original JSON for struct_to_toon -- the same convention as
+    toon_to_json / json_to_toon, and what verify_outputs.mjs reweights by).
+    The result is deliberately discarded: only the conversion is timed."""
+    t0 = time.perf_counter()
+    ops = 0
+    bytes_done = 0
+    for rep in range(reps):
+        for f in files:
+            if f[field] is None:
+                continue
+            try:
+                fn(f[field])
+                ops += 1
+                bytes_done += len(f[bytes_field].encode("utf-8"))
+            except Exception as e:
+                if rep == 0:
+                    log_fail(log_file, library, operation, f["path"], e)
+    return time.perf_counter() - t0, ops, bytes_done
+
+
 def bench_roundtrip(files, roundtrip_fn, log_file, library, reps=REPEATS):
     """roundtrip_fn(json_text) -> json string, chaining json->toon->json
     as one operation per file rather than running the two legs separately."""
@@ -123,14 +153,21 @@ def bench_roundtrip(files, roundtrip_fn, log_file, library, reps=REPEATS):
     return time.perf_counter() - t0, ops, bytes_done
 
 
-def dump_outputs(dump_root, library, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
+def dump_outputs(dump_root, library, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn,
+                 toon_to_struct_fn, struct_to_toon_fn):
     """Untimed. Writes what each operation actually produced for each file to
     <dump_root>/<library>/<operation>/<file index>.txt (nothing for a file the
     library failed on), so report/verify_outputs.mjs can judge whether the
     output is CORRECT, not merely error-free. See that script's header."""
     for operation, fn, field in (("json_to_toon", json_to_toon_fn, "json"),
                                  ("toon_to_json", toon_to_json_fn, "toon"),
-                                 ("roundtrip", roundtrip_fn, "json")):
+                                 ("roundtrip", roundtrip_fn, "json"),
+                                 # toon_to_struct's result is an object, not text:
+                                 # it is dumped as JSON by the stdlib json module
+                                 # (untimed, independent of ctoon) so the verifier
+                                 # can compare it to the original document.
+                                 ("toon_to_struct", lambda t: json.dumps(toon_to_struct_fn(t)), "toon"),
+                                 ("struct_to_toon", struct_to_toon_fn, "native")):
         out_dir = os.path.join(dump_root, library, operation)
         os.makedirs(out_dir, exist_ok=True)
         for i, f in enumerate(files):
@@ -169,6 +206,7 @@ def main():
     for f in files:
         try:
             data = json.loads(f["json"])
+            f["native"] = data      # untimed input for struct_to_toon (stdlib parser)
             f["toon"] = ctoon.dumps(data)
         except Exception as e:
             log_fail(log_file, "ctoon", "pre_pass", f["path"], e)
@@ -180,8 +218,9 @@ def main():
     rows = []
     results = []
 
-    def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn):
-        dump_outputs(dump_root, name, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn)
+    def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn, toon_to_struct_fn, struct_to_toon_fn):
+        dump_outputs(dump_root, name, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn,
+                     toon_to_struct_fn, struct_to_toon_fn)
 
         t_enc, ops_enc, bytes_enc = bench_json_to_toon(files, json_to_toon_fn, log_file, name)
         rows.append([
@@ -228,11 +267,34 @@ def main():
             "total_time_s": t_rt,
         })
 
+        for operation, fn, field, bytes_field in (
+                ("toon_to_struct", toon_to_struct_fn, "toon", "toon"),
+                ("struct_to_toon", struct_to_toon_fn, "native", "json")):
+            t_op, ops_op, bytes_op = bench_struct_op(files, fn, field, bytes_field, log_file, name, operation)
+            rows.append([
+                name, operation,
+                f"{bytes_op / t_op / 1e6:.2f} MB/s" if ops_op else "n/a",
+                f"{ops_op / t_op:.0f}",
+                f"{100 * ops_op / (len(files) * REPEATS):.0f}%",
+                f"{t_op:.4f} s",
+            ])
+            results.append({
+                "library": name, "operation": operation,
+                "throughput_mb_s": (bytes_op / t_op / 1e6) if ops_op else 0.0,
+                "docs_per_sec": ops_op / t_op, "success_rate": ops_op / (len(files) * REPEATS),
+                "total_time_s": t_op,
+            })
+
+    # ctoon's text<->text rows call its one-shot conversion functions
+    # directly: no Python dict/list is built in between (the other libraries
+    # have no such function, so they go through json.loads/json.dumps).
     add_rows(
         "ctoon",
-        lambda text: ctoon.dumps(json.loads(text)),
-        lambda text: ctoon.dumps_json(ctoon.loads(text), indent=2),
-        lambda text: ctoon.dumps_json(ctoon.loads(ctoon.dumps(json.loads(text))), indent=2),
+        ctoon.json_to_toon,
+        ctoon.toon_to_json,
+        lambda text: ctoon.toon_to_json(ctoon.json_to_toon(text)),
+        ctoon.loads,
+        ctoon.dumps,
     )
 
     if toon_format:
@@ -241,6 +303,8 @@ def main():
             lambda text: toon_format.encode(json.loads(text)),
             lambda text: json.dumps(toon_format.decode(text), indent=2),
             lambda text: json.dumps(toon_format.decode(toon_format.encode(json.loads(text))), indent=2),
+            toon_format.decode,
+            toon_format.encode,
         )
 
     if toons:
@@ -249,6 +313,8 @@ def main():
             lambda text: toons.dumps(json.loads(text)),
             lambda text: toons.to_json(text, indent=2),
             lambda text: toons.to_json(toons.dumps(json.loads(text)), indent=2),
+            toons.loads,
+            toons.dumps,
         )
 
     headers = ["Library", "Operation", "Throughput", "Docs/sec", "Success", f"Total time (x{REPEATS} reps)"]

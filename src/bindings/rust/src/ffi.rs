@@ -136,6 +136,51 @@ extern "C" {
         err: *mut ctoon_write_err,
     ) -> *mut c_char;
 
+    // ── Direct JSON <-> TOON conversion (genuinely extern) ────────────
+    pub fn ctoon_json_to_toon_opts(
+        json: *const c_char,
+        len: usize,
+        rflg: ctoon_read_flag,
+        wopts: *const ctoon_write_options,
+        alc: *const ctoon_alc,
+        out_len: *mut usize,
+        rerr: *mut ctoon_read_err,
+        werr: *mut ctoon_write_err,
+    ) -> *mut c_char;
+
+    pub fn ctoon_toon_to_json_opts(
+        toon: *const c_char,
+        len: usize,
+        rflg: ctoon_read_flag,
+        indent: c_int,
+        wflg: ctoon_write_flag,
+        alc: *const ctoon_alc,
+        out_len: *mut usize,
+        rerr: *mut ctoon_read_err,
+        werr: *mut ctoon_write_err,
+    ) -> *mut c_char;
+
+    pub fn ctoon_json_to_toon_file_opts(
+        json_path: *const c_char,
+        toon_path: *const c_char,
+        rflg: ctoon_read_flag,
+        wopts: *const ctoon_write_options,
+        alc: *const ctoon_alc,
+        rerr: *mut ctoon_read_err,
+        werr: *mut ctoon_write_err,
+    ) -> bool;
+
+    pub fn ctoon_toon_to_json_file_opts(
+        toon_path: *const c_char,
+        json_path: *const c_char,
+        rflg: ctoon_read_flag,
+        indent: c_int,
+        wflg: ctoon_write_flag,
+        alc: *const ctoon_alc,
+        rerr: *mut ctoon_read_err,
+        werr: *mut ctoon_write_err,
+    ) -> bool;
+
     // ── `static inline` in ctoon.h — shimmed via shim.c ───────────────
     pub fn ctoon_rs_doc_get_root(doc: *mut ctoon_doc) -> *mut ctoon_val;
     pub fn ctoon_rs_doc_free(doc: *mut ctoon_doc);

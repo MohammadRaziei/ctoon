@@ -363,3 +363,44 @@ UTEST(ctoon_cpp_tests, test_toon_json_toon_roundtrip) {
 }
 
 #endif /* CTOON_ENABLE_JSON */
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
+
+UTEST(ctoon_cpp_convert, json_to_toon_and_back) {
+    const std::string json = "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"]}";
+    ASSERT_STREQ("name: Alice\nage: 30\ntags[2]: a,b", ctoon::json_to_toon(json).c_str());
+    ASSERT_STREQ("name: Alice\nage: 30\ntags[2]: a,b", ctoon::json_to_toon(json.c_str()).c_str());
+    ASSERT_STREQ("name: Alice\nage: 30\ntags[2]: a,b",
+                 ctoon::json_to_toon(json.data(), json.size()).c_str());
+
+    const std::string toon = "name: Alice\nage: 30\ntags[2]: a,b";
+    ASSERT_STREQ(json.c_str(), ctoon::toon_to_json(toon).c_str());
+    ASSERT_STREQ("{\n  \"a\": 1\n}", ctoon::toon_to_json("a: 1", 2).c_str());
+}
+
+UTEST(ctoon_cpp_convert, options_apply) {
+    ctoon::write_options o;
+    o.with_delimiter(ctoon::delimiter::PIPE);
+    ASSERT_STREQ("t[3|]: 1|2|3", ctoon::json_to_toon("{\"t\":[1,2,3]}", o).c_str());
+}
+
+UTEST(ctoon_cpp_convert, errors_throw) {
+    bool threw = false;
+    try { ctoon::json_to_toon(std::string("{\"a\": ")); }
+    catch (const ctoon::parse_error &) { threw = true; }
+    ASSERT_TRUE(threw);
+}
+
+UTEST(ctoon_cpp_convert, file_functions) {
+    { FILE *f = std::fopen("cpp_conv_in.json", "wb"); std::fputs("{\"k\":[1,2]}", f); std::fclose(f); }
+    ctoon::json_to_toon_file("cpp_conv_in.json", "cpp_conv_out.toon");
+    ctoon::toon_to_json_file("cpp_conv_out.toon", "cpp_conv_back.json");
+    auto slurp = [](const char *p) {
+        FILE *f = std::fopen(p, "rb"); std::string s; char b[256]; size_t n;
+        while ((n = std::fread(b, 1, sizeof b, f)) > 0) s.append(b, n);
+        std::fclose(f); return s; };
+    ASSERT_STREQ("k[2]: 1,2", slurp("cpp_conv_out.toon").c_str());
+    ASSERT_STREQ("{\"k\":[1,2]}", slurp("cpp_conv_back.json").c_str());
+    std::remove("cpp_conv_in.json"); std::remove("cpp_conv_out.toon"); std::remove("cpp_conv_back.json");
+}
+
+#endif /* CTOON_ENABLE_JSON */

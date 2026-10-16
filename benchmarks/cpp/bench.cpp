@@ -38,6 +38,11 @@ struct BenchFile {
     std::string path;
     std::string json;
     std::string toon;
+    // ctoon's in-memory structure for this file, built UNTIMED in the
+    // pre-pass; the input of struct_to_toon. Empty (has_doc == false) if the
+    // file failed to parse.
+    ctoon::document doc;
+    bool has_doc = false;
 };
 
 struct Result {
@@ -85,10 +90,8 @@ std::vector<OrderCheckResult> g_order_checks;
 
 void run_order_check() {
     try {
-        auto doc = ctoon::document::from_json(kOrderCheckSampleJson);
-        std::string toon = doc.to_string().str();
-        auto doc2 = ctoon::document::parse(toon);
-        auto json_result = doc2.to_json(2);
+        auto toon = ctoon::json_to_toon(kOrderCheckSampleJson);
+        auto json_result = ctoon::toon_to_json(toon.view());
         std::string json_out = json_result.str();
         g_order_checks.push_back({"ctoon", order_preserved(json_out), ""});
     } catch (const ctoon::error &e) {
@@ -125,6 +128,10 @@ void record(const char *library, const char *operation,
                 r.success_rate * 100.0, seconds, CTOON_BENCH_REPEATS);
 }
 
+// NOTE: no size-scaling pass here. Only the C benchmark measures the
+// speed-vs-file-size curve (see bench.c); every other language reports the
+// single whole-corpus bar chart, so the languages stay comparable.
+
 void write_results_json(size_t n_files, size_t total_json_bytes) {
     std::ofstream f(CTOON_BENCH_RESULTS_JSON);
     if (!f) {
@@ -146,7 +153,8 @@ void write_results_json(size_t n_files, size_t total_json_bytes) {
             (i + 1 < g_results.size()) ? "," : "");
         f << buf;
     }
-    f << "  ],\n  \"order_check\": [\n";
+    f << "  ]\n,";
+    f << "\n  \"order_check\": [\n";
     for (size_t i = 0; i < g_order_checks.size(); i++) {
         const OrderCheckResult &r = g_order_checks[i];
         char buf[256];
@@ -178,7 +186,7 @@ static void dump_outputs(const std::vector<BenchFile> &files) {
     std::size_t slash = results.rfind('/');
     if (slash == std::string::npos) return;
     const std::string root = results.substr(0, slash) + "/dump/cpp/ctoon";
-    const char *ops[] = {"json_to_toon", "toon_to_json", "roundtrip"};
+    const char *ops[] = {"json_to_toon", "toon_to_json", "roundtrip", "toon_to_struct", "struct_to_toon"};
     for (const char *op : ops) {
         mkdir_p(root + "/" + op);
         for (std::size_t i = 0; i < files.size(); i++)   // drop stale files: "no file" must mean "failed"
@@ -193,23 +201,33 @@ static void dump_outputs(const std::vector<BenchFile> &files) {
     for (std::size_t i = 0; i < files.size(); i++) {
         const BenchFile &f = files[i];
         try {
-            auto doc = ctoon::document::from_json(f.json);
-            write("json_to_toon", i, doc.to_string().str());
+            write("json_to_toon", i, ctoon::json_to_toon(f.json).str());
         } catch (const ctoon::error &) {}
 
         if (!f.toon.empty()) {
             try {
-                auto doc = ctoon::document::parse(f.toon);
-                write("toon_to_json", i, doc.to_json(2).str());
+                write("toon_to_json", i, ctoon::toon_to_json(f.toon).str());
             } catch (const ctoon::error &) {}
         }
 
         try {
-            auto doc1 = ctoon::document::from_json(f.json);
-            std::string toon = doc1.to_string().str();
-            auto doc2 = ctoon::document::parse(toon);
-            write("roundtrip", i, doc2.to_json(2).str());
+            auto toon = ctoon::json_to_toon(f.json);
+            write("roundtrip", i, ctoon::toon_to_json(toon.view()).str());
         } catch (const ctoon::error &) {}
+
+        // struct_to_toon: serialise the pre-built structure.
+        if (f.has_doc) {
+            try { write("struct_to_toon", i, f.doc.to_string().str()); } catch (const ctoon::error &) {}
+        }
+
+        // toon_to_struct: the decoded structure serialised to JSON (untimed),
+        // only so the verifier can compare it to the original document.
+        if (!f.toon.empty()) {
+            try {
+                auto doc = ctoon::document::parse(f.toon);
+                write("toon_to_struct", i, doc.to_json(2).str());
+            } catch (const ctoon::error &) {}
+        }
     }
 }
 
@@ -246,8 +264,9 @@ int main() {
     std::size_t total_toon_bytes = 0;
     for (auto &f : files) {
         try {
-            auto doc = ctoon::document::from_json(f.json);
-            f.toon = doc.to_string().str();
+            f.doc = ctoon::document::from_json(f.json);
+            f.has_doc = true;
+            f.toon = f.doc.to_string().str();
             total_toon_bytes += f.toon.size();
         } catch (const ctoon::error &) {
         }
@@ -260,8 +279,7 @@ int main() {
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (const auto &f : files) {
             try {
-                auto doc = ctoon::document::from_json(f.json);
-                auto result = doc.to_string();
+                auto result = ctoon::json_to_toon(f.json);
                 (void)result.size();
                 ops_a++;
                 bytes_a += static_cast<double>(f.json.size());
@@ -278,8 +296,7 @@ int main() {
         for (const auto &f : files) {
             if (f.toon.empty()) continue;
             try {
-                auto doc = ctoon::document::parse(f.toon);
-                auto result = doc.to_json(2);
+                auto result = ctoon::toon_to_json(f.toon);
                 (void)result.size();
                 ops_b++;
                 bytes_b += static_cast<double>(f.toon.size());
@@ -290,17 +307,54 @@ int main() {
     record("ctoon", "toon_to_json", bytes_b, ops_b, now_seconds() - t0,
            static_cast<long>(files.size()) * CTOON_BENCH_REPEATS);
 
-    // roundtrip: json -> toon -> (parse toon) -> json, chained as one
-    // operation per file rather than the two legs above run separately.
+    // toon_to_struct: parse the pre-pass TOON into ctoon's in-memory
+    // structure and drop it -- no JSON text in the timed region.
+    long ops_s = 0; double bytes_s = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (const auto &f : files) {
+            if (f.toon.empty()) continue;
+            try {
+                auto doc = ctoon::document::parse(f.toon);
+                (void)doc.raw();
+                ops_s++;
+                bytes_s += static_cast<double>(f.toon.size());
+            } catch (const ctoon::error &) {
+            }
+        }
+    }
+    record("ctoon", "toon_to_struct", bytes_s, ops_s, now_seconds() - t0,
+           static_cast<long>(files.size()) * CTOON_BENCH_REPEATS);
+
+    // struct_to_toon: serialise the structure built (untimed) in the
+    // pre-pass -- no parsing in the timed region. Weighted by the JSON size,
+    // same convention as json_to_toon.
+    long ops_w = 0; double bytes_w = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (const auto &f : files) {
+            if (!f.has_doc) continue;
+            try {
+                auto result = f.doc.to_string();
+                (void)result.size();
+                ops_w++;
+                bytes_w += static_cast<double>(f.json.size());
+            } catch (const ctoon::error &) {
+            }
+        }
+    }
+    record("ctoon", "struct_to_toon", bytes_w, ops_w, now_seconds() - t0,
+           static_cast<long>(files.size()) * CTOON_BENCH_REPEATS);
+
+    // roundtrip: ctoon::json_to_toon then ctoon::toon_to_json on its output,
+    // chained as one operation per file.
     long ops_c = 0; double bytes_c = 0;
     t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (const auto &f : files) {
             try {
-                auto doc1 = ctoon::document::from_json(f.json);
-                std::string toon = doc1.to_string().str();
-                auto doc2 = ctoon::document::parse(toon);
-                auto result = doc2.to_json(2);
+                auto toon = ctoon::json_to_toon(f.json);
+                auto result = ctoon::toon_to_json(toon.view());
                 (void)result.size();
                 ops_c++;
                 bytes_c += static_cast<double>(f.json.size());

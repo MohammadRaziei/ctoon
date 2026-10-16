@@ -29,7 +29,12 @@
 //   5. Timed "roundtrip": json -> toon -> parse toon -> json, all
 //      chained as one operation using each library's own encoder/decoder
 //      together. Measures self-consistency, not interop.
-//   6. Report throughput (MB/s of bytes actually read by successful
+//   6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
+//      with the text format taken out -- decode the pre-pass TOON into a
+//      ctoon.Value and stop; encode a ctoon.Value built untimed in the
+//      pre-pass. There is no other Zig TOON implementation here, so
+//      ctoon.Value is the "native structure".
+//   7. Report throughput (MB/s of bytes actually read by successful
 //      conversions only) and documents/sec.
 //
 // Memory: this is a short-lived benchmark process, not a library, so it
@@ -50,6 +55,9 @@ const BenchFile = struct {
     path: []const u8,
     json: []const u8,
     toon: ?[]const u8 = null,
+    /// ctoon's in-memory value for this file, built UNTIMED in the pre-pass;
+    /// the input of struct_to_toon.
+    value: ?ctoon.Value = null,
 };
 
 const Result = struct {
@@ -109,29 +117,41 @@ fn dumpOutputs(gpa: std.mem.Allocator, results_path: []const u8, files: []const 
     var jt: std.Io.Writer.Allocating = .init(gpa); // json_to_toon
     var tj: std.Io.Writer.Allocating = .init(gpa); // toon_to_json
     var rt: std.Io.Writer.Allocating = .init(gpa); // roundtrip
+    var ts: std.Io.Writer.Allocating = .init(gpa); // toon_to_struct (value dumped as JSON, untimed)
+    var st: std.Io.Writer.Allocating = .init(gpa); // struct_to_toon
+    defer ts.deinit();
+    defer st.deinit();
     defer jt.deinit();
     defer tj.deinit();
     defer rt.deinit();
 
     for (files, 0..) |f, i| {
-        if (ctoon.loadsJson(gpa, f.json)) |val| {
-            if (ctoon.dumps(gpa, val)) |toon| {
-                frame(&jt.writer, i, toon);
-                if (ctoon.loads(gpa, toon)) |val2| {
-                    if (ctoon.dumpsJson(gpa, val2, 2)) |js| frame(&rt.writer, i, js) else |_| {}
-                } else |_| {}
-            } else |_| {}
+        // json_to_toon / toon_to_json / roundtrip: ctoon's one-shot text
+        // conversion functions (no ctoon.Value in between).
+        if (ctoon.jsonToToon(gpa, f.json, .{})) |toon| {
+            frame(&jt.writer, i, toon);
+            if (ctoon.toonToJson(gpa, toon, 0)) |js| frame(&rt.writer, i, js) else |_| {}
         } else |_| {}
 
         if (f.toon) |toon_text| {
+            if (ctoon.toonToJson(gpa, toon_text, 0)) |js| frame(&tj.writer, i, js) else |_| {}
+            // toon_to_struct: the decoded value, serialised to JSON
+            // (untimed) only so the verifier can compare it to the
+            // original document.
             if (ctoon.loads(gpa, toon_text)) |val| {
-                if (ctoon.dumpsJson(gpa, val, 2)) |js| frame(&tj.writer, i, js) else |_| {}
+                if (ctoon.dumpsJson(gpa, val, 2)) |js| frame(&ts.writer, i, js) else |_| {}
             } else |_| {}
+        }
+
+        if (f.value) |v| {
+            if (ctoon.dumps(gpa, v)) |toon| frame(&st.writer, i, toon) else |_| {}
         }
     }
     writeFrames(gpa, dir, "json_to_toon", jt.written());
     writeFrames(gpa, dir, "toon_to_json", tj.written());
     writeFrames(gpa, dir, "roundtrip", rt.written());
+    writeFrames(gpa, dir, "toon_to_struct", ts.written());
+    writeFrames(gpa, dir, "struct_to_toon", st.written());
 }
 
 pub fn main(init: std.process.Init) !void {
@@ -184,6 +204,7 @@ pub fn main(init: std.process.Init) !void {
             logFail("ctoon", "pre_pass", f.path, ctoon.Error.ParseError);
             continue;
         };
+        f.value = val;
         f.toon = ctoon.dumps(gpa, val) catch {
             logFail("ctoon", "pre_pass", f.path, ctoon.Error.WriteError);
             continue;
@@ -204,11 +225,8 @@ pub fn main(init: std.process.Init) !void {
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
-                const val = ctoon.loadsJson(gpa, f.json) catch |err| {
-                    if (r == 0) logFail("ctoon", "json_to_toon", f.path, err);
-                    continue;
-                };
-                if (ctoon.dumps(gpa, val)) |_| {
+                if (ctoon.jsonToToon(gpa, f.json, .{})) |out| {
+                    gpa.free(out);
                     ops += 1;
                     bytes += @floatFromInt(f.json.len);
                 } else |err| {
@@ -228,11 +246,8 @@ pub fn main(init: std.process.Init) !void {
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
                 const toon_text = f.toon orelse continue;
-                const val = ctoon.loads(gpa, toon_text) catch |err| {
-                    if (r == 0) logFail("ctoon", "toon_to_json", f.path, err);
-                    continue;
-                };
-                if (ctoon.dumpsJson(gpa, val, 2)) |_| {
+                if (ctoon.toonToJson(gpa, toon_text, 0)) |out| {
+                    gpa.free(out);
                     ops += 1;
                     bytes += @floatFromInt(toon_text.len);
                 } else |err| {
@@ -251,19 +266,13 @@ pub fn main(init: std.process.Init) !void {
         var r: u32 = 0;
         while (r < repeats) : (r += 1) {
             for (files.items) |f| {
-                const val = ctoon.loadsJson(gpa, f.json) catch |err| {
+                const toon_text = ctoon.jsonToToon(gpa, f.json, .{}) catch |err| {
                     if (r == 0) logFail("ctoon", "roundtrip", f.path, err);
                     continue;
                 };
-                const toon_text = ctoon.dumps(gpa, val) catch |err| {
-                    if (r == 0) logFail("ctoon", "roundtrip", f.path, err);
-                    continue;
-                };
-                const val2 = ctoon.loads(gpa, toon_text) catch |err| {
-                    if (r == 0) logFail("ctoon", "roundtrip", f.path, err);
-                    continue;
-                };
-                if (ctoon.dumpsJson(gpa, val2, 2)) |_| {
+                defer gpa.free(toon_text);
+                if (ctoon.toonToJson(gpa, toon_text, 0)) |out| {
+                    gpa.free(out);
                     ops += 1;
                     bytes += @floatFromInt(f.json.len);
                 } else |err| {
@@ -273,6 +282,49 @@ pub fn main(init: std.process.Init) !void {
         }
         const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
         try record(gpa, &results, "ctoon", "roundtrip", bytes, ops, seconds, total);
+    }
+
+    // toon_to_struct: decode the pre-pass TOON into a ctoon.Value, nothing else.
+    {
+        var ops: u64 = 0;
+        var bytes: f64 = 0;
+        const timer_start = std.Io.Clock.awake.now(io);
+        var r: u32 = 0;
+        while (r < repeats) : (r += 1) {
+            for (files.items) |f| {
+                const toon_text = f.toon orelse continue;
+                if (ctoon.loads(gpa, toon_text)) |_| {
+                    ops += 1;
+                    bytes += @floatFromInt(toon_text.len);
+                } else |err| {
+                    if (r == 0) logFail("ctoon", "toon_to_struct", f.path, err);
+                }
+            }
+        }
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
+        try record(gpa, &results, "ctoon", "toon_to_struct", bytes, ops, seconds, total);
+    }
+
+    // struct_to_toon: encode the pre-built ctoon.Value, nothing else (weighted
+    // by the JSON size, same convention as json_to_toon).
+    {
+        var ops: u64 = 0;
+        var bytes: f64 = 0;
+        const timer_start = std.Io.Clock.awake.now(io);
+        var r: u32 = 0;
+        while (r < repeats) : (r += 1) {
+            for (files.items) |f| {
+                const v = f.value orelse continue;
+                if (ctoon.dumps(gpa, v)) |_| {
+                    ops += 1;
+                    bytes += @floatFromInt(f.json.len);
+                } else |err| {
+                    if (r == 0) logFail("ctoon", "struct_to_toon", f.path, err);
+                }
+            }
+        }
+        const seconds = @as(f64, @floatFromInt(timer_start.durationTo(std.Io.Clock.awake.now(io)).nanoseconds)) / 1e9;
+        try record(gpa, &results, "ctoon", "struct_to_toon", bytes, ops, seconds, total);
     }
 
     // ── write results JSON ──

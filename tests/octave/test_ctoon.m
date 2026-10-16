@@ -379,6 +379,41 @@ names = { ...
     'escapes U+001F control character in key via \uXXXX', ...
     'encodes empty string key opening a nested object'};
 
+%% -------------------------------------------------------------------------
+%  Direct JSON <-> TOON text conversion (no Octave value in between)
+%% -------------------------------------------------------------------------
+
+function test_json_to_toon_basic
+got = ctoon.json_to_toon('{"name":"Alice","age":30,"tags":["a","b"]}');
+assertEqual(got, sprintf('name: Alice\nage: 30\ntags[2]: a,b'));
+got = ctoon.json_to_toon('{"u":[{"id":1,"n":"x"},{"id":2,"n":"y"}]}');
+assertEqual(got, sprintf('u[2]{id,n}:\n  1,x\n  2,y'));
+
+function test_toon_to_json_basic
+got = ctoon.toon_to_json(sprintf('name: Alice\nage: 30\ntags[2]: a,b'));
+assertEqual(got, '{"name":"Alice","age":30,"tags":["a","b"]}');
+got = ctoon.toon_to_json('a: 1', 2);
+assertEqual(got, sprintf('{\n  "a": 1\n}'));
+
+function test_convert_errors
+assertExceptionThrown(@() ctoon.json_to_toon('{"a":'), 'ctoon:convertError');
+assertExceptionThrown(@() ctoon.toon_to_json('a[2]: 1'), 'ctoon:convertError');
+
+function test_convert_files
+d = tempname; mkdir(d);
+j = fullfile(d, 'in.json'); t = fullfile(d, 'out.toon'); b = fullfile(d, 'back.json');
+fid = fopen(j, 'w'); fwrite(fid, '{"k":[1,2],"s":"hi"}'); fclose(fid);
+ctoon.json_to_toon_file(j, t);
+assertEqual(fileread(t), sprintf('k[2]: 1,2\ns: hi'));
+ctoon.toon_to_json_file(t, b);
+assertEqual(fileread(b), '{"k":[1,2],"s":"hi"}');
+bad = fullfile(d, 'bad.json'); never = fullfile(d, 'never.toon');
+fid = fopen(bad, 'w'); fwrite(fid, '{"a":'); fclose(fid);
+assertExceptionThrown(@() ctoon.json_to_toon_file(bad, never), 'ctoon:convertError');
+assertFalse(logical(exist(never, 'file')));
+confirm_recursive_rmdir(false, 'local');
+rmdir(d, 's');
+
 function delete_if_exists(f)
 if exist(f, 'file')
     delete(f);

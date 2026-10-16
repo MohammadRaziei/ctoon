@@ -297,6 +297,116 @@ function parse_toon(str::AbstractString)
     end
 end
 
+# ------------------------------------------- direct JSON <-> TOON text --
+# One ccall into the C core per conversion. No Julia value (OrderedDict /
+# Vector / ...) is built: the input String's own bytes are passed to C
+# read-only, and the only copy made is the returned String.
+
+# Mirrors ctoon_write_err: { ctoon_write_code code; const char *msg; }.
+struct WriteErr
+    code::UInt32
+    _pad::UInt32
+    msg::Ptr{UInt8}
+end
+
+# Mirrors ctoon_write_options: { ctoon_write_flag flag; ctoon_delimiter
+# delimiter; int indent; }.
+struct WriteOptions
+    flag::UInt32
+    delimiter::UInt32
+    indent::Cint
+end
+
+const DELIMITERS = (comma = 0, tab = 1, pipe = 2)
+
+function _convert_error(what::AbstractString, rerr::ReadErr, werr::WriteErr)
+    if rerr.code != 0
+        msg = rerr.msg == C_NULL ? "(no message)" : unsafe_string(rerr.msg)
+        error("CToon: $what failed: $msg (pos=$(rerr.pos))")
+    end
+    msg = werr.msg == C_NULL ? "(no message)" : unsafe_string(werr.msg)
+    error("CToon: $what failed: $msg")
+end
+
+function _take_string(ptr::Ptr{UInt8}, len::Integer)
+    s = unsafe_string(ptr, len)
+    @ccall free(ptr::Ptr{Cvoid})::Cvoid
+    return s
+end
+
+"""
+    CToon.json_to_toon(json::AbstractString; indent=2, delimiter=0, flags=0) -> String
+
+Convert JSON text straight to TOON text. `delimiter` is one of
+`CToon.DELIMITERS` (`comma`/`tab`/`pipe`); `flags` are `CTOON_WRITE_*` bits.
+"""
+function json_to_toon(json::AbstractString; indent::Integer = 2, delimiter::Integer = 0, flags::Integer = 0)
+    str = json isa String ? json : String(json)
+    wo = Ref(WriteOptions(UInt32(flags), UInt32(delimiter), Cint(indent)))
+    rerr = Ref(ReadErr(0, 0, C_NULL, 0))
+    werr = Ref(WriteErr(0, 0, C_NULL))
+    len = Ref{Csize_t}(0)
+    ptr = @ccall libctoon_jl.ctoon_json_to_toon_opts(
+        str::Ptr{UInt8}, sizeof(str)::Csize_t, 0::Cuint, wo::Ptr{WriteOptions}, C_NULL::Ptr{Cvoid},
+        len::Ptr{Csize_t}, rerr::Ptr{ReadErr}, werr::Ptr{WriteErr},
+    )::Ptr{UInt8}
+    ptr == C_NULL && _convert_error("json_to_toon", rerr[], werr[])
+    return _take_string(ptr, len[])
+end
+
+"""
+    CToon.toon_to_json(toon::AbstractString; indent=0, flags=0) -> String
+
+Convert TOON text straight to JSON text (`indent` 0 = compact).
+"""
+function toon_to_json(toon::AbstractString; indent::Integer = 0, flags::Integer = 0)
+    str = toon isa String ? toon : String(toon)
+    rerr = Ref(ReadErr(0, 0, C_NULL, 0))
+    werr = Ref(WriteErr(0, 0, C_NULL))
+    len = Ref{Csize_t}(0)
+    ptr = @ccall libctoon_jl.ctoon_toon_to_json_opts(
+        str::Ptr{UInt8}, sizeof(str)::Csize_t, 0::Cuint, Cint(indent)::Cint, UInt32(flags)::Cuint,
+        C_NULL::Ptr{Cvoid}, len::Ptr{Csize_t}, rerr::Ptr{ReadErr}, werr::Ptr{WriteErr},
+    )::Ptr{UInt8}
+    ptr == C_NULL && _convert_error("toon_to_json", rerr[], werr[])
+    return _take_string(ptr, len[])
+end
+
+"""
+    CToon.json_to_toon_file(json_path, toon_path; indent=2, delimiter=0, flags=0)
+
+Convert a JSON file into a TOON file.
+"""
+function json_to_toon_file(json_path::AbstractString, toon_path::AbstractString;
+                           indent::Integer = 2, delimiter::Integer = 0, flags::Integer = 0)
+    wo = Ref(WriteOptions(UInt32(flags), UInt32(delimiter), Cint(indent)))
+    rerr = Ref(ReadErr(0, 0, C_NULL, 0))
+    werr = Ref(WriteErr(0, 0, C_NULL))
+    ok = @ccall libctoon_jl.ctoon_json_to_toon_file_opts(
+        json_path::Cstring, toon_path::Cstring, 0::Cuint, wo::Ptr{WriteOptions}, C_NULL::Ptr{Cvoid},
+        rerr::Ptr{ReadErr}, werr::Ptr{WriteErr},
+    )::Bool
+    ok || _convert_error("json_to_toon_file", rerr[], werr[])
+    return nothing
+end
+
+"""
+    CToon.toon_to_json_file(toon_path, json_path; indent=0, flags=0)
+
+Convert a TOON file into a JSON file (`indent` 0 = compact).
+"""
+function toon_to_json_file(toon_path::AbstractString, json_path::AbstractString;
+                           indent::Integer = 0, flags::Integer = 0)
+    rerr = Ref(ReadErr(0, 0, C_NULL, 0))
+    werr = Ref(WriteErr(0, 0, C_NULL))
+    ok = @ccall libctoon_jl.ctoon_toon_to_json_file_opts(
+        toon_path::Cstring, json_path::Cstring, 0::Cuint, Cint(indent)::Cint, UInt32(flags)::Cuint,
+        C_NULL::Ptr{Cvoid}, rerr::Ptr{ReadErr}, werr::Ptr{WriteErr},
+    )::Bool
+    ok || _convert_error("toon_to_json_file", rerr[], werr[])
+    return nothing
+end
+
 """
     CToon.spec_version() -> String
 
@@ -321,6 +431,6 @@ The release date of the targeted spec, e.g. `"2026-07-26"`.
 """
 spec_date() = unsafe_string(@ccall libctoon_jl.ctoon_spec_date_string()::Cstring)
 
-export dumps, to_json, parse_toon
+export dumps, to_json, parse_toon, json_to_toon, toon_to_json, json_to_toon_file, toon_to_json_file
 
 end # module CToon

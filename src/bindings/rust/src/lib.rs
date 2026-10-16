@@ -271,6 +271,132 @@ pub fn dumps_opts(v: &Value, opts: &WriteOptions) -> Result<String, Error> {
     }
 }
 
+// ─── Direct JSON <-> TOON text conversion ──────────────────────────────────
+//
+// One call into the C core. No `Value` tree is built: the input `&str`'s own
+// bytes are handed to C (read-only; the in-situ flag is never set), and the
+// only allocation besides C's own temporary arena is the returned `String`.
+
+fn convert_err(rerr: &ctoon_read_err, werr: &ctoon_write_err) -> Error {
+    if rerr.code != 0 {
+        read_err_to_error(rerr)
+    } else {
+        write_err_to_error(werr)
+    }
+}
+
+fn take_string(raw: *mut c_char, len: usize) -> String {
+    unsafe {
+        let bytes = std::slice::from_raw_parts(raw as *const u8, len);
+        let s = String::from_utf8_lossy(bytes).into_owned();
+        libc_free(raw as *mut std::os::raw::c_void);
+        s
+    }
+}
+
+fn c_path(p: &str) -> Result<std::ffi::CString, Error> {
+    std::ffi::CString::new(p)
+        .map_err(|_| Error::UnsupportedValue("path contains an interior NUL byte".into()))
+}
+
+/// Converts JSON text to TOON text (default [`WriteOptions`]).
+pub fn json_to_toon(json: &str) -> Result<String, Error> {
+    json_to_toon_opts(json, &WriteOptions::default())
+}
+
+/// Converts JSON text to TOON text with custom [`WriteOptions`].
+pub fn json_to_toon_opts(json: &str, opts: &WriteOptions) -> Result<String, Error> {
+    let ffi_opts = opts.to_ffi();
+    let mut rerr: ctoon_read_err = unsafe { std::mem::zeroed() };
+    let mut werr: ctoon_write_err = unsafe { std::mem::zeroed() };
+    let mut len = 0usize;
+    let raw = unsafe {
+        ffi::ctoon_json_to_toon_opts(
+            json.as_ptr() as *const c_char,
+            json.len(),
+            CTOON_READ_NOFLAG,
+            &ffi_opts,
+            std::ptr::null(),
+            &mut len,
+            &mut rerr,
+            &mut werr,
+        )
+    };
+    if raw.is_null() {
+        return Err(convert_err(&rerr, &werr));
+    }
+    Ok(take_string(raw, len))
+}
+
+/// Converts TOON text to compact JSON text.
+pub fn toon_to_json(toon: &str) -> Result<String, Error> {
+    toon_to_json_opts(toon, 0, flags::NOFLAG)
+}
+
+/// Converts TOON text to JSON text with a given `indent` (0 = compact) and
+/// `CTOON_WRITE_*` flags (see the [`flags`] module).
+pub fn toon_to_json_opts(toon: &str, indent: i32, write_flags: u32) -> Result<String, Error> {
+    let mut rerr: ctoon_read_err = unsafe { std::mem::zeroed() };
+    let mut werr: ctoon_write_err = unsafe { std::mem::zeroed() };
+    let mut len = 0usize;
+    let raw = unsafe {
+        ffi::ctoon_toon_to_json_opts(
+            toon.as_ptr() as *const c_char,
+            toon.len(),
+            CTOON_READ_NOFLAG,
+            indent,
+            write_flags,
+            std::ptr::null(),
+            &mut len,
+            &mut rerr,
+            &mut werr,
+        )
+    };
+    if raw.is_null() {
+        return Err(convert_err(&rerr, &werr));
+    }
+    Ok(take_string(raw, len))
+}
+
+/// Converts a JSON file into a TOON file.
+pub fn json_to_toon_file(json_path: &str, toon_path: &str) -> Result<(), Error> {
+    json_to_toon_file_opts(json_path, toon_path, &WriteOptions::default())
+}
+
+/// Converts a JSON file into a TOON file with custom [`WriteOptions`].
+pub fn json_to_toon_file_opts(json_path: &str, toon_path: &str, opts: &WriteOptions) -> Result<(), Error> {
+    let (jp, tp) = (c_path(json_path)?, c_path(toon_path)?);
+    let ffi_opts = opts.to_ffi();
+    let mut rerr: ctoon_read_err = unsafe { std::mem::zeroed() };
+    let mut werr: ctoon_write_err = unsafe { std::mem::zeroed() };
+    let ok = unsafe {
+        ffi::ctoon_json_to_toon_file_opts(
+            jp.as_ptr(), tp.as_ptr(), CTOON_READ_NOFLAG, &ffi_opts,
+            std::ptr::null(), &mut rerr, &mut werr,
+        )
+    };
+    if ok { Ok(()) } else { Err(convert_err(&rerr, &werr)) }
+}
+
+/// Converts a TOON file into a (compact) JSON file.
+pub fn toon_to_json_file(toon_path: &str, json_path: &str) -> Result<(), Error> {
+    toon_to_json_file_opts(toon_path, json_path, 0, flags::NOFLAG)
+}
+
+/// Converts a TOON file into a JSON file with `indent` and write flags.
+pub fn toon_to_json_file_opts(toon_path: &str, json_path: &str, indent: i32, write_flags: u32) -> Result<(), Error> {
+    let (tp, jp) = (c_path(toon_path)?, c_path(json_path)?);
+    let mut rerr: ctoon_read_err = unsafe { std::mem::zeroed() };
+    let mut werr: ctoon_write_err = unsafe { std::mem::zeroed() };
+    let ok = unsafe {
+        ffi::ctoon_toon_to_json_file_opts(
+            tp.as_ptr(), jp.as_ptr(), CTOON_READ_NOFLAG, indent, write_flags,
+            std::ptr::null(), &mut rerr, &mut werr,
+        )
+    };
+    if ok { Ok(()) } else { Err(convert_err(&rerr, &werr)) }
+}
+
 /// Parses a JSON string into a [`Value`] (using ctoon's own JSON reader —
 /// this crate has no `serde_json` or other JSON-parsing dependency).
 pub fn loads_json(s: &str) -> Result<Value, Error> {

@@ -112,6 +112,22 @@ var EncodeToFile = binding.EncodeToFile
 var DecodeFromFile = binding.DecodeFromFile
 
 // ---------------------------------------------------------------------------
+// Direct JSON <-> TOON text conversion (no Go value in between)
+// ---------------------------------------------------------------------------
+
+// JSONToToon converts JSON text straight to TOON text.
+var JSONToToon = binding.JSONToToon
+
+// ToonToJSON converts TOON text straight to JSON text (indent 0 = compact).
+var ToonToJSON = binding.ToonToJSON
+
+// JSONToToonFile converts a JSON file into a TOON file.
+var JSONToToonFile = binding.JSONToToonFile
+
+// ToonToJSONFile converts a TOON file into a JSON file.
+var ToonToJSONFile = binding.ToonToJSONFile
+
+// ---------------------------------------------------------------------------
 // Convenience aliases  (mirror Python loads / dumps naming)
 // ---------------------------------------------------------------------------
 

@@ -303,6 +303,96 @@ func DecodeFromFile(path string, opts DecodeOptions) (interface{}, error) {
 }
 
 // ---------------------------------------------------------------------------
+// Direct text <-> text conversion (JSON <-> TOON)
+//
+// One CGo call into the C core per conversion. No Go value (map / slice /
+// interface{}) is ever built: the input string's own bytes are handed to C,
+// and the only copy made is the returned Go string.
+// ---------------------------------------------------------------------------
+
+func convertErr(def string, rerr *C.ctoon_read_err, werr *C.ctoon_write_err) error {
+	if rerr.code != 0 {
+		msg := def
+		if rerr.msg != nil {
+			msg = C.GoString(rerr.msg)
+		}
+		return fmt.Errorf("%s (pos %d)", msg, uint64(rerr.pos))
+	}
+	msg := def
+	if werr.msg != nil {
+		msg = C.GoString(werr.msg)
+	}
+	return fmt.Errorf("%s", msg)
+}
+
+// JSONToToon converts JSON text to TOON text in a single call.
+func JSONToToon(json string, opts EncodeOptions) (string, error) {
+	wopts := C.ctoon_write_options{
+		flag:      C.ctoon_write_flag(opts.Flag),
+		delimiter: C.ctoon_delimiter(opts.Delimiter),
+		indent:    C.int(opts.Indent),
+	}
+	var rerr C.ctoon_read_err
+	var werr C.ctoon_write_err
+	var n C.size_t
+	out := C.ctoon_json_to_toon_opts(readOnlyCStr(json), C.size_t(len(json)),
+		0, &wopts, nil, &n, &rerr, &werr)
+	if out == nil {
+		return "", convertErr("ctoon: json_to_toon error", &rerr, &werr)
+	}
+	defer C.free(unsafe.Pointer(out))
+	return C.GoStringN(out, C.int(n)), nil
+}
+
+// ToonToJSON converts TOON text to JSON text in a single call.
+// indent is the JSON indentation per level (0 = compact).
+func ToonToJSON(toon string, indent int) (string, error) {
+	var rerr C.ctoon_read_err
+	var werr C.ctoon_write_err
+	var n C.size_t
+	out := C.ctoon_toon_to_json_opts(readOnlyCStr(toon), C.size_t(len(toon)),
+		0, C.int(indent), 0, nil, &n, &rerr, &werr)
+	if out == nil {
+		return "", convertErr("ctoon: toon_to_json error", &rerr, &werr)
+	}
+	defer C.free(unsafe.Pointer(out))
+	return C.GoStringN(out, C.int(n)), nil
+}
+
+// JSONToToonFile converts the JSON file at jsonPath into a TOON file at toonPath.
+func JSONToToonFile(jsonPath, toonPath string, opts EncodeOptions) error {
+	jp := C.CString(jsonPath)
+	defer C.free(unsafe.Pointer(jp))
+	tp := C.CString(toonPath)
+	defer C.free(unsafe.Pointer(tp))
+	wopts := C.ctoon_write_options{
+		flag:      C.ctoon_write_flag(opts.Flag),
+		delimiter: C.ctoon_delimiter(opts.Delimiter),
+		indent:    C.int(opts.Indent),
+	}
+	var rerr C.ctoon_read_err
+	var werr C.ctoon_write_err
+	if !C.ctoon_json_to_toon_file_opts(jp, tp, 0, &wopts, nil, &rerr, &werr) {
+		return convertErr("ctoon: json_to_toon_file error", &rerr, &werr)
+	}
+	return nil
+}
+
+// ToonToJSONFile converts the TOON file at toonPath into a JSON file at jsonPath.
+func ToonToJSONFile(toonPath, jsonPath string, indent int) error {
+	tp := C.CString(toonPath)
+	defer C.free(unsafe.Pointer(tp))
+	jp := C.CString(jsonPath)
+	defer C.free(unsafe.Pointer(jp))
+	var rerr C.ctoon_read_err
+	var werr C.ctoon_write_err
+	if !C.ctoon_toon_to_json_file_opts(tp, jp, 0, C.int(indent), 0, nil, &rerr, &werr) {
+		return convertErr("ctoon: toon_to_json_file error", &rerr, &werr)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 // JSON helpers
 // ---------------------------------------------------------------------------
 

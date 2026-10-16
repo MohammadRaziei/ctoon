@@ -6770,6 +6770,134 @@ ctoon_api char *ctoon_mut_doc_to_json(const ctoon_mut_doc *doc,
 
 #endif /* CTOON_ENABLE_JSON */
 
+/*==============================================================================
+ * MARK: - JSON <-> TOON direct conversion
+ *============================================================================*/
+
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON && \
+    (!defined(CTOON_DISABLE_READER) || !CTOON_DISABLE_READER) && \
+    (!defined(CTOON_DISABLE_WRITER) || !CTOON_DISABLE_WRITER)
+
+/* Write `len` bytes of an already-built result to `path`.  Opened only after
+ * the conversion succeeded, so a failed conversion never truncates `path`. */
+static bool ctoon_dump_to_path(const char *path, const char *buf, usize len,
+                               const ctoon_alc *alc, ctoon_write_err *werr) {
+    ctoon_write_err tmp;
+    if (!werr) werr = &tmp;
+    ctoon_alc a = alc ? *alc : CTOON_DEFAULT_ALC;
+    if (unlikely(!path)) {
+        a.free(a.ctx, (void *)buf);
+        werr->code = CTOON_WRITE_ERROR_INVALID_PARAMETER;
+        werr->msg  = "path is NULL";
+        return false;
+    }
+    FILE *f = fopen_writeonly(path);
+    if (unlikely(!f)) {
+        a.free(a.ctx, (void *)buf);
+        werr->code = CTOON_WRITE_ERROR_FILE_OPEN;
+        werr->msg  = "failed to open file";
+        return false;
+    }
+    usize wr = fwrite(buf, 1, len, f);
+    bool ok = (fclose(f) == 0) && wr == len;
+    a.free(a.ctx, (void *)buf);
+    if (unlikely(!ok)) {
+        werr->code = CTOON_WRITE_ERROR_FILE_WRITE;
+        werr->msg  = "failed to write file";
+    }
+    return ok;
+}
+
+ctoon_api char *ctoon_json_to_toon_opts(const char *json, usize len,
+                                         ctoon_read_flag rflg,
+                                         const ctoon_write_options *wopts,
+                                         const ctoon_alc *alc,
+                                         usize *out_len,
+                                         ctoon_read_err *rerr,
+                                         ctoon_write_err *werr) {
+    if (out_len) *out_len = 0;
+    ctoon_doc *doc = ctoon_read_json(
+        (char *)(void *)(size_t)(const void *)json, len,
+        rflg & (ctoon_read_flag)~CTOON_READ_INSITU, alc, rerr);
+    if (unlikely(!doc)) return NULL;
+    char *out = ctoon_write_opts(doc, wopts, alc, out_len, werr);
+    ctoon_doc_free(doc);
+    return out;
+}
+
+ctoon_api char *ctoon_json_to_toon(const char *json, usize len, usize *out_len) {
+    return ctoon_json_to_toon_opts(json, len, 0, NULL, NULL, out_len, NULL, NULL);
+}
+
+ctoon_api bool ctoon_json_to_toon_file_opts(const char *json_path,
+                                             const char *toon_path,
+                                             ctoon_read_flag rflg,
+                                             const ctoon_write_options *wopts,
+                                             const ctoon_alc *alc,
+                                             ctoon_read_err *rerr,
+                                             ctoon_write_err *werr) {
+    ctoon_doc *doc = ctoon_read_json_file(json_path, rflg, alc, rerr);
+    if (unlikely(!doc)) return false;
+    usize len = 0;
+    char *out = ctoon_write_opts(doc, wopts, alc, &len, werr);
+    ctoon_doc_free(doc);
+    if (unlikely(!out)) return false;
+    return ctoon_dump_to_path(toon_path, out, len, alc, werr);
+}
+
+ctoon_api bool ctoon_json_to_toon_file(const char *json_path,
+                                        const char *toon_path) {
+    return ctoon_json_to_toon_file_opts(json_path, toon_path, 0, NULL, NULL,
+                                        NULL, NULL);
+}
+
+ctoon_api char *ctoon_toon_to_json_opts(const char *toon, usize len,
+                                         ctoon_read_flag rflg,
+                                         int indent,
+                                         ctoon_write_flag wflg,
+                                         const ctoon_alc *alc,
+                                         usize *out_len,
+                                         ctoon_read_err *rerr,
+                                         ctoon_write_err *werr) {
+    if (out_len) *out_len = 0;
+    ctoon_doc *doc = ctoon_read_opts(
+        (char *)(void *)(size_t)(const void *)toon, len,
+        rflg & (ctoon_read_flag)~CTOON_READ_INSITU, alc, rerr);
+    if (unlikely(!doc)) return NULL;
+    char *out = ctoon_doc_to_json(doc, indent, wflg, alc, out_len, werr);
+    ctoon_doc_free(doc);
+    return out;
+}
+
+ctoon_api char *ctoon_toon_to_json(const char *toon, usize len, usize *out_len) {
+    return ctoon_toon_to_json_opts(toon, len, 0, 0, 0, NULL, out_len, NULL, NULL);
+}
+
+ctoon_api bool ctoon_toon_to_json_file_opts(const char *toon_path,
+                                             const char *json_path,
+                                             ctoon_read_flag rflg,
+                                             int indent,
+                                             ctoon_write_flag wflg,
+                                             const ctoon_alc *alc,
+                                             ctoon_read_err *rerr,
+                                             ctoon_write_err *werr) {
+    ctoon_doc *doc = ctoon_read_file(toon_path, rflg, alc, rerr);
+    if (unlikely(!doc)) return false;
+    usize len = 0;
+    char *out = ctoon_doc_to_json(doc, indent, wflg, alc, &len, werr);
+    ctoon_doc_free(doc);
+    if (unlikely(!out)) return false;
+    return ctoon_dump_to_path(json_path, out, len, alc, werr);
+}
+
+ctoon_api bool ctoon_toon_to_json_file(const char *toon_path,
+                                        const char *json_path) {
+    return ctoon_toon_to_json_file_opts(toon_path, json_path, 0, 0, 0, NULL,
+                                        NULL, NULL);
+}
+
+#endif /* JSON <-> TOON conversion */
+
 
 
 

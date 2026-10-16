@@ -1553,6 +1553,111 @@ ctoon_api char *ctoon_write_json_mut(const ctoon_mut_doc *doc,
 
 #endif /* CTOON_ENABLE_JSON */
 
+/*==============================================================================
+ * MARK: - JSON <-> TOON direct conversion
+ *
+ * One call, text in, text out. No language-level intermediate value is built:
+ * the only thing allocated besides the result is a temporary flat ctoon_doc
+ * arena that is freed before the function returns.
+ *============================================================================*/
+
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON && \
+    (!defined(CTOON_DISABLE_READER) || !CTOON_DISABLE_READER) && \
+    (!defined(CTOON_DISABLE_WRITER) || !CTOON_DISABLE_WRITER)
+
+/**
+ * Convert a JSON string to a TOON string (default options: indent 2,
+ * comma delimiter).
+ *
+ * @param json     JSON text (UTF-8), null-terminator not required.
+ * @param len      Byte length of \p json. Must be > 0.
+ * @param out_len  If not NULL, receives the byte length of the result
+ *                 (not counting the null terminator).
+ * @return         Heap-allocated null-terminated TOON string, or NULL on
+ *                 failure. The caller must free() it.
+ */
+ctoon_api char *ctoon_json_to_toon(const char *json, size_t len,
+                                    size_t *out_len);
+
+/**
+ * Same as ctoon_json_to_toon() with full control.
+ *
+ * @param rflg     CTOON_READ_* flags for the JSON parser (INSITU is ignored:
+ *                 \p json is const and never modified).
+ * @param wopts    TOON write options, or NULL for the defaults.
+ * @param alc      Allocator, or NULL for the libc default.
+ * @param rerr     Receives JSON parse error details; may be NULL.
+ * @param werr     Receives TOON write error details; may be NULL.
+ */
+ctoon_api char *ctoon_json_to_toon_opts(const char *json, size_t len,
+                                         ctoon_read_flag rflg,
+                                         const ctoon_write_options *wopts,
+                                         const ctoon_alc *alc,
+                                         size_t *out_len,
+                                         ctoon_read_err *rerr,
+                                         ctoon_write_err *werr);
+
+/**
+ * Convert a JSON file to a TOON file.
+ *
+ * @param json_path  Path of the JSON file to read.
+ * @param toon_path  Path of the TOON file to create/overwrite.
+ * @return           true on success. On failure nothing is left half-written
+ *                   by this function's own logic (the output file is only
+ *                   opened after the conversion succeeded).
+ */
+ctoon_api bool ctoon_json_to_toon_file(const char *json_path,
+                                        const char *toon_path);
+
+/** Same as ctoon_json_to_toon_file() with full options. */
+ctoon_api bool ctoon_json_to_toon_file_opts(const char *json_path,
+                                             const char *toon_path,
+                                             ctoon_read_flag rflg,
+                                             const ctoon_write_options *wopts,
+                                             const ctoon_alc *alc,
+                                             ctoon_read_err *rerr,
+                                             ctoon_write_err *werr);
+
+/**
+ * Convert a TOON string to a JSON string (compact, no whitespace).
+ * Free the result with free().
+ */
+ctoon_api char *ctoon_toon_to_json(const char *toon, size_t len,
+                                    size_t *out_len);
+
+/**
+ * Same as ctoon_toon_to_json() with full control.
+ *
+ * @param rflg    CTOON_READ_* flags for the TOON parser (INSITU ignored).
+ * @param indent  JSON indent per level (0 = compact).
+ * @param wflg    CTOON_WRITE_* flags shared with the JSON writer.
+ */
+ctoon_api char *ctoon_toon_to_json_opts(const char *toon, size_t len,
+                                         ctoon_read_flag rflg,
+                                         int indent,
+                                         ctoon_write_flag wflg,
+                                         const ctoon_alc *alc,
+                                         size_t *out_len,
+                                         ctoon_read_err *rerr,
+                                         ctoon_write_err *werr);
+
+/** Convert a TOON file to a JSON file (compact). */
+ctoon_api bool ctoon_toon_to_json_file(const char *toon_path,
+                                        const char *json_path);
+
+/** Same as ctoon_toon_to_json_file() with full options. */
+ctoon_api bool ctoon_toon_to_json_file_opts(const char *toon_path,
+                                             const char *json_path,
+                                             ctoon_read_flag rflg,
+                                             int indent,
+                                             ctoon_write_flag wflg,
+                                             const ctoon_alc *alc,
+                                             ctoon_read_err *rerr,
+                                             ctoon_write_err *werr);
+
+#endif /* JSON <-> TOON conversion */
+
+
 
 
 /*==============================================================================

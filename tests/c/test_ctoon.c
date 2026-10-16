@@ -1014,3 +1014,119 @@ UTEST(ctoon_tests, test_spec44_large_integer_valued_numbers_use_shortest_digits)
     ctoon_doc_free(doc);
     free(copy);
 }
+
+/* =========================================================================
+ * Direct JSON <-> TOON conversion (hand-written expected strings)
+ * ========================================================================= */
+
+#if defined(CTOON_ENABLE_JSON) && CTOON_ENABLE_JSON
+
+UTEST(ctoon_convert, json_to_toon_object) {
+    const char *json = "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"]}";
+    size_t n = 0;
+    char *toon = ctoon_json_to_toon(json, strlen(json), &n);
+    ASSERT_TRUE(toon != NULL);
+    ASSERT_STREQ("name: Alice\nage: 30\ntags[2]: a,b", toon);
+    ASSERT_EQ(strlen(toon), n);
+    free(toon);
+}
+
+UTEST(ctoon_convert, json_to_toon_tabular) {
+    const char *json = "{\"u\":[{\"id\":1,\"n\":\"x\"},{\"id\":2,\"n\":\"y\"}]}";
+    char *toon = ctoon_json_to_toon(json, strlen(json), NULL);
+    ASSERT_TRUE(toon != NULL);
+    ASSERT_STREQ("u[2]{id,n}:\n  1,x\n  2,y", toon);
+    free(toon);
+}
+
+UTEST(ctoon_convert, toon_to_json_object) {
+    const char *toon = "name: Alice\nage: 30\ntags[2]: a,b";
+    size_t n = 0;
+    char *json = ctoon_toon_to_json(toon, strlen(toon), &n);
+    ASSERT_TRUE(json != NULL);
+    ASSERT_STREQ("{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"]}", json);
+    ASSERT_EQ(strlen(json), n);
+    free(json);
+}
+
+UTEST(ctoon_convert, opts_indent_delimiter_and_json_indent) {
+    const char *json = "{\"t\":[1,2,3]}";
+    ctoon_write_options wo = {0, CTOON_DELIMITER_PIPE, 4};
+    char *toon = ctoon_json_to_toon_opts(json, strlen(json), 0, &wo, NULL,
+                                         NULL, NULL, NULL);
+    ASSERT_TRUE(toon != NULL);
+    ASSERT_STREQ("t[3|]: 1|2|3", toon);
+    free(toon);
+
+    const char *src = "a: 1";
+    char *pretty = ctoon_toon_to_json_opts(src, strlen(src), 0, 2, 0, NULL,
+                                           NULL, NULL, NULL);
+    ASSERT_TRUE(pretty != NULL);
+    ASSERT_STREQ("{\n  \"a\": 1\n}", pretty);
+    free(pretty);
+}
+
+UTEST(ctoon_convert, invalid_input_reports_error_and_returns_null) {
+    const char *bad = "{\"a\": ";
+    ctoon_read_err rerr;
+    memset(&rerr, 0, sizeof rerr);
+    size_t n = 99;
+    char *out = ctoon_json_to_toon_opts(bad, strlen(bad), 0, NULL, NULL, &n,
+                                        &rerr, NULL);
+    ASSERT_TRUE(out == NULL);
+    ASSERT_EQ((size_t)0, n);
+    ASSERT_TRUE(rerr.code != 0);
+    ASSERT_TRUE(ctoon_json_to_toon(NULL, 3, NULL) == NULL);
+    ASSERT_TRUE(ctoon_json_to_toon("{}", 0, NULL) == NULL);
+}
+
+static char *slurp(const char *path, size_t *n) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *buf = (char *)malloc((size_t)sz + 1);
+    size_t got = fread(buf, 1, (size_t)sz, f);
+    buf[got] = 0;
+    fclose(f);
+    if (n) *n = got;
+    return buf;
+}
+
+UTEST(ctoon_convert, file_variants) {
+    const char *jp = "ctoon_convert_in.json";
+    const char *tp = "ctoon_convert_out.toon";
+    const char *jp2 = "ctoon_convert_back.json";
+    FILE *f = fopen(jp, "wb");
+    ASSERT_TRUE(f != NULL);
+    fputs("{\"k\":[1,2],\"s\":\"hi\"}", f);
+    fclose(f);
+
+    ASSERT_TRUE(ctoon_json_to_toon_file(jp, tp));
+    char *toon = slurp(tp, NULL);
+    ASSERT_TRUE(toon != NULL);
+    ASSERT_STREQ("k[2]: 1,2\ns: hi", toon);
+    free(toon);
+
+    ASSERT_TRUE(ctoon_toon_to_json_file(tp, jp2));
+    char *json = slurp(jp2, NULL);
+    ASSERT_TRUE(json != NULL);
+    ASSERT_STREQ("{\"k\":[1,2],\"s\":\"hi\"}", json);
+    free(json);
+
+    /* failed conversion must not create/truncate the output file */
+    FILE *g = fopen("ctoon_convert_bad.json", "wb");
+    fputs("{\"a\": ", g);
+    fclose(g);
+    remove("ctoon_convert_keep.toon");
+    ASSERT_FALSE(ctoon_json_to_toon_file("ctoon_convert_bad.json",
+                                         "ctoon_convert_keep.toon"));
+    FILE *k = fopen("ctoon_convert_keep.toon", "rb");
+    ASSERT_TRUE(k == NULL);
+    ASSERT_FALSE(ctoon_json_to_toon_file("does_not_exist.json", tp));
+
+    remove(jp); remove(tp); remove(jp2); remove("ctoon_convert_bad.json");
+}
+
+#endif /* CTOON_ENABLE_JSON */

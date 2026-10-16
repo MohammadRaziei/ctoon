@@ -17,7 +17,11 @@
  *   5. Timed "roundtrip": json -> toon -> parse toon -> json, chained as
  *      one operation, using ctoon's own encoder/decoder together.
  *      Measures self-consistency, not interop.
- *   6. Report throughput — MB/s of bytes actually processed by
+ *   6. Timed "toon_to_struct" / "struct_to_toon": the same directions with
+ *      the text format taken out -- parse the pre-pass TOON into ctoon's
+ *      in-memory structure (ctoon_doc) and stop; serialise a ctoon_doc
+ *      built untimed in the pre-pass. TOONc has no equivalent, so no rows.
+ *   7. Report throughput — MB/s of bytes actually processed by
  *      *successful* conversions only — and documents/sec, plus success
  *      rate, so a library that fails part of the corpus doesn't get an
  *      inflated number.
@@ -72,6 +76,8 @@ typedef struct {
     size_t  len;
     char   *toon;
     size_t  toon_len;
+    ctoon_doc *doc;   /* ctoon's own in-memory structure for this file, built
+                         UNTIMED in the pre-pass; the input of struct_to_toon */
 } bench_file;
 
 typedef struct {
@@ -102,7 +108,7 @@ typedef struct {
     double success_rate;
 } scaling_result;
 
-static scaling_result g_scaling[3 /*ops*/ * 2 /*libs*/ * SCALING_NBUCKETS];
+static scaling_result g_scaling[5 /*ops*/ * 2 /*libs*/ * SCALING_NBUCKETS];
 static int g_scaling_count = 0;
 
 static void record_scaling(const char *library, const char *operation,
@@ -301,66 +307,76 @@ static void dump_ctoon(bench_file *files, size_t n) {
     dump_prepare("ctoon", "json_to_toon");
     dump_prepare("ctoon", "toon_to_json");
     dump_prepare("ctoon", "roundtrip");
+    dump_prepare("ctoon", "toon_to_struct");
+    dump_prepare("ctoon", "struct_to_toon");
     for (size_t i = 0; i < n; i++) {
-        dump_clear("ctoon", "json_to_toon", i);
-        dump_clear("ctoon", "toon_to_json", i);
-        dump_clear("ctoon", "roundtrip", i);
+        dump_clear("ctoon", "toon_to_struct", i);
+        dump_clear("ctoon", "struct_to_toon", i);
 
-        /* json_to_toon */
-        ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-        ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
-        if (doc) {
+        /* struct_to_toon: write the pre-built structure */
+        if (files[i].doc) {
             size_t len = 0;
-            char *toon = ctoon_write(doc, &len);
-            if (toon) { dump_write("ctoon", "json_to_toon", i, toon, len); free(toon); }
-            ctoon_doc_free(doc);
+            char *toon = ctoon_write(files[i].doc, &len);
+            if (toon) { dump_write("ctoon", "struct_to_toon", i, toon, len); free(toon); }
         }
 
-        /* toon_to_json */
+        /* toon_to_struct: the decoded structure, serialised to JSON
+           (untimed) only so the verifier can compare it to the original. */
         if (files[i].toon) {
             ctoon_doc *d = ctoon_read(files[i].toon, files[i].toon_len, 0);
             if (d) {
                 size_t len = 0;
                 ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
                 char *json = ctoon_doc_to_json(d, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
-                if (json) { dump_write("ctoon", "toon_to_json", i, json, len); free(json); }
+                if (json) { dump_write("ctoon", "toon_to_struct", i, json, len); free(json); }
                 ctoon_doc_free(d);
             }
         }
 
+        dump_clear("ctoon", "json_to_toon", i);
+        dump_clear("ctoon", "toon_to_json", i);
+        dump_clear("ctoon", "roundtrip", i);
+
+        /* json_to_toon */
+        {
+            size_t len = 0;
+            char *toon = ctoon_json_to_toon(files[i].data, files[i].len, &len);
+            if (toon) { dump_write("ctoon", "json_to_toon", i, toon, len); free(toon); }
+        }
+
+        /* toon_to_json */
+        if (files[i].toon) {
+            size_t len = 0;
+            char *json = ctoon_toon_to_json(files[i].toon, files[i].toon_len, &len);
+            if (json) { dump_write("ctoon", "toon_to_json", i, json, len); free(json); }
+        }
+
         /* roundtrip: json -> toon -> json */
-        memset(&rerr, 0, sizeof(rerr));
-        ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
-        if (!doc1) continue;
-        size_t tlen = 0;
-        char *toon = ctoon_write(doc1, &tlen);
-        ctoon_doc_free(doc1);
-        if (!toon) continue;
-        ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
-        free(toon);
-        if (!doc2) continue;
-        size_t jlen = 0;
-        ctoon_write_err werr2; memset(&werr2, 0, sizeof(werr2));
-        char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr2);
-        ctoon_doc_free(doc2);
-        if (json) { dump_write("ctoon", "roundtrip", i, json, jlen); free(json); }
+        {
+            size_t tlen = 0;
+            char *toon = ctoon_json_to_toon(files[i].data, files[i].len, &tlen);
+            if (!toon) continue;
+            size_t jlen = 0;
+            char *json = ctoon_toon_to_json(toon, tlen, &jlen);
+            free(toon);
+            if (json) { dump_write("ctoon", "roundtrip", i, json, jlen); free(json); }
+        }
     }
 }
 
 static void bench_ctoon(bench_file *files, size_t n) {
     dump_ctoon(files, n);
+    /* json_to_toon / toon_to_json / roundtrip call ctoon's one-shot text
+       conversion functions directly -- the same entry points every language
+       binding wraps (ctoon::json_to_toon, ctoon.json_to_toon, ...). */
     long ops = 0; double bytes = 0;
     double t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
-            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-            ctoon_doc *doc = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
-            if (!doc) { if (rep == 0) log_fail("ctoon", "json_to_toon", files[i].path, rerr.msg); continue; }
             size_t len = 0;
-            char *toon = ctoon_write(doc, &len);
+            char *toon = ctoon_json_to_toon(files[i].data, files[i].len, &len);
             if (toon) { free(toon); ops++; bytes += (double)files[i].len; }
-            else if (rep == 0) log_fail("ctoon", "json_to_toon", files[i].path, "ctoon_write failed");
-            ctoon_doc_free(doc);
+            else if (rep == 0) log_fail("ctoon", "json_to_toon", files[i].path, "ctoon_json_to_toon failed");
         }
     }
     record("ctoon", "json_to_toon", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
@@ -370,42 +386,59 @@ static void bench_ctoon(bench_file *files, size_t n) {
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
             if (!files[i].toon) continue;
-            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-            ctoon_doc *doc = ctoon_read(files[i].toon, files[i].toon_len, 0);
-            if (!doc) { if (rep == 0) log_fail("ctoon", "toon_to_json", files[i].path, "ctoon_read failed"); continue; }
             size_t len = 0;
-            ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
-            char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
+            char *json = ctoon_toon_to_json(files[i].toon, files[i].toon_len, &len);
             if (json) { free(json); ops++; bytes += (double)files[i].toon_len; }
-            else if (rep == 0) log_fail("ctoon", "toon_to_json", files[i].path, werr.msg);
-            ctoon_doc_free(doc);
+            else if (rep == 0) log_fail("ctoon", "toon_to_json", files[i].path, "ctoon_toon_to_json failed");
         }
     }
     record("ctoon", "toon_to_json", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
 
-    /* roundtrip: json -> toon -> (parse toon) -> json, chained as one
-       operation per file rather than the two legs above run separately. */
+    /* toon_to_struct: parse the pre-pass TOON into ctoon's in-memory
+       structure and free it -- no JSON text anywhere in the timed region. */
     ops = 0; bytes = 0;
     t0 = now_seconds();
     for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
         for (size_t i = 0; i < n; i++) {
-            ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-            ctoon_doc *doc1 = ctoon_read_json(files[i].data, files[i].len, 0, NULL, &rerr);
-            if (!doc1) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, rerr.msg); continue; }
-            size_t tlen = 0;
-            char *toon = ctoon_write(doc1, &tlen);
-            ctoon_doc_free(doc1);
-            if (!toon) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_write failed"); continue; }
+            if (!files[i].toon) continue;
+            ctoon_doc *doc = ctoon_read(files[i].toon, files[i].toon_len, 0);
+            if (!doc) { if (rep == 0) log_fail("ctoon", "toon_to_struct", files[i].path, "ctoon_read failed"); continue; }
+            ops++; bytes += (double)files[i].toon_len;
+            ctoon_doc_free(doc);
+        }
+    }
+    record("ctoon", "toon_to_struct", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
 
-            ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
-            free(toon);
-            if (!doc2) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_read failed"); continue; }
+    /* struct_to_toon: serialise the structure built (untimed) in the
+       pre-pass -- no parsing in the timed region. Weighted by the JSON
+       size, same convention as json_to_toon. */
+    ops = 0; bytes = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (size_t i = 0; i < n; i++) {
+            if (!files[i].doc) continue;
+            size_t len = 0;
+            char *toon = ctoon_write(files[i].doc, &len);
+            if (toon) { free(toon); ops++; bytes += (double)files[i].len; }
+            else if (rep == 0) log_fail("ctoon", "struct_to_toon", files[i].path, "ctoon_write failed");
+        }
+    }
+    record("ctoon", "struct_to_toon", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
+
+    /* roundtrip: ctoon_json_to_toon, then ctoon_toon_to_json on its output,
+       chained as one operation per file. */
+    ops = 0; bytes = 0;
+    t0 = now_seconds();
+    for (int rep = 0; rep < CTOON_BENCH_REPEATS; rep++) {
+        for (size_t i = 0; i < n; i++) {
+            size_t tlen = 0;
+            char *toon = ctoon_json_to_toon(files[i].data, files[i].len, &tlen);
+            if (!toon) { if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_json_to_toon failed"); continue; }
             size_t jlen = 0;
-            ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
-            char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
-            ctoon_doc_free(doc2);
+            char *json = ctoon_toon_to_json(toon, tlen, &jlen);
+            free(toon);
             if (json) { free(json); ops++; bytes += (double)files[i].len; }
-            else if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, werr.msg);
+            else if (rep == 0) log_fail("ctoon", "roundtrip", files[i].path, "ctoon_toon_to_json failed");
         }
     }
     record("ctoon", "roundtrip", bytes, ops, now_seconds() - t0, (long)n * CTOON_BENCH_REPEATS);
@@ -534,25 +567,17 @@ static void bench_ctoon_scaling(bench_file **sorted, size_t n) {
         long ops = 0; double bytes = 0;
         for (int rep = 0; rep < SCALING_REPS; rep++) {
             for (size_t i = 0; i < count; i++) {
-                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-                ctoon_doc *doc = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
-                if (!doc) continue;
                 size_t len = 0;
-                char *toon = ctoon_write(doc, &len);
+                char *toon = ctoon_json_to_toon(bucket[i]->data, bucket[i]->len, &len);
                 if (toon) { free(toon); ops++; bytes += (double)bucket[i]->len; }
-                ctoon_doc_free(doc);
             }
         }
         double t0 = now_seconds();
         for (int rep = 0; rep < SCALING_REPS; rep++) {
             for (size_t i = 0; i < count; i++) {
-                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-                ctoon_doc *doc = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
-                if (!doc) continue;
                 size_t len = 0;
-                char *toon = ctoon_write(doc, &len);
+                char *toon = ctoon_json_to_toon(bucket[i]->data, bucket[i]->len, &len);
                 if (toon) free(toon);
-                ctoon_doc_free(doc);
             }
         }
         double seconds = now_seconds() - t0;
@@ -562,14 +587,9 @@ static void bench_ctoon_scaling(bench_file **sorted, size_t n) {
         for (int rep = 0; rep < SCALING_REPS; rep++) {
             for (size_t i = 0; i < count; i++) {
                 if (!bucket[i]->toon) continue;
-                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-                ctoon_doc *doc = ctoon_read(bucket[i]->toon, bucket[i]->toon_len, 0);
-                if (!doc) continue;
                 size_t len = 0;
-                ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
-                char *json = ctoon_doc_to_json(doc, 2, CTOON_WRITE_NOFLAG, NULL, &len, &werr);
+                char *json = ctoon_toon_to_json(bucket[i]->toon, bucket[i]->toon_len, &len);
                 if (json) { free(json); ops++; bytes += (double)bucket[i]->toon_len; }
-                ctoon_doc_free(doc);
             }
         }
         seconds = now_seconds() - t0;
@@ -578,25 +598,42 @@ static void bench_ctoon_scaling(bench_file **sorted, size_t n) {
         ops = 0; bytes = 0; t0 = now_seconds();
         for (int rep = 0; rep < SCALING_REPS; rep++) {
             for (size_t i = 0; i < count; i++) {
-                ctoon_read_err rerr; memset(&rerr, 0, sizeof(rerr));
-                ctoon_doc *doc1 = ctoon_read_json(bucket[i]->data, bucket[i]->len, 0, NULL, &rerr);
-                if (!doc1) continue;
                 size_t tlen = 0;
-                char *toon = ctoon_write(doc1, &tlen);
-                ctoon_doc_free(doc1);
+                char *toon = ctoon_json_to_toon(bucket[i]->data, bucket[i]->len, &tlen);
                 if (!toon) continue;
-                ctoon_doc *doc2 = ctoon_read(toon, tlen, 0);
-                free(toon);
-                if (!doc2) continue;
                 size_t jlen = 0;
-                ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
-                char *json = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
-                ctoon_doc_free(doc2);
+                char *json = ctoon_toon_to_json(toon, tlen, &jlen);
+                free(toon);
                 if (json) { free(json); ops++; bytes += (double)bucket[i]->len; }
             }
         }
         seconds = now_seconds() - t0;
         record_scaling("ctoon", "roundtrip", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+
+        ops = 0; bytes = 0; t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                if (!bucket[i]->toon) continue;
+                ctoon_doc *doc = ctoon_read(bucket[i]->toon, bucket[i]->toon_len, 0);
+                if (!doc) continue;
+                ops++; bytes += (double)bucket[i]->toon_len;
+                ctoon_doc_free(doc);
+            }
+        }
+        seconds = now_seconds() - t0;
+        record_scaling("ctoon", "toon_to_struct", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
+
+        ops = 0; bytes = 0; t0 = now_seconds();
+        for (int rep = 0; rep < SCALING_REPS; rep++) {
+            for (size_t i = 0; i < count; i++) {
+                if (!bucket[i]->doc) continue;
+                size_t len = 0;
+                char *toon = ctoon_write(bucket[i]->doc, &len);
+                if (toon) { free(toon); ops++; bytes += (double)bucket[i]->len; }
+            }
+        }
+        seconds = now_seconds() - t0;
+        record_scaling("ctoon", "struct_to_toon", size_bytes, bytes, ops, seconds, (long)count * SCALING_REPS);
 
         start += count;
     }
@@ -789,6 +826,7 @@ int main(int argc, char **argv) {
         files[n].len = len;
         files[n].toon = NULL;
         files[n].toon_len = 0;
+        files[n].doc = NULL;
         n++;
     }
     fclose(mf);
@@ -815,8 +853,8 @@ int main(int argc, char **argv) {
         if (!doc) { log_fail("ctoon", "pre_pass", files[i].path, rerr.msg); continue; }
         size_t len = 0;
         char *toon = ctoon_write(doc, &len);
-        ctoon_doc_free(doc);
-        if (!toon) { log_fail("ctoon", "pre_pass", files[i].path, "ctoon_write failed"); continue; }
+        if (!toon) { ctoon_doc_free(doc); log_fail("ctoon", "pre_pass", files[i].path, "ctoon_write failed"); continue; }
+        files[i].doc = doc;     /* kept alive for struct_to_toon */
         files[i].toon = toon;
         files[i].toon_len = len;
         pre_ok++;

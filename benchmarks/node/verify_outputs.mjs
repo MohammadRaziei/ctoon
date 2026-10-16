@@ -89,10 +89,20 @@ function same(a, b) {
   return ka.every((k) => Object.prototype.hasOwnProperty.call(b, k) && same(a[k], b[k]));
 }
 
+// Operations whose dumped output is TOON text (judged by the OFFICIAL reference
+// decoder). Every other operation dumps JSON text. For toon_to_struct the
+// harness dumps the decoded native structure *serialised to JSON by the
+// language's own, independent JSON writer* (untimed), so "the struct holds
+// the right value" is checked the same way toon_to_json's output is.
+const TOON_OUTPUT_OPS = new Set(["json_to_toon", "struct_to_toon"]);
+// Operations that read the language's shared pre-pass TOON (so a bad shared
+// input is excluded for everyone, and the byte weight is the TOON size).
+const SHARED_INPUT_OPS = new Set(["toon_to_json", "toon_to_struct"]);
+
 function judge(operation, text, original) {
   if (!original.ok) return false;
   try {
-    const value = operation === "json_to_toon" ? decode(text) : JSON.parse(text);
+    const value = TOON_OUTPUT_OPS.has(operation) ? decode(text) : JSON.parse(text);
     return same(value, original.value);
   } catch {
     return false;
@@ -168,7 +178,7 @@ for (const file of readdirSync(resultsDir).filter((f) => f.endsWith(".json") && 
     }
     const raw = row.raw ?? { throughput_mb_s: row.throughput_mb_s, docs_per_sec: row.docs_per_sec, success_rate: row.success_rate };
 
-    const sharedInput = row.operation === "toon_to_json";
+    const sharedInput = SHARED_INPUT_OPS.has(row.operation);
     let noError = 0, correct = 0, bytesNoError = 0, bytesCorrect = 0, considered = 0;
     const bad = [];
     for (let i = 0; i < originals.length; i++) {
@@ -176,7 +186,7 @@ for (const file of readdirSync(resultsDir).filter((f) => f.endsWith(".json") && 
       considered++;
       const text = readOutput(i);
       if (text === null) continue;                                    // the library failed on this file
-      const w = row.operation === "toon_to_json" ? (prepassBytes[i] ?? 0) : originals[i].bytes;
+      const w = sharedInput ? (prepassBytes[i] ?? 0) : originals[i].bytes;
       noError++; bytesNoError += w;
       if (judge(row.operation, text, originals[i])) { correct++; bytesCorrect += w; }
       else if (bad.length < 3) bad.push(basename(originals[i].path));

@@ -29,11 +29,13 @@ from jinja2 import Environment, FileSystemLoader
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-OPERATIONS = ["json_to_toon", "toon_to_json", "roundtrip"]
+OPERATIONS = ["json_to_toon", "toon_to_json", "roundtrip", "toon_to_struct", "struct_to_toon"]
 OP_TITLES = {
     "json_to_toon": "JSON \u2192 TOON",
     "toon_to_json": "TOON \u2192 JSON",
-    "roundtrip": "JSON → TOON → JSON",
+    "roundtrip": "JSON \u2192 TOON \u2192 JSON",
+    "toon_to_struct": "TOON \u2192 struct (load)",
+    "struct_to_toon": "struct \u2192 TOON (dump)",
 }
 LANG_TITLES = {
     "c": "C", "cpp": "C++", "python": "Python", "go": "Go",
@@ -84,12 +86,12 @@ def _fmt_size(n):
 
 
 def _build_language_section(lang_data):
-    """Every language gets the aggregate bar chart (one bar per library,
-    x = operation). A language that also has "scaling" data -- currently
-    only C, see bench.c -- additionally gets three line charts, one per
-    operation (json_to_toon, toon_to_json, roundtrip), x-axis = input size
-    (median size of a corpus-size bucket), one line with markers per
-    library. A language with no "scaling" data simply gets no line charts."""
+    """One line chart per language per operation (json_to_toon,
+    toon_to_json, roundtrip, toon_to_struct, struct_to_toon) -- x-axis is input size (median size of a
+    corpus-size bucket, see bench.c/.cpp/.py's "scaling" pass), one line
+    with markers per library, so the shape of the speed-vs-size curve is
+    directly comparable across libraries. Falls back to no line charts
+    for a language with no "scaling" data (nothing wired up yet)."""
     language = lang_data["language"]
     corpus = lang_data.get("corpus", {})
     results = lang_data["results"]

@@ -22,6 +22,11 @@ __all__ = [
     "dumps_json",
     "load_json",
     "dump_json",
+    # Direct text -> text conversion (no Python object in between)
+    "json_to_toon",
+    "toon_to_json",
+    "json_to_toon_file",
+    "toon_to_json_file",
     # Aliases
     "encode",
     "decode",

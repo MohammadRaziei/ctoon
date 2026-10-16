@@ -6,10 +6,9 @@
 # this is a one-library table, same as benchmarks/matlab's.
 #
 # Same three operations as every other language benchmark here:
-#  - json_to_toon: CToon.parse (JSON text -> native Julia value) then
-#    CToon.dumps (that value -> TOON text).
-#  - toon_to_json: CToon.parse_toon (TOON text -> native Julia value)
-#    then CToon.to_json (that value -> JSON text).
+#  - json_to_toon: CToon.json_to_toon (JSON text -> TOON text, one call into
+#    the C core; no Julia value is built).
+#  - toon_to_json: CToon.toon_to_json (TOON text -> JSON text, same).
 #  - roundtrip: json_to_toon's output fed through toon_to_json, as one
 #    timed operation per file (matching how every other language here
 #    defines "roundtrip" -- see e.g. bench.py's own comment on this).
@@ -109,7 +108,7 @@ function bench_json_to_toon(files, log_fail)
     for r in 1:REPEATS
         for f in files
             try
-                CToon.dumps(CToon.parse(f.json))
+                CToon.json_to_toon(f.json)
                 ok += 1
                 bytes += sizeof(f.json)
             catch e
@@ -141,7 +140,7 @@ function bench_toon_to_json(files, log_fail)
             t = toons[i]
             t === nothing && continue
             try
-                CToon.to_json(CToon.parse_toon(t))
+                CToon.toon_to_json(t)
                 ok += 1
                 bytes += sizeof(t)
             catch e
@@ -218,8 +217,8 @@ function bench_roundtrip(files, log_fail)
     for r in 1:REPEATS
         for f in files
             try
-                toon = CToon.dumps(CToon.parse(f.json))
-                CToon.to_json(CToon.parse_toon(toon))
+                toon = CToon.json_to_toon(f.json)
+                CToon.toon_to_json(toon)
                 ok += 1
                 bytes += sizeof(f.json)
             catch e
@@ -245,7 +244,7 @@ function dump_outputs(results_path, files)
 
     for (i, f) in enumerate(files)
         toon = try
-            CToon.dumps(CToon.parse(f.json))
+            CToon.json_to_toon(f.json)
         catch
             nothing
         end
@@ -260,12 +259,12 @@ function dump_outputs(results_path, files)
         # toon_to_json decodes this same ctoon-made TOON (the shared pre-pass),
         # and the roundtrip decodes it too, so one decode serves both files.
         try
-            json = CToon.to_json(CToon.parse_toon(toon))
+            json = CToon.toon_to_json(toon)
             write_out("toon_to_json", i, json)
             write_out("roundtrip", i, json)
             # toon_to_struct: the decoded value serialised to JSON (untimed),
             # only so the verifier can compare it to the original document.
-            write_out("toon_to_struct", i, json)
+            write_out("toon_to_struct", i, CToon.to_json(CToon.parse_toon(toon)))
         catch
         end
     end

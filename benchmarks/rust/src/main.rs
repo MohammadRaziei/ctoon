@@ -29,7 +29,13 @@
 //      together. Measures self-consistency, not interop — see the
 //      top-level README for why a library's toon_to_json and roundtrip
 //      success rates can legitimately differ a lot.
-//   6. Report throughput (MB/s of bytes actually read by successful
+//   6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
+//      with the text format taken out -- decode the pre-pass TOON into the
+//      library's in-memory value and stop; encode an in-memory value built
+//      untimed before the clock starts. ctoon is fed the Value ITS OWN
+//      loads_json produced (its native structure); toon-rust is fed the
+//      serde_json::Value serde_json produced (its native structure).
+//   7. Report throughput (MB/s of bytes actually read by successful
 //      conversions only) and documents/sec.
 
 use serde_json::Value as JsonValue;
@@ -43,6 +49,9 @@ const REPEATS: u32 = 20;
 struct BenchFile {
     json: String,
     toon: Option<String>,
+    // In-memory values for struct_to_toon, built UNTIMED in the pre-pass.
+    value: Option<ctoon::Value>,   // ctoon's own native value (ctoon::loads_json)
+    plain: Option<JsonValue>,      // serde_json's value, fed to toon-rust
 }
 
 struct ResultRow {
@@ -84,15 +93,12 @@ fn dump_outputs(results_path: &str, files: &[BenchFile]) {
     };
 
     for (i, f) in files.iter().enumerate() {
-        // ctoon
-        if let Ok(val) = ctoon::loads_json(&f.json) {
-            if let Ok(toon) = ctoon::dumps(&val) {
-                write("ctoon", "json_to_toon", i, &toon);
-                if let Ok(val2) = ctoon::loads(&toon) {
-                    if let Ok(js) = ctoon::dumps_json(&val2, 2) {
-                        write("ctoon", "roundtrip", i, &js.to_string());
-                    }
-                }
+        // ctoon: json_to_toon / toon_to_json / roundtrip call ctoon's
+        // one-shot text conversion functions (no ctoon::Value in between).
+        if let Ok(toon) = ctoon::json_to_toon(&f.json) {
+            write("ctoon", "json_to_toon", i, &toon);
+            if let Ok(js) = ctoon::toon_to_json(&toon) {
+                write("ctoon", "roundtrip", i, &js);
             }
         }
 
@@ -108,17 +114,36 @@ fn dump_outputs(results_path: &str, files: &[BenchFile]) {
             }
         }
 
-        // toon_to_json: both libraries decode the shared (ctoon-made) TOON
+        // toon_to_json: both libraries decode the shared (ctoon-made) TOON.
+        // toon_to_struct: the same decoded value, serialised to JSON
+        // (untimed) only so the verifier can compare it to the original.
         if let Some(toon) = &f.toon {
+            if let Ok(js) = ctoon::toon_to_json(toon) {
+                write("ctoon", "toon_to_json", i, &js);
+            }
+            // toon_to_struct: the decoded value serialised to JSON (untimed).
             if let Ok(val) = ctoon::loads(toon) {
                 if let Ok(js) = ctoon::dumps_json(&val, 2) {
-                    write("ctoon", "toon_to_json", i, &js.to_string());
+                    write("ctoon", "toon_to_struct", i, &js.to_string());
                 }
             }
             if let Ok(val) = decode_default::<JsonValue>(toon) {
                 if let Ok(js) = serde_json::to_string(&val) {
                     write("toon-rust", "toon_to_json", i, &js);
+                    write("toon-rust", "toon_to_struct", i, &js);
                 }
+            }
+        }
+
+        // struct_to_toon: encode the pre-built in-memory values.
+        if let Some(v) = &f.value {
+            if let Ok(toon) = ctoon::dumps(v) {
+                write("ctoon", "struct_to_toon", i, &toon);
+            }
+        }
+        if let Some(v) = &f.plain {
+            if let Ok(toon) = encode_default(v) {
+                write("toon-rust", "struct_to_toon", i, &toon);
             }
         }
     }
@@ -145,7 +170,7 @@ fn main() {
             continue;
         }
         if let Ok(json) = fs::read_to_string(path) {
-            files.push(BenchFile { json, toon: None });
+            files.push(BenchFile { json, toon: None, value: None, plain: None });
         }
     }
     if files.is_empty() {
@@ -168,7 +193,9 @@ fn main() {
             if let Ok(toon) = ctoon::dumps(&val) {
                 f.toon = Some(toon);
             }
+            f.value = Some(val);
         }
+        f.plain = serde_json::from_str::<JsonValue>(&f.json).ok();
     }
 
     // Outputs for report/verify_outputs.mjs live next to the results JSON.
@@ -182,11 +209,10 @@ fn main() {
     let t0 = Instant::now();
     for _ in 0..REPEATS {
         for f in &files {
-            if let Ok(val) = ctoon::loads_json(&f.json) {
-                if ctoon::dumps(&val).is_ok() {
-                    ops += 1;
-                    bytes += f.json.len() as f64;
-                }
+            if let Ok(toon) = ctoon::json_to_toon(&f.json) {
+                std::hint::black_box(&toon);
+                ops += 1;
+                bytes += f.json.len() as f64;
             }
         }
     }
@@ -198,11 +224,10 @@ fn main() {
     for _ in 0..REPEATS {
         for f in &files {
             if let Some(toon) = &f.toon {
-                if let Ok(val) = ctoon::loads(toon) {
-                    if ctoon::dumps_json(&val, 2).is_ok() {
-                        ops2 += 1;
-                        bytes2 += toon.len() as f64;
-                    }
+                if let Ok(js) = ctoon::toon_to_json(toon) {
+                    std::hint::black_box(&js);
+                    ops2 += 1;
+                    bytes2 += toon.len() as f64;
                 }
             }
         }
@@ -214,14 +239,11 @@ fn main() {
     let t0 = Instant::now();
     for _ in 0..REPEATS {
         for f in &files {
-            if let Ok(val) = ctoon::loads_json(&f.json) {
-                if let Ok(toon) = ctoon::dumps(&val) {
-                    if let Ok(val2) = ctoon::loads(&toon) {
-                        if ctoon::dumps_json(&val2, 2).is_ok() {
-                            ops3 += 1;
-                            bytes3 += f.json.len() as f64;
-                        }
-                    }
+            if let Ok(toon) = ctoon::json_to_toon(&f.json) {
+                if let Ok(js) = ctoon::toon_to_json(&toon) {
+                    std::hint::black_box(&js);
+                    ops3 += 1;
+                    bytes3 += f.json.len() as f64;
                 }
             }
         }
@@ -279,6 +301,73 @@ fn main() {
         }
     }
     results.push(record("toon-rust", "roundtrip", bytes3, ops3, t0.elapsed().as_secs_f64(), files.len() as u64 * REPEATS as u64));
+
+    // ── toon_to_struct / struct_to_toon ──
+    let attempted = files.len() as u64 * REPEATS as u64;
+
+    let mut ops = 0u64;
+    let mut bytes = 0f64;
+    let t0 = Instant::now();
+    for _ in 0..REPEATS {
+        for f in &files {
+            if let Some(toon) = &f.toon {
+                if let Ok(val) = ctoon::loads(toon) {
+                    std::hint::black_box(&val);
+                    ops += 1;
+                    bytes += toon.len() as f64;
+                }
+            }
+        }
+    }
+    results.push(record("ctoon", "toon_to_struct", bytes, ops, t0.elapsed().as_secs_f64(), attempted));
+
+    let mut ops = 0u64;
+    let mut bytes = 0f64;
+    let t0 = Instant::now();
+    for _ in 0..REPEATS {
+        for f in &files {
+            if let Some(v) = &f.value {
+                if let Ok(toon) = ctoon::dumps(v) {
+                    std::hint::black_box(&toon);
+                    ops += 1;
+                    bytes += f.json.len() as f64;
+                }
+            }
+        }
+    }
+    results.push(record("ctoon", "struct_to_toon", bytes, ops, t0.elapsed().as_secs_f64(), attempted));
+
+    let mut ops = 0u64;
+    let mut bytes = 0f64;
+    let t0 = Instant::now();
+    for _ in 0..REPEATS {
+        for f in &files {
+            if let Some(toon) = &f.toon {
+                if let Ok(val) = decode_default::<JsonValue>(toon) {
+                    std::hint::black_box(&val);
+                    ops += 1;
+                    bytes += toon.len() as f64;
+                }
+            }
+        }
+    }
+    results.push(record("toon-rust", "toon_to_struct", bytes, ops, t0.elapsed().as_secs_f64(), attempted));
+
+    let mut ops = 0u64;
+    let mut bytes = 0f64;
+    let t0 = Instant::now();
+    for _ in 0..REPEATS {
+        for f in &files {
+            if let Some(v) = &f.plain {
+                if let Ok(toon) = encode_default(v) {
+                    std::hint::black_box(&toon);
+                    ops += 1;
+                    bytes += f.json.len() as f64;
+                }
+            }
+        }
+    }
+    results.push(record("toon-rust", "struct_to_toon", bytes, ops, t0.elapsed().as_secs_f64(), attempted));
 
     // Write results JSON
     let mut out = String::new();

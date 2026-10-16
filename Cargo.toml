@@ -66,6 +66,10 @@ name = "integration"
 path = "tests/rust/integration_test.rs"
 
 [[test]]
+name = "convert"
+path = "tests/rust/convert_test.rs"
+
+[[test]]
 name = "native_json_roundtrip"
 path = "tests/rust/native_json_roundtrip_test.rs"
 

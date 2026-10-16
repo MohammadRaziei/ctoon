@@ -8,6 +8,10 @@
  *   ctoon.write(value, filepath)  → write value to .toon file
  *   ctoon.read(filepath)          → read .toon file
  *   ctoon.version                 → show/print version information
+ *   ctoon.json_to_toon(json)      → JSON text straight to TOON text
+ *   ctoon.toon_to_json(toon)      → TOON text straight to JSON text
+ *   ctoon.json_to_toon_file(j,t)  → JSON file to TOON file
+ *   ctoon.toon_to_json_file(t,j)  → TOON file to JSON file
  *
  * Dispatch keys (prhs[0] as char*):
  *   "encode"     prhs[1]=value              → plhs[0]=toon_str
@@ -353,6 +357,98 @@ static void do_spec(int nlhs, mxArray *plhs[],
  * MEX entry point
  * ========================================================================= */
 
+/* =========================================================================
+ * Direct JSON <-> TOON text conversion
+ *
+ * One call into the C core; no MATLAB value (struct/cell/...) is built.
+ *   "json_to_toon"       prhs[1]=json_str [, prhs[2]=indent]   -> toon_str
+ *   "toon_to_json"       prhs[1]=toon_str [, prhs[2]=indent]   -> json_str
+ *   "json_to_toon_file"  prhs[1]=json_path, prhs[2]=toon_path
+ *   "toon_to_json_file"  prhs[1]=toon_path, prhs[2]=json_path [, prhs[3]=indent]
+ * ========================================================================= */
+
+static int opt_indent(int nrhs, const mxArray *prhs[], int idx, int dflt) {
+    if (nrhs <= idx) return dflt;
+    if (!mxIsNumeric(prhs[idx]) || mxGetNumberOfElements(prhs[idx]) != 1)
+        mexErrMsgIdAndTxt("ctoon:badArg", "indent must be a numeric scalar.");
+    return (int)mxGetScalar(prhs[idx]);
+}
+
+static void convert_fail(const char *what, const ctoon_read_err *r,
+                         const ctoon_write_err *w) {
+    if (r->code)
+        mexErrMsgIdAndTxt("ctoon:convertError", "%s failed: %s (pos %u).",
+            what, r->msg ? r->msg : "parse error", (unsigned)r->pos);
+    mexErrMsgIdAndTxt("ctoon:convertError", "%s failed: %s.",
+        what, w->msg ? w->msg : "write error");
+}
+
+static void do_json_to_toon(int nlhs, mxArray *plhs[],
+                            int nrhs, const mxArray *prhs[]) {
+    if (nrhs < 2)
+        mexErrMsgIdAndTxt("ctoon:badArg", "json_to_toon: JSON string required.");
+    char *s = require_str(prhs[1], 2);
+    ctoon_write_options wo;
+    memset(&wo, 0, sizeof(wo));
+    wo.indent = opt_indent(nrhs, prhs, 2, 2);
+    ctoon_read_err rerr; ctoon_write_err werr;
+    memset(&rerr, 0, sizeof(rerr)); memset(&werr, 0, sizeof(werr));
+    size_t n = 0;
+    char *out = ctoon_json_to_toon_opts(s, strlen(s), 0, &wo, NULL, &n, &rerr, &werr);
+    mxFree(s);
+    if (!out) convert_fail("json_to_toon", &rerr, &werr);
+    if (nlhs > 0) plhs[0] = mxCreateString(out);
+    free(out);
+}
+
+static void do_toon_to_json(int nlhs, mxArray *plhs[],
+                            int nrhs, const mxArray *prhs[]) {
+    if (nrhs < 2)
+        mexErrMsgIdAndTxt("ctoon:badArg", "toon_to_json: TOON string required.");
+    char *s = require_str(prhs[1], 2);
+    int indent = opt_indent(nrhs, prhs, 2, 0);
+    ctoon_read_err rerr; ctoon_write_err werr;
+    memset(&rerr, 0, sizeof(rerr)); memset(&werr, 0, sizeof(werr));
+    size_t n = 0;
+    char *out = ctoon_toon_to_json_opts(s, strlen(s), 0, indent, 0, NULL, &n, &rerr, &werr);
+    mxFree(s);
+    if (!out) convert_fail("toon_to_json", &rerr, &werr);
+    if (nlhs > 0) plhs[0] = mxCreateString(out);
+    free(out);
+}
+
+static void do_json_to_toon_file(int nlhs, mxArray *plhs[],
+                                 int nrhs, const mxArray *prhs[]) {
+    (void)nlhs; (void)plhs;
+    if (nrhs < 3)
+        mexErrMsgIdAndTxt("ctoon:badArg", "json_to_toon_file: json and toon paths required.");
+    char *jp = require_str(prhs[1], 2);
+    char *tp = require_str(prhs[2], 3);
+    ctoon_write_options wo;
+    memset(&wo, 0, sizeof(wo));
+    wo.indent = opt_indent(nrhs, prhs, 3, 2);
+    ctoon_read_err rerr; ctoon_write_err werr;
+    memset(&rerr, 0, sizeof(rerr)); memset(&werr, 0, sizeof(werr));
+    bool ok = ctoon_json_to_toon_file_opts(jp, tp, 0, &wo, NULL, &rerr, &werr);
+    mxFree(jp); mxFree(tp);
+    if (!ok) convert_fail("json_to_toon_file", &rerr, &werr);
+}
+
+static void do_toon_to_json_file(int nlhs, mxArray *plhs[],
+                                 int nrhs, const mxArray *prhs[]) {
+    (void)nlhs; (void)plhs;
+    if (nrhs < 3)
+        mexErrMsgIdAndTxt("ctoon:badArg", "toon_to_json_file: toon and json paths required.");
+    char *tp = require_str(prhs[1], 2);
+    char *jp = require_str(prhs[2], 3);
+    int indent = opt_indent(nrhs, prhs, 3, 0);
+    ctoon_read_err rerr; ctoon_write_err werr;
+    memset(&rerr, 0, sizeof(rerr)); memset(&werr, 0, sizeof(werr));
+    bool ok = ctoon_toon_to_json_file_opts(tp, jp, 0, indent, 0, NULL, &rerr, &werr);
+    mxFree(tp); mxFree(jp);
+    if (!ok) convert_fail("toon_to_json_file", &rerr, &werr);
+}
+
 void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[]) {
     if (nrhs < 1 || !mxIsChar(prhs[0]))
@@ -370,6 +466,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
     else if (strcmp(cmd, "write")   == 0) do_write(nlhs, plhs, nrhs, prhs);
     else if (strcmp(cmd, "version") == 0) do_version(nlhs, plhs, nrhs, prhs);
     else if (strcmp(cmd, "spec")    == 0) do_spec(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "json_to_toon")      == 0) do_json_to_toon(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "toon_to_json")      == 0) do_toon_to_json(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "json_to_toon_file") == 0) do_json_to_toon_file(nlhs, plhs, nrhs, prhs);
+    else if (strcmp(cmd, "toon_to_json_file") == 0) do_toon_to_json_file(nlhs, plhs, nrhs, prhs);
     else {
         char msg[256];
         snprintf(msg, sizeof(msg), "Unknown internal command '%s'.", cmd);

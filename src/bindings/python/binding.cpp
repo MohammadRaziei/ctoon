@@ -146,6 +146,51 @@ static void write_filelike(nb::handle fp, const ctoon::write_result &result) {
 }
 
 
+
+/* =========================================================================
+ * Direct JSON <-> TOON text conversion helpers
+ *
+ * These call straight into the C core. No Python dict/list is built, and the
+ * GIL is released while the conversion runs. str inputs are read in place
+ * (CPython's cached UTF-8 buffer); bytes inputs are read in place too.
+ * ========================================================================= */
+
+struct text_view {
+    const char *data;
+    size_t      size;
+};
+
+static text_view text_of(nb::handle h) {
+    if (PyUnicode_Check(h.ptr())) {
+        Py_ssize_t n = 0;
+        const char *p = PyUnicode_AsUTF8AndSize(h.ptr(), &n);
+        if (!p) throw nb::python_error();
+        return {p, (size_t)n};
+    }
+    if (PyBytes_Check(h.ptr())) {
+        char *p = nullptr; Py_ssize_t n = 0;
+        if (PyBytes_AsStringAndSize(h.ptr(), &p, &n) < 0) throw nb::python_error();
+        return {p, (size_t)n};
+    }
+    throw nb::type_error("expected str or bytes");
+}
+
+[[noreturn]] static void throw_convert_error(const ctoon_read_err &r,
+                                             const ctoon_write_err &w) {
+    if (r.code) {
+        char buf[32];
+        std::snprintf(buf, sizeof buf, " (pos %zu)", (size_t)r.pos);
+        throw std::runtime_error(std::string(r.msg ? r.msg : "parse error") + buf);
+    }
+    throw std::runtime_error(w.msg ? w.msg : "write error");
+}
+
+static nb::str take_str(char *raw, size_t n) {
+    nb::str out(raw, n);
+    std::free(raw);
+    return out;
+}
+
 /* =========================================================================
  * Module
  * ========================================================================= */
@@ -447,6 +492,104 @@ NB_MODULE(ctoon_py, m) {
         "    with open('out.json', 'w') as f:\n"
         "        ctoon.dump_json(data, f)\n"
         "    ctoon.dump_json(data, 'out.json')");
+
+
+    /* ------------------------------------------------------------------
+     * Direct text <-> text conversion (no Python intermediate object)
+     * ------------------------------------------------------------------ */
+
+    m.def("json_to_toon",
+        [](nb::object json, int indent, ctoon::delimiter delim,
+           ctoon::write_flag wflags, ctoon::read_flag rflags) -> nb::str {
+            text_view in = text_of(json);
+            ctoon_write_options wo;
+            wo.flag = ctoon::to_c(wflags);
+            wo.delimiter = static_cast<ctoon_delimiter>(delim);
+            wo.indent = indent;
+            ctoon_read_err rerr{};  ctoon_write_err werr{};
+            size_t n = 0; char *raw;
+            {
+                nb::gil_scoped_release nogil;
+                raw = ctoon_json_to_toon_opts(in.data, in.size,
+                        ctoon::to_c(rflags), &wo, nullptr, &n, &rerr, &werr);
+            }
+            if (!raw) throw_convert_error(rerr, werr);
+            return take_str(raw, n);
+        },
+        nb::arg("json"),
+        nb::arg("indent")    = 2,
+        nb::arg("delimiter") = ctoon::delimiter::COMMA,
+        nb::arg("flags")     = ctoon::write_flag::NOFLAG,
+        nb::arg("read_flags") = ctoon::read_flag::NOFLAG,
+        "Convert JSON text (str or bytes) to a TOON string, directly.\n\n"
+        "    json_to_toon(json, indent=2, delimiter=Delimiter.COMMA,\n"
+        "                 flags=WriteFlag.NOFLAG, read_flags=ReadFlag.NOFLAG) -> str");
+
+    m.def("toon_to_json",
+        [](nb::object toon, int indent, ctoon::write_flag wflags,
+           ctoon::read_flag rflags) -> nb::str {
+            text_view in = text_of(toon);
+            ctoon_read_err rerr{};  ctoon_write_err werr{};
+            size_t n = 0; char *raw;
+            {
+                nb::gil_scoped_release nogil;
+                raw = ctoon_toon_to_json_opts(in.data, in.size,
+                        ctoon::to_c(rflags), indent, ctoon::to_c(wflags),
+                        nullptr, &n, &rerr, &werr);
+            }
+            if (!raw) throw_convert_error(rerr, werr);
+            return take_str(raw, n);
+        },
+        nb::arg("toon"),
+        nb::arg("indent")     = 0,
+        nb::arg("flags")      = ctoon::write_flag::NOFLAG,
+        nb::arg("read_flags") = ctoon::read_flag::NOFLAG,
+        "Convert TOON text (str or bytes) to a JSON string, directly.\n\n"
+        "    toon_to_json(toon, indent=0, flags=WriteFlag.NOFLAG,\n"
+        "                 read_flags=ReadFlag.NOFLAG) -> str");
+
+    m.def("json_to_toon_file",
+        [](const std::string &json_path, const std::string &toon_path,
+           int indent, ctoon::delimiter delim, ctoon::write_flag wflags,
+           ctoon::read_flag rflags) {
+            ctoon_write_options wo;
+            wo.flag = ctoon::to_c(wflags);
+            wo.delimiter = static_cast<ctoon_delimiter>(delim);
+            wo.indent = indent;
+            ctoon_read_err rerr{};  ctoon_write_err werr{};
+            bool ok;
+            {
+                nb::gil_scoped_release nogil;
+                ok = ctoon_json_to_toon_file_opts(json_path.c_str(), toon_path.c_str(),
+                        ctoon::to_c(rflags), &wo, nullptr, &rerr, &werr);
+            }
+            if (!ok) throw_convert_error(rerr, werr);
+        },
+        nb::arg("json_path"), nb::arg("toon_path"),
+        nb::arg("indent")    = 2,
+        nb::arg("delimiter") = ctoon::delimiter::COMMA,
+        nb::arg("flags")     = ctoon::write_flag::NOFLAG,
+        nb::arg("read_flags") = ctoon::read_flag::NOFLAG,
+        "Convert a JSON file to a TOON file, directly.");
+
+    m.def("toon_to_json_file",
+        [](const std::string &toon_path, const std::string &json_path,
+           int indent, ctoon::write_flag wflags, ctoon::read_flag rflags) {
+            ctoon_read_err rerr{};  ctoon_write_err werr{};
+            bool ok;
+            {
+                nb::gil_scoped_release nogil;
+                ok = ctoon_toon_to_json_file_opts(toon_path.c_str(), json_path.c_str(),
+                        ctoon::to_c(rflags), indent, ctoon::to_c(wflags),
+                        nullptr, &rerr, &werr);
+            }
+            if (!ok) throw_convert_error(rerr, werr);
+        },
+        nb::arg("toon_path"), nb::arg("json_path"),
+        nb::arg("indent")     = 0,
+        nb::arg("flags")      = ctoon::write_flag::NOFLAG,
+        nb::arg("read_flags") = ctoon::read_flag::NOFLAG,
+        "Convert a TOON file to a JSON file, directly.");
 
     /* encode / decode – aliases matching original toon-python API
      * nanobind cannot use m.attr() as a callable in m.def(), so we

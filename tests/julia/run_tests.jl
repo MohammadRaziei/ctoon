@@ -33,3 +33,6 @@ include(joinpath(binding_dir, "test", "runtests.jl"))
 # test/runtests.jl itself) so a JSON.jl resolution problem here is
 # clearly distinguishable from a failure in CToon.jl's own test suite.
 include(joinpath(@__DIR__, "native_json_roundtrip_test.jl"))
+
+# Direct JSON <-> TOON text conversion (json_to_toon / toon_to_json).
+include(joinpath(@__DIR__, "convert_test.jl"))

@@ -339,3 +339,102 @@ test "native json roundtrip: spec examples corpus" {
         try checkPair(gpa, io, dir_path, name);
     }
 }
+
+// ---------------------------------------------------------------------------
+// ctoon.jsonToToon / toonToJson (+ File): direct text -> text conversion.
+// Expected values: hand-written strings, paired .toon fixtures, std.json.
+// ---------------------------------------------------------------------------
+
+test "convert: jsonToToon / toonToJson basics" {
+    const gpa = testing.allocator;
+    const a = try ctoon.jsonToToon(gpa, "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"]}", .{});
+    defer gpa.free(a);
+    try testing.expectEqualStrings("name: Alice\nage: 30\ntags[2]: a,b", a);
+
+    const tab = try ctoon.jsonToToon(gpa, "{\"u\":[{\"id\":1,\"n\":\"x\"},{\"id\":2,\"n\":\"y\"}]}", .{});
+    defer gpa.free(tab);
+    try testing.expectEqualStrings("u[2]{id,n}:\n  1,x\n  2,y", tab);
+
+    const pipe = try ctoon.jsonToToon(gpa, "{\"t\":[1,2,3]}", .{ .delimiter = .pipe });
+    defer gpa.free(pipe);
+    try testing.expectEqualStrings("t[3|]: 1|2|3", pipe);
+
+    const j = try ctoon.toonToJson(gpa, "name: Alice\nage: 30\ntags[2]: a,b", 0);
+    defer gpa.free(j);
+    try testing.expectEqualStrings("{\"name\":\"Alice\",\"age\":30,\"tags\":[\"a\",\"b\"]}", j);
+
+    const pretty = try ctoon.toonToJson(gpa, "a: 1", 2);
+    defer gpa.free(pretty);
+    try testing.expectEqualStrings("{\n  \"a\": 1\n}", pretty);
+}
+
+test "convert: errors are reported" {
+    const gpa = testing.allocator;
+    try testing.expectError(error.ParseError, ctoon.jsonToToon(gpa, "{\"a\":", .{}));
+    try testing.expectError(error.ParseError, ctoon.jsonToToon(gpa, "", .{}));
+    try testing.expectError(error.ParseError, ctoon.toonToJson(gpa, "a[2]: 1", 0));
+}
+
+test "convert: file functions" {
+    const gpa = testing.allocator;
+    const io = testing.io;
+    const cwd = std.Io.Dir.cwd();
+    try cwd.writeFile(io, .{ .sub_path = "zig_conv_in.json", .data = "{\"k\":[1,2],\"s\":\"hi\"}" });
+    defer cwd.deleteFile(io, "zig_conv_in.json") catch {};
+    try ctoon.jsonToToonFile("zig_conv_in.json", "zig_conv_out.toon", .{});
+    defer cwd.deleteFile(io, "zig_conv_out.toon") catch {};
+    const toon = try cwd.readFileAlloc(io, "zig_conv_out.toon", gpa, .limited(1024));
+    defer gpa.free(toon);
+    try testing.expectEqualStrings("k[2]: 1,2\ns: hi", toon);
+
+    try ctoon.toonToJsonFile("zig_conv_out.toon", "zig_conv_back.json", 0);
+    defer cwd.deleteFile(io, "zig_conv_back.json") catch {};
+    const back = try cwd.readFileAlloc(io, "zig_conv_back.json", gpa, .limited(1024));
+    defer gpa.free(back);
+    try testing.expectEqualStrings("{\"k\":[1,2],\"s\":\"hi\"}", back);
+
+    try cwd.writeFile(io, .{ .sub_path = "zig_conv_bad.json", .data = "{\"a\":" });
+    defer cwd.deleteFile(io, "zig_conv_bad.json") catch {};
+    try testing.expectError(error.ParseError, ctoon.jsonToToonFile("zig_conv_bad.json", "zig_conv_never.toon", .{}));
+    try testing.expectError(error.FileNotFound, cwd.access(io, "zig_conv_never.toon", .{}));
+}
+
+fn checkConvertPair(gpa: std.mem.Allocator, io: std.Io, dir_path: []const u8, name: []const u8) !void {
+    var dir = try std.Io.Dir.cwd().openDir(io, dir_path, .{});
+    defer dir.close(io);
+    const json_name = try std.fmt.allocPrint(gpa, "{s}.json", .{name});
+    const raw_json = try dir.readFileAlloc(io, json_name, gpa, .limited(64 * 1024 * 1024));
+    const toon_name = try std.fmt.allocPrint(gpa, "{s}.toon", .{name});
+    const expected = try dir.readFileAlloc(io, toon_name, gpa, .limited(64 * 1024 * 1024));
+
+    const got = try ctoon.jsonToToon(gpa, raw_json, .{});
+    try testing.expectEqualStrings(trimTrailingNewlines(expected), trimTrailingNewlines(got));
+
+    const back = try ctoon.toonToJson(gpa, expected, 0);
+    const src_std = try std.json.parseFromSliceLeaky(std.json.Value, gpa, raw_json, .{});
+    const back_std = try std.json.parseFromSliceLeaky(std.json.Value, gpa, back, .{});
+    const back_as_ctoon = try toCtoonValue(gpa, back_std);
+    if (!roundTripEqual(src_std, back_as_ctoon)) {
+        std.debug.print("{s}: toonToJson differs from source JSON\n", .{name});
+        return error.ConvertMismatch;
+    }
+}
+
+test "convert: local data corpus" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const gpa = arena.allocator();
+    const names = try pairFiles(gpa, testing.io, local_data_dir);
+    try testing.expect(names.len > 0);
+    for (names) |name| try checkConvertPair(gpa, testing.io, local_data_dir, name);
+}
+
+test "convert: spec examples corpus" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const gpa = arena.allocator();
+    const dir_path = specExamplesDir(gpa, testing.io) orelse return;
+    const names = try pairFiles(gpa, testing.io, dir_path);
+    try testing.expect(names.len > 0);
+    for (names) |name| try checkConvertPair(gpa, testing.io, dir_path, name);
+}

@@ -16,7 +16,11 @@
 //      re-serialise to JSON.
 //   5. Timed "roundtrip": json -> toon -> parse toon -> json, chained as
 //      one operation using the library's own encoder/decoder together.
-//   6. Report throughput (MB/s of bytes actually read by successful
+//   6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
+//      with the text format taken out -- decode the pre-pass TOON into a
+//      plain JS value, and encode an already-built JS value to TOON. The
+//      value fed to struct_to_toon is built untimed with JSON.parse.
+//   7. Report throughput (MB/s of bytes actually read by successful
 //      conversions only) and documents/sec.
 //
 // If a log file path is given, one line per failure is written there —
@@ -36,7 +40,7 @@ function loadCorpus(manifestPath) {
   const files = [];
   for (const path of paths) {
     try {
-      files.push({ path, json: readFileSync(path, "utf8"), toon: null });
+      files.push({ path, json: readFileSync(path, "utf8"), toon: null, native: undefined });
     } catch {
       // skip unreadable entries
     }
@@ -114,6 +118,7 @@ function main() {
   for (const f of files) {
     try {
       const val = JSON.parse(f.json);
+      f.native = val;           // untimed input for struct_to_toon (JSON.parse, not the library)
       f.toon = encode(val);
     } catch (e) {
       logFail("@toon-format/toon", "pre_pass", f.path, e);
@@ -127,6 +132,10 @@ function main() {
     json_to_toon: (f) => encode(JSON.parse(f.json)),
     toon_to_json: (f) => (f.toon ? JSON.stringify(decode(f.toon)) : null),
     roundtrip: (f) => JSON.stringify(decode(encode(JSON.parse(f.json)))),
+    // toon_to_struct's result is a value, not text: dumped as JSON (untimed)
+    // only so the verifier can compare it to the original document.
+    toon_to_struct: (f) => (f.toon ? JSON.stringify(decode(f.toon)) : null),
+    struct_to_toon: (f) => (f.native !== undefined ? encode(f.native) : null),
   });
 
   // json_to_toon
@@ -189,6 +198,45 @@ function main() {
   }
   seconds = Number(process.hrtime.bigint() - t0) / 1e9;
   record(results, "@toon-format/toon", "roundtrip", bytes, ops, seconds, files.length * REPEATS);
+
+  // toon_to_struct: decode the pre-pass TOON into a JS value, nothing else.
+  ops = 0;
+  bytes = 0;
+  t0 = process.hrtime.bigint();
+  for (let rep = 0; rep < REPEATS; rep++) {
+    for (const f of files) {
+      if (!f.toon) continue;
+      try {
+        decode(f.toon);
+        ops++;
+        bytes += Buffer.byteLength(f.toon);
+      } catch (e) {
+        if (rep === 0) logFail("@toon-format/toon", "toon_to_struct", f.path, e);
+      }
+    }
+  }
+  seconds = Number(process.hrtime.bigint() - t0) / 1e9;
+  record(results, "@toon-format/toon", "toon_to_struct", bytes, ops, seconds, files.length * REPEATS);
+
+  // struct_to_toon: encode the pre-built JS value, nothing else (weighted by
+  // the JSON size, same convention as json_to_toon).
+  ops = 0;
+  bytes = 0;
+  t0 = process.hrtime.bigint();
+  for (let rep = 0; rep < REPEATS; rep++) {
+    for (const f of files) {
+      if (f.native === undefined) continue;
+      try {
+        encode(f.native);
+        ops++;
+        bytes += Buffer.byteLength(f.json);
+      } catch (e) {
+        if (rep === 0) logFail("@toon-format/toon", "struct_to_toon", f.path, e);
+      }
+    }
+  }
+  seconds = Number(process.hrtime.bigint() - t0) / 1e9;
+  record(results, "@toon-format/toon", "struct_to_toon", bytes, ops, seconds, files.length * REPEATS);
 
   writeFileSync(
     resultsJsonPath,

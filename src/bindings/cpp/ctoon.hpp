@@ -863,6 +863,101 @@ inline write_result to_json(const document    &d, int indent = 2, write_flag fla
 inline write_result to_json(const mut_document &d, int indent = 2, write_flag flags = write_flag::NOFLAG) {
     return d.to_json(indent, flags);
 }
+
+/* -----------------------------------------------------------------------
+ * Direct text <-> text conversion
+ *
+ * One call into the C core. No ctoon::document is created and no value
+ * tree is exposed: JSON text goes in, TOON text comes out (and back).
+ * -------------------------------------------------------------------- */
+
+/// JSON text -> TOON text.
+inline write_result json_to_toon(const char *json, std::size_t len,
+                                 const write_options &opts = write_options(),
+                                 read_flag flags = read_flag::NOFLAG) {
+    ctoon_read_err rerr;  std::memset(&rerr, 0, sizeof(rerr));
+    ctoon_write_err werr; std::memset(&werr, 0, sizeof(werr));
+    ctoon_write_options co = opts.to_c();
+    std::size_t n = 0;
+    char *raw = ctoon_json_to_toon_opts(json, len, to_c(flags), &co, NULL, &n, &rerr, &werr);
+    if (!raw) {
+        if (rerr.code) throw parse_error(rerr);
+        throw write_error(werr);
+    }
+    return write_result(raw, n);
+}
+inline write_result json_to_toon(const char *json,
+                                 const write_options &opts = write_options(),
+                                 read_flag flags = read_flag::NOFLAG) {
+    return json_to_toon(json, std::strlen(json), opts, flags);
+}
+inline write_result json_to_toon(const std::string &json,
+                                 const write_options &opts = write_options(),
+                                 read_flag flags = read_flag::NOFLAG) {
+    return json_to_toon(json.data(), json.size(), opts, flags);
+}
+inline write_result json_to_toon(const string_view &json,
+                                 const write_options &opts = write_options(),
+                                 read_flag flags = read_flag::NOFLAG) {
+    return json_to_toon(json.data(), json.size(), opts, flags);
+}
+
+/// JSON file -> TOON file.
+inline void json_to_toon_file(const char *json_path, const char *toon_path,
+                              const write_options &opts = write_options(),
+                              read_flag flags = read_flag::NOFLAG) {
+    ctoon_read_err rerr;  std::memset(&rerr, 0, sizeof(rerr));
+    ctoon_write_err werr; std::memset(&werr, 0, sizeof(werr));
+    ctoon_write_options co = opts.to_c();
+    if (!ctoon_json_to_toon_file_opts(json_path, toon_path, to_c(flags), &co, NULL, &rerr, &werr)) {
+        if (rerr.code) throw parse_error(rerr);
+        throw write_error(werr);
+    }
+}
+
+/// TOON text -> JSON text (compact by default; pass indent > 0 to pretty-print).
+inline write_result toon_to_json(const char *toon, std::size_t len, int indent = 0,
+                                 write_flag wflags = write_flag::NOFLAG,
+                                 read_flag rflags = read_flag::NOFLAG) {
+    ctoon_read_err rerr;  std::memset(&rerr, 0, sizeof(rerr));
+    ctoon_write_err werr; std::memset(&werr, 0, sizeof(werr));
+    std::size_t n = 0;
+    char *raw = ctoon_toon_to_json_opts(toon, len, to_c(rflags), indent, to_c(wflags),
+                                        NULL, &n, &rerr, &werr);
+    if (!raw) {
+        if (rerr.code) throw parse_error(rerr);
+        throw write_error(werr);
+    }
+    return write_result(raw, n);
+}
+inline write_result toon_to_json(const char *toon, int indent = 0,
+                                 write_flag wflags = write_flag::NOFLAG,
+                                 read_flag rflags = read_flag::NOFLAG) {
+    return toon_to_json(toon, std::strlen(toon), indent, wflags, rflags);
+}
+inline write_result toon_to_json(const std::string &toon, int indent = 0,
+                                 write_flag wflags = write_flag::NOFLAG,
+                                 read_flag rflags = read_flag::NOFLAG) {
+    return toon_to_json(toon.data(), toon.size(), indent, wflags, rflags);
+}
+inline write_result toon_to_json(const string_view &toon, int indent = 0,
+                                 write_flag wflags = write_flag::NOFLAG,
+                                 read_flag rflags = read_flag::NOFLAG) {
+    return toon_to_json(toon.data(), toon.size(), indent, wflags, rflags);
+}
+
+/// TOON file -> JSON file.
+inline void toon_to_json_file(const char *toon_path, const char *json_path, int indent = 0,
+                              write_flag wflags = write_flag::NOFLAG,
+                              read_flag rflags = read_flag::NOFLAG) {
+    ctoon_read_err rerr;  std::memset(&rerr, 0, sizeof(rerr));
+    ctoon_write_err werr; std::memset(&werr, 0, sizeof(werr));
+    if (!ctoon_toon_to_json_file_opts(toon_path, json_path, to_c(rflags), indent,
+                                      to_c(wflags), NULL, &rerr, &werr)) {
+        if (rerr.code) throw parse_error(rerr);
+        throw write_error(werr);
+    }
+}
 #endif /* CTOON_ENABLE_JSON */
 
 } // namespace ctoon
