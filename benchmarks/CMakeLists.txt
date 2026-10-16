@@ -67,13 +67,29 @@ include(FetchContent)
 
 # Small, varied JSON shapes covering the format's edge cases — the same
 # fixtures the main repo's own spec-conformance tests use.
+# The spec version is NOT hardcoded here: it is read from the repository's
+# supported_spec.conf, the same single source of truth the root build and
+# tests/CMakeLists.txt use (a bare commit hash here silently drifted from it).
+set(_ctoon_spec_conf "${CMAKE_CURRENT_LIST_DIR}/../supported_spec.conf")
+if(NOT EXISTS "${_ctoon_spec_conf}")
+    message(FATAL_ERROR "benchmarks: ${_ctoon_spec_conf} not found; it defines "
+        "the toon-format/spec tag (CTOON_SPEC_TAG) used for the corpus.")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_ctoon_spec_conf}")
+file(STRINGS "${_ctoon_spec_conf}" _ctoon_spec_lines REGEX "^CTOON_SPEC_TAG=")
+if(NOT _ctoon_spec_lines MATCHES "^CTOON_SPEC_TAG=(.+)$")
+    message(FATAL_ERROR "benchmarks: no CTOON_SPEC_TAG=<tag> line in ${_ctoon_spec_conf}")
+endif()
+set(CTOON_SPEC_TAG "${CMAKE_MATCH_1}")
+message(STATUS "benchmarks: TOON spec corpus ${CTOON_SPEC_TAG} (from supported_spec.conf)")
+
 FetchContent_Declare(
     toon_format_spec
     GIT_REPOSITORY https://github.com/toon-format/spec.git
-    GIT_TAG        d6db4b04303bdea132351ce45aed612311c850b2
+    GIT_TAG        ${CTOON_SPEC_TAG}
     # NOT GIT_SHALLOW: a shallow clone only contains the branch tip, so a
     # pinned commit that is no longer the tip fails with "reference is not
-    # a tree" (the spec repo moved on to v4.4.0). The repo is tiny.
+    # a tree". The spec repo is tiny, a full clone is cheap.
     GIT_PROGRESS   TRUE
 )
 
