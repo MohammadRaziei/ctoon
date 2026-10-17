@@ -21,7 +21,9 @@
  *   "version"                               → plhs[0]=version string
  *
  * MATLAB ↔ TOON type mapping:
- *   []            ↔  null
+ *   [] (0x0 double) ↔ null   (any empty numeric/logical -> null)
+ *   '' (empty char) ↔  ""    (empty string)
+ *   {} (empty cell) ↔  []    (empty array; decode gives a 0x1 cell)
  *   logical       ↔  bool
  *   double scalar ↔  real
  *   int64  scalar ↔  sint
@@ -43,6 +45,107 @@
 
 static mxArray      *val_to_mx(ctoon_val *val);
 static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx);
+
+/* =========================================================================
+ * Strings with embedded NUL (U+0000)
+ *
+ * TOON preserves U+0000 inside strings (spec: control characters are data,
+ * written as \u0000), and the C core keeps every string with its length. But
+ * mxCreateString() and mxArrayToString() both treat the text as a C string
+ * and stop at the first NUL, so "a\0b" silently became "a". Neither has a
+ * length-taking form that behaves the same in MATLAB and Octave, so the NUL
+ * case is handled by splitting at the NULs: every NUL-free run still goes
+ * through the very same mxCreateString()/mxArrayToString() as before (so the
+ * UTF-8 <-> char conversion is unchanged on both platforms), and the NULs are
+ * stitched back in between the runs. Strings without a NUL never reach this
+ * code and take exactly the old path.
+ * ========================================================================= */
+
+/* UTF-8 text of `len` bytes -> 1xN char row, keeping embedded NULs. */
+static mxArray *str_to_mx(const char *s, size_t len) {
+    if (!s || memchr(s, 0, len) == NULL)
+        return mxCreateString(s ? s : "");
+
+    size_t nnul = 0;
+    for (size_t i = 0; i < len; i++)
+        if (s[i] == '\0') nnul++;
+
+    mxArray **segs = (mxArray **)mxMalloc((nnul + 1) * sizeof(mxArray *));
+    size_t total = nnul, start = 0, k = 0;
+    for (size_t i = 0; i <= len; i++) {
+        if (i == len || s[i] == '\0') {
+            size_t n = i - start;
+            char *tmp = (char *)mxMalloc(n + 1);
+            memcpy(tmp, s + start, n);
+            tmp[n] = '\0';
+            segs[k] = mxCreateString(tmp);
+            mxFree(tmp);
+            total += mxGetNumberOfElements(segs[k]);
+            k++;
+            start = i + 1;
+        }
+    }
+
+    mwSize dims[2] = {1, (mwSize)total};
+    mxArray *out = mxCreateCharArray(2, dims);
+    mxChar *dst = mxGetChars(out);
+    for (k = 0; k <= nnul; k++) {
+        size_t n = mxGetNumberOfElements(segs[k]);
+        if (n > 0) {
+            memcpy(dst, mxGetChars(segs[k]), n * sizeof(mxChar));
+            dst += n;
+        }
+        mxDestroyArray(segs[k]);
+        if (k < nnul) *dst++ = (mxChar)0;
+    }
+    mxFree(segs);
+    return out;
+}
+
+/* char array -> TOON string value, keeping embedded NULs. */
+static ctoon_mut_val *char_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
+    size_t n = mxGetNumberOfElements(mx);
+    const mxChar *p = mxGetChars(mx);
+
+    size_t nnul = 0;
+    for (size_t i = 0; i < n; i++)
+        if (p[i] == 0) nnul++;
+
+    if (nnul == 0) {                       /* the usual case: unchanged path */
+        char *s = mxArrayToString(mx);
+        ctoon_mut_val *v = ctoon_mut_strcpy(doc, s);
+        mxFree(s);
+        return v;
+    }
+
+    size_t cap = 0, blen = 0;
+    char *buf = NULL;
+    size_t start = 0;
+    for (size_t i = 0; i <= n; i++) {
+        if (i != n && p[i] != 0) continue;
+        size_t m = i - start;
+        mwSize dims[2] = {1, (mwSize)m};
+        mxArray *seg = mxCreateCharArray(2, dims);
+        if (m > 0) memcpy(mxGetChars(seg), p + start, m * sizeof(mxChar));
+        char *u = mxArrayToString(seg);
+        size_t ulen = u ? strlen(u) : 0;
+        if (blen + ulen + 1 > cap) {
+            size_t ncap = (blen + ulen + 1) * 2;
+            char *nb = (char *)mxMalloc(ncap);
+            if (buf) { memcpy(nb, buf, blen); mxFree(buf); }
+            buf = nb; cap = ncap;
+        }
+        if (ulen) memcpy(buf + blen, u, ulen);
+        blen += ulen;
+        if (i != n) buf[blen++] = '\0';
+        if (u) mxFree(u);
+        mxDestroyArray(seg);
+        start = i + 1;
+    }
+    ctoon_mut_val *v = ctoon_mut_strncpy(doc, buf ? buf : "", blen);
+    if (buf) mxFree(buf);
+    return v;
+}
 
 /* =========================================================================
  * ctoon_val → mxArray
@@ -72,7 +175,7 @@ static mxArray *val_to_mx(ctoon_val *val) {
 
     if (ctoon_is_str(val)) {
         const char *s = ctoon_get_str(val);
-        return mxCreateString(s ? s : "");
+        return str_to_mx(s, s ? ctoon_get_len(val) : 0);
     }
 
     if (ctoon_is_arr(val)) {
@@ -119,8 +222,22 @@ static mxArray *val_to_mx(ctoon_val *val) {
  * ========================================================================= */
 
 static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
-    if (!mx || mxIsEmpty(mx))
+    if (!mx)
         return ctoon_mut_null(doc);
+
+    /* Empty values are NOT all null. Only an empty numeric/logical array
+       (the documented `[]` <-> null mapping) is. An empty char is the empty
+       string and an empty cell is the empty array, so a document holding
+       `""` or `[]` survives a decode/encode round trip. Empty struct arrays
+       fall through to the struct branch below, which emits `[]`. */
+    if (mxIsEmpty(mx)) {
+        if (mxIsChar(mx))
+            return ctoon_mut_strcpy(doc, "");
+        if (mxIsCell(mx))
+            return ctoon_mut_arr(doc);
+        if (!mxIsStruct(mx))
+            return ctoon_mut_null(doc);
+    }
 
     if (mxIsLogical(mx) && mxIsScalar(mx))
         return ctoon_mut_bool(doc, ((mxLogical *)mxGetData(mx))[0] != 0);
@@ -134,12 +251,8 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
         return arr;
     }
 
-    if (mxIsChar(mx)) {
-        char *s = mxArrayToString(mx);
-        ctoon_mut_val *v = ctoon_mut_strcpy(doc, s);
-        mxFree(s);
-        return v;
-    }
+    if (mxIsChar(mx))
+        return char_to_mut(doc, mx);
 
     if (mxIsDouble(mx) && mxIsScalar(mx)) {
         double d = mxGetScalar(mx);

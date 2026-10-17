@@ -400,6 +400,38 @@ verifyError(testCase, @() ctoon.json_to_toon_file(bad, never), 'ctoon:convertErr
 verifyFalse(testCase, isfile(never));
 end
 
+function testEncodeEmptyValuesAreNotAllNull(testCase)
+% Regression: mx_to_mut() mapped EVERY empty mxArray to null, so an empty
+% cell ({} -> should be the empty array []) and an empty char ('' -> should
+% be the empty string "") were silently turned into null. JSON/TOON have
+% three distinct values here ([], "" and null) and all three must survive.
+% Only an empty numeric/logical array (the documented `[]` <-> null
+% mapping) is null. Compared through toon_to_json so the expectation is the
+% plain JSON document, independent of TOON layout rules.
+v = struct('a', {{}}, 'b', '', 'c', []);
+verifyEqual(testCase, ctoon.toon_to_json(ctoon.encode(v)), '{"a":[],"b":"","c":null}');
+% decode -> encode must be the identity on those three values
+w = ctoon.decode(ctoon.json_to_toon('{"a":[],"b":"","c":null}'));
+verifyEqual(testCase, ctoon.toon_to_json(ctoon.encode(w)), '{"a":[],"b":"","c":null}');
+% and nested inside arrays
+w = ctoon.decode(ctoon.json_to_toon('{"x":[[],"",null,{}]}'));
+verifyEqual(testCase, ctoon.toon_to_json(ctoon.encode(w)), '{"x":[[],"",null,{}]}');
+end
+
+function testStringsWithEmbeddedNul(testCase)
+% Regression: mxCreateString()/mxArrayToString() stop at the first NUL, so a
+% string holding U+0000 ("a\u0000b" in JSON) was silently cut to "a" in both
+% directions. The spec requires control characters to be preserved as data.
+v = ctoon.decode(ctoon.json_to_toon('{"s":"a\u0000b"}'));
+verifyEqual(testCase, double(v.s), [97 0 98]);
+verifyEqual(testCase, ctoon.toon_to_json(ctoon.encode(v)), '{"s":"a\u0000b"}');
+% leading, doubled and trailing NULs (empty runs between the NULs)
+w = struct('s', char([0 97 0 0 98 0]));
+verifyEqual(testCase, ctoon.toon_to_json(ctoon.encode(w)), '{"s":"\u0000a\u0000\u0000b\u0000"}');
+x = ctoon.decode(ctoon.encode(w));
+verifyEqual(testCase, double(x.s), [0 97 0 0 98 0]);
+end
+
 %% -------------------------------------------------------------------------
 %  Helpers
 %% -------------------------------------------------------------------------

@@ -76,10 +76,16 @@ function bench(manifestPath, resultsJsonPath, logPath)
     % -- Untimed pre-pass --
     for i = 1:numel(files)
         try
-            val = jsondecode(files(i).json);
-            files(i).native = val;          % untimed input for struct_to_toon
-            files(i).hasNative = true;      % (built by MATLAB's own JSON parser, not ctoon)
-            files(i).toon = ctoon.dumps(val);
+            % Built by ctoon's own parser, NOT jsondecode: jsondecode is lossy
+            % (a one-element array of objects collapses to an object, [] and ""
+            % become null, keys that are not valid identifiers are renamed or
+            % dropped), so TOON/values derived from it no longer describe the
+            % original document and every operation would be judged "wrong"
+            % for reasons that have nothing to do with ctoon.
+            toonText = ctoon.json_to_toon(files(i).json);
+            files(i).toon = toonText;
+            files(i).native = ctoon.decode(toonText);   % untimed input for struct_to_toon
+            files(i).hasNative = true;                  % (ctoon's own value model)
         catch err
             logFail(logFid, 'ctoon', 'pre_pass', files(i).path, err);
         end
@@ -242,7 +248,7 @@ function dumpOutputs(resultsJsonPath, files)
                 % toon_to_struct: the decoded value, serialised to JSON (untimed)
                 % only so the verifier can compare it to the original document.
                 try
-                    writeOutput(root, 'toon_to_struct', i, jsonencode(ctoon.loads(files(i).toon)));
+                    writeOutput(root, 'toon_to_struct', i, nativeToJSON(ctoon.loads(files(i).toon)));
                 catch
                 end
             end
@@ -255,6 +261,48 @@ function dumpOutputs(resultsJsonPath, files)
         end
     catch err
         fprintf(2, 'warning: could not record outputs for verification: %s\n', err.message);
+    end
+end
+
+function j = nativeToJSON(v)
+% Untimed, verification only: the language's own jsonencode, made to keep NULs.
+% jsonencode() stops a string at its first NUL (the value held by ctoon is
+% intact, only this JSON writer drops the tail), so NULs go through as a
+% sentinel that is turned into the JSON escape \u0000 afterwards.
+    j = strrep(jsonencode(jsonReady(v)), NUL_SENTINEL, '\u0000');
+end
+
+function s = NUL_SENTINEL()
+    s = '@@CTOON_NUL@@';
+end
+
+function v = jsonReady(v)
+% Untimed, verification only. Turns a value built by ctoon.decode into one that
+% the language's own jsonencode writes faithfully, so what is judged is the
+% value ctoon produced and not a limitation of the JSON writer:
+%   - int64/uint64 -> double (Octave's jsonencode rejects the integer classes
+%     with "unsupported type"; the corpus is compared as IEEE doubles anyway)
+%   - [] (ctoon's null) -> NaN, which jsonencode writes as null (it would
+%     otherwise write "[]", indistinguishable from an empty array)
+%   - a NUL character in a string -> a sentinel (see nativeToJSON): jsonencode
+%     cuts a string at its first NUL, although the value itself holds it
+    if isstruct(v)
+        names = fieldnames(v);
+        for k = 1:numel(v)
+            for f = 1:numel(names)
+                v(k).(names{f}) = jsonReady(v(k).(names{f}));
+            end
+        end
+    elseif iscell(v)
+        for k = 1:numel(v)
+            v{k} = jsonReady(v{k});
+        end
+    elseif ischar(v) && any(v(:) == 0)
+        v = strrep(v, char(0), NUL_SENTINEL);
+    elseif isinteger(v)
+        v = double(v);
+    elseif isnumeric(v) && isempty(v)
+        v = NaN;
     end
 end
 

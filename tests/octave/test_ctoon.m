@@ -414,6 +414,29 @@ assertFalse(logical(exist(never, 'file')));
 confirm_recursive_rmdir(false, 'local');
 rmdir(d, 's');
 
+function test_encode_empty_values_are_not_all_null
+% Regression: mx_to_mut() mapped EVERY empty mxArray to null, so an empty
+% cell ({} -> should be []) and an empty char ('' -> should be "") became
+% null. [], "" and null are three distinct values and all must survive; only
+% an empty numeric/logical array is null (the documented [] <-> null rule).
+v = struct('a', {{}}, 'b', '', 'c', []);
+assertEqual(ctoon.toon_to_json(ctoon.encode(v)), '{"a":[],"b":"","c":null}');
+w = ctoon.decode(ctoon.json_to_toon('{"a":[],"b":"","c":null}'));
+assertEqual(ctoon.toon_to_json(ctoon.encode(w)), '{"a":[],"b":"","c":null}');
+w = ctoon.decode(ctoon.json_to_toon('{"x":[[],"",null,{}]}'));
+assertEqual(ctoon.toon_to_json(ctoon.encode(w)), '{"x":[[],"",null,{}]}');
+
+function test_strings_with_embedded_nul
+% Regression: mxCreateString()/mxArrayToString() stop at the first NUL, so a
+% string holding U+0000 was silently cut at it in both directions.
+v = ctoon.decode(ctoon.json_to_toon('{"s":"a\u0000b"}'));
+assertEqual(double(v.s), [97 0 98]);
+assertEqual(ctoon.toon_to_json(ctoon.encode(v)), '{"s":"a\u0000b"}');
+w = struct('s', char([0 97 0 0 98 0]));
+assertEqual(ctoon.toon_to_json(ctoon.encode(w)), '{"s":"\u0000a\u0000\u0000b\u0000"}');
+x = ctoon.decode(ctoon.encode(w));
+assertEqual(double(x.s), [0 97 0 0 98 0]);
+
 function delete_if_exists(f)
 if exist(f, 'file')
     delete(f);
