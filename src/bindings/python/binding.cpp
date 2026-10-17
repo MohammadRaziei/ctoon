@@ -15,96 +15,228 @@
 #include <nanobind/stl/optional.h>
 #include "ctoon.hpp"
 
+#include <string_view>
+#include <unordered_map>
+
 namespace nb = nanobind;
 
 /* =========================================================================
  * Python <-> TOON value conversion
  * ========================================================================= */
 
-static ctoon::mut_value py_to_mutval(ctoon::mut_document &doc, nb::handle obj) {
-    if (obj.is_none()) {
-        return doc.make_null();
+/* ---- Python -> TOON ------------------------------------------------------
+ *
+ * Raw CPython C-API on the hot path (same technique as liburlparser's binding):
+ *   - dispatch on the exact type pointer first (str/int/dict/list/float/None/
+ *     bool cover virtually all real data); subclasses fall back to the
+ *     Py*_Check slow path, so behaviour for them is unchanged;
+ *   - str  -> PyUnicode_AsUTF8AndSize + ctoon_mut_strn: NO copy. The document
+ *     only borrows CPython's own UTF-8 buffer, which is valid because every
+ *     caller keeps `obj` alive, holds the GIL and serialises the document
+ *     before returning (no Python code runs in between, so nothing can free
+ *     or mutate those strings);
+ *   - dict -> PyDict_Next + ctoon_mut_obj_add: Python dict keys are unique, and
+ *     ctoon_mut_obj_put would rescan every existing key per insert (O(k^2) for
+ *     a k-key dict);
+ *   - int  -> PyLong_AsLongLongAndOverflow: the old code probed with
+ *     nb::cast<uint64_t> and relied on a C++ exception for every negative
+ *     integer (~25x slower than a positive one).
+ * ------------------------------------------------------------------------ */
+
+static ctoon::mut_value py_to_mutval(ctoon::mut_document &doc, nb::handle obj);
+
+static inline ctoon::mut_value py_str_to_mut(ctoon::mut_document &doc, PyObject *o) {
+    Py_ssize_t n = 0;
+    const char *p = PyUnicode_AsUTF8AndSize(o, &n);
+    if (!p) throw nb::python_error();
+    return ctoon::mut_value(ctoon_mut_strn(doc.raw(), p, (size_t)n));
+}
+
+static ctoon::mut_value py_int_to_mut(ctoon::mut_document &doc, PyObject *o) {
+    /* Non-negative -> uint, negative -> sint, so values up to 2^64-1 keep
+     * their exact digits; only magnitudes beyond uint64/int64 fall back to a
+     * double (spec §2: still a valid number, just a real). */
+    int overflow = 0;
+    long long v = PyLong_AsLongLongAndOverflow(o, &overflow);
+    if (v == -1 && PyErr_Occurred()) throw nb::python_error();
+    if (overflow == 0)
+        return v < 0 ? doc.make_sint((std::int64_t)v)
+                     : doc.make_uint((std::uint64_t)v);
+    if (overflow > 0) {
+        unsigned long long u = PyLong_AsUnsignedLongLong(o);
+        if (!(u == (unsigned long long)-1 && PyErr_Occurred()))
+            return doc.make_uint((std::uint64_t)u);
+        PyErr_Clear();
     }
-    if (nb::isinstance<nb::bool_>(obj)) {
-        return doc.make_bool(nb::cast<bool>(obj));
+    double d = PyLong_AsDouble(o);
+    if (d == -1.0 && PyErr_Occurred()) throw nb::python_error();
+    return doc.make_real(d);
+}
+
+static inline ctoon::mut_value py_float_to_mut(ctoon::mut_document &doc, PyObject *o) {
+    double d = PyFloat_AsDouble(o);          /* limited-API: no PyFloat_AS_DOUBLE */
+    if (d == -1.0 && PyErr_Occurred()) throw nb::python_error();
+    return doc.make_real(d);
+}
+
+static ctoon::mut_value py_dict_to_mut(ctoon::mut_document &doc, PyObject *d) {
+    ctoon::mut_value o = doc.make_obj();
+    Py_ssize_t pos = 0;
+    PyObject *k, *v;
+    while (PyDict_Next(d, &pos, &k, &v)) {
+        if (!PyUnicode_Check(k))
+            throw std::runtime_error("TOON object keys must be strings");
+        ctoon::mut_value key = py_str_to_mut(doc, k);
+        ctoon::mut_value val = py_to_mutval(doc, nb::handle(v));
+        ctoon_mut_obj_add(o.raw(), key.raw(), val.raw());
     }
-    if (nb::isinstance<nb::int_>(obj)) {
-        /* try uint64 first (to preserve large positive values), then
-         * int64, then fall back to a double for magnitudes beyond both —
-         * mirrors the core C library's own out-of-int64/uint64-range
-         * fallback for decoded numbers (spec §2: numbers outside the
-         * canonical integer range are still valid, just represented as
-         * a real). Previously the int64 fallback's own cast failure went
-         * uncaught here and surfaced as a raw std::bad_cast. */
-        try {
-            auto u = nb::cast<uint64_t>(obj);
-            int64_t s = nb::cast<int64_t>(obj);
-            return (s < 0) ? doc.make_sint(s) : doc.make_uint(u);
-        } catch (...) {
-            try {
-                return doc.make_sint(nb::cast<int64_t>(obj));
-            } catch (...) {
-                return doc.make_real(nb::cast<double>(obj));
-            }
-        }
-    }
-    if (nb::isinstance<nb::float_>(obj)) {
-        return doc.make_real(nb::cast<double>(obj));
-    }
-    if (nb::isinstance<nb::str>(obj)) {
-        auto s = nb::cast<std::string>(obj);
-        return doc.make_str(s);
-    }
-    if (nb::isinstance<nb::list>(obj) || nb::isinstance<nb::tuple>(obj)) {
+    return o;
+}
+
+static ctoon::mut_value py_to_mutval(ctoon::mut_document &doc, nb::handle h) {
+    PyObject *o = h.ptr();
+    if (o == Py_None)  return doc.make_null();
+    if (o == Py_True)  return doc.make_bool(true);
+    if (o == Py_False) return doc.make_bool(false);
+
+    PyTypeObject *t = Py_TYPE(o);
+    if (t == &PyUnicode_Type) return py_str_to_mut(doc, o);
+    if (t == &PyDict_Type)    return py_dict_to_mut(doc, o);
+    if (t == &PyLong_Type)    return py_int_to_mut(doc, o);
+    if (t == &PyFloat_Type)   return py_float_to_mut(doc, o);
+    if (t == &PyList_Type) {
         ctoon::mut_value arr = doc.make_arr();
-        for (nb::handle item : obj) {
-            arr.arr_append(py_to_mutval(doc, item));
-        }
+        const Py_ssize_t n = PyList_Size(o);   /* limited-API: no *_GET_SIZE/_ITEM */
+        for (Py_ssize_t i = 0; i < n; i++)
+            ctoon_mut_arr_append(arr.raw(),
+                py_to_mutval(doc, nb::handle(PyList_GetItem(o, i))).raw());
         return arr;
     }
-    if (nb::isinstance<nb::dict>(obj)) {
-        ctoon::mut_value o = doc.make_obj();
-        nb::dict d = nb::cast<nb::dict>(obj);
-        for (auto [k, v] : d) {
-            if (!nb::isinstance<nb::str>(k))
-                throw std::runtime_error("TOON object keys must be strings");
-            auto ks = nb::cast<std::string>(k);
-            o.obj_put(doc.make_str(ks), py_to_mutval(doc, v));
-        }
-        return o;
+
+    /* Slow path: subclasses (IntEnum, OrderedDict, str subclasses, ...) and
+     * tuples, exactly as before. bool is only ever Py_True/Py_False above. */
+    if (PyLong_Check(o))    return py_int_to_mut(doc, o);
+    if (PyFloat_Check(o))   return py_float_to_mut(doc, o);
+    if (PyUnicode_Check(o)) return py_str_to_mut(doc, o);
+    if (PyDict_Check(o))    return py_dict_to_mut(doc, o);
+    if (PyList_Check(o) || PyTuple_Check(o)) {
+        ctoon::mut_value arr = doc.make_arr();
+        for (nb::handle item : h)
+            ctoon_mut_arr_append(arr.raw(), py_to_mutval(doc, item).raw());
+        return arr;
     }
     throw std::runtime_error(
         std::string("Unsupported Python type: ") +
-        nb::cast<std::string>(nb::str(obj.type())));
+        nb::cast<std::string>(nb::str(h.type())));
+}
+
+/* ---- TOON -> Python ------------------------------------------------------
+ *
+ * Raw C-API again, plus a per-call cache of dict-key str objects: a decoded
+ * array of 1000 rows has the same few keys 1000 times, and building a fresh
+ * str (allocation + UTF-8 decode + hash) for each is pure waste. The cache
+ * hands back the same object, whose hash is already computed. It is bounded
+ * and switches itself off when keys turn out not to repeat (a dict whose keys
+ * are all different would only pay for the lookups).
+ * ------------------------------------------------------------------------ */
+
+struct PyRef {                     /* owns one reference; released on unwind */
+    PyObject *p;
+    explicit PyRef(PyObject *x) : p(x) {}
+    PyRef(const PyRef &) = delete;
+    PyRef &operator=(const PyRef &) = delete;
+    ~PyRef() { Py_XDECREF(p); }
+    PyObject *release() { PyObject *t = p; p = nullptr; return t; }
+};
+
+class KeyCache {
+public:
+    KeyCache() { map_.reserve(64); }
+    ~KeyCache() { for (auto &e : map_) Py_DECREF(e.second); }
+    KeyCache(const KeyCache &) = delete;
+    KeyCache &operator=(const KeyCache &) = delete;
+
+    /* Returns a NEW reference to the str for these UTF-8 bytes. */
+    PyObject *get(const char *p, std::size_t n) {
+        if (enabled_ && n <= kMaxKeyLen) {
+            std::string_view sv(p, n);
+            auto it = map_.find(sv);
+            ++lookups_;
+            if (it != map_.end()) {
+                ++hits_;
+                Py_INCREF(it->second);
+                return it->second;
+            }
+            if (lookups_ >= kProbe && hits_ * 4 < lookups_) {
+                enabled_ = false;                   /* keys don't repeat */
+            } else if (map_.size() < kMaxEntries) {
+                PyObject *k = PyUnicode_FromStringAndSize(p, (Py_ssize_t)n);
+                if (!k) throw nb::python_error();
+                /* the key view must outlive the TOON document it points into:
+                 * it does, the document is alive for the whole conversion */
+                map_.emplace(sv, k);
+                Py_INCREF(k);                       /* one for the cache */
+                return k;
+            }
+        }
+        PyObject *k = PyUnicode_FromStringAndSize(p, (Py_ssize_t)n);
+        if (!k) throw nb::python_error();
+        return k;
+    }
+
+private:
+    static constexpr std::size_t kMaxKeyLen  = 64;
+    static constexpr std::size_t kMaxEntries = 1024;
+    static constexpr std::size_t kProbe      = 512;
+    std::unordered_map<std::string_view, PyObject *> map_;
+    std::size_t lookups_ = 0, hits_ = 0;
+    bool enabled_ = true;
+};
+
+static PyObject *val_to_py_raw(ctoon::value val, KeyCache &keys) {
+    if (!val.valid() || val.is_null()) { Py_RETURN_NONE; }
+    if (val.is_true())  { Py_RETURN_TRUE;  }
+    if (val.is_false()) { Py_RETURN_FALSE; }
+
+    PyObject *r = nullptr;
+    if (val.is_uint())      r = PyLong_FromUnsignedLongLong(val.get_uint());
+    else if (val.is_sint()) r = PyLong_FromLongLong(val.get_sint());
+    else if (val.is_real()) r = PyFloat_FromDouble(val.get_real());
+    else if (val.is_str()) {
+        auto sv = val.get_str();
+        r = PyUnicode_FromStringAndSize(sv.data(), (Py_ssize_t)sv.size());
+    }
+    else if (val.is_arr()) {
+        PyRef list(PyList_New((Py_ssize_t)val.arr_size()));
+        if (!list.p) throw nb::python_error();
+        Py_ssize_t i = 0;
+        for (auto item : val.arr_items()) {
+            PyObject *child = val_to_py_raw(item, keys);
+            if (PyList_SetItem(list.p, i++, child) < 0)   /* steals child, even on error */
+                throw nb::python_error();
+        }
+        return list.release();
+    }
+    else if (val.is_obj()) {
+        PyRef dict(PyDict_New());
+        if (!dict.p) throw nb::python_error();
+        for (auto kv : val.obj_items()) {
+            auto ksv = kv.key().get_str();
+            PyRef k(keys.get(ksv.data(), ksv.size()));
+            PyRef v(val_to_py_raw(kv.val(), keys));
+            if (PyDict_SetItem(dict.p, k.p, v.p) < 0) throw nb::python_error();
+        }
+        return dict.release();
+    }
+    else throw std::runtime_error("Unknown ctoon value type");
+
+    if (!r) throw nb::python_error();
+    return r;
 }
 
 static nb::object val_to_py(ctoon::value val) {
-    if (!val.valid() || val.is_null()) return nb::none();
-    if (val.is_true())  return nb::bool_(true);
-    if (val.is_false()) return nb::bool_(false);
-    if (val.is_uint())  return nb::cast(val.get_uint());
-    if (val.is_sint())  return nb::cast(val.get_sint());
-    if (val.is_real())  return nb::cast(val.get_real());
-    if (val.is_str()) {
-        auto sv = val.get_str();
-        return nb::str(sv.data(), sv.size());
-    }
-    if (val.is_arr()) {
-        nb::list out;
-        for (auto item : val.arr_items())
-            out.append(val_to_py(item));
-        return out;
-    }
-    if (val.is_obj()) {
-        nb::dict out;
-        for (auto kv : val.obj_items()) {
-            auto ksv = kv.key().get_str();
-            nb::str key(ksv.data(), ksv.size());
-            out[key] = val_to_py(kv.val());
-        }
-        return out;
-    }
-    throw std::runtime_error("Unknown ctoon value type");
+    KeyCache keys;
+    return nb::steal(val_to_py_raw(val, keys));
 }
 
 /* =========================================================================
@@ -189,6 +321,29 @@ static nb::str take_str(char *raw, size_t n) {
     nb::str out(raw, n);
     std::free(raw);
     return out;
+}
+
+/* A parse never runs in place inside a Python str/bytes: INSITU would make the
+ * parser write into the object's (immutable, shared) buffer. */
+static inline ctoon::read_flag strip_insitu(ctoon::read_flag f) {
+    return static_cast<ctoon::read_flag>(
+        static_cast<std::uint32_t>(f) &
+        ~static_cast<std::uint32_t>(ctoon::read_flag::INSITU));
+}
+
+/* Result text -> Python str straight from the C buffer (no std::string hop). */
+static nb::object str_from_result(const ctoon::write_result &r) {
+    PyObject *o = PyUnicode_FromStringAndSize(r.c_str(), (Py_ssize_t)r.size());
+    if (!o) throw nb::python_error();
+    return nb::steal(o);
+}
+
+/* Parsing is pure C work on an immutable, referenced buffer, so large inputs
+ * release the GIL; small ones skip the (comparatively costly) release. */
+template <class F>
+static inline void parse_maybe_nogil(std::size_t n, F &&f) {
+    if (n >= 4096) { nb::gil_scoped_release nogil; f(); }
+    else f();
 }
 
 /* =========================================================================
@@ -289,16 +444,14 @@ NB_MODULE(ctoon_py, m) {
     m.def("loads",
         [](nb::object s, ctoon::read_flag flags, int indent, bool strict) -> nb::object {
             if (!strict) flags |= ctoon::read_flag::NON_STRICT;
-            std::string buf;
-            if (nb::isinstance<nb::bytes>(s)) {
-                auto b = nb::cast<nb::bytes>(s);
-                buf = std::string(b.c_str(), nb::len(b));
-            } else {
-                buf = nb::cast<std::string>(s);
-            }
-            auto doc = (indent == 2)
-                ? ctoon::document::parse(buf.data(), buf.size(), flags)
-                : ctoon::document::parse_indent(buf.data(), buf.size(), indent, flags);
+            flags = strip_insitu(flags);
+            text_view tv = text_of(s);            /* in place: no copy of the input */
+            ctoon::document doc(nullptr);
+            parse_maybe_nogil(tv.size, [&] {
+                doc = (indent == 2)
+                    ? ctoon::document::parse(tv.data, tv.size, flags)
+                    : ctoon::document::parse_indent(tv.data, tv.size, indent, flags);
+            });
             return val_to_py(doc.root());
         },
         nb::arg("s"),
@@ -355,7 +508,7 @@ NB_MODULE(ctoon_py, m) {
         [](nb::handle obj,
            int indent,
            ctoon::delimiter delim,
-           ctoon::write_flag flags) -> std::string {
+           ctoon::write_flag flags) -> nb::object {
             auto doc  = ctoon::mut_document::create();
             doc.set_root(py_to_mutval(doc, obj));
             auto result = doc.to_string(
@@ -363,7 +516,7 @@ NB_MODULE(ctoon_py, m) {
                     .with_indent(indent)
                     .with_delimiter(delim)
                     .with_flag(flags));
-            return result.str();
+            return str_from_result(result);
         },
         nb::arg("obj").none(),
         nb::arg("indent")    = 2,
@@ -420,14 +573,12 @@ NB_MODULE(ctoon_py, m) {
     /* loads_json(s, *, flags=ReadFlag.NOFLAG) -> object */
     m.def("loads_json",
         [](nb::object s, ctoon::read_flag flags) -> nb::object {
-            std::string buf;
-            if (nb::isinstance<nb::bytes>(s)) {
-                auto b = nb::cast<nb::bytes>(s);
-                buf = std::string(b.c_str(), nb::len(b));
-            } else {
-                buf = nb::cast<std::string>(s);
-            }
-            auto doc = ctoon::document::from_json(buf.data(), buf.size(), flags);
+            flags = strip_insitu(flags);
+            text_view tv = text_of(s);
+            ctoon::document doc(nullptr);
+            parse_maybe_nogil(tv.size, [&] {
+                doc = ctoon::document::from_json(tv.data, tv.size, flags);
+            });
             return val_to_py(doc.root());
         },
         nb::arg("s"),
@@ -457,10 +608,10 @@ NB_MODULE(ctoon_py, m) {
 
     /* dumps_json(obj, *, indent=2, flags=WriteFlag.NOFLAG) -> str */
     m.def("dumps_json",
-        [](nb::handle obj, int indent, ctoon::write_flag flags) -> std::string {
+        [](nb::handle obj, int indent, ctoon::write_flag flags) -> nb::object {
             auto doc = ctoon::mut_document::create();
             doc.set_root(py_to_mutval(doc, obj));
-            return doc.to_json(indent, flags).str();
+            return str_from_result(doc.to_json(indent, flags));
         },
         nb::arg("obj").none(),
         nb::arg("indent") = 2,
