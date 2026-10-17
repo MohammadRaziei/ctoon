@@ -12,7 +12,7 @@ ended up installed.
 | Go      | 1.24.7  | preinstalled (`/usr/local/go`)  |
 | Rust    | 1.97.0  | preinstalled (`~/.cargo/bin`)   |
 | Zig     | 0.17.0  | `pip install ziglang`       |
-| Julia   | 1.13.1  | release tarball (see below) |
+| Julia   | 1.13.2  | `pip install julialang` + `julialang install` |
 | Octave  | 8.4.0   | `apt-get install octave octave-dev` |
 
 ## 0. Get the sources
@@ -42,35 +42,34 @@ python3 -m ziglang version     # 0.17.0
 `--break-system-packages` is needed because pip is on the system Python
 (PEP 668). Zig is invoked as `python3 -m ziglang ...`.
 
-## 3. Julia (from MohammadRaziei/julialang releases)
+## 3. Julia (via the `julialang` PyPI package)
 
-The release tag is `__download__` (not `download`; that URL returns 404).
+[`julialang`](https://github.com/MohammadRaziei/julialang) is a
+pure-Python CLI (no dependencies) that downloads the official Julia build
+from the CI mirror in `MohammadRaziei/julialang` and verifies its
+sha256/md5.
 
 ```bash
-# Index of all builds: 33 versions, 1.10.0 .. 1.13.1, 7 platforms
-curl -sSL -o julia-list.json \
-  https://github.com/MohammadRaziei/julialang/releases/download/__download__/julia-list.json
-
-# Pick linux-x86_64 of the "latest" version from the index
-python3 -I - <<'EOF'
-import json
-d = json.load(open("julia-list.json"))
-f = d["versions"][d["latest"]]["files"]["linux-x86_64"]
-print(f["name"], f["url"], f["size"], f["sha256"])
-EOF
-
-# Download, verify, install
-curl -sSL -o julia.tar.gz \
-  https://github.com/MohammadRaziei/julialang/releases/download/__download__/julia-1.13.1-linux-x86_64.tar.gz
-echo "0f2e18c8dea60a2c8711d089cd9612f7a8df394b89e5208096fe5867647e0908  julia.tar.gz" | sha256sum -c -
-
-mkdir -p /opt/julia
-tar -xzf julia.tar.gz -C /opt/julia --strip-components=1
-ln -sf /opt/julia/bin/julia /usr/local/bin/julia
-
-julia --version
-julia -e 'println(Sys.ARCH, " ", VERSION)'    # x86_64 1.13.1
+pip install --break-system-packages julialang
+julialang install                 # latest Julia, becomes the default
+julia --version                   # julia version 1.13.2
+julia -e 'println(Sys.ARCH, " ", VERSION)'    # x86_64 1.13.2
 ```
+
+Julia lives in `~/.julialang/versions/<version>/`; `/usr/local/bin/julia` is
+a shim that picks the default version. Other versions:
+
+```bash
+julialang install 1.12            # newest 1.12.x
+julialang install 1.10.5          # exactly this version
+julialang install 1.10 --no-default
+JULIALANG_VERSION=1.10 julia -e 'print(VERSION)'
+```
+
+`julialang list` / `julialang use <version>` / `julialang uninstall <version>`
+manage installed versions. If `julia` is not on `PATH`, use
+`python3 -m julialang run -e '...'`. Set `JULIALANG_REPO` to use a fork's
+mirror.
 
 ## 4. GNU Octave (apt)
 
