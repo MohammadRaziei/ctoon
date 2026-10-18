@@ -154,6 +154,22 @@ body {
     font-size: 1.1rem; color: var(--fg2); max-width: 620px; margin: 0 auto 2.5rem;
     line-height: 1.75;
 }
+.hero-callout {
+    display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 0.6rem 1.1rem;
+    margin: -1rem auto 2.5rem; padding: 0.7rem 1.1rem;
+    background: var(--accent-glow2); border: 1px solid var(--accent-glow);
+}
+.hero-callout-text { font-size: 0.95rem; font-weight: 600; color: var(--fg); }
+.hero-callout-text i { color: var(--accent); margin-right: 0.35rem; }
+.hero-callout-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.85rem; font-weight: 600; color: var(--accent);
+    text-decoration: none; padding: 0.35rem 0.85rem;
+    border: 1px solid var(--accent-glow); background: var(--bg);
+    transition: all 0.18s;
+}
+.hero-callout-btn:hover { background: var(--accent-glow); box-shadow: var(--shadow-blue); transform: translateY(-1px); }
 .hero-stats {
     display: flex; align-items: center; justify-content: center; gap: 2.5rem;
     flex-wrap: wrap;

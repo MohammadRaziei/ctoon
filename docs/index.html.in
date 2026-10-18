@@ -58,6 +58,10 @@
         A high-performance serialisation library for the TOON format, a compact, human-readable alternative to JSON.
         Built on a fast C core, exposing idiomatic APIs for @LANG_LIST@.
     </p>
+    <div class="hero-callout">
+        <span class="hero-callout-text"><i class="fa-solid fa-bolt"></i> The fastest TOON implementation in every language it has been benchmarked against.</span>
+        <a class="hero-callout-btn" href="benchmarks/index.html">See the benchmarks <i class="fa-solid fa-arrow-right"></i></a>
+    </div>
     <div class="hero-stats">
         <div class="hero-stat">
             <div class="hero-stat-num">C99</div>
