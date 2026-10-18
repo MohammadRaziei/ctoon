@@ -133,7 +133,8 @@ find_package(Python3 COMPONENTS Interpreter)
 find_program(GO_EXECUTABLE go)
 find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
-find_program(ZIG_EXECUTABLE zig)
+# `pip install ziglang` puts the compiler on PATH as `python-zig`, not `zig`.
+find_program(ZIG_EXECUTABLE NAMES zig python-zig)
 find_program(JULIA_EXECUTABLE julia)
 find_program(NODE_EXECUTABLE node)
 find_program(NPM_EXECUTABLE npm)
@@ -215,8 +216,30 @@ else()
                      "skipped. Install Rust >= 1.87 and make sure 'cargo' is on PATH.")
 endif()
 
+# zig/build.zig targets Zig 0.16 (the same version the CI uses): Zig 0.17
+# removed `b.args`, so the benchmark's build script no longer compiles there.
+# `pip install ziglang` installs the newest release, so say so up front
+# instead of failing deep inside `zig build`.
+set(CTOON_ZIG_USABLE FALSE)
 if(ZIG_EXECUTABLE)
+    execute_process(COMMAND ${ZIG_EXECUTABLE} version
+                    OUTPUT_VARIABLE CTOON_ZIG_VERSION
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    RESULT_VARIABLE _zig_version_rc)
+    if(NOT _zig_version_rc EQUAL 0)
+        message(WARNING "'${ZIG_EXECUTABLE} version' failed - Zig benchmark skipped.")
+    elseif(CTOON_ZIG_VERSION VERSION_LESS 0.16 OR CTOON_ZIG_VERSION VERSION_GREATER_EQUAL 0.17)
+        message(WARNING "Zig ${CTOON_ZIG_VERSION} found, but the Zig benchmark needs Zig 0.16.x - "
+                         "Zig benchmark skipped. Install it with: pip install ziglang==0.16.0")
+    else()
+        set(CTOON_ZIG_USABLE TRUE)
+    endif()
+endif()
+
+if(CTOON_ZIG_USABLE)
     add_subdirectory(zig)
+elseif(ZIG_EXECUTABLE)
+    # Already explained above (wrong or unusable version).
 else()
     message(WARNING "Zig toolchain not found - Zig benchmark skipped. "
                      "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")

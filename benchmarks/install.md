@@ -11,7 +11,7 @@ ended up installed.
 | cmake   | 3.28.3  | preinstalled (`/usr/bin/cmake`) |
 | Go      | 1.24.7  | preinstalled (`/usr/local/go`)  |
 | Rust    | 1.97.0  | preinstalled (`~/.cargo/bin`)   |
-| Zig     | 0.17.0  | `pip install ziglang`       |
+| Zig     | 0.16.0  | `pip install ziglang==0.16.0` |
 | Julia   | 1.13.2  | `pip install julialang` + `julialang install` |
 | Octave  | 8.4.0   | `apt-get install octave octave-dev` |
 
@@ -35,12 +35,51 @@ Result: cmake, Go and Rust were already installed. Octave was missing.
 ## 2. Zig (via PyPI)
 
 ```bash
-pip install --break-system-packages ziglang
-python3 -m ziglang version     # 0.17.0
+pip install --break-system-packages ziglang==0.16.0
+python-zig version             # 0.16.0
+python3 -m ziglang version     # 0.16.0, same compiler
 ```
 
-`--break-system-packages` is needed because pip is on the system Python
-(PEP 668). Zig is invoked as `python3 -m ziglang ...`.
+- **Pin 0.16.0.** A plain `pip install ziglang` installs the newest release
+  (0.17.0 at the time of writing), which this benchmark cannot build:
+  `zig/build.zig` uses `b.args`, which Zig 0.17 removed, and 0.17 also
+  changed the format of the libc paths file that `zig/CMakeLists.txt`
+  writes. The project and its CI target 0.16, so the benchmark's CMake
+  skips any other Zig version with a warning that names this command.
+- **The command is `python-zig`, not `zig`.** That is what the wheel puts
+  on `PATH` (`/usr/local/bin/python-zig`). `python3 -m ziglang` does the
+  same thing. No alias is needed: the benchmark's CMake looks for both
+  `zig` and `python-zig`.
+- `--break-system-packages` is needed because pip is on the system Python
+  (PEP 668).
+
+### Running the Zig benchmark
+
+Normally `cmake --build build-bench --target ctoon_benchmarks_zig` is all
+there is to it: it runs `zig fetch --save` to pull ctoon from GitHub, then
+`zig build ... run`. On a machine whose network goes through an HTTPS
+proxy, Zig's own HTTP client may not get through it: `zig fetch` then
+fails with `unable to discover remote git server capabilities: ReadFailed`
+(or hangs) even though `git` and `pip` work. Nothing in the project can fix
+that. What was run instead, from a scratch copy so the repository stays
+untouched:
+
+```bash
+S=$(mktemp -d)
+cp -r benchmarks/zig/. $S/ && ln -s "$PWD" $S/ctoon-src
+# in $S/build.zig.zon, replace the whole `.ctoon = .{ .url = ..., .hash = ... }`
+# entry with a local path (Zig only accepts a path relative to the build root):
+#     .ctoon = .{ .path = "ctoon-src" },
+cd $S
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
+python-zig build --libc <build-bench>/zig/zig-libc.txt \
+  --search-prefix /usr/lib/x86_64-linux-gnu --release=fast run -- \
+  <build-bench>/corpus_manifest.txt <build-bench>/results/zig.json
+```
+
+`<build-bench>/zig/zig-libc.txt` is the libc paths file CMake wrote during
+configure. The benchmark then runs on the local checkout instead of the
+GitHub master, which is the one difference from the normal path.
 
 ## 3. Julia (via the `julialang` PyPI package)
 
@@ -97,7 +136,7 @@ Notes:
 cmake --version | head -1
 go version
 rustc --version && cargo --version
-python3 -m ziglang version
+python-zig version
 julia --version
 octave --version | head -1
 ```

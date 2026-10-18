@@ -59,7 +59,6 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 get_filename_component(CTOON_ZIG_CRT_DIR "${CTOON_ZIG_CRT1_PATH}" DIRECTORY)
-
 set(CTOON_ZIG_LIBC_FILE ${CMAKE_CURRENT_BINARY_DIR}/zig-libc.txt)
 # CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES's first entry is typically GCC's
 # own internal include dir (freestanding headers like stddef.h, not
@@ -84,6 +83,9 @@ if(NOT CTOON_ZIG_SYS_INCLUDE_DIR)
 endif()
 
 if(CTOON_ZIG_INCLUDE_DIR AND CTOON_ZIG_CRT_DIR)
+    # This is the Zig 0.16 libc paths file format (it has `gcc_dir`; Zig 0.17
+    # renamed it and added fields, which is one more reason the benchmarks
+    # require Zig 0.16.x, see ../CMakeLists.txt).
     file(WRITE ${CTOON_ZIG_LIBC_FILE}
 "include_dir=${CTOON_ZIG_INCLUDE_DIR}
 sys_include_dir=${CTOON_ZIG_SYS_INCLUDE_DIR}

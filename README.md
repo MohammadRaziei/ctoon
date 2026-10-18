@@ -197,9 +197,16 @@ data = ctoon.loads(toon)
 
 Requires Rust 1.70+ and a C compiler on the build host.
 
+```bash
+cargo add ctoon
+```
+
+or add it to `Cargo.toml` yourself (the crate is on
+[crates.io](https://crates.io/crates/ctoon)):
+
 ```toml
 [dependencies]
-ctoon = { git = "https://github.com/mohammadraziei/ctoon.git" }
+ctoon = "0.8"
 ```
 
 ```rust
