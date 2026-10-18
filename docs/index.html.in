@@ -27,12 +27,14 @@
 
 <!-- Topbar -->
 <header class="topbar">
-    <a class="topbar-brand" href="#">
+    <a class="topbar-brand" href="index.html">
         <div class="topbar-logo">@LOGO_CONTENT@</div>
         <span class="topbar-name">CToon</span>
-        <span class="topbar-sep"></span>
-        <span class="topbar-subtitle">Documentation</span>
     </a>
+    <nav class="topbar-nav" aria-label="Main">
+        <a class="topbar-link active" href="index.html">Home</a>
+        <a class="topbar-link" href="benchmarks/index.html">Benchmarks</a>
+    </nav>
     <div class="topbar-actions">
         <span class="topbar-version">v@PROJECT_VERSION@</span>
         <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">

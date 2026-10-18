@@ -78,14 +78,13 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
     <a class="topbar-brand" href="../index.html">
         <div class="topbar-logo">{{ logo_svg|safe }}</div>
         <span class="topbar-name">CToon</span>
-        <span class="topbar-sep"></span>
-        <span class="topbar-subtitle">Benchmarks</span>
     </a>
+    <nav class="topbar-nav" aria-label="Main">
+        <a class="topbar-link" href="../index.html">Home</a>
+        <a class="topbar-link active" href="index.html">Benchmarks</a>
+    </nav>
     <div class="topbar-actions">
         {% if version %}<span class="topbar-version">v{{ version }}</span>{% endif %}
-        <a class="topbar-gh" href="../index.html">
-            <i class="fa-solid fa-book"></i> Docs
-        </a>
         <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
             <i class="fa-brands fa-github"></i> GitHub
         </a>
@@ -273,7 +272,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
             <div class="footer-links-title">Resources</div>
             <div class="footer-links">
                 <a class="footer-link" href="../index.html">
-                    <i class="fa-solid fa-book"></i> Documentation
+                    <i class="fa-solid fa-house"></i> Home
                 </a>
                 <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
                     <i class="fa-brands fa-github"></i> Source code

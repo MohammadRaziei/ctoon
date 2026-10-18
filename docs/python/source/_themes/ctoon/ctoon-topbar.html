@@ -4,9 +4,11 @@
             <img src="{{ pathto('_static/ctoon-sq.svg', 1) }}" alt="CToon" width="36" height="36">
         </div>
         <span class="topbar-name">CToon</span>
-        <span class="topbar-sep"></span>
-        <span class="topbar-subtitle">Python API</span>
     </a>
+    <nav class="topbar-nav" aria-label="Main">
+        <a class="topbar-link" href="{{ pathto(root_doc) }}">Home</a>
+        <a class="topbar-link" href="{{ pathto(root_doc) }}">Benchmarks</a>
+    </nav>
     <div class="topbar-actions">
         <span class="topbar-version">v{{ version }}</span>
         <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">

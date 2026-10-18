@@ -99,14 +99,23 @@ body {
 .topbar-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
 .topbar-logo svg { width: 100%; height: 100%; }
 .topbar-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
-.topbar-sep { width: 1px; height: 18px; background: var(--border2); margin: 0 0.25rem; }
-.topbar-subtitle { font-size: 0.8rem; color: var(--fg2); font-weight: 400; }
 .topbar-version {
     font-size: 0.7rem; color: var(--accent); background: var(--accent-glow2);
     border: 1px solid var(--accent-glow);
     padding: 0.15rem 0.6rem; border-radius: 999px;
     font-family: 'IBM Plex Mono', monospace; font-weight: 500;
 }
+/* Topbar navigation (Home / Benchmarks) */
+.topbar-nav { flex: 1; display: flex; align-items: stretch; align-self: stretch; margin-left: 1.5rem; }
+.topbar-link {
+    display: flex; align-items: center;
+    padding: 0 0.9rem; font-size: 0.85rem; font-weight: 500;
+    color: var(--fg2); text-decoration: none;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.topbar-link:hover { color: var(--fg); }
+.topbar-link.active { color: var(--accent); border-bottom-color: var(--accent); }
 .topbar-actions { display: flex; align-items: center; gap: 0.6rem; }
 .topbar-gh {
     display: flex; align-items: center; gap: 0.4rem;
@@ -454,10 +463,16 @@ pre code.hljs { display: block; overflow-x: auto; background: transparent !impor
     .hero h1 { font-size: 2.2rem; }
     .wrap { padding: 0 1rem; }
     .topbar { padding: 0 1rem; }
-    .topbar-subtitle, .topbar-sep { display: none; }
     .footer-inner { grid-template-columns: 1fr; }
     .footer-links { align-items: flex-start; }
 }
+
+@media (max-width: 640px) {
+    .topbar-nav { margin-left: 0.5rem; }
+    .topbar-link { padding: 0 0.55rem; }
+    .topbar-version, .topbar-gh { display: none; }
+}
+
 
 /* ── Benchmark report specifics (built on the documentation site's tokens) ── */
 .corpus-note { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
@@ -528,14 +543,13 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
   <rect class="st0" x="155.52" y="136.11" width="19.41" height="38.82"/>
 </svg></div>
         <span class="topbar-name">CToon</span>
-        <span class="topbar-sep"></span>
-        <span class="topbar-subtitle">Benchmarks</span>
     </a>
+    <nav class="topbar-nav" aria-label="Main">
+        <a class="topbar-link" href="../index.html">Home</a>
+        <a class="topbar-link active" href="index.html">Benchmarks</a>
+    </nav>
     <div class="topbar-actions">
         <span class="topbar-version">v0.8.3</span>
-        <a class="topbar-gh" href="../index.html">
-            <i class="fa-solid fa-book"></i> Docs
-        </a>
         <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
             <i class="fa-brands fa-github"></i> GitHub
         </a>
@@ -576,7 +590,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
         
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num is-date" title="2026-10-18 07:47 UTC">2026-10-18</div>
+            <div class="hero-stat-num is-date" title="2026-10-18 10:52 UTC">2026-10-18</div>
             <div class="hero-stat-label">Generated</div>
         </div>
         
@@ -1740,7 +1754,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
             <div class="footer-links-title">Resources</div>
             <div class="footer-links">
                 <a class="footer-link" href="../index.html">
-                    <i class="fa-solid fa-book"></i> Documentation
+                    <i class="fa-solid fa-house"></i> Home
                 </a>
                 <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
                     <i class="fa-brands fa-github"></i> Source code
