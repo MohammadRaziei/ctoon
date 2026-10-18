@@ -178,6 +178,22 @@ body {
     font-size: 1.1rem; color: var(--fg2); max-width: 620px; margin: 0 auto 2.5rem;
     line-height: 1.75;
 }
+.hero-callout {
+    display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 0.6rem 1.1rem;
+    margin: -1rem auto 2.5rem; padding: 0.7rem 1.1rem;
+    background: var(--accent-glow2); border: 1px solid var(--accent-glow);
+}
+.hero-callout-text { font-size: 0.95rem; font-weight: 600; color: var(--fg); }
+.hero-callout-text i { color: var(--accent); margin-right: 0.35rem; }
+.hero-callout-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.85rem; font-weight: 600; color: var(--accent);
+    text-decoration: none; padding: 0.35rem 0.85rem;
+    border: 1px solid var(--accent-glow); background: var(--bg);
+    transition: all 0.18s;
+}
+.hero-callout-btn:hover { background: var(--accent-glow); box-shadow: var(--shadow-blue); transform: translateY(-1px); }
 .hero-stats {
     display: flex; align-items: center; justify-content: center; gap: 2.5rem;
     flex-wrap: wrap;
@@ -564,7 +580,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
 <div class="hero">
     <div class="hero-eyebrow">
         <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        C · C++ · Go · Julia · Node.js · Octave · Python · Rust
+        C · C++ · Go · Julia · Node.js · Octave · Python · Rust · Zig
     </div>
     <h1>ctoon, measured honestly</h1>
     <p class="hero-desc">Every ctoon language binding (C, C++, Python, Go, Rust, Zig, MATLAB, Octave) benchmarked head-to-head against every maintained competing TOON implementation that exists for that language.</p>
@@ -572,7 +588,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
         
         
         <div class="hero-stat">
-            <div class="hero-stat-num">8</div>
+            <div class="hero-stat-num">9</div>
             <div class="hero-stat-label">Languages</div>
         </div>
         
@@ -590,7 +606,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
         
         <div class="hero-stat-div"></div>
         <div class="hero-stat">
-            <div class="hero-stat-num is-date" title="2026-10-18 10:52 UTC">2026-10-18</div>
+            <div class="hero-stat-num is-date" title="2026-10-18 13:18 UTC">2026-10-18</div>
             <div class="hero-stat-label">Generated</div>
         </div>
         
@@ -681,22 +697,22 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">245.4</td>
-        <td class="num">37503.6</td>
+        <td class="num">302.65</td>
+        <td class="num">46253.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.244</td>
+        <td class="num">0.198</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">118.7</td>
-        <td class="num">29810.0</td>
+        <td class="num">164.31</td>
+        <td class="num">41264.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.307</td>
+        <td class="num">0.222</td>
         
       </tr>
       
@@ -707,40 +723,40 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
         <td class="num">0</td>
         <td class="num">98.5%</td>
         <td class="num">0%</td>
-        <td class="num">0.719</td>
+        <td class="num">0.607</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">126.74</td>
-        <td class="num">19369.6</td>
+        <td class="num">145.31</td>
+        <td class="num">22207.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.472</td>
+        <td class="num">0.412</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">218.06</td>
-        <td class="num">54763</td>
+        <td class="num">289.7</td>
+        <td class="num">72755.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.167</td>
+        <td class="num">0.126</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">525.92</td>
-        <td class="num">80375.0</td>
+        <td class="num">703.04</td>
+        <td class="num">107443.5</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.114</td>
+        <td class="num">0.085</td>
         
       </tr>
       
@@ -810,55 +826,55 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">261.98</td>
-        <td class="num">40037.5</td>
+        <td class="num">310.03</td>
+        <td class="num">47380.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.228</td>
+        <td class="num">0.193</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">152.21</td>
-        <td class="num">38225.4</td>
+        <td class="num">182.69</td>
+        <td class="num">45881.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.239</td>
+        <td class="num">0.199</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">126.62</td>
-        <td class="num">19350.7</td>
+        <td class="num">149.75</td>
+        <td class="num">22885.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.472</td>
+        <td class="num">0.399</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">239.85</td>
-        <td class="num">60236.2</td>
+        <td class="num">282.2</td>
+        <td class="num">70873.0</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.152</td>
+        <td class="num">0.129</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">535.99</td>
-        <td class="num">81913.6</td>
+        <td class="num">649.52</td>
+        <td class="num">99264.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.112</td>
+        <td class="num">0.092</td>
         
       </tr>
       
@@ -922,132 +938,132 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">226.41</td>
-        <td class="num">34601.0</td>
+        <td class="num">242.42</td>
+        <td class="num">37048.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.264</td>
+        <td class="num">0.247</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON</td>
         <td>gotoon</td>
-        <td class="num">15.88</td>
-        <td class="num">2823.7</td>
+        <td class="num">16.57</td>
+        <td class="num">2947.3</td>
         <td class="num">100%</td>
         <td class="num">81.4%</td>
-        <td class="num">2.635</td>
+        <td class="num">2.524</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON</td>
         <td>toon-go</td>
-        <td class="num">31.1</td>
-        <td class="num">4752.4</td>
+        <td class="num">30.98</td>
+        <td class="num">4735.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.923</td>
+        <td class="num">1.93</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">126.6</td>
-        <td class="num">31794.8</td>
+        <td class="num">128.63</td>
+        <td class="num">32304.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.287</td>
+        <td class="num">0.283</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>toon-go</td>
-        <td class="num">33.47</td>
-        <td class="num">8405.9</td>
+        <td class="num">36.42</td>
+        <td class="num">9145.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.087</td>
+        <td class="num">0.999</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">106.08</td>
-        <td class="num">16212.5</td>
+        <td class="num">117.21</td>
+        <td class="num">17912.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.564</td>
+        <td class="num">0.51</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>toon-go</td>
-        <td class="num">19.37</td>
-        <td class="num">2960.5</td>
+        <td class="num">21.39</td>
+        <td class="num">3268.7</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">3.087</td>
+        <td class="num">2.796</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">70.02</td>
-        <td class="num">17584.6</td>
+        <td class="num">72.25</td>
+        <td class="num">18145.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.52</td>
+        <td class="num">0.504</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>toon-go</td>
-        <td class="num">57.89</td>
-        <td class="num">14538.3</td>
+        <td class="num">54.28</td>
+        <td class="num">13631.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.629</td>
+        <td class="num">0.67</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">148.88</td>
-        <td class="num">22753.6</td>
+        <td class="num">145.79</td>
+        <td class="num">22280.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.402</td>
+        <td class="num">0.41</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>gotoon</td>
-        <td class="num">22.17</td>
-        <td class="num">3943.7</td>
+        <td class="num">24.45</td>
+        <td class="num">4348.8</td>
         <td class="num">100%</td>
         <td class="num">81.4%</td>
-        <td class="num">1.887</td>
+        <td class="num">1.711</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>toon-go</td>
-        <td class="num">52.2</td>
-        <td class="num">7978.3</td>
+        <td class="num">54.3</td>
+        <td class="num">8299.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.146</td>
+        <td class="num">1.101</td>
         
       </tr>
       
@@ -1092,55 +1108,55 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">185.86</td>
-        <td class="num">28404.9</td>
+        <td class="num">247.82</td>
+        <td class="num">37873.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.322</td>
+        <td class="num">0.241</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">130.05</td>
-        <td class="num">32662.0</td>
+        <td class="num">158.62</td>
+        <td class="num">39835.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.28</td>
+        <td class="num">0.229</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">112.78</td>
-        <td class="num">17236.5</td>
+        <td class="num">133.12</td>
+        <td class="num">20344.5</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.53</td>
+        <td class="num">0.449</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">78.58</td>
-        <td class="num">19735.8</td>
+        <td class="num">75.97</td>
+        <td class="num">19079.0</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.463</td>
+        <td class="num">0.479</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">57.4</td>
-        <td class="num">8772.3</td>
+        <td class="num">70.38</td>
+        <td class="num">10756.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.042</td>
+        <td class="num">0.85</td>
         
       </tr>
       
@@ -1185,55 +1201,55 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>@toon-format/toon</td>
-        <td class="num">25.14</td>
-        <td class="num">3842.8</td>
+        <td class="num">33.93</td>
+        <td class="num">5185.5</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">2.378</td>
+        <td class="num">1.763</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>@toon-format/toon</td>
-        <td class="num">6.72</td>
-        <td class="num">1687.6</td>
+        <td class="num">9.38</td>
+        <td class="num">2355.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">5.416</td>
+        <td class="num">3.881</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>@toon-format/toon</td>
-        <td class="num">7.73</td>
-        <td class="num">1181.4</td>
+        <td class="num">9.17</td>
+        <td class="num">1401.7</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">7.737</td>
+        <td class="num">6.521</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>@toon-format/toon</td>
-        <td class="num">7.55</td>
-        <td class="num">1895.6</td>
+        <td class="num">10.1</td>
+        <td class="num">2537.0</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">4.822</td>
+        <td class="num">3.603</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>@toon-format/toon</td>
-        <td class="num">30.01</td>
-        <td class="num">4585.8</td>
+        <td class="num">37.3</td>
+        <td class="num">5700.7</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.993</td>
+        <td class="num">1.603</td>
         
       </tr>
       
@@ -1278,55 +1294,55 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">117.12</td>
-        <td class="num">17899.1</td>
+        <td class="num">99.6</td>
+        <td class="num">15221.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.511</td>
+        <td class="num">0.6</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">57.51</td>
-        <td class="num">14444.2</td>
+        <td class="num">65.6</td>
+        <td class="num">16473.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.633</td>
+        <td class="num">0.555</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">67.86</td>
-        <td class="num">10371.4</td>
+        <td class="num">66.67</td>
+        <td class="num">10188.4</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.881</td>
+        <td class="num">0.897</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">8.87</td>
-        <td class="num">2227.0</td>
+        <td class="num">10.16</td>
+        <td class="num">2551.2</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">4.104</td>
+        <td class="num">3.583</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">23.31</td>
-        <td class="num">3562.9</td>
+        <td class="num">23.83</td>
+        <td class="num">3642.5</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">2.565</td>
+        <td class="num">2.509</td>
         
       </tr>
       
@@ -1371,165 +1387,165 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">284.56</td>
-        <td class="num">43488.7</td>
+        <td class="num">280.99</td>
+        <td class="num">42942.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.21</td>
+        <td class="num">0.213</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON</td>
         <td>toon_format</td>
-        <td class="num">14.89</td>
-        <td class="num">2276.3</td>
+        <td class="num">17.78</td>
+        <td class="num">2717.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">4.015</td>
+        <td class="num">3.364</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON</td>
         <td>toons</td>
-        <td class="num">108.83</td>
-        <td class="num">16632.5</td>
+        <td class="num">101.86</td>
+        <td class="num">15567.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.55</td>
+        <td class="num">0.587</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">169.33</td>
-        <td class="num">42525.8</td>
+        <td class="num">149.86</td>
+        <td class="num">37636.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.215</td>
+        <td class="num">0.243</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>toon_format</td>
-        <td class="num">8.17</td>
-        <td class="num">2051.2</td>
+        <td class="num">7.7</td>
+        <td class="num">1934.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">4.456</td>
+        <td class="num">4.726</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>toons</td>
-        <td class="num">38.21</td>
-        <td class="num">9595.1</td>
+        <td class="num">43.82</td>
+        <td class="num">11005.1</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.953</td>
+        <td class="num">0.831</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">144.99</td>
-        <td class="num">22158.4</td>
+        <td class="num">118.33</td>
+        <td class="num">18083.4</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.412</td>
+        <td class="num">0.505</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>toon_format</td>
-        <td class="num">7.86</td>
-        <td class="num">1201.6</td>
+        <td class="num">7.24</td>
+        <td class="num">1106.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">7.607</td>
+        <td class="num">8.258</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>toons</td>
-        <td class="num">44.66</td>
-        <td class="num">6825.2</td>
+        <td class="num">33.39</td>
+        <td class="num">5102.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">1.339</td>
+        <td class="num">1.791</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">116.08</td>
-        <td class="num">29151.7</td>
+        <td class="num">123.92</td>
+        <td class="num">31121.4</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.314</td>
+        <td class="num">0.294</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>toon_format</td>
-        <td class="num">8.73</td>
-        <td class="num">2192.2</td>
+        <td class="num">8.55</td>
+        <td class="num">2147.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">4.169</td>
+        <td class="num">4.256</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>toons</td>
-        <td class="num">73.8</td>
-        <td class="num">18535.0</td>
+        <td class="num">84.56</td>
+        <td class="num">21236.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.493</td>
+        <td class="num">0.43</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">315.76</td>
-        <td class="num">48256.5</td>
+        <td class="num">321.32</td>
+        <td class="num">49106.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.189</td>
+        <td class="num">0.186</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>toon_format</td>
-        <td class="num">20.06</td>
-        <td class="num">3065.9</td>
+        <td class="num">19.82</td>
+        <td class="num">3028.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">2.981</td>
+        <td class="num">3.018</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>toons</td>
-        <td class="num">256.9</td>
-        <td class="num">39260.7</td>
+        <td class="num">202.15</td>
+        <td class="num">30894.3</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.233</td>
+        <td class="num">0.296</td>
         
       </tr>
       
@@ -1574,96 +1590,189 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       <tr>
         <td>JSON → TOON</td>
         <td>ctoon</td>
-        <td class="num">213.38</td>
-        <td class="num">32609.7</td>
+        <td class="num">267.68</td>
+        <td class="num">40908.9</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.28</td>
+        <td class="num">0.223</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON</td>
         <td>toon-rust</td>
-        <td class="num">32.47</td>
-        <td class="num">5126.5</td>
+        <td class="num">39.13</td>
+        <td class="num">6178.7</td>
         <td class="num">100%</td>
         <td class="num">87.7%</td>
-        <td class="num">1.564</td>
+        <td class="num">1.298</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">130.91</td>
-        <td class="num">32876.0</td>
+        <td class="num">122.7</td>
+        <td class="num">30814.7</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.278</td>
+        <td class="num">0.297</td>
         
       </tr>
       
       <tr>
         <td>TOON → JSON</td>
         <td>toon-rust</td>
-        <td class="num">12.39</td>
-        <td class="num">7640.6</td>
+        <td class="num">14.62</td>
+        <td class="num">9021.4</td>
         <td class="num">36.3%</td>
         <td class="num">94.0%</td>
-        <td class="num">0.408</td>
+        <td class="num">0.346</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>ctoon</td>
-        <td class="num">109.1</td>
-        <td class="num">16673.2</td>
+        <td class="num">137.8</td>
+        <td class="num">21059.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.548</td>
+        <td class="num">0.434</td>
         
       </tr>
       
       <tr>
         <td>JSON → TOON → JSON</td>
         <td>toon-rust</td>
-        <td class="num">19.83</td>
-        <td class="num">3018.2</td>
+        <td class="num">22.09</td>
+        <td class="num">3361.7</td>
         <td class="num">95.6%</td>
         <td class="num">93.1%</td>
-        <td class="num">2.697</td>
+        <td class="num">2.421</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>ctoon</td>
-        <td class="num">86.87</td>
-        <td class="num">21817.0</td>
+        <td class="num">109.1</td>
+        <td class="num">27399.8</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
-        <td class="num">0.419</td>
+        <td class="num">0.334</td>
         
       </tr>
       
       <tr>
         <td>TOON → struct (load)</td>
         <td>toon-rust</td>
-        <td class="num">12.32</td>
-        <td class="num">7598.8</td>
+        <td class="num">15.2</td>
+        <td class="num">9379.7</td>
         <td class="num">36.3%</td>
         <td class="num">94.0%</td>
-        <td class="num">0.411</td>
+        <td class="num">0.333</td>
         
       </tr>
       
       <tr>
         <td>struct → TOON (dump)</td>
         <td>ctoon</td>
-        <td class="num">238.56</td>
-        <td class="num">36457.9</td>
+        <td class="num">294.21</td>
+        <td class="num">44964.0</td>
+        <td class="num">100%</td>
+        <td class="num">100%</td>
+        <td class="num">0.203</td>
+        
+      </tr>
+      
+      <tr>
+        <td>struct → TOON (dump)</td>
+        <td>toon-rust</td>
+        <td class="num">48.13</td>
+        <td class="num">7599.6</td>
+        <td class="num">100%</td>
+        <td class="num">87.7%</td>
+        <td class="num">1.055</td>
+        
+      </tr>
+      
+    </tbody>
+  </table>
+  </div>
+
+  
+</div>
+
+<div class="divider"></div>
+<div class="section" id="zig">
+  <div class="section-header">
+    <div class="section-label">Zig</div>
+    <div class="section-title">Zig bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
+
+  
+  <h3 class="op-title">Average across the whole corpus</h3>
+  <div class="chart-panel"><canvas id="chart-zig-agg"></canvas></div>
+  
+
+  
+  
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Operation</th>
+        <th>Library</th>
+        <th class="num">MB/s</th>
+        <th class="num">docs/s</th>
+        <th class="num" title="share of corpus files converted without an error">Success</th>
+        <th class="num" title="of the outputs produced, the share that were correct">Correct</th>
+        <th class="num">Total time (s)</th>
+        
+      </tr>
+    </thead>
+    <tbody>
+      
+      <tr>
+        <td>JSON → TOON</td>
+        <td>ctoon</td>
+        <td class="num">317.7</td>
+        <td class="num">48552.6</td>
+        <td class="num">100%</td>
+        <td class="num">100%</td>
+        <td class="num">0.188</td>
+        
+      </tr>
+      
+      <tr>
+        <td>TOON → JSON</td>
+        <td>ctoon</td>
+        <td class="num">169.64</td>
+        <td class="num">42604.7</td>
+        <td class="num">100%</td>
+        <td class="num">100%</td>
+        <td class="num">0.215</td>
+        
+      </tr>
+      
+      <tr>
+        <td>JSON → TOON → JSON</td>
+        <td>ctoon</td>
+        <td class="num">139.65</td>
+        <td class="num">21342.5</td>
+        <td class="num">100%</td>
+        <td class="num">100%</td>
+        <td class="num">0.428</td>
+        
+      </tr>
+      
+      <tr>
+        <td>TOON → struct (load)</td>
+        <td>ctoon</td>
+        <td class="num">144.89</td>
+        <td class="num">36388.6</td>
         <td class="num">100%</td>
         <td class="num">100%</td>
         <td class="num">0.251</td>
@@ -1672,12 +1781,12 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
       
       <tr>
         <td>struct → TOON (dump)</td>
-        <td>toon-rust</td>
-        <td class="num">43.44</td>
-        <td class="num">6859.2</td>
+        <td>ctoon</td>
+        <td class="num">309.47</td>
+        <td class="num">47295.4</td>
         <td class="num">100%</td>
-        <td class="num">87.7%</td>
-        <td class="num">1.169</td>
+        <td class="num">100%</td>
+        <td class="num">0.193</td>
         
       </tr>
       
@@ -1783,7 +1892,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
 //# sourceMappingURL=chart.umd.min.js.map
 </script>
 <script>
-const CTOON_BENCH_DATA = {"c": {"language": "c", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 245.3987, "docs_per_sec": 37503.59, "success_rate": 1, "total_time_s": 0.24371, "raw": {"throughput_mb_s": 245.3987, "docs_per_sec": 37503.59, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 118.6978, "docs_per_sec": 29809.95, "success_rate": 1, "total_time_s": 0.306609, "raw": {"throughput_mb_s": 118.6978, "docs_per_sec": 29809.95, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 218.0562, "docs_per_sec": 54763, "success_rate": 1, "total_time_s": 0.166901, "raw": {"throughput_mb_s": 218.0562, "docs_per_sec": 54763, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 525.9207, "docs_per_sec": 80374.97, "success_rate": 1, "total_time_s": 0.113717, "raw": {"throughput_mb_s": 525.9207, "docs_per_sec": 80374.97, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 126.742, "docs_per_sec": 19369.62, "success_rate": 1, "total_time_s": 0.471873, "raw": {"throughput_mb_s": 126.742, "docs_per_sec": 19369.62, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "TOONc", "operation": "toon_to_json", "throughput_mb_s": 0, "docs_per_sec": 0, "success_rate": 0.9846827133479212, "total_time_s": 0.718931, "raw": {"throughput_mb_s": 48.387, "docs_per_sec": 12518.59, "success_rate": 0.9847}, "verified": true, "correct_rate": 0, "verify": {"files": 457, "no_error": 450, "correct": 0, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}], "scaling": [{"library": "ctoon", "operation": "json_to_toon", "size_bytes": 1110, "throughput_mb_s": 305.1623, "docs_per_sec": 287141.07, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 103.1548, "docs_per_sec": 190950.6, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 1110, "throughput_mb_s": 109.9325, "docs_per_sec": 103440.52, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 1110, "throughput_mb_s": 186.2819, "docs_per_sec": 344827.59, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 1110, "throughput_mb_s": 568.4535, "docs_per_sec": 534883.72, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 2398, "throughput_mb_s": 257.0396, "docs_per_sec": 104072.4, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 107.2455, "docs_per_sec": 78969.96, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 2398, "throughput_mb_s": 107.842, "docs_per_sec": 43663.98, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 2398, "throughput_mb_s": 212.4847, "docs_per_sec": 156462.59, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 2398, "throughput_mb_s": 510.1549, "docs_per_sec": 206555.9, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 4657, "throughput_mb_s": 279.9542, "docs_per_sec": 60424.97, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 146.8093, "docs_per_sec": 51517.21, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 4657, "throughput_mb_s": 122.2132, "docs_per_sec": 26378.34, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 4657, "throughput_mb_s": 222.6722, "docs_per_sec": 78138.42, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 4657, "throughput_mb_s": 597.8602, "docs_per_sec": 129041.41, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 7731, "throughput_mb_s": 296.2577, "docs_per_sec": 38549.52, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 155.6887, "docs_per_sec": 32474.48, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 7731, "throughput_mb_s": 130.3194, "docs_per_sec": 16957.36, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 7731, "throughput_mb_s": 204.1703, "docs_per_sec": 42587.05, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 7731, "throughput_mb_s": 617.4695, "docs_per_sec": 80346.11, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 14018, "throughput_mb_s": 318.1083, "docs_per_sec": 18744.34, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 173.1885, "docs_per_sec": 16599.18, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 14018, "throughput_mb_s": 141.4967, "docs_per_sec": 8337.61, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 14018, "throughput_mb_s": 258.9326, "docs_per_sec": 24817.28, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 14018, "throughput_mb_s": 676.0427, "docs_per_sec": 39835.41, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 56.852, "docs_per_sec": 105239.08, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 59.7689, "docs_per_sec": 44010.72, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 62.4366, "docs_per_sec": 21909.76, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 55.7592, "docs_per_sec": 11630.58, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 43.7028, "docs_per_sec": 4223.91, "success_rate": 0.9231}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}, {"library": "TOONc", "preserved": true, "detail": ""}]}, "cpp": {"language": "cpp", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 261.9789, "docs_per_sec": 40037.5, "success_rate": 1, "total_time_s": 0.228286, "raw": {"throughput_mb_s": 261.9789, "docs_per_sec": 40037.5, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 152.2065, "docs_per_sec": 38225.4, "success_rate": 1, "total_time_s": 0.239108, "raw": {"throughput_mb_s": 152.2065, "docs_per_sec": 38225.4, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 239.8495, "docs_per_sec": 60236.2, "success_rate": 1, "total_time_s": 0.151736, "raw": {"throughput_mb_s": 239.8495, "docs_per_sec": 60236.2, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 535.9884, "docs_per_sec": 81913.59, "success_rate": 1, "total_time_s": 0.111581, "raw": {"throughput_mb_s": 535.9884, "docs_per_sec": 81913.59, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 126.618, "docs_per_sec": 19350.67, "success_rate": 1, "total_time_s": 0.472335, "raw": {"throughput_mb_s": 126.618, "docs_per_sec": 19350.67, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}]}, "go": {"language": "go", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 226.40617130363222, "docs_per_sec": 34601.01417238233, "success_rate": 1, "total_time_s": 0.264154107, "raw": {"throughput_mb_s": 226.40617130363222, "docs_per_sec": 34601.01417238233, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 126.60110587581629, "docs_per_sec": 31794.81416353777, "success_rate": 1, "total_time_s": 0.287468263, "raw": {"throughput_mb_s": 126.60110587581629, "docs_per_sec": 31794.81416353777, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 106.08405184368969, "docs_per_sec": 16212.525304288656, "success_rate": 1, "total_time_s": 0.563761649, "raw": {"throughput_mb_s": 106.08405184368969, "docs_per_sec": 16212.525304288656, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "json_to_toon", "throughput_mb_s": 15.877107751422106, "docs_per_sec": 2823.6926747818147, "success_rate": 1, "total_time_s": 2.634847647, "raw": {"throughput_mb_s": 22.698132117086313, "docs_per_sec": 3468.8912698260465, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "json_to_toon", "throughput_mb_s": 31.096526220556655, "docs_per_sec": 4752.394063615694, "success_rate": 1, "total_time_s": 1.923241187, "raw": {"throughput_mb_s": 31.096526220556655, "docs_per_sec": 4752.394063615694, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "toon_to_json", "throughput_mb_s": 33.470825016750055, "docs_per_sec": 8405.91915801855, "success_rate": 1, "total_time_s": 1.087329039, "raw": {"throughput_mb_s": 33.470825016750055, "docs_per_sec": 8405.91915801855, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "roundtrip", "throughput_mb_s": 19.371877063821998, "docs_per_sec": 2960.5491271350334, "success_rate": 1, "total_time_s": 3.087265101, "raw": {"throughput_mb_s": 19.371877063821998, "docs_per_sec": 2960.5491271350334, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 70.018751330126, "docs_per_sec": 17584.626698980363, "success_rate": 1, "total_time_s": 0.519772194, "raw": {"throughput_mb_s": 70.018751330126, "docs_per_sec": 17584.626698980363, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 148.88450538317008, "docs_per_sec": 22753.59744457882, "success_rate": 1, "total_time_s": 0.401694722, "raw": {"throughput_mb_s": 148.88450538317008, "docs_per_sec": 22753.59744457882, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "struct_to_toon", "throughput_mb_s": 22.174742865594144, "docs_per_sec": 3943.706875022003, "success_rate": 1, "total_time_s": 1.8865499479999999, "raw": {"throughput_mb_s": 31.70131809306329, "docs_per_sec": 4844.822693239395, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "toon_to_struct", "throughput_mb_s": 57.888894157746385, "docs_per_sec": 14538.31401507405, "success_rate": 1, "total_time_s": 0.628683628, "raw": {"throughput_mb_s": 57.888894157746385, "docs_per_sec": 14538.31401507405, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "struct_to_toon", "throughput_mb_s": 52.20485541506473, "docs_per_sec": 7978.32025374145, "success_rate": 1, "total_time_s": 1.145604552, "raw": {"throughput_mb_s": 52.20485541506473, "docs_per_sec": 7978.32025374145, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "julia": {"language": "julia", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 185.86318861168533, "docs_per_sec": 28404.944910500864, "success_rate": 1, "total_time_s": 0.321774959564209, "raw": {"throughput_mb_s": 185.86318861168533, "docs_per_sec": 28404.944910500864, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 130.0540598076027, "docs_per_sec": 32661.994807947744, "success_rate": 1, "total_time_s": 0.27983593940734863, "raw": {"throughput_mb_s": 130.0540598076027, "docs_per_sec": 32661.994807947744, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 112.7840556753194, "docs_per_sec": 17236.467921216412, "success_rate": 1, "total_time_s": 0.530271053314209, "raw": {"throughput_mb_s": 112.7840556753194, "docs_per_sec": 17236.467921216412, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 78.584481022295, "docs_per_sec": 19735.83842697867, "success_rate": 1, "total_time_s": 0.4631168842315674, "raw": {"throughput_mb_s": 78.584481022295, "docs_per_sec": 19735.83842697867, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 57.39991847848885, "docs_per_sec": 8772.267033764907, "success_rate": 1, "total_time_s": 1.0419199466705322, "raw": {"throughput_mb_s": 57.39991847848885, "docs_per_sec": 8772.267033764907, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "node": {"language": "node", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "@toon-format/toon", "operation": "json_to_toon", "throughput_mb_s": 25.14483468876387, "docs_per_sec": 3842.813896893859, "success_rate": 1, "total_time_s": 2.378465428, "raw": {"throughput_mb_s": 25.14483468876387, "docs_per_sec": 3842.813896893859, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_json", "throughput_mb_s": 6.719950075165138, "docs_per_sec": 1687.589982415569, "success_rate": 1, "total_time_s": 5.416007499, "raw": {"throughput_mb_s": 6.719950075165138, "docs_per_sec": 1687.589982415569, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "roundtrip", "throughput_mb_s": 7.7301041328218405, "docs_per_sec": 1181.369929599038, "success_rate": 1, "total_time_s": 7.73678064, "raw": {"throughput_mb_s": 7.7301041328218405, "docs_per_sec": 1181.369929599038, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_struct", "throughput_mb_s": 7.548061311313022, "docs_per_sec": 1895.554656381484, "success_rate": 1, "total_time_s": 4.82180768, "raw": {"throughput_mb_s": 7.548061311313022, "docs_per_sec": 1895.554656381484, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "struct_to_toon", "throughput_mb_s": 30.006593550121597, "docs_per_sec": 4585.822739346933, "success_rate": 1, "total_time_s": 1.99309928, "raw": {"throughput_mb_s": 30.006593550121597, "docs_per_sec": 4585.822739346933, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "octave": {"language": "octave", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 117.12016824385381, "docs_per_sec": 17899.143728916435, "success_rate": 1, "total_time_s": 0.510638952255249, "raw": {"throughput_mb_s": 117.12016824385381, "docs_per_sec": 17899.143728916435, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 57.514332144790835, "docs_per_sec": 14444.245882633531, "success_rate": 1, "total_time_s": 0.6327779293060303, "raw": {"throughput_mb_s": 57.514332144790835, "docs_per_sec": 14444.245882633531, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 67.86356579567645, "docs_per_sec": 10371.396629182478, "success_rate": 1, "total_time_s": 0.8812699317932129, "raw": {"throughput_mb_s": 67.86356579567645, "docs_per_sec": 10371.396629182478, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 8.867696758406879, "docs_per_sec": 2227.048243707414, "success_rate": 1, "total_time_s": 4.1040871143341064, "raw": {"throughput_mb_s": 8.867696758406879, "docs_per_sec": 2227.048243707414, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 23.31329800043328, "docs_per_sec": 3562.905330156181, "success_rate": 1, "total_time_s": 2.565322160720825, "raw": {"throughput_mb_s": 23.31329800043328, "docs_per_sec": 3562.905330156181, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "python": {"language": "python", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 284.5615974726798, "docs_per_sec": 43488.74330754601, "success_rate": 1, "total_time_s": 0.21016932899999574, "raw": {"throughput_mb_s": 284.5615974726798, "docs_per_sec": 43488.74330754601, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 169.33000994182015, "docs_per_sec": 42525.82282883997, "success_rate": 1, "total_time_s": 0.2149282340000127, "raw": {"throughput_mb_s": 169.33000994182015, "docs_per_sec": 42525.82282883997, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 144.9900060470139, "docs_per_sec": 22158.412136913532, "success_rate": 1, "total_time_s": 0.41248443000000634, "raw": {"throughput_mb_s": 144.9900060470139, "docs_per_sec": 22158.412136913532, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 116.0766327762836, "docs_per_sec": 29151.680329485578, "success_rate": 1, "total_time_s": 0.31353252700000667, "raw": {"throughput_mb_s": 116.0766327762836, "docs_per_sec": 29151.680329485578, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 315.7586485455685, "docs_per_sec": 48256.50029974351, "success_rate": 1, "total_time_s": 0.1894045349999942, "raw": {"throughput_mb_s": 315.7586485455685, "docs_per_sec": 48256.50029974351, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "json_to_toon", "throughput_mb_s": 14.894301921612616, "docs_per_sec": 2276.2539948008553, "success_rate": 1, "total_time_s": 4.015369120000003, "raw": {"throughput_mb_s": 14.894301921612616, "docs_per_sec": 2276.2539948008553, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_json", "throughput_mb_s": 8.167564380785663, "docs_per_sec": 2051.215823584813, "success_rate": 1, "total_time_s": 4.455893862999972, "raw": {"throughput_mb_s": 8.167564380785663, "docs_per_sec": 2051.215823584813, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "roundtrip", "throughput_mb_s": 7.862431998281703, "docs_per_sec": 1201.5932226383313, "success_rate": 1, "total_time_s": 7.606567537000046, "raw": {"throughput_mb_s": 7.862431998281703, "docs_per_sec": 1201.5932226383313, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_struct", "throughput_mb_s": 8.728890303448884, "docs_per_sec": 2192.1881576950686, "success_rate": 1, "total_time_s": 4.16935013899996, "raw": {"throughput_mb_s": 8.728890303448884, "docs_per_sec": 2192.1881576950686, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "struct_to_toon", "throughput_mb_s": 20.061282341415726, "docs_per_sec": 3065.908983905656, "success_rate": 1, "total_time_s": 2.9811713420000387, "raw": {"throughput_mb_s": 20.061282341415726, "docs_per_sec": 3065.908983905656, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "json_to_toon", "throughput_mb_s": 108.83225079890734, "docs_per_sec": 16632.524770073916, "success_rate": 1, "total_time_s": 0.5495257110000011, "raw": {"throughput_mb_s": 108.83225079890734, "docs_per_sec": 16632.524770073916, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_json", "throughput_mb_s": 38.206076267545534, "docs_per_sec": 9595.138102791305, "success_rate": 1, "total_time_s": 0.9525657579999915, "raw": {"throughput_mb_s": 38.206076267545534, "docs_per_sec": 9595.138102791305, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "roundtrip", "throughput_mb_s": 44.65950936950544, "docs_per_sec": 6825.186379542424, "success_rate": 1, "total_time_s": 1.3391575690000082, "raw": {"throughput_mb_s": 44.65950936950544, "docs_per_sec": 6825.186379542424, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_struct", "throughput_mb_s": 73.80276889458506, "docs_per_sec": 18534.951219617284, "success_rate": 1, "total_time_s": 0.49312242000002016, "raw": {"throughput_mb_s": 73.80276889458506, "docs_per_sec": 18534.951219617284, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "struct_to_toon", "throughput_mb_s": 256.8959440397351, "docs_per_sec": 39260.67981877405, "success_rate": 1, "total_time_s": 0.23280289699999912, "raw": {"throughput_mb_s": 256.8959440397351, "docs_per_sec": 39260.67981877405, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "rust": {"language": "rust", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 213.3762, "docs_per_sec": 32609.67, "success_rate": 1, "total_time_s": 0.280285, "raw": {"throughput_mb_s": 213.3762, "docs_per_sec": 32609.67, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 130.9061, "docs_per_sec": 32875.97, "success_rate": 1, "total_time_s": 0.278015, "raw": {"throughput_mb_s": 130.9061, "docs_per_sec": 32875.97, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 109.0983, "docs_per_sec": 16673.18, "success_rate": 1, "total_time_s": 0.548186, "raw": {"throughput_mb_s": 109.0983, "docs_per_sec": 16673.18, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "json_to_toon", "throughput_mb_s": 32.46557354705505, "docs_per_sec": 5126.482275711159, "success_rate": 1, "total_time_s": 1.564425, "raw": {"throughput_mb_s": 38.2288, "docs_per_sec": 5842.4, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}, {"library": "toon-rust", "operation": "toon_to_json", "throughput_mb_s": 12.38538851886216, "docs_per_sec": 7640.560481927711, "success_rate": 0.36323851203501095, "total_time_s": 0.408347, "raw": {"throughput_mb_s": 13.3025, "docs_per_sec": 8130.34, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "roundtrip", "throughput_mb_s": 19.832879549182326, "docs_per_sec": 3018.1611212814646, "success_rate": 0.9562363238512035, "total_time_s": 2.697008, "raw": {"throughput_mb_s": 20.8287, "docs_per_sec": 3240.63, "success_rate": 0.9562}, "verified": true, "correct_rate": 0.931350114416476, "verify": {"files": 457, "no_error": 437, "correct": 407, "incorrect_examples": ["primitives.json", "const.json", "multipleOf.json"]}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 86.8711, "docs_per_sec": 21816.96, "success_rate": 1, "total_time_s": 0.41894, "raw": {"throughput_mb_s": 86.8711, "docs_per_sec": 21816.96, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 238.5563, "docs_per_sec": 36457.88, "success_rate": 1, "total_time_s": 0.2507, "raw": {"throughput_mb_s": 238.5563, "docs_per_sec": 36457.88, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "toon_to_struct", "throughput_mb_s": 12.317793765509828, "docs_per_sec": 7598.835180722891, "success_rate": 0.36323851203501095, "total_time_s": 0.410589, "raw": {"throughput_mb_s": 13.2299, "docs_per_sec": 8085.94, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "struct_to_toon", "throughput_mb_s": 43.43856849442833, "docs_per_sec": 6859.170809628009, "success_rate": 1, "total_time_s": 1.169238, "raw": {"throughput_mb_s": 51.1497, "docs_per_sec": 7817.06, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}]}};
+const CTOON_BENCH_DATA = {"c": {"language": "c", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 302.6549, "docs_per_sec": 46253.89, "success_rate": 1, "total_time_s": 0.197605, "raw": {"throughput_mb_s": 302.6549, "docs_per_sec": 46253.89, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 164.3061, "docs_per_sec": 41264.11, "success_rate": 1, "total_time_s": 0.2215, "raw": {"throughput_mb_s": 164.3061, "docs_per_sec": 41264.11, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 289.6996, "docs_per_sec": 72755.64, "success_rate": 1, "total_time_s": 0.125626, "raw": {"throughput_mb_s": 289.6996, "docs_per_sec": 72755.64, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 703.039, "docs_per_sec": 107443.46, "success_rate": 1, "total_time_s": 0.085068, "raw": {"throughput_mb_s": 703.039, "docs_per_sec": 107443.46, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 145.3097, "docs_per_sec": 22207.27, "success_rate": 1, "total_time_s": 0.411577, "raw": {"throughput_mb_s": 145.3097, "docs_per_sec": 22207.27, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "TOONc", "operation": "toon_to_json", "throughput_mb_s": 0, "docs_per_sec": 0, "success_rate": 0.9846827133479212, "total_time_s": 0.606735, "raw": {"throughput_mb_s": 57.3346, "docs_per_sec": 14833.49, "success_rate": 0.9847}, "verified": true, "correct_rate": 0, "verify": {"files": 457, "no_error": 450, "correct": 0, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}], "scaling": [{"library": "ctoon", "operation": "json_to_toon", "size_bytes": 1110, "throughput_mb_s": 309.4114, "docs_per_sec": 291139.24, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 152.454, "docs_per_sec": 282208.59, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 1110, "throughput_mb_s": 150.8392, "docs_per_sec": 141931.5, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 1110, "throughput_mb_s": 248.5, "docs_per_sec": 460000, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 1110, "throughput_mb_s": 816.1436, "docs_per_sec": 767946.58, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 2398, "throughput_mb_s": 300.0832, "docs_per_sec": 121500.26, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 149.4867, "docs_per_sec": 110074.18, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 2398, "throughput_mb_s": 133.9127, "docs_per_sec": 54219.71, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 2398, "throughput_mb_s": 257.292, "docs_per_sec": 189456.34, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 2398, "throughput_mb_s": 602.7135, "docs_per_sec": 244031.83, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 4657, "throughput_mb_s": 326.5771, "docs_per_sec": 70487.99, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 180.2864, "docs_per_sec": 63264.74, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 4657, "throughput_mb_s": 147.4371, "docs_per_sec": 31822.63, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 4657, "throughput_mb_s": 296.438, "docs_per_sec": 104023.78, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 4657, "throughput_mb_s": 702.4508, "docs_per_sec": 151616.13, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 7731, "throughput_mb_s": 344.7432, "docs_per_sec": 44858.52, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 187.1283, "docs_per_sec": 39032.34, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 7731, "throughput_mb_s": 156.1458, "docs_per_sec": 20317.94, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 7731, "throughput_mb_s": 304.6585, "docs_per_sec": 63547.49, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 7731, "throughput_mb_s": 750.0493, "docs_per_sec": 97597.6, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 14018, "throughput_mb_s": 352.4469, "docs_per_sec": 20767.72, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 230.5619, "docs_per_sec": 22098.11, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 14018, "throughput_mb_s": 168.8887, "docs_per_sec": 9951.66, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 14018, "throughput_mb_s": 321.958, "docs_per_sec": 30857.92, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 14018, "throughput_mb_s": 802.8447, "docs_per_sec": 47307.13, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 46.8338, "docs_per_sec": 86694.31, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 74.4317, "docs_per_sec": 54807.58, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 71.3683, "docs_per_sec": 25044.03, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 64.5333, "docs_per_sec": 13460.74, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 56.559, "docs_per_sec": 5466.47, "success_rate": 0.9231}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}, {"library": "TOONc", "preserved": true, "detail": ""}]}, "cpp": {"language": "cpp", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 310.0257, "docs_per_sec": 47380.34, "success_rate": 1, "total_time_s": 0.192907, "raw": {"throughput_mb_s": 310.0257, "docs_per_sec": 47380.34, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 182.6934, "docs_per_sec": 45881.92, "success_rate": 1, "total_time_s": 0.199207, "raw": {"throughput_mb_s": 182.6934, "docs_per_sec": 45881.92, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 282.2034, "docs_per_sec": 70873.04, "success_rate": 1, "total_time_s": 0.128963, "raw": {"throughput_mb_s": 282.2034, "docs_per_sec": 70873.04, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 649.5229, "docs_per_sec": 99264.75, "success_rate": 1, "total_time_s": 0.092077, "raw": {"throughput_mb_s": 649.5229, "docs_per_sec": 99264.75, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 149.7504, "docs_per_sec": 22885.93, "success_rate": 1, "total_time_s": 0.399372, "raw": {"throughput_mb_s": 149.7504, "docs_per_sec": 22885.93, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}]}, "go": {"language": "go", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 242.41861285450673, "docs_per_sec": 37048.15028111156, "success_rate": 1, "total_time_s": 0.246705974, "raw": {"throughput_mb_s": 242.41861285450673, "docs_per_sec": 37048.15028111156, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 128.63181432937162, "docs_per_sec": 32304.809692048002, "success_rate": 1, "total_time_s": 0.282930006, "raw": {"throughput_mb_s": 128.63181432937162, "docs_per_sec": 32304.809692048002, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 117.20936503260124, "docs_per_sec": 17912.775421611957, "success_rate": 1, "total_time_s": 0.510250354, "raw": {"throughput_mb_s": 117.20936503260124, "docs_per_sec": 17912.775421611957, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "json_to_toon", "throughput_mb_s": 16.572064180893193, "docs_per_sec": 2947.2884461221124, "success_rate": 1, "total_time_s": 2.524354211, "raw": {"throughput_mb_s": 23.691651409058142, "docs_per_sec": 3620.7280104242077, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "json_to_toon", "throughput_mb_s": 30.984691055229355, "docs_per_sec": 4735.302611919922, "success_rate": 1, "total_time_s": 1.9301828730000001, "raw": {"throughput_mb_s": 30.984691055229355, "docs_per_sec": 4735.302611919922, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "toon_to_json", "throughput_mb_s": 36.41627550616572, "docs_per_sec": 9145.644536331867, "success_rate": 1, "total_time_s": 0.999382817, "raw": {"throughput_mb_s": 36.41627550616572, "docs_per_sec": 9145.644536331867, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "roundtrip", "throughput_mb_s": 21.38840126764551, "docs_per_sec": 3268.728812139626, "success_rate": 1, "total_time_s": 2.796194033, "raw": {"throughput_mb_s": 21.38840126764551, "docs_per_sec": 3268.728812139626, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 72.25070816664481, "docs_per_sec": 18145.16408407843, "success_rate": 1, "total_time_s": 0.503715478, "raw": {"throughput_mb_s": 72.25070816664481, "docs_per_sec": 18145.16408407843, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 145.78665291134027, "docs_per_sec": 22280.16142176838, "success_rate": 1, "total_time_s": 0.410230421, "raw": {"throughput_mb_s": 145.78665291134027, "docs_per_sec": 22280.16142176838, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "struct_to_toon", "throughput_mb_s": 24.452314877848153, "docs_per_sec": 4348.76575022638, "success_rate": 1, "total_time_s": 1.710830251, "raw": {"throughput_mb_s": 34.957366439506565, "docs_per_sec": 5342.435343692085, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "toon_to_struct", "throughput_mb_s": 54.27914368594846, "docs_per_sec": 13631.755224504419, "success_rate": 1, "total_time_s": 0.67049326, "raw": {"throughput_mb_s": 54.27914368594846, "docs_per_sec": 13631.755224504419, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "struct_to_toon", "throughput_mb_s": 54.304111437602515, "docs_per_sec": 8299.143608374643, "success_rate": 1, "total_time_s": 1.101318453, "raw": {"throughput_mb_s": 54.304111437602515, "docs_per_sec": 8299.143608374643, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "julia": {"language": "julia", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 247.81672792523364, "docs_per_sec": 37873.12892454209, "success_rate": 1, "total_time_s": 0.2413320541381836, "raw": {"throughput_mb_s": 247.81672792523364, "docs_per_sec": 37873.12892454209, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 158.61881803295893, "docs_per_sec": 39835.796119702936, "success_rate": 1, "total_time_s": 0.22944188117980957, "raw": {"throughput_mb_s": 158.61881803295893, "docs_per_sec": 39835.796119702936, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 133.12111811235462, "docs_per_sec": 20344.52359636307, "success_rate": 1, "total_time_s": 0.449260950088501, "raw": {"throughput_mb_s": 133.12111811235462, "docs_per_sec": 20344.52359636307, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 75.96920003165245, "docs_per_sec": 19079.03237060443, "success_rate": 1, "total_time_s": 0.47905993461608887, "raw": {"throughput_mb_s": 75.96920003165245, "docs_per_sec": 19079.03237060443, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 70.38391863095876, "docs_per_sec": 10756.575017522673, "success_rate": 1, "total_time_s": 0.8497128486633301, "raw": {"throughput_mb_s": 70.38391863095876, "docs_per_sec": 10756.575017522673, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "node": {"language": "node", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "@toon-format/toon", "operation": "json_to_toon", "throughput_mb_s": 33.9304316518267, "docs_per_sec": 5185.4918074888665, "success_rate": 1, "total_time_s": 1.762610055, "raw": {"throughput_mb_s": 33.9304316518267, "docs_per_sec": 5185.4918074888665, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_json", "throughput_mb_s": 9.378507379364299, "docs_per_sec": 2355.237007179215, "success_rate": 1, "total_time_s": 3.880713479, "raw": {"throughput_mb_s": 9.378507379364299, "docs_per_sec": 2355.237007179215, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "roundtrip", "throughput_mb_s": 9.17178481832799, "docs_per_sec": 1401.6979071626424, "success_rate": 1, "total_time_s": 6.520663228, "raw": {"throughput_mb_s": 9.17178481832799, "docs_per_sec": 1401.6979071626424, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_struct", "throughput_mb_s": 10.102400540858666, "docs_per_sec": 2537.029257718667, "success_rate": 1, "total_time_s": 3.602638784, "raw": {"throughput_mb_s": 10.102400540858666, "docs_per_sec": 2537.029257718667, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "struct_to_toon", "throughput_mb_s": 37.301517465172736, "docs_per_sec": 5700.685308320935, "success_rate": 1, "total_time_s": 1.603316006, "raw": {"throughput_mb_s": 37.301517465172736, "docs_per_sec": 5700.685308320935, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "octave": {"language": "octave", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 99.59733388356669, "docs_per_sec": 15221.178563260743, "success_rate": 1, "total_time_s": 0.6004791259765625, "raw": {"throughput_mb_s": 99.59733388356669, "docs_per_sec": 15221.178563260743, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 65.59616071011277, "docs_per_sec": 16473.92986965996, "success_rate": 1, "total_time_s": 0.5548160076141357, "raw": {"throughput_mb_s": 65.59616071011277, "docs_per_sec": 16473.92986965996, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 66.66627200494963, "docs_per_sec": 10188.417608854072, "success_rate": 1, "total_time_s": 0.897097110748291, "raw": {"throughput_mb_s": 66.66627200494963, "docs_per_sec": 10188.417608854072, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 10.158375020751421, "docs_per_sec": 2551.191348242503, "success_rate": 1, "total_time_s": 3.5826399326324463, "raw": {"throughput_mb_s": 10.158375020751421, "docs_per_sec": 2551.191348242503, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 23.83417588424828, "docs_per_sec": 3642.509622460532, "success_rate": 1, "total_time_s": 2.509258985519409, "raw": {"throughput_mb_s": 23.83417588424828, "docs_per_sec": 3642.509622460532, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "python": {"language": "python", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 280.9894992049065, "docs_per_sec": 42942.82964239857, "success_rate": 1, "total_time_s": 0.21284112099999675, "raw": {"throughput_mb_s": 280.9894992049065, "docs_per_sec": 42942.82964239857, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 149.86182856186386, "docs_per_sec": 37636.551089895416, "success_rate": 1, "total_time_s": 0.2428490320000094, "raw": {"throughput_mb_s": 149.86182856186386, "docs_per_sec": 37636.551089895416, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 118.32569325666708, "docs_per_sec": 18083.380703612558, "success_rate": 1, "total_time_s": 0.5054364640000131, "raw": {"throughput_mb_s": 118.32569325666708, "docs_per_sec": 18083.380703612558, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 123.91954520344059, "docs_per_sec": 31121.36251667721, "success_rate": 1, "total_time_s": 0.2936889409999992, "raw": {"throughput_mb_s": 123.91954520344059, "docs_per_sec": 31121.36251667721, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 321.32271349012314, "docs_per_sec": 49106.84059256353, "success_rate": 1, "total_time_s": 0.18612478200000737, "raw": {"throughput_mb_s": 321.32271349012314, "docs_per_sec": 49106.84059256353, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "json_to_toon", "throughput_mb_s": 17.78018777665429, "docs_per_sec": 2717.2957596751003, "success_rate": 1, "total_time_s": 3.363638266999999, "raw": {"throughput_mb_s": 17.78018777665429, "docs_per_sec": 2717.2957596751003, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_json", "throughput_mb_s": 7.701072331736904, "docs_per_sec": 1934.0602276232573, "success_rate": 1, "total_time_s": 4.7258093979999956, "raw": {"throughput_mb_s": 7.701072331736904, "docs_per_sec": 1934.0602276232573, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "roundtrip", "throughput_mb_s": 7.24246476095053, "docs_per_sec": 1106.845384972104, "success_rate": 1, "total_time_s": 8.257702588, "raw": {"throughput_mb_s": 7.24246476095053, "docs_per_sec": 1106.845384972104, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_struct", "throughput_mb_s": 8.552112861862463, "docs_per_sec": 2147.7919743863768, "success_rate": 1, "total_time_s": 4.255533175000011, "raw": {"throughput_mb_s": 8.552112861862463, "docs_per_sec": 2147.7919743863768, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "struct_to_toon", "throughput_mb_s": 19.819309632747533, "docs_per_sec": 3028.928979898921, "success_rate": 1, "total_time_s": 3.0175682759999916, "raw": {"throughput_mb_s": 19.819309632747533, "docs_per_sec": 3028.928979898921, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "json_to_toon", "throughput_mb_s": 101.86082159108489, "docs_per_sec": 15567.10098134632, "success_rate": 1, "total_time_s": 0.5871356530000185, "raw": {"throughput_mb_s": 101.86082159108489, "docs_per_sec": 15567.10098134632, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_json", "throughput_mb_s": 43.820379760306444, "docs_per_sec": 11005.123702641684, "success_rate": 1, "total_time_s": 0.8305222409999828, "raw": {"throughput_mb_s": 43.820379760306444, "docs_per_sec": 11005.123702641684, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "roundtrip", "throughput_mb_s": 33.38607066995141, "docs_per_sec": 5102.298659791939, "success_rate": 1, "total_time_s": 1.79134947, "raw": {"throughput_mb_s": 33.38607066995141, "docs_per_sec": 5102.298659791939, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_struct", "throughput_mb_s": 84.5590821752396, "docs_per_sec": 21236.30978577917, "success_rate": 1, "total_time_s": 0.4303949270000089, "raw": {"throughput_mb_s": 84.5590821752396, "docs_per_sec": 21236.30978577917, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "struct_to_toon", "throughput_mb_s": 202.1519864928317, "docs_per_sec": 30894.315774781608, "success_rate": 1, "total_time_s": 0.2958473030000164, "raw": {"throughput_mb_s": 202.1519864928317, "docs_per_sec": 30894.315774781608, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "rust": {"language": "rust", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 267.6809, "docs_per_sec": 40908.92, "success_rate": 1, "total_time_s": 0.223423, "raw": {"throughput_mb_s": 267.6809, "docs_per_sec": 40908.92, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 122.6986, "docs_per_sec": 30814.73, "success_rate": 1, "total_time_s": 0.296611, "raw": {"throughput_mb_s": 122.6986, "docs_per_sec": 30814.73, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 137.8, "docs_per_sec": 21059.58, "success_rate": 1, "total_time_s": 0.434007, "raw": {"throughput_mb_s": 137.8, "docs_per_sec": 21059.58, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "json_to_toon", "throughput_mb_s": 39.12933531702107, "docs_per_sec": 6178.716805251641, "success_rate": 1, "total_time_s": 1.298003, "raw": {"throughput_mb_s": 46.0755, "docs_per_sec": 7041.58, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}, {"library": "toon-rust", "operation": "toon_to_json", "throughput_mb_s": 14.623836260042268, "docs_per_sec": 9021.423614457832, "success_rate": 0.36323851203501095, "total_time_s": 0.345843, "raw": {"throughput_mb_s": 15.7067, "docs_per_sec": 9599.72, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "roundtrip", "throughput_mb_s": 22.090712442594835, "docs_per_sec": 3361.745491990847, "success_rate": 0.9562363238512035, "total_time_s": 2.42136, "raw": {"throughput_mb_s": 23.1999, "docs_per_sec": 3609.54, "success_rate": 0.9562}, "verified": true, "correct_rate": 0.931350114416476, "verify": {"files": 457, "no_error": 437, "correct": 407, "incorrect_examples": ["primitives.json", "const.json", "multipleOf.json"]}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 109.1011, "docs_per_sec": 27399.84, "success_rate": 1, "total_time_s": 0.333579, "raw": {"throughput_mb_s": 109.1011, "docs_per_sec": 27399.84, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 294.2149, "docs_per_sec": 44964.02, "success_rate": 1, "total_time_s": 0.203274, "raw": {"throughput_mb_s": 294.2149, "docs_per_sec": 44964.02, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "toon_to_struct", "throughput_mb_s": 15.204536641114574, "docs_per_sec": 9379.716144578313, "success_rate": 0.36323851203501095, "total_time_s": 0.332633, "raw": {"throughput_mb_s": 16.3304, "docs_per_sec": 9980.98, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "struct_to_toon", "throughput_mb_s": 48.1274136757576, "docs_per_sec": 7599.572997811816, "success_rate": 1, "total_time_s": 1.055323, "raw": {"throughput_mb_s": 56.6709, "docs_per_sec": 8660.86, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}]}, "zig": {"language": "zig", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 317.696, "docs_per_sec": 48552.58, "success_rate": 1, "total_time_s": 0.18825, "raw": {"throughput_mb_s": 317.696, "docs_per_sec": 48552.58, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 169.6442, "docs_per_sec": 42604.74, "success_rate": 1, "total_time_s": 0.21453, "raw": {"throughput_mb_s": 169.6442, "docs_per_sec": 42604.74, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 139.6514, "docs_per_sec": 21342.52, "success_rate": 1, "total_time_s": 0.428253, "raw": {"throughput_mb_s": 139.6514, "docs_per_sec": 21342.52, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 144.8926, "docs_per_sec": 36388.58, "success_rate": 1, "total_time_s": 0.251178, "raw": {"throughput_mb_s": 144.8926, "docs_per_sec": 36388.58, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 309.4698, "docs_per_sec": 47295.4, "success_rate": 1, "total_time_s": 0.193253, "raw": {"throughput_mb_s": 309.4698, "docs_per_sec": 47295.4, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}};
 
 /* Theme: same state object and storage key as the documentation site, so the
    choice made there carries over (and back). Only "theme" is touched. */
@@ -1828,7 +1937,7 @@ styleCharts();
 
 new Chart(document.getElementById('chart-c-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [245.4, 118.7, 126.74, 218.06, 525.92], "backgroundColor": "#4dabf7"}, {"label": "TOONc", "data": [null, 0, null, null, null], "backgroundColor": "#ff6b81"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [302.65, 164.31, 145.31, 289.7, 703.04], "backgroundColor": "#4dabf7"}, {"label": "TOONc", "data": [null, 0, null, null, null], "backgroundColor": "#ff6b81"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1840,7 +1949,7 @@ new Chart(document.getElementById('chart-c-agg'), {
 
 new Chart(document.getElementById('chart-c-json_to_toon'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [305.16, 257.04, 279.95, 296.26, 318.11], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [309.41, 300.08, 326.58, 344.74, 352.45], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1854,7 +1963,7 @@ new Chart(document.getElementById('chart-c-json_to_toon'), {
 
 new Chart(document.getElementById('chart-c-toon_to_json'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [103.15, 107.25, 146.81, 155.69, 173.19], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}, {"label": "TOONc", "data": [56.85, 59.77, 62.44, 55.76, 43.7], "borderColor": "#ff6b81", "backgroundColor": "#ff6b81", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [152.45, 149.49, 180.29, 187.13, 230.56], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}, {"label": "TOONc", "data": [46.83, 74.43, 71.37, 64.53, 56.56], "borderColor": "#ff6b81", "backgroundColor": "#ff6b81", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1868,7 +1977,7 @@ new Chart(document.getElementById('chart-c-toon_to_json'), {
 
 new Chart(document.getElementById('chart-c-roundtrip'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [109.93, 107.84, 122.21, 130.32, 141.5], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [150.84, 133.91, 147.44, 156.15, 168.89], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1882,7 +1991,7 @@ new Chart(document.getElementById('chart-c-roundtrip'), {
 
 new Chart(document.getElementById('chart-c-toon_to_struct'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [186.28, 212.48, 222.67, 204.17, 258.93], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [248.5, 257.29, 296.44, 304.66, 321.96], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1896,7 +2005,7 @@ new Chart(document.getElementById('chart-c-toon_to_struct'), {
 
 new Chart(document.getElementById('chart-c-struct_to_toon'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [568.45, 510.15, 597.86, 617.47, 676.04], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [816.14, 602.71, 702.45, 750.05, 802.84], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1910,7 +2019,7 @@ new Chart(document.getElementById('chart-c-struct_to_toon'), {
 
 new Chart(document.getElementById('chart-cpp-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [261.98, 152.21, 126.62, 239.85, 535.99], "backgroundColor": "#4dabf7"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [310.03, 182.69, 149.75, 282.2, 649.52], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1922,7 +2031,7 @@ new Chart(document.getElementById('chart-cpp-agg'), {
 
 new Chart(document.getElementById('chart-go-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [226.41, 126.6, 106.08, 70.02, 148.88], "backgroundColor": "#4dabf7"}, {"label": "gotoon", "data": [15.88, null, null, null, 22.17], "backgroundColor": "#ff6b81"}, {"label": "toon-go", "data": [31.1, 33.47, 19.37, 57.89, 52.2], "backgroundColor": "#35d0ba"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [242.42, 128.63, 117.21, 72.25, 145.79], "backgroundColor": "#4dabf7"}, {"label": "gotoon", "data": [16.57, null, null, null, 24.45], "backgroundColor": "#ff6b81"}, {"label": "toon-go", "data": [30.98, 36.42, 21.39, 54.28, 54.3], "backgroundColor": "#35d0ba"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1934,7 +2043,7 @@ new Chart(document.getElementById('chart-go-agg'), {
 
 new Chart(document.getElementById('chart-julia-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [185.86, 130.05, 112.78, 78.58, 57.4], "backgroundColor": "#4dabf7"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [247.82, 158.62, 133.12, 75.97, 70.38], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1946,7 +2055,7 @@ new Chart(document.getElementById('chart-julia-agg'), {
 
 new Chart(document.getElementById('chart-node-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "@toon-format/toon", "data": [25.14, 6.72, 7.73, 7.55, 30.01], "backgroundColor": "#ff6b81"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "@toon-format/toon", "data": [33.93, 9.38, 9.17, 10.1, 37.3], "backgroundColor": "#ff6b81"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1958,7 +2067,7 @@ new Chart(document.getElementById('chart-node-agg'), {
 
 new Chart(document.getElementById('chart-octave-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [117.12, 57.51, 67.86, 8.87, 23.31], "backgroundColor": "#4dabf7"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [99.6, 65.6, 66.67, 10.16, 23.83], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1970,7 +2079,7 @@ new Chart(document.getElementById('chart-octave-agg'), {
 
 new Chart(document.getElementById('chart-python-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [284.56, 169.33, 144.99, 116.08, 315.76], "backgroundColor": "#4dabf7"}, {"label": "toon_format", "data": [14.89, 8.17, 7.86, 8.73, 20.06], "backgroundColor": "#ff6b81"}, {"label": "toons", "data": [108.83, 38.21, 44.66, 73.8, 256.9], "backgroundColor": "#35d0ba"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [280.99, 149.86, 118.33, 123.92, 321.32], "backgroundColor": "#4dabf7"}, {"label": "toon_format", "data": [17.78, 7.7, 7.24, 8.55, 19.82], "backgroundColor": "#ff6b81"}, {"label": "toons", "data": [101.86, 43.82, 33.39, 84.56, 202.15], "backgroundColor": "#35d0ba"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1982,7 +2091,19 @@ new Chart(document.getElementById('chart-python-agg'), {
 
 new Chart(document.getElementById('chart-rust-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [213.38, 130.91, 109.1, 86.87, 238.56], "backgroundColor": "#4dabf7"}, {"label": "toon-rust", "data": [32.47, 12.39, 19.83, 12.32, 43.44], "backgroundColor": "#ff6b81"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [267.68, 122.7, 137.8, 109.1, 294.21], "backgroundColor": "#4dabf7"}, {"label": "toon-rust", "data": [39.13, 14.62, 22.09, 15.2, 48.13], "backgroundColor": "#ff6b81"}] },
+  options: {
+    indexAxis: 'x',
+    responsive: true, maintainAspectRatio: false,
+    scales: { y: { title: { display: true, text: 'MB/s (higher is better)' }, beginAtZero: true } },
+    plugins: { legend: { display: true, position: 'top' } }
+  }
+});
+
+
+new Chart(document.getElementById('chart-zig-agg'), {
+  type: 'bar',
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [317.7, 169.64, 139.65, 144.89, 309.47], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
