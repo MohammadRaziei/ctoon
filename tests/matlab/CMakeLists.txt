@@ -17,7 +17,7 @@ ctoon_require_lang(CTOON_BUILD_MATLAB Matlab_FOUND "MATLAB"
     "Set Matlab_ROOT_DIR or the MATLAB_DIR environment variable.")
 
 if(NOT Matlab_FOUND OR NOT TARGET ctoon_build_mex)
-    message(STATUS "MATLAB / ctoon_build_mex not available — skipping MATLAB tests.")
+    message(STATUS "MATLAB / ctoon_build_mex not available - skipping MATLAB tests.")
     return()
 endif()
 

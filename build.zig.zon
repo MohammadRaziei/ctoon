@@ -3,11 +3,11 @@
     .version = "0.8.3",
     .minimum_zig_version = "0.16.0",
     // Required top-level field as of Zig 0.14+ (package identity for the
-    // fetch cache) — top 16 bits are the package ID (must be nonzero),
+    // fetch cache) - top 16 bits are the package ID (must be nonzero),
     // the rest is arbitrary. Generated once; keep stable across releases.
     .fingerprint = 0xf7097a6113113cd2,
     // Lives at the repo root (like Cargo.toml/pyproject.toml). Only the
-    // files a downstream `zig build` actually needs are listed — the
+    // files a downstream `zig build` actually needs are listed - the
     // binding's own source under src/bindings/zig/, plus the shared C
     // core it compiles against.
     .paths = .{
@@ -18,7 +18,7 @@
         "include/ctoon.h",
         "LICENSE",
     },
-    // No dependencies — matches ctoon's own zero-dependency C core, and
+    // No dependencies - matches ctoon's own zero-dependency C core, and
     // the same call the Rust binding's Cargo.toml makes.
     .dependencies = .{},
 }

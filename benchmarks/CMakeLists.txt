@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.19)
 
 # ==============================================================================
-# CToon Benchmarks — fully standalone CMake project.
+# CToon Benchmarks - fully standalone CMake project.
 #
-# This has NO relationship to the repository root — not even for ctoon
+# This has NO relationship to the repository root - not even for ctoon
 # itself. Every language folder fetches ctoon the exact same way it fetches
 # any competitor: from https://github.com/mohammadraziei/ctoon.git (C/C++),
 # `go get github.com/mohammadraziei/ctoon` (Go), a git dependency in
 # Cargo.toml (Rust), `zig fetch --save` (Zig), or
 # `pip install git+https://github.com/mohammadraziei/ctoon.git` (Python).
-# ctoon is never a special case here — it's benchmarked exactly like
+# ctoon is never a special case here - it's benchmarked exactly like
 # gotoon, toon-go, or TOONc: one more entry in the same results table.
 #
 # Build it on its own:
@@ -22,7 +22,7 @@ cmake_minimum_required(VERSION 3.19)
 # rust, zig, matlab, octave), each with its own CMakeLists.txt that fetches its
 # own dependencies and defines a ctoon_benchmarks_<lang> target. A
 # language is skipped with a warning only when its toolchain isn't found
-# — see "Toolchain detection" below.
+# - see "Toolchain detection" below.
 # ==============================================================================
 
 project(CToonBenchmarks LANGUAGES C CXX)
@@ -36,7 +36,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(WARNING "Benchmarks are being built in Debug mode — numbers will "
+    message(WARNING "Benchmarks are being built in Debug mode - numbers will "
                      "not reflect real performance. Pass -DCMAKE_BUILD_TYPE=Release.")
 endif()
 
@@ -44,7 +44,7 @@ set(CTOON_BENCH_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CTOON_BENCH_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(CTOON_GITHUB_URL "https://github.com/mohammadraziei/ctoon.git")
 
-# Every language benchmark writes its own JSON results file here — kept
+# Every language benchmark writes its own JSON results file here - kept
 # separate per language rather than merged, since each language's set of
 # libraries/operations differs.
 set(CTOON_BENCH_RESULTS_DIR ${CTOON_BENCH_BINARY_DIR}/results)
@@ -52,7 +52,7 @@ file(MAKE_DIRECTORY ${CTOON_BENCH_RESULTS_DIR})
 
 # When ON, every language benchmark writes a per-file diagnostic log
 # (which files failed, and why, for each library/operation) into
-# build-bench/logs/<language>.log — off by default since it's extra I/O
+# build-bench/logs/<language>.log - off by default since it's extra I/O
 # and only useful when actively investigating a success-rate anomaly.
 option(CTOON_BENCH_LOG_DEBUG
     "Write per-file diagnostic logs (which files failed and why) to build-bench/logs/" OFF)
@@ -65,7 +65,7 @@ endif()
 # ── Corpus: fetch real-world JSON to benchmark against ────────────────────
 include(FetchContent)
 
-# Small, varied JSON shapes covering the format's edge cases — the same
+# Small, varied JSON shapes covering the format's edge cases - the same
 # fixtures the main repo's own spec-conformance tests use.
 # The spec version is NOT hardcoded here: it is read from the repository's
 # supported_spec.conf, the same single source of truth the root build and
@@ -95,7 +95,7 @@ FetchContent_Declare(
 
 # A real "repo full of JSON" for the JSON→TOON conversion benchmark:
 # JSON Schema Test Suite. ~540 real JSON files, deeply nested, varied
-# shapes — not synthetic data generated just for this benchmark.
+# shapes - not synthetic data generated just for this benchmark.
 FetchContent_Declare(
     json_schema_test_suite
     GIT_REPOSITORY https://github.com/json-schema-org/JSON-Schema-Test-Suite.git
@@ -126,8 +126,8 @@ message(STATUS "CToon benchmarks: corpus manifest has ${CTOON_BENCH_CORPUS_COUNT
 
 # ── Toolchain detection ────────────────────────────────────────────────────
 # A language is skipped (with a warning) only when its toolchain itself
-# isn't found. Everything else — venvs, pip installs, go module fetches,
-# FetchContent — happens inside that language's own CMakeLists.txt once we
+# isn't found. Everything else - venvs, pip installs, go module fetches,
+# FetchContent - happens inside that language's own CMakeLists.txt once we
 # know the toolchain exists.
 find_package(Python3 COMPONENTS Interpreter)
 find_program(GO_EXECUTABLE go)
@@ -153,7 +153,7 @@ add_subdirectory(cpp)
 if(Python3_Interpreter_FOUND)
     add_subdirectory(python)
 else()
-    message(WARNING "Python3 not found — Python benchmark skipped.")
+    message(WARNING "Python3 not found - Python benchmark skipped.")
 endif()
 
 if(GO_EXECUTABLE)
@@ -171,17 +171,17 @@ if(GO_EXECUTABLE)
         message(WARNING "Go ${CTOON_GO_VERSION} found, but this benchmark's "
                          "go.mod requires >= 1.23 (needed by toon-go, one of "
                          "the three peer implementations tested together in "
-                         "one module) — Go benchmark skipped.")
+                         "one module) - Go benchmark skipped.")
     endif()
 else()
-    message(WARNING "Go toolchain not found — Go benchmark skipped. "
+    message(WARNING "Go toolchain not found - Go benchmark skipped. "
                      "Install Go >= 1.23 and make sure 'go' is on PATH.")
 endif()
 
 if(Matlab_FOUND)
     add_subdirectory(matlab)
 else()
-    message(WARNING "MATLAB not found — MATLAB benchmark skipped. "
+    message(WARNING "MATLAB not found - MATLAB benchmark skipped. "
                      "Set Matlab_ROOT_DIR or the MATLAB_DIR environment variable.")
 endif()
 
@@ -190,7 +190,7 @@ endif()
 if(OCTAVE_EXECUTABLE AND MKOCTFILE_EXECUTABLE)
     add_subdirectory(octave)
 else()
-    message(WARNING "GNU Octave (octave-cli + mkoctfile) not found — Octave "
+    message(WARNING "GNU Octave (octave-cli + mkoctfile) not found - Octave "
                      "benchmark skipped. On Debian/Ubuntu: apt install octave octave-dev.")
 endif()
 
@@ -208,46 +208,46 @@ if(CARGO_EXECUTABLE AND RUSTC_EXECUTABLE)
     else()
         message(WARNING "rustc ${CTOON_RUSTC_VERSION} found, but toon-rust "
                          "requires >= 1.87 (uses a stdlib integer method "
-                         "stabilized in that release) — Rust benchmark skipped.")
+                         "stabilized in that release) - Rust benchmark skipped.")
     endif()
 else()
-    message(WARNING "Rust toolchain (cargo/rustc) not found — Rust benchmark "
+    message(WARNING "Rust toolchain (cargo/rustc) not found - Rust benchmark "
                      "skipped. Install Rust >= 1.87 and make sure 'cargo' is on PATH.")
 endif()
 
 if(ZIG_EXECUTABLE)
     add_subdirectory(zig)
 else()
-    message(WARNING "Zig toolchain not found — Zig benchmark skipped. "
+    message(WARNING "Zig toolchain not found - Zig benchmark skipped. "
                      "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
 endif()
 
 if(JULIA_EXECUTABLE)
     add_subdirectory(julia)
 else()
-    message(WARNING "Julia toolchain not found — Julia benchmark skipped. "
+    message(WARNING "Julia toolchain not found - Julia benchmark skipped. "
                      "Install Julia and make sure 'julia' is on PATH.")
 endif()
 
 # ctoon has no Node.js binding (see benchmarks/node/CMakeLists.txt's own
 # comment), so this measures only the reference @toon-format/toon
-# package — kept as a standalone reference point, not a ctoon-vs-X
+# package - kept as a standalone reference point, not a ctoon-vs-X
 # comparison like every other language here.
 if(NODE_EXECUTABLE AND NPM_EXECUTABLE)
     add_subdirectory(node)
 else()
-    message(WARNING "Node.js toolchain (node/npm) not found — Node.js benchmark "
+    message(WARNING "Node.js toolchain (node/npm) not found - Node.js benchmark "
                      "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
 endif()
 
 # ── Report: combine every language's JSON into one standalone HTML ───────
-# Needs only Python3 + jinja2 (installed into its own throwaway venv) —
+# Needs only Python3 + jinja2 (installed into its own throwaway venv) -
 # independent of which language toolchains were detected above. Modeled
 # on https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report.
 if(Python3_Interpreter_FOUND)
     add_subdirectory(report)
 else()
-    message(WARNING "Python3 not found — HTML report skipped (per-language "
+    message(WARNING "Python3 not found - HTML report skipped (per-language "
                      "JSON results are still written to CTOON_BENCH_RESULTS_DIR).")
 endif()
 

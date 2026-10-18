@@ -148,10 +148,10 @@ var DumpsToon = binding.DumpsToon
 // ---------------------------------------------------------------------------
 
 // Marshal serialises v to TOON-formatted bytes. Same signature as
-// encoding/json.Marshal — for anyone reaching for the stdlib-idiomatic
+// encoding/json.Marshal - for anyone reaching for the stdlib-idiomatic
 // name out of habit. Loads/Dumps remain the primary API (kept consistent
 // with every other ctoon binding's naming); this is a thin wrapper, not
-// a separate implementation. Does not support struct reflection/tags —
+// a separate implementation. Does not support struct reflection/tags -
 // see binding.Marshal's doc comment for exactly what's supported.
 var Marshal = binding.Marshal
 

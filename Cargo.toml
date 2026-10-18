@@ -3,7 +3,7 @@ name = "ctoon"
 version = "0.8.3"
 edition = "2021"
 rust-version = "1.70"
-description = "Rust bindings for CToon — a high-performance, zero-dependency C99 TOON/JSON serialization library"
+description = "Rust bindings for CToon - a high-performance, zero-dependency C99 TOON/JSON serialization library"
 license = "MIT"
 repository = "https://github.com/mohammadraziei/ctoon"
 readme = "src/bindings/rust/README.md"
@@ -14,11 +14,11 @@ build = "src/bindings/rust/build.rs"
 # work from the repo root the same way `pip install .` does, but the
 # binding's own source, build script, and shim stay under their designated
 # location, src/bindings/rust/ (mirrors go.mod at the root + the actual Go
-# binding sources under src/bindings/go/, and MATLAB's the one exception —
+# binding sources under src/bindings/go/, and MATLAB's the one exception -
 # see src/bindings/matlab's own root layout).
 #
-# Only the files a published crate actually needs — the crate's own
-# sources plus the shared C core it compiles against — are packaged;
+# Only the files a published crate actually needs - the crate's own
+# sources plus the shared C core it compiles against - are packaged;
 # everything else (other bindings, docs, CI, benchmarks, etc.) is left out.
 include = [
     "Cargo.toml",
@@ -34,7 +34,7 @@ name = "ctoon"
 path = "src/bindings/rust/src/lib.rs"
 
 [dependencies]
-# None — matches ctoon's own zero-dependency C core. See
+# None - matches ctoon's own zero-dependency C core. See
 # src/bindings/rust/src/value.rs for why: a native Value enum, not
 # serde_json, is the value type here (the same dynamic-data approach the
 # Python binding takes with dict/list, not a derive-macro/struct-mapping
@@ -43,7 +43,7 @@ path = "src/bindings/rust/src/lib.rs"
 [dev-dependencies]
 # Only for tests/rust/native_json_roundtrip_test.rs, which deliberately
 # parses real JSON with an *independent* parser (not ctoon's own C reader)
-# to check ctoon::loads_json()/dumps() agree with it — see that file's
+# to check ctoon::loads_json()/dumps() agree with it - see that file's
 # module doc for why (the Go/Python/MATLAB analogues of the same check
 # already caught real bugs). Dev-only: never affects the published crate,
 # same zero-dependency guarantee as before.

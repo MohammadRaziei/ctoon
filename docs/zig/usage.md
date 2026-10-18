@@ -44,7 +44,7 @@ defer gpa.free(json_out);
 
 Every `Value` owns its string memory: `.str` payloads and object keys
 are freed by `deinit`. Build `Value`s with `gpa.dupe`, not string
-literals, if you intend to call `deinit` on the result — values
+literals, if you intend to call `deinit` on the result - values
 returned by `loads`/`loadsJson` are always heap-owned this way already.
 
 ## Error handling

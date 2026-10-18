@@ -1,7 +1,7 @@
-//! Integration tests for the ctoon Zig binding — public API only (the
+//! Integration tests for the ctoon Zig binding - public API only (the
 //! module's own unit tests, in src/bindings/zig/src/ctoon.zig, additionally
 //! cover internals). Lives under the top-level tests/ folder rather than
-//! next to the binding, so every language's tests stay under one root —
+//! next to the binding, so every language's tests stay under one root -
 //! same layout tests/rust, tests/go, tests/python use.
 
 const std = @import("std");

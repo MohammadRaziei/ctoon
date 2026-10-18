@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 # Mirrors the pattern used by tests/go/CMakeLists.txt. The actual test file
 # lives at tests/rust/integration_test.rs (this directory) rather than in
-# Cargo's usual in-crate `tests/` folder — the root Cargo.toml's
+# Cargo's usual in-crate `tests/` folder - the root Cargo.toml's
 # `[[test]] path` points there, keeping every language's tests under one
 # root `tests/` folder.
 # Requires Rust >= 1.70 (this crate's declared rust-version) on PATH.
@@ -67,7 +67,7 @@ add_dependencies(ctoon_test ctoon_test_rust)
 
 # ── ctoon_coverage_rust custom target ────────────────────────────────────────
 # Uses cargo-llvm-cov (https://github.com/taiki-e/cargo-llvm-cov), which
-# outputs lcov natively — unlike Go's `go tool cover` output, no format
+# outputs lcov natively - unlike Go's `go tool cover` output, no format
 # conversion script is needed here (compare tests/go/CMakeLists.txt's
 # GoToLcov.cmake step).
 set(CTOON_COVERAGE_RUST_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/rust)
@@ -86,7 +86,7 @@ if(CARGO_LLVM_COV_CHECK EQUAL 0)
         COMMAND ${CMAKE_COMMAND} -E remove_directory ${CTOON_COVERAGE_RUST_BINARY_DIR}/html
         COMMAND ${CMAKE_COMMAND} -E make_directory   ${CTOON_COVERAGE_RUST_BINARY_DIR}/html
 
-        # lcov output (for merge with C/C++/Python/Go) — reruns the test
+        # lcov output (for merge with C/C++/Python/Go) - reruns the test
         # suite under instrumentation; a second run below does the same
         # for the HTML report, since cargo-llvm-cov doesn't emit both
         # report formats from a single invocation.

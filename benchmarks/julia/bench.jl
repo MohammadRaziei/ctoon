@@ -28,7 +28,7 @@
 #     calls only) and documents/sec.
 #
 # If a log file path is given (3rd CLI arg), one line per failure is
-# written there — only for the first repeat, not all `REPEATS` reps.
+# written there - only for the first repeat, not all `REPEATS` reps.
 using CToon
 
 const REPEATS = 20
@@ -52,7 +52,7 @@ function load_corpus(manifest_path::AbstractString)
 end
 
 # Minimal hand-rolled JSON writer for the fixed, small results shape
-# below — not worth pulling in a whole JSON package (JSON.jl) just to
+# below - not worth pulling in a whole JSON package (JSON.jl) just to
 # write a handful of floats and strings.
 json_escape(s::AbstractString) = replace(s, "\\" => "\\\\", "\"" => "\\\"")
 json_num(x::Real) = isfinite(x) ? string(Float64(x)) : "0"
@@ -289,7 +289,7 @@ function main()
 
     total_json_bytes = sum(sizeof(f.json) for f in files)
 
-    println("CToon Benchmarks — Julia")
+    println("CToon Benchmarks - Julia")
     println("Corpus: $(length(files)) files, $(round(total_json_bytes / 1e6; digits=2)) MB (JSON)\n")
     println(rpad("Library", 8), " ", rpad("Operation", 14), " ", lpad("Throughput", 12), " ",
             lpad("Docs/sec", 14), " ", lpad("Success", 9), "  ", lpad("Total time", 12))

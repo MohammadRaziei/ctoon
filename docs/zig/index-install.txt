@@ -6,5 +6,5 @@
     <pre><code class="language-bash">zig fetch --save git+https://github.com/mohammadraziei/ctoon.git</code></pre>
 </div>
 <div class="install-note">
-    Requires Zig 0.16.0+. Then import the module in your <code>build.zig</code>: <code>exe.root_module.addImport("ctoon", ctoon_dep.module("ctoon"))</code>. No separate C library install needed — <code>build.zig</code> compiles <code>ctoon.c</code> directly.
+    Requires Zig 0.16.0+. Then import the module in your <code>build.zig</code>: <code>exe.root_module.addImport("ctoon", ctoon_dep.module("ctoon"))</code>. No separate C library install needed - <code>build.zig</code> compiles <code>ctoon.c</code> directly.
 </div>

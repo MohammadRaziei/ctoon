@@ -7,5 +7,5 @@
 Pkg.add(url="https://github.com/mohammadraziei/ctoon.git", subdir="src/bindings/julia")</code></pre>
             </div>
             <div class="install-note">
-                Requires Julia 1.6+ and a C compiler on the build host. Not yet registered in Julia's General registry — <code>subdir</code> points <code>Pkg.add</code> at the binding inside this monorepo, the standard way to install one package out of several living in one git repo. Building runs automatically as part of <code>Pkg.add</code> — no separate C library install needed, <code>deps/build.jl</code> compiles <code>ctoon.c</code> directly.
+                Requires Julia 1.6+ and a C compiler on the build host. Not yet registered in Julia's General registry - <code>subdir</code> points <code>Pkg.add</code> at the binding inside this monorepo, the standard way to install one package out of several living in one git repo. Building runs automatically as part of <code>Pkg.add</code> - no separate C library install needed, <code>deps/build.jl</code> compiles <code>ctoon.c</code> directly.
             </div>

@@ -1,7 +1,7 @@
 # CLI Reference
 
 The `ctoon` command-line tool converts between JSON and TOON formats.
-It auto-detects the conversion direction from the file extension —
+It auto-detects the conversion direction from the file extension -
 `.json` files are encoded to TOON, `.toon` files are decoded to JSON.
 
 ## Synopsis

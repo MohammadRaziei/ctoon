@@ -20,7 +20,7 @@ Pkg.add(url="https://github.com/mohammadraziei/ctoon.git", subdir="src/bindings/
 
 ```toml
 # Or declared in your own project's Project.toml (what this repo's own
-# benchmark suite does — see benchmarks/julia/Project.toml):
+# benchmark suite does - see benchmarks/julia/Project.toml):
 [deps]
 CToon = "7c8e6b1a-0c1e-4a9e-9c3e-c1000ffee001"
 
@@ -29,11 +29,11 @@ CToon = {url = "https://github.com/mohammadraziei/ctoon.git", rev = "master", su
 ```
 
 Either way, Pkg runs `deps/build.jl` for you automatically as part of
-the install — no separate C library install, no BinaryBuilder/JLL
+the install - no separate C library install, no BinaryBuilder/JLL
 step, just a C compiler on the build host. `deps/build.jl` fetches the
 matching version of ctoon's C core (`src/ctoon.c`, `include/ctoon.h`)
 from GitHub at build time if it isn't sitting right next to it in a
-full local checkout — see that file's own comment for exactly which
+full local checkout - see that file's own comment for exactly which
 ref it picks and how to override it (`CTOON_JULIA_CORE_REF`).
 
 ```julia
@@ -53,7 +53,7 @@ environment: `Pkg.develop(path="/path/to/ctoon/src/bindings/julia")`.
 
 ## Developing this binding directly
 
-No CMake, no BinaryBuilder/JLL step needed yet — `deps/build.jl`
+No CMake, no BinaryBuilder/JLL step needed yet - `deps/build.jl`
 compiles `ctoon.c` + `shim.c` into `deps/libctoon_jl.{so,dylib,dll}`
 directly with `cc` (same self-contained approach as the Rust binding's
 `build.rs`):
@@ -66,30 +66,30 @@ julia --project=. -e 'using Pkg; Pkg.instantiate(); include("test/runtests.jl")'
 
 ## What's here
 
-- `parse(str)` — parse JSON text (via `ctoon_read_json`) into native
-  Julia data: `OrderedDict{String,Any}` for objects (order-preserving
-  — see below), `Vector{Any}` for arrays, `String`, `Int64`/`UInt64`/
+- `parse(str)` - parse JSON text (via `ctoon_read_json`) into native
+  Julia data: `OrderedDict{String,Any}` for objects (order-preserving,
+  see below), `Vector{Any}` for arrays, `String`, `Int64`/`UInt64`/
   `Float64`, `Bool`, or `nothing`.
-- `parse_toon(str)` — same, but for ctoon's native TOON syntax (via
+- `parse_toon(str)` - same, but for ctoon's native TOON syntax (via
   `ctoon_read_opts`) rather than JSON.
-- `dumps(value)` — encode a native Julia value (the same shapes
+- `dumps(value)` - encode a native Julia value (the same shapes
   `parse`/`parse_toon` produce) as TOON text.
-- `to_json(value)` — same as `dumps`, but as JSON text.
+- `to_json(value)` - same as `dumps`, but as JSON text.
 
 Objects parse into `OrderedDict` (from OrderedCollections.jl), not
 `Base.Dict`, specifically so that `parse(x) |> dumps` / `parse(x) |>
-to_json` round trips preserve key order — `Base.Dict` does not
+to_json` round trips preserve key order - `Base.Dict` does not
 preserve insertion order on iteration, which would silently scramble
 key order on every round trip through this binding otherwise, unlike
 every other language binding in this repo.
 
 ## What's intentionally left out
 
-- **Packaging as a JLL** — once the API shape here is settled,
+- **Packaging as a JLL** - once the API shape here is settled,
   BinaryBuilder + a `CToon_jll` package is the natural next step so
   users don't need a C compiler at all; skipped for now to keep this
   buildable everywhere with just `cc`.
-- **`ctoon_obj_iter` as a real Julia struct** — right now it's read
+- **`ctoon_obj_iter` as a real Julia struct** - right now it's read
   through a raw scratch buffer sized generously to hold the C struct.
   Mirroring its actual field layout properly is a follow-up.
-- Real UUID in `Project.toml` — the one there is a placeholder.
+- Real UUID in `Project.toml` - the one there is a placeholder.

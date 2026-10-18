@@ -80,7 +80,7 @@
 
 /*
  JSON support (ctoon_read_json*, ctoon_write_json* functions) is on by
- default. Define CTOON_DISABLE_JSON (to anything, or nothing at all —
+ default. Define CTOON_DISABLE_JSON (to anything, or nothing at all -
  only its presence is checked) to turn it off.
  */
 #ifndef CTOON_DISABLE_JSON
@@ -1498,7 +1498,7 @@ ctoon_api ctoon_doc *ctoon_read_json(char *dat, size_t len,
  *    If this parameter is NULL, the function will fail and return NULL.
  * @param len  Byte count. If this parameter is 0, the function will
  *    fail and return NULL.
- * @param flg  CTOON_READ_* flags (BOM, etc.) — CTOON_READ_INSITU is
+ * @param flg  CTOON_READ_* flags (BOM, etc.) - CTOON_READ_INSITU is
  *    always cleared, regardless of what's passed here.
  * @return     A new document, or NULL if an error occurs.
  *    When it's no longer needed, it should be freed with `ctoon_doc_free()`.

@@ -1,96 +1,159 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CToon Benchmarks</title>
+<link rel="icon" href="../ctoon-sq.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script>
+/* Same persisted theme as the documentation site (same origin, same key),
+   applied before first paint so the page never flashes the wrong theme. */
+(function () {
+  var theme = 'dark';
+  try {
+    var saved = JSON.parse(localStorage.getItem('ctoon-docs') || '{}');
+    if (saved.theme === 'light' || saved.theme === 'dark') theme = saved.theme;
+  } catch (e) {}
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
 <style>
-:root {
-  --bg: #0b0e14;
-  --bg-panel: #12161f;
-  --bg-panel-2: #171c28;
-  --border: #232938;
-  --text: #e6e9ef;
-  --text-dim: #8b93a7;
-  --accent: #5b8cff;
-  --accent-2: #35d0ba;
-  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+{{ docs_css|safe }}
+
+/* ── Benchmark report specifics (built on the documentation site's tokens) ── */
+.corpus-note { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.corpus-note strong { color: var(--fg); font-weight: 600; }
+.corpus-note code, .env-note code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent);
 }
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.55;
+.env-note { font-size: 0.82rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.hero-stat-num.is-date { font-size: 1.25rem; padding-top: 0.2rem; }
+h3.op-title {
+    font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em;
+    margin: 2.25rem 0 0.6rem;
 }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
-.hero {
-  padding: 90px 24px 60px;
-  text-align: center;
-  background: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(91,140,255,0.20), transparent 60%);
-  border-bottom: 1px solid var(--border);
+h3.op-title:first-of-type { margin-top: 0.5rem; }
+.chart-panel {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem;
+    height: 340px;
+    margin-bottom: 1.5rem;
 }
-.hero .eyebrow {
-  font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--accent-2); font-weight: 600; margin-bottom: 18px;
+.table-wrap {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
 }
-.hero h1 { font-size: clamp(28px, 4.4vw, 46px); margin: 0 auto 18px; max-width: 880px; font-weight: 800; letter-spacing: -0.02em; }
-.hero p.sub { color: var(--text-dim); font-size: 16px; max-width: 660px; margin: 0 auto; }
-.hero .meta { margin-top: 24px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); }
-section { padding: 56px 0; border-bottom: 1px solid var(--border); }
-section:last-of-type { border-bottom: none; }
-.kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-2); font-weight: 700; margin-bottom: 10px; }
-h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
-.corpus-note { color: var(--text-dim); font-size: 13.5px; margin: 0 0 28px; }
-.env-note { color: var(--text-dim); font-size: 12.5px; margin: 10px 0 20px; }
-h3.op-title { font-size: 17px; margin: 36px 0 12px; }
-h3.op-title:first-of-type { margin-top: 8px; }
-.chart-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; height: 340px; margin-bottom: 24px; }
-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 8px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11.5px; letter-spacing: .04em; }
-td.num, th.num { text-align: right; font-family: var(--mono); }
-tr:hover td { background: var(--bg-panel-2); }
-code.sample { display: block; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
-  padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); overflow-x: auto; white-space: pre; }
-.check-yes { color: var(--accent-2); font-weight: 700; }
-.check-no { color: #ff6b81; font-weight: 700; }
-footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding: 40px 24px; font-family: var(--mono); }
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.table-wrap th, .table-wrap td {
+    text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.table-wrap tbody tr:last-child td { border-bottom: none; }
+.table-wrap th {
+    background: var(--bg2); color: var(--fg2);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+}
+.table-wrap td.num, .table-wrap th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+.table-wrap tbody tr:hover td { background: var(--card-hover); }
+.check-yes { color: #40c057; font-weight: 700; }
+.check-no { color: #fa5252; font-weight: 700; }
+.sample-wrap pre { white-space: pre; }
 </style>
 </head>
 <body>
 
+<!-- Topbar (same markup as the documentation site) -->
+<header class="topbar">
+    <a class="topbar-brand" href="../index.html">
+        <div class="topbar-logo">{{ logo_svg|safe }}</div>
+        <span class="topbar-name">CToon</span>
+        <span class="topbar-sep"></span>
+        <span class="topbar-subtitle">Benchmarks</span>
+    </a>
+    <div class="topbar-actions">
+        {% if version %}<span class="topbar-version">v{{ version }}</span>{% endif %}
+        <a class="topbar-gh" href="../index.html">
+            <i class="fa-solid fa-book"></i> Docs
+        </a>
+        <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+        </button>
+    </div>
+</header>
+
+<!-- Hero -->
 <div class="hero">
-  <div class="eyebrow">CToon Benchmarks</div>
-  <h1>{{ headline }}</h1>
-  <p class="sub">{{ subhead|safe }}</p>
-  <div class="meta">generated {{ generated_at }}</div>
+    <div class="hero-eyebrow">
+        <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        {{ eyebrow }}
+    </div>
+    <h1>{{ headline }}</h1>
+    <p class="hero-desc">{{ subhead|safe }}</p>
+    <div class="hero-stats">
+        {% for stat in hero_stats %}
+        {% if not loop.first %}<div class="hero-stat-div"></div>{% endif %}
+        <div class="hero-stat">
+            <div class="hero-stat-num{% if stat.small %} is-date{% endif %}"{% if stat.title %} title="{{ stat.title }}"{% endif %}>{{ stat.num }}</div>
+            <div class="hero-stat-label">{{ stat.label }}</div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 
 <div class="wrap">
-<section>
-  <div class="kicker">Method</div>
-  <h2>Success vs. correctness</h2>
-  <p class="corpus-note">Two separate numbers, because they answer different questions. <strong>Success</strong> is the share of corpus files a library converted <em>without an error</em>. <strong>Correct</strong> is, of the outputs it actually produced, the share that were <em>right</em> &mdash; so &ldquo;98% success, 0% correct&rdquo; reads as what it is: a library that never complains and never gets it right. Correct means: TOON that a library produced is decoded with the <strong>official reference decoder</strong> (<code>@toon-format/toon</code>) &mdash; not with the library's own, because a lenient decoder hides encoder bugs from its own round trip &mdash; and JSON that a library produced is parsed back; either way the result has to equal the original document. Equality is the spec's JSON-model equality: numbers compare as IEEE-754 doubles (the spec lets an encoder fall back to the host's numeric approximation), objects are unordered maps, arrays are ordered.</p>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Method</div>
+    <div class="section-title">Success vs. correctness</div>
+  </div>
+  <p class="corpus-note">Two separate numbers, because they answer different questions. <strong>Success</strong> is the share of corpus files a library converted <em>without an error</em>. <strong>Correct</strong> is, of the outputs it actually produced, the share that were <em>right</em>, so &ldquo;98% success, 0% correct&rdquo; reads as what it is: a library that never complains and never gets it right. Correct means: TOON that a library produced is decoded with the <strong>official reference decoder</strong> (<code>@toon-format/toon</code>), not with the library's own, because a lenient decoder hides encoder bugs from its own round trip; and JSON that a library produced is parsed back. Either way the result has to equal the original document. Equality is the spec's JSON-model equality: numbers compare as IEEE-754 doubles (the spec lets an encoder fall back to the host's numeric approximation), objects are unordered maps, arrays are ordered.</p>
   <p class="corpus-note"><strong>MB/s and docs/s count only correct conversions</strong>, so a wrong answer never looks like a fast one; the time is the time of all attempts, as before. <strong>TOON &rarr; JSON</strong> decodes the TOON that ctoon produced for each file; if that shared input is itself missing or wrong, the file is left out of every library's TOON &rarr; JSON row (the encoder is charged for it under JSON &rarr; TOON), so no decoder is blamed for someone else's output.</p>
   {% if not all_verified %}
   <p class="corpus-note"><strong>Not every row could be verified</strong> (Node.js, which provides the reference decoder, was not available when this report was generated, or a language does not record its outputs yet). For rows marked <sup>*</sup> there is no correctness figure, and MB/s counts every conversion that raised no error.</p>
   {% endif %}
-</section>
+</div>
+
 {% if order_check_sample %}
-<section>
-  <div class="kicker">Method</div>
-  <h2>Key order sample</h2>
-  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order &mdash; deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
-  <code class="sample">{{ order_check_sample }}</code>
-</section>
+<div class="divider"></div>
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Method</div>
+    <div class="section-title">Key order sample</div>
+  </div>
+  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order. The sample is deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
+  <div class="code-wrap sample-wrap">
+    <div class="code-label">
+      <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">json</span></div>
+    </div>
+    <pre><code>{{ order_check_sample }}</code></pre>
+  </div>
+</div>
 {% endif %}
+
 {% for sec in sections %}
-<section>
-  <div class="kicker">{{ sec.title }}</div>
-  <h2>{{ sec.title }} bindings</h2>
-  <p class="corpus-note">Corpus: {{ sec.corpus_files }} files, {{ "%.1f"|format(sec.corpus_bytes / 1048576) }} MB.</p>
+<div class="divider"></div>
+<div class="section" id="{{ sec.key }}">
+  <div class="section-header">
+    <div class="section-label">{{ sec.title }}</div>
+    <div class="section-title">{{ sec.title }} bindings</div>
+    <div class="section-desc">Corpus: {{ sec.corpus_files }} files, {{ "%.1f"|format(sec.corpus_bytes / 1048576) }} MB.</div>
+  </div>
 
   {% if sec.agg_chart_js %}
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -99,13 +162,14 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   {% for oc in sec.op_charts %}
   <h3 class="op-title">{{ oc.title }}</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="{{ oc.chart_id }}"></canvas></div>
   {% endfor %}
   {% if sec.has_memory %}
   <h3 class="op-title">Peak memory (isolated per library)</h3>
   <div class="chart-panel" style="height:260px"><canvas id="{{ sec.memory_chart_id }}"></canvas></div>
   {% endif %}
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -127,17 +191,19 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
         <td class="num">{{ row.throughput_mb_s }}</td>
         <td class="num">{{ row.docs_per_sec }}</td>
         <td class="num">{{ row.success_rate }}%</td>
-        <td class="num">{% if row.correct_rate is none %}&mdash;{% if not row.verified %}<sup title="not verified">*</sup>{% endif %}{% else %}{{ row.correct_rate }}%{% endif %}</td>
+        <td class="num">{% if row.correct_rate is none %}n/a{% if not row.verified %}<sup title="not verified">*</sup>{% endif %}{% else %}{{ row.correct_rate }}%{% endif %}</td>
         <td class="num">{{ row.total_time_s }}</td>
-        {% if sec.has_memory %}<td class="num">{{ row.peak_rss_mb if row.peak_rss_mb is not none else "—" }}</td>{% endif %}
+        {% if sec.has_memory %}<td class="num">{{ row.peak_rss_mb if row.peak_rss_mb is not none else "n/a" }}</td>{% endif %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
 
   {% if sec.order_check %}
   <h3 class="op-title">Key order preservation</h3>
-  <p class="corpus-note">Round-trips the fixed sample below through each library and checks whether keys come back in the same order they went in.</p>
+  <p class="corpus-note">Round-trips the fixed sample above through each library and checks whether keys come back in the same order they went in.</p>
+  <div class="table-wrap">
   <table>
     <thead>
       <tr><th>Library</th><th>Order preserved</th><th>Detail</th></tr>
@@ -147,22 +213,27 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       <tr>
         <td>{{ oc.library }}</td>
         <td>{% if oc.preserved %}<span class="check-yes">&#10003; yes</span>{% else %}<span class="check-no">&#10007; no</span>{% endif %}</td>
-        <td>{{ oc.detail or "—" }}</td>
+        <td>{{ oc.detail or "n/a" }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
-</section>
+</div>
 {% endfor %}
 
 {% if system_info %}
-<section>
-  <div class="kicker">Environment</div>
-  <h2>What machine these numbers ran on</h2>
+<div class="divider"></div>
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Environment</div>
+    <div class="section-title">What machine these numbers ran on</div>
+  </div>
   <p class="env-note">Recorded automatically by <code>system_info.py</code> at run
-    time &mdash; not filled in by hand. Numbers above are only meaningful relative
+    time, not filled in by hand. Numbers above are only meaningful relative
     to each other on this specific machine; they won't transfer directly to yours.</p>
+  <div class="table-wrap">
   <table>
     <tbody>
       <tr><td>CPU</td><td>{{ system_info.cpu_model }}</td></tr>
@@ -173,15 +244,92 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       <tr><td>Python</td><td>{{ system_info.python_implementation }} {{ system_info.python_version }}</td></tr>
     </tbody>
   </table>
-</section>
-{% endif %}
+  </div>
 </div>
+{% endif %}
 
-<footer>ctoon benchmarks &middot; standalone report, no network or server needed to view</footer>
+</div><!-- /wrap -->
+
+<!-- Footer (same markup as the documentation site) -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div>
+            <div class="footer-brand">
+                <div class="footer-logo">{{ logo_svg|safe }}</div>
+                <span class="footer-name">CToon</span>
+            </div>
+            <div class="footer-tagline">
+                Benchmark results for the CToon language bindings. Charts and data are
+                embedded in this page; only fonts and icons are fetched online.
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
+                &nbsp;·&nbsp; <a href="https://github.com/MohammadRaziei/ctoon/blob/main/LICENSE">MIT License</a>
+                {% if version %}&nbsp;·&nbsp; v{{ version }}{% endif %}
+            </div>
+        </div>
+
+        <div>
+            <div class="footer-links-title">Resources</div>
+            <div class="footer-links">
+                <a class="footer-link" href="../index.html">
+                    <i class="fa-solid fa-book"></i> Documentation
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+                    <i class="fa-brands fa-github"></i> Source code
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon/issues" target="_blank">
+                    <i class="fa-solid fa-bug"></i> Report issue
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
 
 <script>{{ chartjs_source|safe }}</script>
 <script>
 const CTOON_BENCH_DATA = {{ embedded_json|safe }};
+
+/* Theme: same state object and storage key as the documentation site, so the
+   choice made there carries over (and back). Only "theme" is touched. */
+const STORAGE_KEY = 'ctoon-docs';
+
+function toggleTheme() {
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) {}
+  state.theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  document.documentElement.setAttribute('data-theme', state.theme);
+  styleCharts();
+}
+
+/* Chart text and grid follow the page tokens. Only colors and the font family
+   are set here; chart types, datasets and their order come from the data below. */
+function styleCharts() {
+  const css = getComputedStyle(document.documentElement);
+  Chart.defaults.color = css.getPropertyValue('--fg2').trim();
+  Chart.defaults.borderColor = css.getPropertyValue('--border').trim();
+  Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  /* Chart.js caches each chart's resolved scale options, so changing the
+     defaults alone does not reach charts that already exist. */
+  const fg = Chart.defaults.color, line = Chart.defaults.borderColor;
+  Object.values(Chart.instances).forEach(function (chart) {
+    const o = chart.options;
+    Object.keys(o.scales || {}).forEach(function (k) {
+      const s = o.scales[k];
+      s.grid = Object.assign({}, s.grid, { color: line });
+      s.border = Object.assign({}, s.border, { color: line });
+      s.ticks = Object.assign({}, s.ticks, { color: fg });
+      if (s.title) s.title = Object.assign({}, s.title, { color: fg });
+    });
+    if (o.plugins && o.plugins.legend) {
+      o.plugins.legend.labels = Object.assign({}, o.plugins.legend.labels, { color: fg });
+    }
+    chart.update('none');
+  });
+}
+styleCharts();
+
 {{ chart_scripts|safe }}
 </script>
 </body>

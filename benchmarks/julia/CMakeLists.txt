@@ -9,7 +9,7 @@
 set(CTOON_JULIA_DEPOT "${CMAKE_CURRENT_BINARY_DIR}/depot")
 file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
 
-# Fetches ctoon's own Julia binding straight from GitHub — the same way
+# Fetches ctoon's own Julia binding straight from GitHub - the same way
 # any real Julia user would install it, declared in this environment's
 # own Project.toml (see its [sources] entry) rather than an imperative
 # `Pkg.add(url=..., subdir=...)` call: modern Pkg resolves a [sources]
@@ -17,7 +17,7 @@ file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
 # declared entry is one less script to maintain. Pinned to rev="master"
 # right in Project.toml, since this benchmark should always measure
 # ctoon's current master, not whatever the last tagged release happened
-# to be — every checkout of this repo gets that same pin, so there's no
+# to be - every checkout of this repo gets that same pin, so there's no
 # separate "make sure this build measures master" step to remember.
 # Building the fetched package's native shared lib (deps/build.jl)
 # happens automatically as part of resolving it -- and "resolving"
@@ -28,7 +28,7 @@ file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
 #
 # That's the Julia *binding* (CToon.jl itself). deps/build.jl separately
 # fetches the core C source (src/ctoon.c, include/ctoon.h) it compiles
-# against — a different pin, for a different piece — and defaults to
+# against - a different pin, for a different piece - and defaults to
 # whatever this package's own Project.toml version says is the latest
 # *release*. Same reasoning applies there: a benchmark run should
 # measure current master, not a possibly-older tagged release, so

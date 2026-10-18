@@ -1,4 +1,4 @@
-//! std.json (Zig's stdlib JSON parser — no dependency needed, unlike
+//! std.json (Zig's stdlib JSON parser - no dependency needed, unlike
 //! Rust/Julia's serde_json/JSON.jl, which had to be added as a dev-only
 //! dependency for their equivalent of this file) vs ctoon's own JSON
 //! reader/writer (`loadsJson`/`dumps` in src/bindings/zig/src/ctoon.zig,
@@ -177,7 +177,7 @@ fn valuesEqual(native: std.json.Value, own: ctoon.Value) bool {
 /// whole-valued Real as a bare integer token, and ctoon's reader then has
 /// no way to recover that it was ever a float. That's an inherent property
 /// of the TOON format itself (the numeric *value* survives exactly), not
-/// data loss, so this — and only this — comparison tolerates an integer
+/// data loss, so this - and only this - comparison tolerates an integer
 /// and a same-valued float comparing equal. valuesEqual() above (used for
 /// the *pre*-round-trip std.json-vs-ctoon.loadsJson agreement check, where
 /// both sides parsed the same JSON text and so have no such ambiguity)
@@ -302,7 +302,7 @@ fn checkPair(gpa: std.mem.Allocator, io: std.Io, dir_path: []const u8, name: []c
 }
 
 // ---------------------------------------------------------------------------
-// tests/data/*.json + *.toon — local to this repo, always available.
+// tests/data/*.json + *.toon - local to this repo, always available.
 // ---------------------------------------------------------------------------
 
 test "native json roundtrip: local data corpus" {
@@ -329,7 +329,7 @@ test "native json roundtrip: spec examples corpus" {
     const io = testing.io;
 
     const dir_path = specExamplesDir(gpa, io) orelse {
-        std.debug.print("CTOON_SPEC_EXAMPLES_DIR not set/found — skipping (only available under CMake/ctest).\n", .{});
+        std.debug.print("CTOON_SPEC_EXAMPLES_DIR not set/found - skipping (only available under CMake/ctest).\n", .{});
         return;
     };
 

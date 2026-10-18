@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 
 # Loaded by build.jl into a shared lib containing ctoon.c + shim.c (the
 # same ctoon_rs_* exported wrappers the Rust and Zig bindings use for
-# ctoon's `static inline` API — see ../shim.c for why those wrappers
+# ctoon's `static inline` API - see ../shim.c for why those wrappers
 # exist). Covers reading (parse/parse_toon) and writing (dumps/to_json)
 # for the most common ctoon_type cases.
 
@@ -40,7 +40,7 @@ function doc_free(doc::Doc)
 end
 
 # Mirrors ctoon_read_err's C layout (include/ctoon.h): { ctoon_read_code
-# code (uint32_t); const char *msg; size_t pos; } — used so parse
+# code (uint32_t); const char *msg; size_t pos; } - used so parse
 # failures report the real reason instead of a generic message.
 struct ReadErr
     code::UInt32
@@ -53,18 +53,18 @@ end
     CToon.parse(str::AbstractString) -> Any
 
 Parse `str` (TOON/JSON per ctoon's reader) and return it as native Julia
-data: `OrderedDict{String,Any}` for objects (order-preserving — see
+data: `OrderedDict{String,Any}` for objects (order-preserving - see
 `_to_julia`'s own comment), `Vector{Any}` for arrays, `String`,
 `Int64`/`Float64`, `Bool`, or `nothing`.
 """
 function parse(str::AbstractString)
     # ctoon_read()/ctoon_read_opts() parse ctoon's *native* TOON syntax
-    # (tabular/pipe-delimited arrays — see the C++ binding's
-    # arrays_tabular tests) — comma/bracket JSON input isn't valid there
+    # (tabular/pipe-delimited arrays - see the C++ binding's
+    # arrays_tabular tests) - comma/bracket JSON input isn't valid there
     # ("malformed delimiter marker in bracket segment" is exactly what
     # ctoon_read_opts says about `[1, 2, 3]`). For JSON-style input, call
-    # ctoon_read_json() instead — a real exported symbol (no shim needed,
-    # unlike ctoon_read() which is `ctoon_api_inline`) — same as the Go
+    # ctoon_read_json() instead - a real exported symbol (no shim needed,
+    # unlike ctoon_read() which is `ctoon_api_inline`) - same as the Go
     # binding's bridge.c does for its `asJSON` path. Wants a mutable
     # buffer; NULL for the allocator (4th arg) is fine, but pass a real
     # ctoon_read_err (5th arg) so a failure reports why.
@@ -137,7 +137,7 @@ function _to_julia(v::Val)
         out = OrderedDict{String,Any}()
         # ctoon_obj_iter is a small fixed-layout struct; the shim exposes
         # it opaquely via a heap-free stack buffer here rather than
-        # binding its C layout directly — good enough for a skeleton,
+        # binding its C layout directly - good enough for a skeleton,
         # worth revisiting (a real `ctoon_obj_iter` Julia struct mirroring
         # the C one) once the rest of the shape is settled.
         iter_buf = zeros(UInt8, 64) # oversized scratch space for ctoon_obj_iter

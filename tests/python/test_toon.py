@@ -176,7 +176,7 @@ class TestDecode:
 
     def test_empty_string_decodes_to_empty_object(self):
         # Spec §5/§8: a zero-length TOON document is valid input and
-        # decodes as an empty object — it is NOT an error.
+        # decodes as an empty object - it is NOT an error.
         assert ctoon.loads("") == {}
 
     def test_single_field(self):
@@ -293,7 +293,7 @@ class TestRoundtrip:
         # trigger the writer's compact "keyed tabular" format (one field
         # in common, e.g. `properties[N:]{type}:`) used to fail to
         # round-trip when a key needed escaping (quotes, backslashes,
-        # control characters) — the reader's lookahead scan for "does
+        # control characters) - the reader's lookahead scan for "does
         # this line have an unquoted colon" didn't skip the character
         # after a backslash, so an escaped quote inside the key flipped
         # its quote-tracking state and made it miss the real colon.

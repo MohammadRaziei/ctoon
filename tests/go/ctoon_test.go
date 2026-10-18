@@ -662,7 +662,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	}
 
 	// An arbitrary struct target isn't supported (no field-tag reflection,
-	// unlike encoding/json) — must fail clearly rather than leave the
+	// unlike encoding/json) - must fail clearly rather than leave the
 	// struct silently unfilled.
 	type Person struct{ Name string }
 	var p Person

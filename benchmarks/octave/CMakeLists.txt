@@ -12,7 +12,7 @@ FetchContent_MakeAvailable(ctoon)
 # detects them). Without it there is nothing to benchmark.
 if(NOT TARGET ctoon_build_octave_mex)
     message(STATUS "ctoon_build_octave_mex not available (Octave / mkoctfile "
-                    "not found by the fetched ctoon's own CMakeLists.txt) — "
+                    "not found by the fetched ctoon's own CMakeLists.txt) - "
                     "skipping Octave benchmark.")
     return()
 endif()

@@ -15,7 +15,7 @@
                    | .__/ \__,_|\__, |\___|                   
                    |_|          |___/                                                 
 
-  CToon — C implementation of the TOON serialisation format
+  CToon - C implementation of the TOON serialisation format
   with idiomatic bindings for C++, Python, and Go.
 
   Author  : Mohammad Raziei
@@ -34,7 +34,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" href="../../ctoon-sq.svg" type="image/svg+xml">
-    <title>@PROJECT_NAME@ — @SECTION_TITLE@ Coverage</title>
+    <title>@PROJECT_NAME@ - @SECTION_TITLE@ Coverage</title>
     <style>
         :root {
             --bg-body:      #0f0f12;

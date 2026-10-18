@@ -32,7 +32,7 @@ if(NOT _ctoon_octave_wanted)
 endif()
 
 if(NOT TARGET ctoon_build_octave_mex)
-    message(STATUS "Octave / ctoon_build_octave_mex not available — skipping Octave tests.")
+    message(STATUS "Octave / ctoon_build_octave_mex not available - skipping Octave tests.")
     return()
 endif()
 
@@ -71,7 +71,7 @@ else()
 endif()
 
 if(NOT EXISTS "${_ctoon_moxunit_dir}/MOxUnit/moxunit_runtests.m")
-    message(WARNING "MOxUnit not found in ${_ctoon_moxunit_dir} — skipping Octave tests.")
+    message(WARNING "MOxUnit not found in ${_ctoon_moxunit_dir} - skipping Octave tests.")
     return()
 endif()
 
@@ -121,11 +121,11 @@ endif()
 # same merged total and dashboard as the other languages.
 
 if(NOT (LCOV_EXECUTABLE AND GENHTML_EXECUTABLE))
-    message(STATUS "lcov/genhtml not found — ctoon_coverage_octave not available.")
+    message(STATUS "lcov/genhtml not found - ctoon_coverage_octave not available.")
     return()
 endif()
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(STATUS "Octave coverage uses gcc/gcov and is only set up on Linux — ctoon_coverage_octave not available.")
+    message(STATUS "Octave coverage uses gcc/gcov and is only set up on Linux - ctoon_coverage_octave not available.")
     return()
 endif()
 

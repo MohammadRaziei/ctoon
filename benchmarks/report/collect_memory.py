@@ -1,5 +1,5 @@
 """
-collect_memory.py — peak RSS per (language, library), each measured in
+collect_memory.py - peak RSS per (language, library), each measured in
 its own FRESH process (via the external `time -v` utility), then merged
 in as a "peak_rss_mb" field on that library's rows in the language's
 existing <language>.json (the same file bench_c/bench_cpp/bench.py

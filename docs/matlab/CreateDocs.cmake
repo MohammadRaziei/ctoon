@@ -1,4 +1,4 @@
-# CreateDocs.cmake — MATLAB binding documentation
+# CreateDocs.cmake - MATLAB binding documentation
 #
 # Required variables (passed via -D):
 #   PYTHON_EXECUTABLE     Python 3 interpreter
@@ -10,7 +10,7 @@
 # Output (all in OUT_DIR/):
 #   installation.rst      copied from SOURCE_DIR
 #   usage.rst             copied from SOURCE_DIR
-#   api.rst               generated — package functions + top-level scripts
+#   api.rst               generated - package functions + top-level scripts
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -23,7 +23,7 @@ endforeach()
 file(MAKE_DIRECTORY "${OUT_DIR}")
 
 # ---------------------------------------------------------------------------
-# Step 1 — Copy hand-written .rst files
+# Step 1 - Copy hand-written .rst files
 # ---------------------------------------------------------------------------
 file(GLOB _hand_rst "${SOURCE_DIR}/*.rst")
 foreach(_f IN LISTS _hand_rst)
@@ -33,7 +33,7 @@ foreach(_f IN LISTS _hand_rst)
 endforeach()
 
 # ---------------------------------------------------------------------------
-# Step 2 — Collect sources
+# Step 2 - Collect sources
 #   group 1: ctoon/ package functions  (encode, decode, load, dump, ...)
 #   group 2: top-level helper scripts  (ctoon_build, ctoon_install, ctoon_clean)
 # ---------------------------------------------------------------------------

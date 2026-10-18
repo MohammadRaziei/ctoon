@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-convert_page.py — CToon Markdown → HTML page converter.
+convert_page.py - CToon Markdown → HTML page converter.
 
 Single page mode:
     python3 convert_page.py
@@ -179,7 +179,7 @@ def render_rst(rst_text: str) -> str:
     return _wrap_code_blocks(html)
 
 
-# ── Source router — pick renderer based on file extension ─────────────────────
+# ── Source router - pick renderer based on file extension ─────────────────────
 def render_source(text: str, path: str) -> str:
     """Render text to HTML; choose Markdown or RST based on file extension."""
     if path.endswith('.rst'):

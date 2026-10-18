@@ -460,7 +460,7 @@ NB_MODULE(ctoon_py, m) {
         nb::arg("strict") = true,
         "Parse a TOON string or bytes object. Returns a Python object.\n\n"
         "    loads(s, flags=ReadFlag.NOFLAG, indent=2, strict=True) -> object\n\n"
-        "indent overrides indentSize (spec §12) — the number of spaces\n"
+        "indent overrides indentSize (spec §12) - the number of spaces\n"
         "that count as one indentation level when decoding (default 2).\n"
         "strict=False decodes in non-strict mode (spec §13 `strict: false`),\n"
         "equivalent to passing ReadFlag.NON_STRICT.");

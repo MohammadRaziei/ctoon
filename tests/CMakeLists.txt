@@ -29,7 +29,7 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_program(LCOV_EXECUTABLE lcov)
 find_program(GENHTML_EXECUTABLE genhtml)
 
-# toon-format/spec isn't part of this project — its test fixtures are only
+# toon-format/spec isn't part of this project - its test fixtures are only
 # used (read-only) to check each language binding's encode/decode output
 # against the spec. Fetched ONCE here, centrally, so every language under
 # tests/ (not just C++ and Python, which is all that consumed it before)
@@ -64,9 +64,9 @@ set(CTOON_SPEC_FIXTURES_DIR "${toon_format_spec_SOURCE_DIR}/tests/fixtures"
     CACHE PATH "Absolute path to toon-format/spec's tests/fixtures/ (empty if the fetch failed/was skipped)")
 
 # Separate from tests/fixtures/{encode,decode}/*.json above (those are test
-# *manifests* — {"tests":[{"input","expected",...}]}, not real documents).
+# *manifests* - {"tests":[{"input","expected",...}]}, not real documents).
 # examples/conversions/ instead holds genuine paired <name>.json / <name>.toon
-# files — the same shape as this project's own tests/data/*.json+*.toon
+# files - the same shape as this project's own tests/data/*.json+*.toon
 # pairs, just spec-sourced. Good for plain "does language X's native JSON
 # parser + ctoon's TOON writer agree with the spec" round-trip corpus tests.
 set(CTOON_SPEC_EXAMPLES_DIR "${toon_format_spec_SOURCE_DIR}/examples/conversions"
@@ -129,7 +129,7 @@ if(TARGET ctoon_coverage_c AND TARGET ctoon_coverage_cpp AND TARGET ctoon_covera
             string(REPLACE " coverage..." " + Octave coverage..." LCOV_MERGE_ECHO "${LCOV_MERGE_ECHO}")
         endif()
 
-        # NOTE: Zig coverage isn't produced at all yet — Zig's own native
+        # NOTE: Zig coverage isn't produced at all yet - Zig's own native
         # coverage tooling is still too immature/unstable to depend on
         # (see tests/zig/CMakeLists.txt's comment where ctoon_coverage_zig
         # would go). MATLAB coverage is produced by TestTask (Cobertura XML) via

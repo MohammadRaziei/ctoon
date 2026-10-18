@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CToon Benchmarks — Node.js.
+// CToon Benchmarks - Node.js.
 //
 // ctoon has no Node.js binding yet, so this currently benchmarks the
 // official @toon-format/toon package (npmjs.com/package/@toon-format/toon)
-// alone — but it follows the exact same methodology, corpus, and JSON
+// alone - but it follows the exact same methodology, corpus, and JSON
 // output schema as every other language benchmark here, so a future
 // ctoon Node binding slots in the same way gotoon/toon-go do for Go.
 //
@@ -23,7 +23,7 @@
 //   7. Report throughput (MB/s of bytes actually read by successful
 //      conversions only) and documents/sec.
 //
-// If a log file path is given, one line per failure is written there —
+// If a log file path is given, one line per failure is written there -
 // only for the first repeat of each timed phase, not all 20.
 
 import { readFileSync, writeFileSync, openSync, writeSync, closeSync, mkdirSync, rmSync } from "node:fs";
@@ -104,7 +104,7 @@ function main() {
 
   const totalJSONBytes = files.reduce((sum, f) => sum + Buffer.byteLength(f.json), 0);
 
-  console.log("CToon Benchmarks — Node.js");
+  console.log("CToon Benchmarks - Node.js");
   console.log(`Corpus: ${files.length} files, ${(totalJSONBytes / 1e6).toFixed(2)} MB (JSON)\n`);
   console.log(
     `${"Library".padEnd(8)} ${"Operation".padEnd(14)} ${"Throughput".padStart(12)} ` +

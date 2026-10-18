@@ -14,11 +14,11 @@
 #   <OUTPUT_DIR>/<name>/index.html
 #
 # Prerequisites (must be set before including this file):
-#   Python3_EXECUTABLE   — Python 3 interpreter (from find_package(Python3))
-#   CTOON_DOCS_OUT       — root output directory for all docs
-#   CTOON_DOCS_SRC       — source directory of the docs folder (contains page.html.in, ctoon-docs.css)
-#   LOGO_SQ              — path to the SVG logo file (for embedding)
-#   PROJECT_VERSION      — project version string
+#   Python3_EXECUTABLE   - Python 3 interpreter (from find_package(Python3))
+#   CTOON_DOCS_OUT       - root output directory for all docs
+#   CTOON_DOCS_SRC       - source directory of the docs folder (contains page.html.in, ctoon-docs.css)
+#   LOGO_SQ              - path to the SVG logo file (for embedding)
+#   PROJECT_VERSION      - project version string
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -137,7 +137,7 @@ function(ctoon_add_section)
     set(_PAGES_ARG "")
     set(_MD_SOURCES "")
     foreach(_entry IN LISTS ARG_SOURCES)
-        # entry is "file.md:Title" — resolve md path
+        # entry is "file.md:Title" - resolve md path
         if(_entry MATCHES "^([^:]+):(.+)$")
             set(_md_file "${CMAKE_MATCH_1}")
             set(_page_title "${CMAKE_MATCH_2}")

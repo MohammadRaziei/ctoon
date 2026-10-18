@@ -15,7 +15,7 @@
                    | .__/ \__,_|\__, |\___|                   
                    |_|          |___/                         
                    
-  CToon — C implementation of the TOON serialisation format
+  CToon - C implementation of the TOON serialisation format
   with idiomatic bindings for C++, Python, and Go.
 
   Author  : Mohammad Raziei
@@ -251,7 +251,7 @@
             gap: 0;
         }
 
-        /* shine — color injected via --card-color by JS */
+        /* shine - color injected via --card-color by JS */
         .card::before {
             content: '';
             position: absolute;
@@ -475,7 +475,7 @@
 
         // ── Parse LCOV to get overall line coverage % ────────────────────────
         // Supports both standard lcov (LF:/LH:) and Go-style (DA:line,count only).
-        // Go lcov may have duplicate DA entries for the same line — we take the
+        // Go lcov may have duplicate DA entries for the same line - we take the
         // max count per line to avoid inflating LF (matching what go tool cover reports).
         function parseLcovCoverage(text) {
             let lf = 0, lh = 0;
@@ -588,7 +588,7 @@
                 card.innerHTML = renderCard(item, null);
                 container.appendChild(card);
 
-                // --card-color drives the hover shine — always from item.color (badge color passed by CMake)
+                // --card-color drives the hover shine - always from item.color (badge color passed by CMake)
                 card.style.setProperty('--card-color', item.color);
                 card.innerHTML = renderCard(item, null);
                 container.appendChild(card);

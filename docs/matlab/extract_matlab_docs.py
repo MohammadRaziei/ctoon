@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-extract_matlab_docs.py — Extract MATLAB docstrings and generate RST files.
+extract_matlab_docs.py - Extract MATLAB docstrings and generate RST files.
 
 Parses standard MATLAB help-text format (H1 line + body comment block)
 from .m source files and writes one RST file per input file plus an
@@ -198,7 +198,7 @@ def doc_to_rst(doc: dict, stem: str, prefix: str = '') -> str:
 
 
 # ---------------------------------------------------------------------------
-# api.rst builder — two sections
+# api.rst builder - two sections
 # ---------------------------------------------------------------------------
 
 def build_api_rst(pkg_docs: list, helper_docs: list, version: str) -> str:

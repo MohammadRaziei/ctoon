@@ -1,9 +1,9 @@
-# CreateDocs.cmake — Julia documentation (Documenter.jl)
+# CreateDocs.cmake - Julia documentation (Documenter.jl)
 # Called via: cmake -P CreateDocs.cmake
 # Required CMake variables (passed via -D):
-#   JULIA_EXECUTABLE — Julia interpreter
-#   DOCS_DIR         — this directory (contains make.jl, src/, Project.toml)
-#   OUTPUT_DIR       — Output directory for generated HTML
+#   JULIA_EXECUTABLE - Julia interpreter
+#   DOCS_DIR         - this directory (contains make.jl, src/, Project.toml)
+#   OUTPUT_DIR       - Output directory for generated HTML
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -18,7 +18,7 @@ endforeach()
 # Rather than requiring a separate CI step to pre-instantiate this
 # Pkg environment (unlike Python's pip install, which needs its own
 # `pip install -r requirements-dev.txt` step), just instantiate it here
-# if needed — cheap and idempotent when already up to date.
+# if needed - cheap and idempotent when already up to date.
 execute_process(
     COMMAND ${JULIA_EXECUTABLE} --project=${DOCS_DIR} ${DOCS_DIR}/instantiate.jl
     RESULT_VARIABLE _DOCUMENTER_INSTANTIATE

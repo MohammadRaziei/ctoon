@@ -1,4 +1,4 @@
-// Package ctoon_test — Go stdlib encoding/json vs ctoon's own JSON reader.
+// Package ctoon_test - Go stdlib encoding/json vs ctoon's own JSON reader.
 //
 // Every other test in this package builds Go values by hand (map[string]
 // interface{}, []interface{}, ...) or goes through ctoon.LoadsJSON() --
@@ -46,7 +46,7 @@ func specExamplesDir(t *testing.T) string {
 	t.Helper()
 	dir := os.Getenv("CTOON_SPEC_EXAMPLES_DIR")
 	if dir == "" {
-		t.Skip("CTOON_SPEC_EXAMPLES_DIR not set — only available under CMake/ctest, " +
+		t.Skip("CTOON_SPEC_EXAMPLES_DIR not set - only available under CMake/ctest, " +
 			"which fetches toon-format/spec centrally (see tests/CMakeLists.txt).")
 	}
 	if st, err := os.Stat(dir); err != nil || !st.IsDir() {
@@ -186,7 +186,7 @@ func checkPair(t *testing.T, dir, name string) {
 }
 
 // ---------------------------------------------------------------------------
-// tests/data/*.json + *.toon — local to this repo, always available.
+// tests/data/*.json + *.toon - local to this repo, always available.
 // ---------------------------------------------------------------------------
 
 func TestNativeJSONRoundtrip_LocalData(t *testing.T) {
@@ -246,7 +246,7 @@ func TestEncodeNativeJSONLargeIntegerPrecision(t *testing.T) {
 	// lost precision on this value before ctoon.Dumps even sees it.
 	m := native.(map[string]interface{})
 	if got := int64(m["id"].(float64)); got == 505874924095815681 {
-		t.Skip("encoding/json didn't lose precision on this literal on this platform — " +
+		t.Skip("encoding/json didn't lose precision on this literal on this platform - " +
 			"nothing to regress against, skipping rather than asserting a false premise")
 	}
 
@@ -261,6 +261,6 @@ func TestEncodeNativeJSONLargeIntegerPrecision(t *testing.T) {
 	}
 	num := withNumber.(map[string]interface{})["id"].(json.Number)
 	if num.String() != "505874924095815681" {
-		t.Fatalf("json.Number lost precision too (got %s) — test premise is wrong", num.String())
+		t.Fatalf("json.Number lost precision too (got %s) - test premise is wrong", num.String())
 	}
 }

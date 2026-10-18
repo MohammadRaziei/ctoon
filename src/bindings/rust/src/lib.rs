@@ -1,13 +1,13 @@
-//! Rust bindings for [ctoon](https://github.com/mohammadraziei/ctoon) — a
+//! Rust bindings for [ctoon](https://github.com/mohammadraziei/ctoon) - a
 //! high-performance, zero-dependency C99 library for the
 //! [TOON](https://github.com/toon-format/spec) serialization format, with
 //! built-in JSON interop.
 //!
-//! Values are represented as [`Value`] — a small, dependency-free enum
+//! Values are represented as [`Value`] - a small, dependency-free enum
 //! (see `value.rs`), not a `serde` type. This mirrors the Python binding's
 //! own approach: a `dict`/`list`-shaped dynamic value, not a
 //! derive-macro/struct-mapping layer. JSON parsing and writing is done by
-//! ctoon's own C implementation ([`loads_json`]/[`dumps_json`]) — this
+//! ctoon's own C implementation ([`loads_json`]/[`dumps_json`]) - this
 //! crate has no JSON (or any other) dependency at all.
 //!
 //! ```
@@ -34,7 +34,7 @@ pub use error::Error;
 pub use options::{flags, Delimiter, WriteOptions};
 pub use value::Value;
 
-/// TOON spec version this build targets (spec §13), e.g. `"4.1"` — from the C core.
+/// TOON spec version this build targets (spec §13), e.g. `"4.1"` - from the C core.
 pub fn spec_version() -> &'static str {
     unsafe { std::ffi::CStr::from_ptr(ffi::ctoon_spec_version_string()) }
         .to_str()
@@ -121,7 +121,7 @@ unsafe fn val_to_value(val: *mut ctoon_val) -> Value {
             Value::Object(obj)
         }
         _ => {
-            // raw/unknown value kind — best-effort string, matches the
+            // raw/unknown value kind - best-effort string, matches the
             // fallback the C API's other consumers (e.g. the Go binding) use.
             let raw = ctoon_rs_get_raw(val);
             if raw.is_null() {
@@ -161,7 +161,7 @@ unsafe fn value_to_mut(doc: *mut ctoon_mut_doc, v: &Value) -> Result<*mut ctoon_
         Value::Sint(n) => ctoon_rs_mut_sint(doc, *n),
         Value::Real(n) => ctoon_rs_mut_real(doc, *n),
         // &str's data pointer is guaranteed non-null even for an empty
-        // string (Rust's own ABI guarantee) — ctoon_mut_strncpy requires a
+        // string (Rust's own ABI guarantee) - ctoon_mut_strncpy requires a
         // non-null `str` regardless of `len`, so this is safe as-is with
         // no empty-string special case needed.
         Value::Str(s) => ctoon_rs_mut_strncpy(doc, s.as_ptr() as *const c_char, s.len()),
@@ -205,7 +205,7 @@ unsafe fn value_to_mut(doc: *mut ctoon_mut_doc, v: &Value) -> Result<*mut ctoon_
 
 /// Parses a TOON string into a [`Value`].
 pub fn loads(s: &str) -> Result<Value, Error> {
-    // Always pass an owned, mutable copy — ctoon_read_opts takes a
+    // Always pass an owned, mutable copy - ctoon_read_opts takes a
     // non-const `char *` and, while it does not modify the buffer unless
     // the (never-set, here) in-situ flag is passed, that's an internal
     // behaviour we don't want to depend on for soundness across a public
@@ -239,7 +239,7 @@ pub fn dumps(v: &Value) -> Result<String, Error> {
 }
 
 /// Serialises a [`Value`] to a TOON-formatted string with custom
-/// [`WriteOptions`] (indent, [`Delimiter`], and `CTOON_WRITE_*` flags —
+/// [`WriteOptions`] (indent, [`Delimiter`], and `CTOON_WRITE_*` flags -
 /// see the [`flags`] module).
 pub fn dumps_opts(v: &Value, opts: &WriteOptions) -> Result<String, Error> {
     unsafe {
@@ -397,7 +397,7 @@ pub fn toon_to_json_file_opts(toon_path: &str, json_path: &str, indent: i32, wri
     if ok { Ok(()) } else { Err(convert_err(&rerr, &werr)) }
 }
 
-/// Parses a JSON string into a [`Value`] (using ctoon's own JSON reader —
+/// Parses a JSON string into a [`Value`] (using ctoon's own JSON reader -
 /// this crate has no `serde_json` or other JSON-parsing dependency).
 pub fn loads_json(s: &str) -> Result<Value, Error> {
     let mut buf = s.as_bytes().to_vec();
@@ -429,7 +429,7 @@ pub fn dumps_json(v: &Value, indent: i32) -> Result<String, Error> {
 }
 
 /// Serialises a [`Value`] to a JSON string with custom `CTOON_WRITE_*`
-/// flags (see the [`flags`] module) — [`Delimiter`] has no effect on
+/// flags (see the [`flags`] module) - [`Delimiter`] has no effect on
 /// JSON output, so there's no `WriteOptions` overload here.
 pub fn dumps_json_opts(v: &Value, indent: i32, write_flags: u32) -> Result<String, Error> {
     unsafe {
@@ -467,7 +467,7 @@ mod tests {
     #[test]
     fn roundtrip_basic() {
         // Non-negative integer literals read back as Uint regardless of
-        // what variant they were written with — TOON text has no type
+        // what variant they were written with - TOON text has no type
         // tag distinguishing signed/unsigned, so the reader classifies
         // any non-negative number as unsigned by convention. Same
         // behaviour as every other ctoon binding (see the top-level
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn parse_error_has_message() {
-        // Unterminated quoted string — verified to genuinely fail to
+        // Unterminated quoted string - verified to genuinely fail to
         // parse (confirmed via manual testing during development, which
         // is also how a real struct-layout bug in ctoon_read_err's field
         // order got caught: it segfaulted here instead of erroring).
@@ -551,7 +551,7 @@ mod tests {
         .unwrap();
         assert!(tabbed.contains("1\t2\t3"));
 
-        // Round-trips regardless of delimiter — the reader accepts all
+        // Round-trips regardless of delimiter - the reader accepts all
         // three, this crate just controls which one the writer emits.
         assert_eq!(loads(&piped).unwrap(), v);
         assert_eq!(loads(&tabbed).unwrap(), v);

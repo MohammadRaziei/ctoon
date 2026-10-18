@@ -11,7 +11,7 @@
 # prebuilt-binary release of its own.
 #
 # Targets:
-#   ctoon_build_octave_mex  (ALL) — runs ctoon_build() under Octave, output
+#   ctoon_build_octave_mex  (ALL) - runs ctoon_build() under Octave, output
 #                                   goes to ${CMAKE_BINARY_DIR}/octave/build:
 #                                     ctoon_mex.mex
 #                                     +ctoon/*.m

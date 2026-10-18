@@ -2,7 +2,7 @@
 
 Runs ctoon against the official fixture suite published in
 https://github.com/toon-format/spec (tests/fixtures/{encode,decode}/*.json),
-fetched on demand by the `spec_fixtures_dir` fixture (see conftest.py) —
+fetched on demand by the `spec_fixtures_dir` fixture (see conftest.py) -
 not vendored into this repo.
 
 Each fixture file is itself JSON, shaped like:

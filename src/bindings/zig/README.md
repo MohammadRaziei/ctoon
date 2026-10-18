@@ -1,13 +1,13 @@
 # ctoon (Zig)
 
-Zig bindings for [ctoon](https://github.com/mohammadraziei/ctoon) — a
+Zig bindings for [ctoon](https://github.com/mohammadraziei/ctoon) - a
 high-performance, zero-dependency C99 library for the
 [TOON](https://github.com/toon-format/spec) serialization format, with
 built-in JSON interop.
 
-This module has **no dependencies** — not even for JSON: `loadsJson`/
+This module has **no dependencies** - not even for JSON: `loadsJson`/
 `dumpsJson` use ctoon's own C JSON reader/writer. Values are represented
-as a small native `Value` tagged union (see `src/ctoon.zig`) — the same
+as a small native `Value` tagged union (see `src/ctoon.zig`) - the same
 dynamic, dependency-free approach the Rust binding's `Value` enum and the
 Python binding's `dict`/`list` take, not a struct-mapping/reflection
 layer.
@@ -40,10 +40,10 @@ test "roundtrip" {
 ## How it's built
 
 `build.zig`/`build.zig.zon` live at the repo root (like `Cargo.toml` and
-`pyproject.toml`) — but this binding's own source and shim stay under
+`pyproject.toml`) - but this binding's own source and shim stay under
 their designated location, `src/bindings/zig/`. `build.zig` compiles
 ctoon's C core (`src/ctoon.c`) directly into a static library and links
-it into a public `ctoon` module — the same approach the Rust binding's
+it into a public `ctoon` module - the same approach the Rust binding's
 `build.rs` and the Go binding's cgo preamble take. `zig build test` is
 fully self-contained from the repo root; no separate build step or
 CMake invocation is required.
@@ -51,8 +51,8 @@ CMake invocation is required.
 Most of ctoon's C API is `static inline` in `ctoon.h` (meant for code
 that `#include`s the header directly), which produces no
 externally-linkable symbol for a compiled-and-linked FFI binding to call
-against. `shim.c` — shared verbatim with the Rust binding
-(`src/bindings/rust/shim.c`) — provides a thin extern-linkage wrapper for
+against. `shim.c` - shared verbatim with the Rust binding
+(`src/bindings/rust/shim.c`) - provides a thin extern-linkage wrapper for
 each of those functions under a `ctoon_rs_`-prefixed name; see its doc
 comment for details.
 
@@ -71,10 +71,10 @@ exe.root_module.addImport("ctoon", ctoon_dep.module("ctoon"));
 Unit tests live alongside the source (`src/ctoon.zig`). Integration
 tests live under the repository's centralized `tests/zig/` folder rather
 than inside this binding's own directory, keeping every language's tests
-under one root location — `build.zig`'s `test` step points there
+under one root location - `build.zig`'s `test` step points there
 directly, same spirit as the Rust binding's `Cargo.toml` `[[test]] path`.
 `build.zig` itself lives at the repo root, so run everything with
-`zig build test` from the repo root, not from this directory — or via
+`zig build test` from the repo root, not from this directory - or via
 `ctest`/`cmake --build . --target ctoon_test_zig` from the repository's
 top-level build (see `tests/zig/CMakeLists.txt`).
 

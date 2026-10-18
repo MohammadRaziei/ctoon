@@ -129,7 +129,7 @@ static int val_to_tape(gbuf *out, ctoon_val *val) {
     }
 
     default: {
-        /* raw/unknown value kind — best-effort string, matches the old
+        /* raw/unknown value kind - best-effort string, matches the old
            per-node valToGo()'s fallback behaviour. */
         const char *raw = ctoon_get_raw(val);
         size_t n = raw ? strlen(raw) : 0;
@@ -220,7 +220,7 @@ static int tr_u64(treader *r, uint64_t *out) {
     return 1;
 }
 
-/* Returns a pointer into the tape buffer itself (zero-copy) — valid only
+/* Returns a pointer into the tape buffer itself (zero-copy) - valid only
    for the duration of this bridge call, which is exactly how it's used
    below (ctoon_mut_strncpy copies it immediately). */
 static const uint8_t *tr_bytes(treader *r, size_t n) {
@@ -317,7 +317,7 @@ int ctoon_go_bridge_encode(
     ctoon_mut_val *root = tape_to_mut(doc, &r);
     if (!root) {
         ctoon_mut_doc_free(doc);
-        *out_err = bridge_dup_cstr("ctoon: malformed tape (internal error — please report)");
+        *out_err = bridge_dup_cstr("ctoon: malformed tape (internal error - please report)");
         return 0;
     }
     ctoon_mut_doc_set_root(doc, root);

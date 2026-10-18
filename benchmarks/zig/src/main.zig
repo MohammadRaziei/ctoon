@@ -1,26 +1,26 @@
-// CToon Benchmark — Zig.
+// CToon Benchmark - Zig.
 //
 // ctoon (this project) only for now. toon-zig
 // (github.com/LatentEvals/toon-zig) is the only pure-Zig TOON peer
-// found, but doesn't compile under Zig 0.16 yet — an upstream issue,
+// found, but doesn't compile under Zig 0.16 yet - an upstream issue,
 // not something to patch around here; see build.zig's comment for the
 // specifics. Once it's fixed upstream, re-add it here the same way it
 // was removed: a `toon_dep`/`addImport("toon", ...)` pair in build.zig,
 // and json_to_toon/toon_to_json/roundtrip legs calling `toon.stringify`/
 // `toon.parse` alongside ctoon's own, using `std.json.Value` as the
-// shared decode type — kept as one shared results table / JSON schema,
+// shared decode type - kept as one shared results table / JSON schema,
 // same as every other language benchmark here; see
 // benchmarks/go/bench.go for the reference version of this comment.
 //
 // ctoon is fetched the same way every other language fetches its peers
 // here: as a build.zig.zon dependency (see this directory's
-// build.zig.zon) — not a local path, even though this repo's root is
+// build.zig.zon) - not a local path, even though this repo's root is
 // right above us; see this directory's CMakeLists.txt for why.
 //
 // Methodology (same across every language benchmark in this repo):
 //   1. Load every file in the corpus manifest into memory (untimed).
 //   2. Untimed pre-pass: convert each JSON file to TOON once (with
-//      ctoon) — the shared decode input the toon_to_json leg reads from.
+//      ctoon) - the shared decode input the toon_to_json leg reads from.
 //   3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to
 //      TOON, with each library's own encoder.
 //   4. Timed "toon_to_json": repeatedly parse the TOON text from step 2
@@ -38,13 +38,13 @@
 //      conversions only) and documents/sec.
 //
 // Memory: this is a short-lived benchmark process, not a library, so it
-// uses `init.arena` (Zig 0.16's "Juicy Main" — see main()'s signature)
-// for the whole run and never frees anything individually — simpler and
+// uses `init.arena` (Zig 0.16's "Juicy Main" - see main()'s signature)
+// for the whole run and never frees anything individually - simpler and
 // irrelevant to the numbers being measured.
 //
 // I/O: Zig 0.16 replaced std.fs with std.Io.Dir/std.Io.File, both of
 // which take an explicit `io: std.Io` handle on every call (init.io,
-// from "Juicy Main") — see https://ziglang.org/download/0.16.0/release-notes.html.
+// from "Juicy Main") - see https://ziglang.org/download/0.16.0/release-notes.html.
 
 const std = @import("std");
 const ctoon = @import("ctoon");
@@ -194,7 +194,7 @@ pub fn main(init: std.process.Init) !void {
     var total_json_bytes: usize = 0;
     for (files.items) |f| total_json_bytes += f.json.len;
 
-    std.debug.print("CToon Benchmarks — Zig\n", .{});
+    std.debug.print("CToon Benchmarks - Zig\n", .{});
     std.debug.print("Corpus: {} files, {d:.2} MB (JSON)\n\n", .{ files.items.len, @as(f64, @floatFromInt(total_json_bytes)) / 1e6 });
     std.debug.print("{s:<8} {s:<14} {s:>12} {s:>14} {s:>9} {s:>10} {s:>12}\n", .{ "Library", "Operation", "Throughput", "Docs/sec", "Success", "", "Total time" });
 

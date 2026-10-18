@@ -3007,7 +3007,7 @@ static_inline const ctoon_val *ctoon_val_next_sibling(const ctoon_val *val);
  * Safe to memmove: every ctoon_val's "next sibling" offset is relative to
  * itself (a container stores bytes-to-its-own-end; a leaf is always
  * exactly sizeof(ctoon_val)), and string content lives in a separate pool
- * addressed by pointer — so uniformly shifting a contiguous span of val-
+ * addressed by pointer - so uniformly shifting a contiguous span of val-
  * pool memory left preserves every internal offset and pointer. This is
  * always the last-allocated region (no sibling of this OBJ's parent has
  * been written yet), so there's nothing outside [cv+1, vp.cur) that could
@@ -3095,7 +3095,7 @@ static usize ctoon_dedup_obj_lww(ctoon_read_ctx *c, ctoon_val *cv, usize count) 
 }
 
 /* True if OBJ `cv` (with `count` direct kv-pairs) has any duplicate key
- * among its direct children (does not recurse into nested containers —
+ * among its direct children (does not recurse into nested containers -
  * each nested OBJ is checked independently at its own close). */
 static bool ctoon_obj_has_dup_keys(const ctoon_val *cv, usize count) {
     enum { MAX_KV = 512 }; /* objects with more direct fields just skip the check */
@@ -4225,7 +4225,7 @@ ctoon_doc *ctoon_read_opts_indent(char *dat, usize len,
         return NULL;
     }
     /* §5/§8: a zero-length document is valid input and decodes as an empty
-     * object — it is NOT an error. (Only a NULL pointer is invalid here;
+     * object - it is NOT an error. (Only a NULL pointer is invalid here;
      * that's a different, programmer-error condition.) */
     return ctoon_read_build_doc(dat, len, flg, alc, err, indent_size);
 }
@@ -4297,7 +4297,7 @@ ctoon_doc *ctoon_read_fp(FILE *file,
  *
  * Parses RFC 8259 JSON text directly into the flat ctoon_val pool.
  * The resulting ctoon_doc is identical in layout to one produced by the
- * TOON reader — the same API (ctoon_get_str, ctoon_arr_iter, …) works on
+ * TOON reader - the same API (ctoon_get_str, ctoon_arr_iter, …) works on
  * both without any conversion step.
  *
  * Reuses all reader infrastructure: ctoon_read_ctx, ctoon_ctn_open/close,
@@ -5752,7 +5752,7 @@ static const ctoon_val *ctoon_obj_find(const ctoon_val *obj, const char *name, u
  * `first_row` is the OBJ that fixed the header's field order/shape (the
  * array's first element for §9.3, or the object's first entry value for
  * §9.5). `row` is some other element/entry that must have the exact same
- * KEY SET (order MAY differ, per spec — resolved here by name lookup),
+ * KEY SET (order MAY differ, per spec - resolved here by name lookup),
  * where every field is either:
  *   - primitive on both sides (uniform-primitive column), or
  *   - a non-empty OBJ on both sides whose own structure recursively
@@ -5790,7 +5790,7 @@ static bool ctoon_tab_plan_matches(const ctoon_val *first_row, const ctoon_val *
 }
 
 /* Writes a tabular header's field list, expanding nested field groups:
- * f1,f2{sub1,sub2},f3 — per §9.3. */
+ * f1,f2{sub1,sub2},f3 - per §9.3. */
 static bool ctoon_write_tab_fields(ctoon_write_ctx *w, const ctoon_val *first_row) {
     usize n = ctoon_ctn_child_count(first_row);
     const ctoon_val *kv = ctoon_ctn_first_child(first_row);
@@ -5856,7 +5856,7 @@ static bool ctoon_obj_is_keyed_tabular(const ctoon_val *obj) {
 }
 
 /* Writes "[N:<delim?>]{fields}:" (the key itself, if any, is written by the
- * caller beforehand — same convention as ctoon_write_arr_header). */
+ * caller beforehand - same convention as ctoon_write_arr_header). */
 static bool ctoon_write_keyed_tab_header(ctoon_write_ctx *w, const ctoon_val *obj) {
     usize count = ctoon_ctn_child_count(obj);
     if (!ctoon_write_char(w, '[')) return false;
@@ -5946,7 +5946,7 @@ static bool ctoon_write_arr_header(ctoon_write_ctx *w, const ctoon_val *arr, boo
     if (!ctoon_write_char(w, ']')) return false;
 
     if (tabular) {
-        /* {field1,field2{sub1,sub2},...} — nested field groups per §9.3 */
+        /* {field1,field2{sub1,sub2},...} - nested field groups per §9.3 */
         if (!ctoon_write_char(w, '{')) return false;
         const ctoon_val *first = ctoon_ctn_first_child(arr);
         if (!ctoon_write_tab_fields(w, first)) return false;
@@ -6723,7 +6723,7 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
         if (len) *len = 0;
         return NULL;
     }
-    /* Direct delegation — cj_doc_write works on the immutable layout */
+    /* Direct delegation - cj_doc_write works on the immutable layout */
     return cj_doc_write(doc->root, indent, flags, alc, (usize *)len, err);
 }
 
@@ -6732,7 +6732,7 @@ ctoon_api char *ctoon_doc_to_json(const ctoon_doc *doc,
  *
  * The mutable doc uses a circular linked-list layout that cj_doc_write
  * does NOT understand, so we must first convert to the flat immutable
- * layout.  imut_copy() walks the linked list once — O(n).  The resulting
+ * layout.  imut_copy() walks the linked list once - O(n).  The resulting
  * immutable doc is a temporary arena that is freed immediately after the
  * JSON string is produced, keeping peak memory minimal.
  *

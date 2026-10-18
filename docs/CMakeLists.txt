@@ -145,7 +145,7 @@ if(CARGO_EXECUTABLE)
     set(CTOON_DOCS_RUST_HTML ${CTOON_DOCS_RUST_OUT}/doc/ctoon/index.html)
 
     # Runs from the repo root (where Cargo.toml lives, like pyproject.toml)
-    # rather than src/bindings/rust/ — see that Cargo.toml's own comment
+    # rather than src/bindings/rust/ - see that Cargo.toml's own comment
     # for why. --target-dir redirects rustdoc's output straight into the
     # docs tree instead of the repo's own target/.
     add_custom_command(
@@ -215,7 +215,7 @@ set(CTOON_INDEX_OUT ${CTOON_DOCS_OUT}/index.html)
 # lists the languages (see its "_comment" field for the format), and each language
 # folder holds index-docs.json (structured fields) + index-install.txt +
 # index-example.txt (raw HTML). generate_index.py assembles index.html from these.
-# Globbed at configure time so adding or editing a fragment triggers a reconfigure —
+# Globbed at configure time so adding or editing a fragment triggers a reconfigure -
 # new fragment files need `cmake` re-run once (e.g. via `touch supported_langs.json`)
 # for the glob itself to pick them up.
 set(CTOON_SUPPORTED_LANGS ${CMAKE_CURRENT_SOURCE_DIR}/supported_langs.json)
@@ -278,7 +278,7 @@ ctoon_add_section(
 
 # ── Zig Documentation (hand-written Markdown) ──────────────────
 # Zig's own autodoc tooling is still unstable/in-flux across recent
-# releases, so — like the CLI section above — this is hand-written
+# releases, so - like the CLI section above - this is hand-written
 # Markdown rather than generated from source, until that changes.
 
 ctoon_add_section(
@@ -327,7 +327,7 @@ add_custom_target(ctoon_docs_matlab_extract
     DEPENDS ${CTOON_DOCS_MATLAB_GEN}/api.rst
 )
 
-# All sources from CTOON_DOCS_MATLAB_GEN — single source of truth
+# All sources from CTOON_DOCS_MATLAB_GEN - single source of truth
 ctoon_add_section(
     NAME  matlab
     TITLE "MATLAB Binding"

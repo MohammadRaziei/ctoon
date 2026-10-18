@@ -28,7 +28,7 @@ PREFIX = "CTOON_"
 HEADER_ABS_PATH = Path(__file__).parent / HEADER_PATH
 
 # Manifests that can't read the version from the header dynamically the
-# way pyproject.toml does (scikit-build-core's regex metadata provider) —
+# way pyproject.toml does (scikit-build-core's regex metadata provider) -
 # Cargo and Zig's package manager both require a static string literal in
 # the manifest itself. Kept in sync here instead: each write_version()
 # call below also rewrites these.

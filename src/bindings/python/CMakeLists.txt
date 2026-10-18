@@ -18,7 +18,7 @@ find_package(Python COMPONENTS Interpreter Development.Module
 if(NOT DEFINED SKBUILD)
     if(NOT Python_FOUND)
         message(WARNING
-            "Python (Interpreter + Development.Module) not found — skipping "
+            "Python (Interpreter + Development.Module) not found - skipping "
             "Python. Install Python 3.9 or newer with its development files.")
         return()
     endif()

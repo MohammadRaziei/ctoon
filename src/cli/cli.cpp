@@ -86,7 +86,7 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
     ctoon_doc_free(idoc);
     if (!tdoc) throw std::runtime_error("ctoon_doc_mut_copy failed");
 
-    /* Use ctoon_mut_doc_to_json directly — no yyjson needed */
+    /* Use ctoon_mut_doc_to_json directly - no yyjson needed */
     ctoon_write_flag jflag = CTOON_WRITE_NOFLAG;
     ctoon_write_err werr;
     memset(&werr, 0, sizeof(werr));
@@ -104,7 +104,7 @@ std::string toonToJson(const std::string &input, int indent, bool strict) {
 }
 
 /* ============================================================
- * JSON → TOON  (uses ctoon_read_json — no yyjson dependency)
+ * JSON → TOON  (uses ctoon_read_json - no yyjson dependency)
  * ============================================================ */
 
 std::string jsonToToon(const std::string &input,
@@ -306,7 +306,7 @@ int main(int argc, char **argv) {
     Operation op = detectOp(inputPath, input, forceEncode, forceDecode);
 
     /* An empty TOON document is valid (spec §5/§8: decodes to {}), but an
-     * empty JSON document is not — only reject empty input when encoding. */
+     * empty JSON document is not - only reject empty input when encoding. */
     if (input.empty() && op == OP_ENCODE) {
         std::cerr << "Error: Input is empty.\n";
         return 1;

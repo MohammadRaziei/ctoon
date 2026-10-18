@@ -1,15 +1,15 @@
-// CToon Benchmarks — Rust.
+// CToon Benchmarks - Rust.
 //
-// Every implementation here — ctoon included — is one more peer entry,
+// Every implementation here - ctoon included - is one more peer entry,
 // fetched from its own GitHub/crates.io home the same way, tested the
 // same way. No "ctoon vs X" framing: one shared results table, one row
 // per (library, operation) pair. Same methodology, corpus, and JSON
-// output schema as every other language benchmark here — see
+// output schema as every other language benchmark here - see
 // benchmarks/go/bench.go for the reference version of this comment.
 //
 // Implementations:
 //   - ctoon      this project (github.com/mohammadraziei/ctoon), fetched
-//                as a git dependency in Cargo.toml — not a local path,
+//                as a git dependency in Cargo.toml - not a local path,
 //                even though this repo's root is right above us; see
 //                this directory's CMakeLists.txt for why.
 //   - toon-rust  github.com/toon-format/toon-rust (official)
@@ -17,7 +17,7 @@
 // Methodology (same across every language benchmark in this repo):
 //   1. Load every file in the corpus manifest into memory (untimed).
 //   2. Untimed pre-pass: convert each JSON file to TOON once (with
-//      ctoon) — the shared decode input every library's toon_to_json
+//      ctoon) - the shared decode input every library's toon_to_json
 //      leg reads from.
 //   3. Timed "json_to_toon": repeatedly parse JSON and re-serialise to
 //      TOON, with each library's own encoder.
@@ -26,7 +26,7 @@
 //      output.
 //   5. Timed "roundtrip": json -> toon -> parse toon -> json, all
 //      chained as one operation using each library's own encoder/decoder
-//      together. Measures self-consistency, not interop — see the
+//      together. Measures self-consistency, not interop - see the
 //      top-level README for why a library's toon_to_json and roundtrip
 //      success rates can legitimately differ a lot.
 //   6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
@@ -180,7 +180,7 @@ fn main() {
 
     let total_json_bytes: usize = files.iter().map(|f| f.json.len()).sum();
 
-    println!("CToon Benchmarks — Rust");
+    println!("CToon Benchmarks - Rust");
     println!("Corpus: {} files, {:.2} MB (JSON)\n", files.len(), total_json_bytes as f64 / 1e6);
     println!(
         "{:<8} {:<14} {:>12} {:>14} {:>9} {:>10} {:>12}",

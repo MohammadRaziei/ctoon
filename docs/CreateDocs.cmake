@@ -1,9 +1,9 @@
-# CreateDocs.cmake — Route Index Page
+# CreateDocs.cmake - Route Index Page
 # Called via: cmake -P CreateDocs.cmake
 # Required CMake variables (passed via -D):
 #   OUTPUT_DIR, INDEX_IN, PROJECT_VERSION, LOGO_SQ, LOGO_SQ_CTOON,
 #   LANGS_FILE (docs/supported_langs.json), LANGS_DIR (docs/, holding each
-#   <folder>/index-docs.json + index-install.txt + index-example.txt — see
+#   <folder>/index-docs.json + index-install.txt + index-example.txt - see
 #   supported_langs.json's own "_comment" field for the format),
 #   GENERATE_SCRIPT (docs/generate_index.py)
 # Optional:
@@ -11,7 +11,7 @@
 #   "4.1" -- rendered in the hero stats as "vX.Y", or "n/a" if unset/empty)
 #
 # The tab bars / tab panes themselves are built by GENERATE_SCRIPT, a small
-# Python helper — reading JSON and templating HTML fought CMake's own
+# Python helper - reading JSON and templating HTML fought CMake's own
 # string()/file(STRINGS) more than it needed to (an em-dash in a comment
 # once desynced file(STRINGS)'s line splitting), and this project already
 # requires Python3 for its Sphinx docs, so there's no new dependency.

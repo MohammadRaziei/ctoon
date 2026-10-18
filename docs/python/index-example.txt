@@ -13,7 +13,7 @@ toon = ctoon.dumps({"name": "Alice", "age": 30})
 # Decode TOON string → Python dict
 data = ctoon.loads(toon)
 
-# File I/O — path strings or file-like objects
+# File I/O - path strings or file-like objects
 ctoon.dump(data, "out.toon")
 data = ctoon.load("out.toon")
 

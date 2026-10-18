@@ -3,11 +3,11 @@
 # =============================================================================
 #
 # Targets:
-#   ctoon_build_mex  (ALL) — compile MEX via FindMatlab, output to
+#   ctoon_build_mex  (ALL) - compile MEX via FindMatlab, output to
 #                            ${CTOON_MATLAB_BINARY_DIR}/build/+ctoon/private/
 #                            then copy .m wrappers into +ctoon/
 #
-#   ctoon_matlab_export    — copy self-contained export tree to
+#   ctoon_matlab_export    - copy self-contained export tree to
 #                            ${CTOON_MATLAB_BINARY_DIR}/export/
 #
 # =============================================================================

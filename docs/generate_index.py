@@ -17,7 +17,7 @@ same registry (each entry's optional "role", see supported_langs.json):
 and no supported_spec.conf cache exists yet).
 
 Invoked by docs/CreateDocs.cmake (which also copies ctoon-docs.css and the
-logo/favicon into place) — see that file for the exact command line. Can
+logo/favicon into place) - see that file for the exact command line. Can
 also be run directly for local iteration, e.g.:
 
     python3 generate_index.py \

@@ -6,7 +6,7 @@ file(GLOB CTOON_TEST_SOURCES_C CONFIGURE_DEPENDS
 # Compile ctoon.c directly as one of this executable's own sources instead
 # of linking the shared ctoon::ctoon library target. This is what lets the
 # --coverage flags below (or any other flag applied to test_ctoon_c) reach
-# ctoon.c's own object file — the shared library target itself is never
+# ctoon.c's own object file - the shared library target itself is never
 # touched, so nothing here can leak into any other consumer (Python's
 # nanobind build, the C++ tests, a release build, etc).
 add_executable(test_ctoon_c
@@ -40,7 +40,7 @@ add_dependencies(ctoon_test ctoon_test_c)
 
 
 if(LCOV_EXECUTABLE AND GENHTML_EXECUTABLE)
-    # Enable coverage flags for the test executable — this now reaches
+    # Enable coverage flags for the test executable - this now reaches
     # ctoon.c too, since it's compiled directly into this target (see
     # above), not linked in from the shared, uninstrumented library.
     target_compile_options(test_ctoon_c PRIVATE -O0 -g --coverage)

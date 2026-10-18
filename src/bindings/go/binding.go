@@ -118,7 +118,7 @@ func DefaultDecodeOptions() DecodeOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Bridge wrappers — one CGo call per document (see bridge.h)
+// Bridge wrappers - one CGo call per document (see bridge.h)
 // ---------------------------------------------------------------------------
 
 // bridgeEncode serialises v to TOON or JSON via a single CGo call: the Go
@@ -171,7 +171,7 @@ func bridgeDecode(s string, asJSON bool, readFlag uint32) (interface{}, error) {
 		cAsJSON = 1
 	}
 
-	// readOnlyCStr points into Go's own (immutable) string memory — the
+	// readOnlyCStr points into Go's own (immutable) string memory - the
 	// in-situ flag must never reach the C side here, same reasoning as
 	// insituBit's doc comment above.
 	safeFlag := uint32(C.ctoon_read_flag(readFlag) &^ insituBit)
@@ -206,7 +206,7 @@ func bridgeDecode(s string, asJSON bool, readFlag uint32) (interface{}, error) {
 
 // Encode serialises a Go value to a TOON-formatted string.
 // Indent is a no-op for TOON output (matches the previous implementation:
-// ctoon_write_options has no indent field — TOON's indentation is fixed by
+// ctoon_write_options has no indent field - TOON's indentation is fixed by
 // the spec, unlike JSON's).
 func Encode(v interface{}, opts EncodeOptions) (string, error) {
 	return bridgeEncode(v, false, opts.Indent, uint32(opts.Flag), uint32(opts.Delimiter))
@@ -216,18 +216,18 @@ func Encode(v interface{}, opts EncodeOptions) (string, error) {
 // emptyCStrByte backs a non-NULL, zero-length C string pointer for empty
 // Go strings. ctoon's C API treats a NULL `str` pointer as an error
 // regardless of `len` (see ctoon_mut_val_one_str in ctoon.h: it checks
-// `doc && str`, not the length) — the same convention ctoon_read_opts and
+// `doc && str`, not the length) - the same convention ctoon_read_opts and
 // friends follow for their `dat` parameter. A genuine NULL here would be
 // silently rejected even though the length is correctly 0, so this must
 // never be nil.
 var emptyCStrByte [1]C.char
 
 // readOnlyCStr returns a pointer to a Go string's own backing bytes for
-// passing into a CGo call — no C.CString malloc+copy needed, since the
+// passing into a CGo call - no C.CString malloc+copy needed, since the
 // callee only reads len(s) bytes and never requires a null terminator.
 // Safe as long as the C side treats it as read-only for the call's
 // duration, which is why the caller must ensure CTOON_READ_INSITU is
-// stripped first (a Go string's bytes can't safely be mutated in place —
+// stripped first (a Go string's bytes can't safely be mutated in place -
 // same reasoning ctoon_read()'s own C wrapper uses to justify clearing
 // that bit for callers passing a `const char *`).
 func readOnlyCStr(s string) *C.char {
@@ -237,7 +237,7 @@ func readOnlyCStr(s string) *C.char {
 	return (*C.char)(unsafe.Pointer(unsafe.StringData(s)))
 }
 
-// insituBit is CTOON_READ_INSITU — not exposed as a ReadFlag constant in
+// insituBit is CTOON_READ_INSITU - not exposed as a ReadFlag constant in
 // this package's public API, but stripped defensively in case a caller
 // constructs a raw ReadFlag value that happens to set it.
 // insituBit mirrors CTOON_READ_INSITU from ctoon.h (= 1 << 0). Hardcoded
@@ -495,7 +495,7 @@ func DumpsToon(v interface{}) (string, error) { return Dumps(v) }
 // ---------------------------------------------------------------------------
 
 // mutStrncpy creates a copied TOON string value directly from a Go string's
-// backing bytes — no intermediate C.CString malloc+free round trip needed,
+// backing bytes - no intermediate C.CString malloc+free round trip needed,
 // since ctoon_mut_strncpy copies the data itself and doesn't require a
 // null terminator. Passing a pointer into Go-managed memory into a CGo call
 // is safe as long as the C side doesn't retain it past the call, which
@@ -602,7 +602,7 @@ func valToGo(val *C.ctoon_val) interface{} {
 	// call, and CGo call overhead (goroutine/OS-thread transition) dwarfs
 	// the actual work being done for a single field. That's especially
 	// costly for objects and arrays, since they used to be checked last
-	// in the chain — every single nested object paid for 7 failed
+	// in the chain - every single nested object paid for 7 failed
 	// predicate calls before even starting to read its own fields.
 	switch C.ctoon_get_type(val) {
 	case C.CTOON_TYPE_NULL:
@@ -646,7 +646,7 @@ func valToGo(val *C.ctoon_val) interface{} {
 		}
 		return out
 	default:
-		// raw/unknown — best-effort string
+		// raw/unknown - best-effort string
 		raw := C.ctoon_get_raw(val)
 		if raw != nil {
 			return C.GoString(raw)

@@ -1,9 +1,9 @@
-# Resolves this environment's Project.toml — including the [sources]
-# pin on CToon (see Project.toml's own comment) — and builds any
+# Resolves this environment's Project.toml - including the [sources]
+# pin on CToon (see Project.toml's own comment) - and builds any
 # package that needs it (CToon's deps/build.jl among them). A real
 # script file rather than `-e "import Pkg; Pkg.update(...)"` deliberately:
 # a CMake COMMAND string containing both a semicolon and nested escaped
-# quotes gets mangled by the Unix Makefiles generator — same reason
+# quotes gets mangled by the Unix Makefiles generator - same reason
 # fetch_deps.jl (this script's predecessor, before the CToon dependency
 # moved into Project.toml's [sources] table) was a file instead of an
 # inline `-e`.
@@ -12,7 +12,7 @@
 # order, not just one or the other:
 #
 #   - Pkg.instantiate() does the FIRST-EVER resolve for an environment
-#     with no Manifest.toml yet (e.g. a fresh CTOON_JULIA_DEPOT — see
+#     with no Manifest.toml yet (e.g. a fresh CTOON_JULIA_DEPOT - see
 #     CMakeLists.txt's comment on why that's isolated per build tree).
 #     Pkg.update("CToon") alone can't do this: it errors with "expected
 #     package `CToon` to be registered" when CToon isn't in the

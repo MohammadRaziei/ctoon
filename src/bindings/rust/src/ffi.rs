@@ -1,11 +1,11 @@
 //! Raw, unsafe FFI declarations for ctoon's C API. Not part of the public
-//! interface of this crate — see `lib.rs` for the safe wrapper.
+//! interface of this crate - see `lib.rs` for the safe wrapper.
 //!
 //! Most of ctoon's tree-inspection and mutable-document-building API is
 //! `static inline` in ctoon.h (meant for code that #includes the header
 //! directly), so it produces no externally-linkable symbol in the
 //! compiled ctoon.c object. Those functions are declared here under their
-//! `ctoon_rs_`-prefixed shim names instead — see shim.c, which provides a
+//! `ctoon_rs_`-prefixed shim names instead - see shim.c, which provides a
 //! thin extern-linkage wrapper for each one. The handful of functions
 //! that genuinely are `extern` in ctoon.h (`ctoon_read_opts`,
 //! `ctoon_read_json`, `ctoon_mut_doc_new`, `ctoon_mut_doc_free`,
@@ -16,7 +16,7 @@
 
 use std::os::raw::{c_char, c_double, c_int};
 
-// Opaque types — never constructed on the Rust side, only passed around
+// Opaque types - never constructed on the Rust side, only passed around
 // as pointers returned by / passed to the C API.
 #[repr(C)]
 pub struct ctoon_doc {
@@ -43,7 +43,7 @@ pub type ctoon_type = u8;
 pub type ctoon_read_flag = u32;
 pub type ctoon_write_flag = u32;
 
-/// Array value delimiter used during encoding — mirrors C's
+/// Array value delimiter used during encoding - mirrors C's
 /// `ctoon_delimiter` enum exactly (`repr(C)`, same discriminant values).
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +54,7 @@ pub enum ctoon_delimiter {
 }
 
 /// Mirrors C's `ctoon_write_options` struct exactly (`repr(C)`, same
-/// field order: flag, delimiter, indent) — see ctoon.h.
+/// field order: flag, delimiter, indent) - see ctoon.h.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct ctoon_write_options {
@@ -99,7 +99,7 @@ extern "C" {
     pub fn ctoon_spec_tag_hex() -> u32;
     pub fn ctoon_spec_version_string() -> *const std::os::raw::c_char;
     pub fn ctoon_spec_date_string() -> *const std::os::raw::c_char;
-    // ── Genuinely `extern` in ctoon.h — real names, no shim needed ────
+    // ── Genuinely `extern` in ctoon.h - real names, no shim needed ────
     pub fn ctoon_read_opts(
         dat: *mut c_char,
         len: usize,
@@ -181,7 +181,7 @@ extern "C" {
         werr: *mut ctoon_write_err,
     ) -> bool;
 
-    // ── `static inline` in ctoon.h — shimmed via shim.c ───────────────
+    // ── `static inline` in ctoon.h - shimmed via shim.c ───────────────
     pub fn ctoon_rs_doc_get_root(doc: *mut ctoon_doc) -> *mut ctoon_val;
     pub fn ctoon_rs_doc_free(doc: *mut ctoon_doc);
 

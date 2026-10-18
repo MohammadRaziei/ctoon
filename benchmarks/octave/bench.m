@@ -1,19 +1,19 @@
 function bench(manifestPath, resultsJsonPath, logPath)
 %BENCH  CToon GNU Octave benchmark.
 %
-%   No competing Octave implementation exists, so this is a solo run — but
+%   No competing Octave implementation exists, so this is a solo run - but
 %   it follows the same methodology, corpus, and JSON output schema as
 %   every other language benchmark here.
 %
 %   The Octave build of ctoon (made by the ctoon_build_octave_mex CMake
 %   target, which compiles the MEX gateway with mkoctfile) must already be on
-%   the Octave path before calling this — see benchmarks/octave/CMakeLists.txt
+%   the Octave path before calling this - see benchmarks/octave/CMakeLists.txt
 %   for the addpath call that does it. Same methodology and JSON schema as
 %   benchmarks/matlab/bench.m; only the language tag differs.
 %
 %   BENCH(manifestPath, resultsJsonPath, logPath) additionally writes a
 %   per-file diagnostic log (which files failed, and the caught error
-%   message) to logPath — one line per failure, logged only during the
+%   message) to logPath - one line per failure, logged only during the
 %   untimed pre-pass and the first repeat of each timed phase, not all 20
 %   repeats. Pass '' or omit logPath to disable this (the default).
 
@@ -66,7 +66,7 @@ function bench(manifestPath, resultsJsonPath, logPath)
         totalJSONBytes = totalJSONBytes + numel(files(i).json);
     end
 
-    fprintf('CToon Benchmarks — Octave\n');
+    fprintf('CToon Benchmarks - Octave\n');
     fprintf('Corpus: %d files, %.2f MB (JSON)\n\n', numel(files), totalJSONBytes / 1e6);
     fprintf('%-8s %-14s %12s %14s %9s %10s %12s\n', ...
         'Library', 'Operation', 'Throughput', 'Docs/sec', 'Success', '', 'Total time');

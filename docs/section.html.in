@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@PAGE_TITLE@ — @SECTION_TITLE@ — CToon</title>
+    <title>@PAGE_TITLE@ - @SECTION_TITLE@ - CToon</title>
     <link rel="icon" href="@FAVICON@" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,7 +49,7 @@
 .page-breadcrumb a:hover      { text-decoration: underline; }
 .page-breadcrumb-sep          { color: var(--fg3); }
 
-/* ── Section sidebar (left — section nav only) ───────────────────────────── */
+/* ── Section sidebar (left - section nav only) ───────────────────────────── */
 .section-sidebar {
     position: sticky;
     top: 80px;

@@ -4,7 +4,7 @@
 # Mirrors the pattern used by tests/rust/CMakeLists.txt and
 # tests/zig/CMakeLists.txt. The binding itself (CToon.jl) lives under
 # src/bindings/julia (like the other bindings), but its test file stays
-# under this root tests/ folder — same split every other language here
+# under this root tests/ folder - same split every other language here
 # uses. No Julia code is compiled by this project's own CMake graph
 # (Julia's `deps/build.jl` handles that itself, the same way Cargo/zig
 # build do for their own bindings); this file only drives it via CTest.
@@ -59,7 +59,7 @@ message(STATUS "Found Julia: ${JULIA_VERSION_OUTPUT}")
 
 # ── Build the shim + run tests via run_tests.jl (see that file's ───────────
 # comment for why this is a real script rather than an inline `-e`
-# string) — Pkg.instantiate() + deps/build.jl + test/runtests.jl, same
+# string) - Pkg.instantiate() + deps/build.jl + test/runtests.jl, same
 # two-step shape as Zig's `zig build test` implicitly does in one command.
 set(CTOON_JULIA_RUN_TESTS
     ${CTOON_JULIA_ENV}
@@ -122,7 +122,7 @@ add_dependencies(ctoon_test ctoon_test_julia)
 
 # ── ctoon_coverage_julia custom target ───────────────────────────────────────
 # Uses Coverage.jl (https://github.com/JuliaTesting/Coverage.jl), the
-# standard tool in the Julia ecosystem — mature enough to implement this
+# standard tool in the Julia ecosystem - mature enough to implement this
 # properly, unlike Zig's coverage situation (see tests/zig/CMakeLists.txt's
 # comment for why that one's still deliberately skipped). Coverage.jl
 # writes native .lcov output, same as cargo-llvm-cov, so no format
@@ -130,7 +130,7 @@ add_dependencies(ctoon_test ctoon_test_julia)
 # GoToLcov.cmake step).
 #
 # Note on scope: `--code-coverage` instruments the .jl source lines this
-# binding's own Julia code runs (src/CToon.jl) — same caveat as any FFI
+# binding's own Julia code runs (src/CToon.jl) - same caveat as any FFI
 # binding's coverage (Rust's included): it doesn't reach into the C side
 # behind the ccalls, which the C/C++ coverage targets already cover.
 set(CTOON_COVERAGE_JULIA_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/julia)
@@ -138,7 +138,7 @@ set(CTOON_COVERAGE_JULIA_BINARY_DIR ${CTOON_COVERAGE_BINARY_DIR}/julia)
 # Deliberately NOT run against the isolated CTOON_JULIA_DEPOT above:
 # Coverage.jl here is a globally pre-installed dev tool (same footing
 # as GENHTML_EXECUTABLE/lcov, found via find_program against the
-# system, not vendored), not a project dependency declared anywhere —
+# system, not vendored), not a project dependency declared anywhere -
 # the warning below even tells people to `Pkg.add("Coverage")` globally.
 # Isolating this check would make it always fail (nothing's ever
 # installed in a brand new depot) and silently break coverage for

@@ -362,7 +362,7 @@ UTEST(ctoon_tests, test_toon_to_json_roundtrip) {
 /* An object whose values are uniform enough to trigger the writer's compact
  * "keyed tabular" format (one field in common, e.g. `properties[N:]{type}:`)
  * used to fail to round-trip when a key needed escaping (quotes,
- * backslashes, control characters) — the reader's lookahead scan for "does
+ * backslashes, control characters) - the reader's lookahead scan for "does
  * this line have an unquoted colon" didn't skip the character after a
  * backslash, so an escaped quote inside the key flipped its quote-tracking
  * state and made it miss the real colon. */

@@ -1,6 +1,6 @@
 // CToon Go benchmark.
 //
-// Every implementation here — ctoon included — is one more peer entry,
+// Every implementation here - ctoon included - is one more peer entry,
 // fetched from its own GitHub module path, tested the same way. No
 // "ctoon vs X" framing: one shared results table, one row per
 // (library, operation) pair.
@@ -13,7 +13,7 @@
 //     re-serialise to JSON. Measures interop with ctoon's specific output.
 //  5. Timed "roundtrip": json -> toon -> parse toon -> json, all four
 //     steps chained as one operation using each library's own
-//     encoder/decoder together. Measures self-consistency, not interop —
+//     encoder/decoder together. Measures self-consistency, not interop -
 //     see the top-level README for why a library's toon_to_json and
 //     roundtrip success rates can legitimately differ a lot.
 //  6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
@@ -30,11 +30,11 @@
 //   - ctoon    this project (github.com/mohammadraziei/ctoon)
 //   - gotoon   github.com/alpkeskin/gotoon (community; encode-only, no decoder)
 //   - toon-go  github.com/toon-format/toon-go (official; requires Go >= 1.23,
-//              which is why this whole module's go.mod floor is 1.23 too —
+//              which is why this whole module's go.mod floor is 1.23 too -
 //              no separate "vs" subdirectory to work around it)
 //
 // If a log file path is given (4th CLI arg), one line per failure is
-// written there — only for the first repeat of each timed phase (and the
+// written there - only for the first repeat of each timed phase (and the
 // untimed pre-pass), not all 20 repeats.
 package main
 
@@ -232,7 +232,7 @@ func main() {
 		totalJSONBytes += len(f.json)
 	}
 
-	fmt.Println("CToon Benchmarks — Go")
+	fmt.Println("CToon Benchmarks - Go")
 	fmt.Printf("Corpus: %d files, %.2f MB (JSON)\n\n", len(files), float64(totalJSONBytes)/1e6)
 	fmt.Printf("%-8s %-14s %12s %14s %9s %10s %12s\n",
 		"Library", "Operation", "Throughput", "Docs/sec", "Success", "", "Total time")

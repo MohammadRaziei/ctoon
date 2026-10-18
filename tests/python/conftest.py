@@ -17,14 +17,14 @@ def spec_fixtures_dir() -> Path:
     CTOON_SPEC_FIXTURES_DIR points at the checkout tests/CMakeLists.txt's
     central FetchContent already made (fetched once there, not per
     language -- see that file's comment on why).
-    If that env var isn't set — e.g. running `pytest` directly, outside
-    CMake — the spec-conformance tests are skipped rather than fetching
+    If that env var isn't set - e.g. running `pytest` directly, outside
+    CMake - the spec-conformance tests are skipped rather than fetching
     their own copy.
     """
     env_dir = os.environ.get("CTOON_SPEC_FIXTURES_DIR")
     if not env_dir or not Path(env_dir).is_dir():
         pytest.skip(
-            "CTOON_SPEC_FIXTURES_DIR not set — spec-conformance tests only "
+            "CTOON_SPEC_FIXTURES_DIR not set - spec-conformance tests only "
             "run under CMake/ctest, which fetches toon-format/spec fixtures "
             "for this suite to use."
         )
@@ -43,7 +43,7 @@ def spec_examples_dir() -> Path:
     env_dir = os.environ.get("CTOON_SPEC_EXAMPLES_DIR")
     if not env_dir or not Path(env_dir).is_dir():
         pytest.skip(
-            "CTOON_SPEC_EXAMPLES_DIR not set — only available under "
+            "CTOON_SPEC_EXAMPLES_DIR not set - only available under "
             "CMake/ctest, same as spec_fixtures_dir."
         )
     return Path(env_dir)

@@ -22,7 +22,7 @@
 
 </div>
 
-The fastest implementation of the [TOON format](https://github.com/toon-format/toon) — a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
+The fastest implementation of the [TOON format](https://github.com/toon-format/toon) - a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
 CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Go, Julia, MATLAB, Python, Rust, and Zig, plus a standalone CLI. The name reflects its foundation: **C** + **TOON**.
 
@@ -45,7 +45,7 @@ CToon is built on a high-performance C core and exposes the same logic through i
 
 ## Quick Start
 
-Pick your language below — each section is install, a short example, then a
+Pick your language below - each section is install, a short example, then a
 link to that language's full reference for everything else (flags, options,
 error handling, ...). Order matches the tabs on the
 [documentation site](https://mohammadraziei.github.io/ctoon).
@@ -53,7 +53,7 @@ error handling, ...). Order matches the tabs on the
 ### CLI
 
 ```bash
-pip install ctoon        # ships a pre-built `ctoon` binary — no compiler needed
+pip install ctoon        # ships a pre-built `ctoon` binary - no compiler needed
 ```
 
 ```bash
@@ -63,7 +63,7 @@ cat data.json | ctoon -e -       # stdin -> TOON
 ```
 
 Building from source with CMake instead is also supported (`sudo cmake
---install build` after building — see [Building & Testing](#building--testing-from-source)).
+--install build` after building - see [Building & Testing](#building--testing-from-source)).
 → [Full CLI reference](https://mohammadraziei.github.io/ctoon/cli/index.html)
 
 ### C
@@ -178,7 +178,7 @@ Or, without a checkout: `python -m ctoon.manager octave install` (builds a relea
 
 ### Python
 
-Requires Python 3.9+. Pre-built wheels for Linux, macOS and Windows — no compiler needed.
+Requires Python 3.9+. Pre-built wheels for Linux, macOS and Windows - no compiler needed.
 
 ```bash
 pip install ctoon
@@ -252,11 +252,11 @@ In C and C++ the tag is also available as numbers (`CTOON_SPEC_TAG_MAJOR/MINOR/P
 ## Building & Testing From Source
 
 Each binding can be built, run and tested entirely with its own native
-tooling — `cargo test` for Rust, `go test` for Go, `pytest` for Python, `zig
-build test` for Zig, `Pkg.test()` for Julia, MATLAB's `buildtool test` — pick
-whichever's already open and go. But the project **as a whole** — building
+tooling - `cargo test` for Rust, `go test` for Go, `pytest` for Python, `zig
+build test` for Zig, `Pkg.test()` for Julia, MATLAB's `buildtool test` - pick
+whichever's already open and go. But the project **as a whole** - building
 every language together, running the full cross-language test matrix,
-generating coverage, and building the documentation site — is driven by
+generating coverage, and building the documentation site - is driven by
 **CMake**, the same commands CI uses. This section covers that path; see
 [CONTRIBUTING.md](CONTRIBUTING.md) for the complete contributor workflow.
 
@@ -267,7 +267,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 ```
 
 By default this configures only C, C++ and the CLI. Each other language is
-opt-in via its own flag — and the flag changes what a *missing* toolchain
+opt-in via its own flag - and the flag changes what a *missing* toolchain
 does: silently skipped when the flag is OFF (the default, so the command
 above works on a machine with only some toolchains installed), a hard
 configure error when you've explicitly turned it ON:
@@ -298,7 +298,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release \
 | `CTOON_BUILD_OCTAVE` | OFF | Require GNU Octave + `mkoctfile` (error instead of skip if missing). |
 | `CTOON_BUILD_ALL_LANGS` | OFF | Require every self-building language's toolchain at once. |
 
-JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off — no external JSON library is required either way.
+JSON support is **on by default**. Define `CTOON_DISABLE_JSON` to turn it off - no external JSON library is required either way.
 
 ### Build
 
@@ -317,7 +317,7 @@ cmake --build build --target ctoon_test
 Per-language targets, for iterating on one binding at a time:
 `ctoon_test_c`, `ctoon_test_cpp`, `ctoon_test_go`, `ctoon_test_julia`,
 `ctoon_test_matlab`, `ctoon_test_octave`, `ctoon_test_python`, `ctoon_test_rust`, `ctoon_test_zig`
-— each also runnable as a single `ctest` case, e.g. `ctest --test-dir build -R rust`.
+(each also runnable as a single `ctest` case, e.g. `ctest --test-dir build -R rust`).
 
 ### Coverage
 
@@ -329,9 +329,9 @@ Per-language: `ctoon_coverage_c`, `ctoon_coverage_cpp`, `ctoon_coverage_go`,
 `ctoon_coverage_julia`, `ctoon_coverage_matlab`, `ctoon_coverage_octave`,
 `ctoon_coverage_python`, `ctoon_coverage_rust`, plus `ctoon_coverage_total` (merged
 C/C++/Python/Go/Rust/Julia/Octave lcov report). Output lands in `build/coverage/`, with `build/coverage/index.html`
-as the dashboard — published at
+as the dashboard - published at
 [mohammadraziei.github.io/ctoon/coverage](https://mohammadraziei.github.io/ctoon/coverage/index.html).
-(Zig has no coverage target yet — see the comment in `tests/zig/CMakeLists.txt`.)
+(Zig has no coverage target yet - see the comment in `tests/zig/CMakeLists.txt`.)
 
 ### Docs
 
@@ -463,14 +463,14 @@ ctoon_doc     *ctoon_mut_doc_imut_copy(ctoon_mut_doc *doc, const ctoon_alc *alc)
 |----------|-------|
 | Multiple threads reading different documents | Yes |
 | Multiple threads reading the same document | Yes |
-| Building a document from multiple threads | No — arena not thread-safe |
+| Building a document from multiple threads | No - arena not thread-safe |
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
 
 ## Related
 
-- [toon-format/toon](https://github.com/toon-format/toon) — the TOON format specification
+- [toon-format/toon](https://github.com/toon-format/toon) - the TOON format specification

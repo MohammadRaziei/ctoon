@@ -1,17 +1,17 @@
 package binding
 
-// Marshal/Unmarshal/JSONMarshal/JSONUnmarshal — aliases matching the
+// Marshal/Unmarshal/JSONMarshal/JSONUnmarshal - aliases matching the
 // encoding/json package's exact function signatures
 // (func([]byte)/([]byte, error)/error, not Loads/Dumps' string-based
 // ones), for anyone reaching for the stdlib-idiomatic names out of habit.
 //
-// Loads/Dumps/LoadsJSON/DumpsJSON remain the primary, documented API —
+// Loads/Dumps/LoadsJSON/DumpsJSON remain the primary, documented API -
 // kept consistent with the naming used across every other ctoon binding
 // (Python's loads/dumps, C's ctoon_read/ctoon_write, ...). These are
 // thin wrappers around them, not a separate implementation.
 //
 // Unlike encoding/json's Marshal, these do not use struct reflection or
-// `toon:"..."` struct tags to serialise arbitrary struct types — they
+// `toon:"..."` struct tags to serialise arbitrary struct types - they
 // support exactly the same Go value shapes Dumps/Loads do: nil, bool,
 // the numeric kinds, string, []interface{}, and map[string]interface{}.
 // Unmarshal only fills pointers to those same shapes (or to numeric/
@@ -49,7 +49,7 @@ func Unmarshal(data []byte, v interface{}) error {
 // JSONMarshal serialises v to JSON-formatted bytes using ctoon's own JSON
 // writer. Signature-compatible with encoding/json.Marshal. Equivalent to
 // DumpsJSON(v, 0) (compact output) with the result converted to a []byte
-// — call DumpsJSON directly for a specific indent width.
+// - call DumpsJSON directly for a specific indent width.
 func JSONMarshal(v interface{}) ([]byte, error) {
 	s, err := DumpsJSON(v, 0)
 	if err != nil {
@@ -106,7 +106,7 @@ func assignDecoded(decoded interface{}, v interface{}) error {
 
 	return fmt.Errorf(
 		"ctoon: cannot unmarshal decoded %T into target of type %s "+
-			"(struct targets with field tags aren't supported — decode into "+
+			"(struct targets with field tags aren't supported - decode into "+
 			"interface{}/map[string]interface{} instead, or use Loads directly)",
 		decoded, elem.Type())
 }

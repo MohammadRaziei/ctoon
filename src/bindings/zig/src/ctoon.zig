@@ -1,13 +1,13 @@
-//! Zig bindings for [ctoon](https://github.com/mohammadraziei/ctoon) — a
+//! Zig bindings for [ctoon](https://github.com/mohammadraziei/ctoon) - a
 //! high-performance, zero-dependency C99 library for the
 //! [TOON](https://github.com/toon-format/spec) serialization format, with
 //! built-in JSON interop.
 //!
-//! Values are represented as `Value` — a small, dependency-free tagged
+//! Values are represented as `Value` - a small, dependency-free tagged
 //! union (below), not a struct-mapping/reflection layer. This mirrors the
 //! Rust binding's own approach (`Value` enum, no `serde_json`) and the
 //! Python binding's (`dict`/`list`). JSON parsing and writing is done by
-//! ctoon's own C implementation (`loadsJson`/`dumpsJson`) — this module
+//! ctoon's own C implementation (`loadsJson`/`dumpsJson`) - this module
 //! has no JSON (or any other) dependency at all.
 //!
 //! Every `Value` owns its string memory: `.str` payloads and object keys
@@ -38,13 +38,13 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 // ── Raw FFI declarations ───────────────────────────────────────────────
-// Not part of the public interface of this module — see `Value`, `loads`,
+// Not part of the public interface of this module - see `Value`, `loads`,
 // `dumps` etc. below for the safe wrapper. Most of ctoon's tree-inspection
 // and mutable-document-building API is `static inline` in ctoon.h (meant
 // for code that #includes the header directly), so it produces no
 // externally-linkable symbol in the compiled ctoon.c object. Those
 // functions are declared here under their `ctoon_rs_`-prefixed shim names
-// instead — see shim.c (shared with the Rust binding), which provides a
+// instead - see shim.c (shared with the Rust binding), which provides a
 // thin extern-linkage wrapper for each one. The handful of functions that
 // genuinely are `extern` in ctoon.h are declared here under their real
 // names, unshimmed.
@@ -93,13 +93,13 @@ const c = struct {
         indent: c_int,
     };
 
-    // Direct JSON <-> TOON conversion — genuinely `extern` in ctoon.h.
+    // Direct JSON <-> TOON conversion - genuinely `extern` in ctoon.h.
     pub extern fn ctoon_json_to_toon_opts(json: [*]const u8, len: usize, rflg: read_flag, wopts: ?*const write_options, alc_: ?*const alc, out_len: *usize, rerr: *read_err, werr: *write_err) ?[*]u8;
     pub extern fn ctoon_toon_to_json_opts(toon: [*]const u8, len: usize, rflg: read_flag, indent: c_int, wflg: write_flag, alc_: ?*const alc, out_len: *usize, rerr: *read_err, werr: *write_err) ?[*]u8;
     pub extern fn ctoon_json_to_toon_file_opts(json_path: [*:0]const u8, toon_path: [*:0]const u8, rflg: read_flag, wopts: ?*const write_options, alc_: ?*const alc, rerr: *read_err, werr: *write_err) bool;
     pub extern fn ctoon_toon_to_json_file_opts(toon_path: [*:0]const u8, json_path: [*:0]const u8, rflg: read_flag, indent: c_int, wflg: write_flag, alc_: ?*const alc, rerr: *read_err, werr: *write_err) bool;
 
-    // Genuinely `extern` in ctoon.h — real names, no shim needed.
+    // Genuinely `extern` in ctoon.h - real names, no shim needed.
     pub extern fn ctoon_spec_tag_hex() u32;
     pub extern fn ctoon_spec_version_string() [*:0]const u8;
     pub extern fn ctoon_spec_date_string() [*:0]const u8;
@@ -110,7 +110,7 @@ const c = struct {
     pub extern fn ctoon_mut_write_opts(doc_: ?*const mut_doc, opts: ?*const anyopaque, alc_: ?*const alc, len: *usize, err: *write_err) ?[*]u8;
     pub extern fn ctoon_write_json_mut(doc_: ?*const mut_doc, indent: c_int, flg: write_flag, alc_: ?*const alc, len: *usize, err: *write_err) ?[*]u8;
 
-    // `static inline` in ctoon.h — shimmed via shim.c.
+    // `static inline` in ctoon.h - shimmed via shim.c.
     pub extern fn ctoon_rs_doc_get_root(doc_: ?*doc) ?*val;
     pub extern fn ctoon_rs_doc_free(doc_: ?*doc) void;
 
@@ -176,7 +176,7 @@ pub fn lastError() ErrorInfo {
     return last_error;
 }
 
-/// One `key: value` pair of an object, in source order — objects are
+/// One `key: value` pair of an object, in source order - objects are
 /// `[]Field`, not a hash map, so field order round-trips exactly as read.
 /// TOON documents are usually human-authored, and reordering fields
 /// alphabetically would be surprising.
@@ -185,13 +185,13 @@ pub const Field = struct {
     value: Value,
 };
 
-/// A dependency-free dynamic value — no JSON library required for the
+/// A dependency-free dynamic value - no JSON library required for the
 /// core API, since ctoon does its own JSON parsing/writing in C.
 pub const Value = union(enum) {
     null,
     boolean: bool,
     /// A non-negative integer, as read back from TOON/JSON text with no
-    /// minus sign — see the module docs for why this is a distinct
+    /// minus sign - see the module docs for why this is a distinct
     /// variant from `sint` rather than one signed integer type. Same
     /// split the Rust binding's `Value::Uint`/`Value::Sint` make.
     uint: u64,
@@ -202,10 +202,10 @@ pub const Value = union(enum) {
     object: std.ArrayList(Field),
 
     /// Frees this value's owned memory, recursively. Every string this
-    /// module hands back — `.str` payloads and object keys alike — is
+    /// module hands back - `.str` payloads and object keys alike - is
     /// gpa-owned (parsed values are duped off the C buffer in `getStr`;
     /// hand-built ones should likewise be `gpa.dupe`d, not string
-    /// literals, if you intend to `deinit` them — see the module docs).
+    /// literals, if you intend to `deinit` them - see the module docs).
     pub fn deinit(self: *Value, gpa: Allocator) void {
         switch (self.*) {
             .str => |s| gpa.free(s),
@@ -278,7 +278,7 @@ pub const Value = union(enum) {
     }
 
     /// Looks up a key in an object. Returns `null` for a non-object value
-    /// or a missing key — same shape as the Rust binding's `Value::get`.
+    /// or a missing key - same shape as the Rust binding's `Value::get`.
     pub fn get(self: Value, key: []const u8) ?*const Value {
         switch (self) {
             .object => |o| {
@@ -353,7 +353,7 @@ fn valToValue(gpa: Allocator, v: ?*c.val) Error!Value {
             break :blk .{ .object = obj };
         },
         else => blk: {
-            // raw/unknown value kind — best-effort string, matches the
+            // raw/unknown value kind - best-effort string, matches the
             // fallback the C API's other consumers (Go, Rust) use.
             const raw = c.ctoon_rs_get_raw(ptr) orelse break :blk Value.null;
             break :blk .{ .str = try gpa.dupe(u8, std.mem.span(raw)) };
@@ -424,7 +424,7 @@ pub fn specDate() []const u8 {
 /// `.deinit(gpa)` on the result when done. On `Error.ParseError`, call
 /// `lastError()` for the message/position/code.
 pub fn loads(gpa: Allocator, s: []const u8) Error!Value {
-    // Always pass an owned, mutable copy — ctoon_read_opts takes a
+    // Always pass an owned, mutable copy - ctoon_read_opts takes a
     // non-const `char *` and, while it does not modify the buffer unless
     // the (never-set, here) in-situ flag is passed, that's an internal
     // behaviour this module doesn't want to depend on for soundness.
@@ -530,7 +530,7 @@ pub fn toonToJsonFile(toon_path: [:0]const u8, json_path: [:0]const u8, indent: 
         return convertError(rerr, werr);
 }
 
-/// Parses a JSON string into a `Value` (using ctoon's own JSON reader —
+/// Parses a JSON string into a `Value` (using ctoon's own JSON reader -
 /// this module has no JSON-parsing dependency of its own).
 pub fn loadsJson(gpa: Allocator, s: []const u8) Error!Value {
     const buf = try gpa.dupe(u8, s);
@@ -589,7 +589,7 @@ test "roundtrip basic" {
 
     try std.testing.expectEqualStrings("Alice", back.get("name").?.asStr().?);
     // Non-negative integer literals read back as `.uint` regardless of
-    // what variant they were written with — TOON text has no type tag
+    // what variant they were written with - TOON text has no type tag
     // distinguishing signed/unsigned. Same behaviour the Rust binding's
     // roundtrip_basic test documents.
     try std.testing.expectEqual(@as(u64, 30), back.get("age").?.asU64().?);

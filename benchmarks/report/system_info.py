@@ -1,5 +1,5 @@
 """
-system_info.py — a factual record of the machine these benchmarks ran
+system_info.py - a factual record of the machine these benchmarks ran
 on: OS, CPU model, core count, total RAM, Python version. Linux-first
 (reads /proc/cpuinfo and /proc/meminfo, which is where this suite is
 actually run -- CI and most dev machines); falls back to whatever the

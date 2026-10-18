@@ -1,6 +1,6 @@
 /**
  * @file ctoon_mex.c
- * @brief Internal MEX gateway for CToon — do NOT call directly from MATLAB.
+ * @brief Internal MEX gateway for CToon - do NOT call directly from MATLAB.
  *
  * Use the public wrappers instead:
  *   ctoon.encode(value)           → encode MATLAB value to TOON string
@@ -322,7 +322,7 @@ static ctoon_mut_val *mx_to_mut(ctoon_mut_doc *doc, const mxArray *mx) {
     }
 
     mexWarnMsgIdAndTxt("ctoon:unsupportedType",
-        "Unsupported MATLAB type '%s' — serialised as null.",
+        "Unsupported MATLAB type '%s' - serialised as null.",
         mxGetClassName(mx));
     return ctoon_mut_null(doc);
 }
@@ -566,7 +566,7 @@ void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[]) {
     if (nrhs < 1 || !mxIsChar(prhs[0]))
         mexErrMsgIdAndTxt("ctoon:badArg",
-            "Internal gateway — use public functions instead:\n"
+            "Internal gateway - use public functions instead:\n"
             "   ctoon.encode, ctoon.decode, ctoon.write, ctoon.read, ctoon.version");
 
     char *cmd = mxArrayToString(prhs[0]);

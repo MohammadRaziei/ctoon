@@ -1,8 +1,8 @@
 /*
- * ctoon Go binding bridge — batched (single-CGo-call) encode/decode.
+ * ctoon Go binding bridge - batched (single-CGo-call) encode/decode.
  *
  * Every CGo call has a fixed, non-trivial cost (a goroutine/OS-thread
- * transition — measured at roughly 200x a native Go function call on
+ * transition - measured at roughly 200x a native Go function call on
  * typical hardware). The original binding walked the ctoon_val /
  * ctoon_mut_val tree one CGo call per node, so a deeply nested document
  * paid that cost hundreds of times over.
@@ -15,14 +15,14 @@
  *     own value tree into a tape buffer in pure Go (no CGo calls at all),
  *     then makes ONE call into ctoon_go_bridge_encode(), which parses the
  *     tape into a ctoon_mut_val tree and writes the final TOON/JSON output
- *     — the whole walk-and-build happens natively in C.
+ *     - the whole walk-and-build happens natively in C.
  *
  *   - Decode direction (TOON/JSON -> Go value): ONE call into
  *     ctoon_go_bridge_decode() parses the input and walks the resulting
  *     ctoon_val tree into a tape buffer natively in C, which the Go side
  *     then decodes into native maps/slices/etc. in pure Go.
  *
- * Tape format (see binding.go's tape* constants — MUST match exactly):
+ * Tape format (see binding.go's tape* constants - MUST match exactly):
  *   TAPE_NULL  = 0                                    (no payload)
  *   TAPE_FALSE = 1                                    (no payload)
  *   TAPE_TRUE  = 2                                    (no payload)
@@ -33,11 +33,11 @@
  *   TAPE_ARR   = 7   + 4 bytes little-endian uint32 count, then that many
  *                      recursively-encoded values
  *   TAPE_OBJ   = 8   + 4 bytes little-endian uint32 count, then that many
- *                      (4-byte length + N raw bytes key, no tag byte —
+ *                      (4-byte length + N raw bytes key, no tag byte -
  *                      always a string in this position) + recursively-
  *                      encoded value pairs
  *
- * This is a private wire format between binding.go and bridge.c only — it
+ * This is a private wire format between binding.go and bridge.c only - it
  * is never exposed, persisted, or sent across a process boundary, so there
  * is no versioning/compatibility concern beyond keeping the two files in
  * sync with each other.

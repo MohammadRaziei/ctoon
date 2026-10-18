@@ -51,7 +51,7 @@ To distribute the binding without requiring a full CToon build environment:
      -DMEX_INCLUDE_DIR=/path/to/ctoon/include \
      -P src/bindings/matlab/CToonMatlabExport.cmake
 
-The export directory contains everything needed — ``ctoon.c``, ``ctoon.h``,
+The export directory contains everything needed - ``ctoon.c``, ``ctoon.h``,
 ``ctoon_mex.c``, and all ``.m`` wrappers. No CMake or git required on the
 target machine.
 

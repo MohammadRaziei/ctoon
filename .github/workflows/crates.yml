@@ -24,7 +24,7 @@ jobs:
   package_crate:
     name: Package & verify crate
     runs-on: ubuntu-latest
-    # Cargo.toml lives at the repo root (like pyproject.toml) — only the
+    # Cargo.toml lives at the repo root (like pyproject.toml) - only the
     # binding's own source under src/bindings/rust/ and the shared C core
     # it compiles against are designated-location files; the manifest
     # itself is not.
@@ -41,7 +41,7 @@ jobs:
 
     # `cargo package` builds the .crate tarball and, like `cargo publish`,
     # verifies it (recompiles from the packaged files only) without
-    # actually uploading anything — the crates.io analogue of
+    # actually uploading anything - the crates.io analogue of
     # `pipx run build --sdist` + `twine check` in wheels.yml.
     - name: Package crate (build + verify)
       run: cargo package --locked

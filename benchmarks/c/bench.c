@@ -1,7 +1,7 @@
 /*
  * CToon C benchmark.
  *
- * Every implementation here — ctoon included — is treated as one more
+ * Every implementation here - ctoon included - is treated as one more
  * peer entry, fetched from its own GitHub repo, tested the same way. No
  * "ctoon vs X" framing: a shared result table, one row per
  * (library, operation) pair.
@@ -21,19 +21,19 @@
  *      the text format taken out -- parse the pre-pass TOON into ctoon's
  *      in-memory structure (ctoon_doc) and stop; serialise a ctoon_doc
  *      built untimed in the pre-pass. TOONc has no equivalent, so no rows.
- *   7. Report throughput — MB/s of bytes actually processed by
- *      *successful* conversions only — and documents/sec, plus success
+ *   7. Report throughput - MB/s of bytes actually processed by
+ *      *successful* conversions only - and documents/sec, plus success
  *      rate, so a library that fails part of the corpus doesn't get an
  *      inflated number.
  *
  * TOONc (github.com/UsboKirishima/TOONc) has no JSON parser and no TOON
- * writer — only toon_to_json is meaningful for it. Its parser also isn't
+ * writer - only toon_to_json is meaningful for it. Its parser also isn't
  * robust against everything ctoon emits (it crashes on part of the
  * corpus), so each file is first probed in a forked child before being
- * included in the timed run — see bench_toonc().
+ * included in the timed run - see bench_toonc().
  *
  * If CTOON_BENCH_LOG_FILE is defined (non-empty), one line per failure is
- * written there — only for the first repeat of each timed phase (and the
+ * written there - only for the first repeat of each timed phase (and the
  * untimed pre-pass), not all 20. Real error messages are captured where
  * ctoon's API provides one; TOONc's API doesn't return one at all, so its
  * log lines just note that parsing failed.
@@ -541,7 +541,7 @@ static void bench_toonc(bench_file *files, size_t n, size_t pre_ok) {
         close(saved_stderr);
     }
 
-    printf("(TOONc's parser safely handles %zu/%zu TOON files — the rest crash "
+    printf("(TOONc's parser safely handles %zu/%zu TOON files - the rest crash "
            "its parser on this corpus, and are excluded from the timed run)\n",
            safe_count, pre_ok);
     record("TOONc", "toon_to_json", bytes, ops, seconds, (long)n * CTOON_BENCH_REPEATS);
@@ -832,14 +832,14 @@ int main(int argc, char **argv) {
     fclose(mf);
 
     if (n == 0) {
-        fprintf(stderr, "Corpus manifest is empty — nothing to benchmark.\n");
+        fprintf(stderr, "Corpus manifest is empty - nothing to benchmark.\n");
         return 1;
     }
 
     size_t total_json_bytes = 0;
     for (size_t i = 0; i < n; i++) total_json_bytes += files[i].len;
 
-    printf("CToon Benchmarks — C\n");
+    printf("CToon Benchmarks - C\n");
     printf("Corpus: %zu files, %.2f MB (JSON)\n\n", n, (double)total_json_bytes / 1e6);
     printf("%-8s %-14s %12s %14s %9s %10s %12s\n",
            "Library", "Operation", "Throughput", "Docs/sec", "Success", "", "Total time");
@@ -860,7 +860,7 @@ int main(int argc, char **argv) {
         pre_ok++;
     }
     if (pre_ok == 0) {
-        fprintf(stderr, "No file in the corpus could be converted — aborting.\n");
+        fprintf(stderr, "No file in the corpus could be converted - aborting.\n");
         return 1;
     }
 

@@ -1,7 +1,7 @@
-//! A minimal, dependency-free value type — no `serde_json` required for
+//! A minimal, dependency-free value type - no `serde_json` required for
 //! the core API, since ctoon does its own JSON parsing/writing in C.
 //! `Vec<(String, Value)>` (not a hash map) for objects, to preserve field
-//! order exactly as read — TOON documents are usually human-authored, and
+//! order exactly as read - TOON documents are usually human-authored, and
 //! reordering fields alphabetically (as a `BTreeMap` would) is surprising.
 
 use std::ops::Index;
@@ -11,7 +11,7 @@ pub enum Value {
     Null,
     Bool(bool),
     /// A non-negative integer, as read back from TOON/JSON text with no
-    /// minus sign — see the crate-level docs for why this is a distinct
+    /// minus sign - see the crate-level docs for why this is a distinct
     /// variant from `Sint` rather than one signed integer type.
     Uint(u64),
     Sint(i64),
@@ -80,7 +80,7 @@ impl Value {
     }
 
     /// Looks up a key in an object. Returns `None` for a non-object value
-    /// or a missing key — same shape as `serde_json::Value::get`.
+    /// or a missing key - same shape as `serde_json::Value::get`.
     pub fn get(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Object(o) => o.iter().find(|(k, _)| k == key).map(|(_, v)| v),
@@ -89,7 +89,7 @@ impl Value {
     }
 }
 
-/// `value["key"]` — returns `&Value::Null` for a missing key or a
+/// `value["key"]` - returns `&Value::Null` for a missing key or a
 /// non-object value, matching `serde_json::Value`'s indexing behaviour
 /// (never panics).
 impl Index<&str> for Value {
@@ -100,7 +100,7 @@ impl Index<&str> for Value {
     }
 }
 
-/// `value[i]` — returns `&Value::Null` for an out-of-range index or a
+/// `value[i]` - returns `&Value::Null` for an out-of-range index or a
 /// non-array value.
 impl Index<usize> for Value {
     type Output = Value;

@@ -1,5 +1,5 @@
 # Harness-only dependencies. ctoon and toon_format are installed directly
-# from their GitHub repos by CMakeLists.txt (git+https), not listed here —
+# from their GitHub repos by CMakeLists.txt (git+https), not listed here -
 # same treatment for every library benchmarked, nothing local.
 tabulate>=0.9
-toons>=0.7   # community, Rust backend (github.com/alesanfra/toons) — prebuilt wheel on PyPI
+toons>=0.7   # community, Rust backend (github.com/alesanfra/toons) - prebuilt wheel on PyPI

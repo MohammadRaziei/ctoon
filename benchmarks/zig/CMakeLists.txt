@@ -1,5 +1,5 @@
 # ctoon is fetched by `zig fetch --save`, the same way `go get` fetches
-# ctoon for the Go benchmark — run before every build so build.zig.zon's
+# ctoon for the Go benchmark - run before every build so build.zig.zon's
 # dependency hash always matches ctoon's current master, instead of
 # committing a fixed version.
 add_custom_target(ctoon_benchmarks_zig_deps
@@ -19,8 +19,8 @@ endif()
 # some WSL/conda environments), Zig's bundled lld linker looks for libc
 # pieces (libm.so.6, etc.) under /lib64 by default and doesn't find them
 # if the system instead keeps them under a triplet directory like
-# /usr/lib/x86_64-linux-gnu. Rather than assume any particular layout —
-# or ask anyone to add a system-wide /lib64 symlink — ask the C compiler
+# /usr/lib/x86_64-linux-gnu. Rather than assume any particular layout -
+# or ask anyone to add a system-wide /lib64 symlink - ask the C compiler
 # CMake already found where IT looks for libraries by default
 # (CMAKE_C_IMPLICIT_LINK_DIRECTORIES, populated by CMake's own compiler
 # detection) and hand each of those to zig via --search-prefix. No-op on
@@ -29,7 +29,7 @@ set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
 set(CTOON_ZIG_LIB_PATH_LIST "")
 foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # zig's --search-prefix requires every path given to actually exist
-    # as a directory — GCC's own implicit-link-directory list routinely
+    # as a directory - GCC's own implicit-link-directory list routinely
     # includes paths that don't exist on disk (this is normal for GCC;
     # it's an optional search list, not a guarantee), so filter those
     # out before handing the list to zig.
@@ -40,7 +40,7 @@ foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
 endforeach()
 # Belt-and-suspenders: also set LD_LIBRARY_PATH to the same list, in case
 # --search-prefix and LD_LIBRARY_PATH aren't both honored the same way
-# in every zig/lld version — whichever one actually gets picked up is
+# in every zig/lld version - whichever one actually gets picked up is
 # enough. Harmless to set when unneeded.
 string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
 
@@ -63,7 +63,7 @@ get_filename_component(CTOON_ZIG_CRT_DIR "${CTOON_ZIG_CRT1_PATH}" DIRECTORY)
 set(CTOON_ZIG_LIBC_FILE ${CMAKE_CURRENT_BINARY_DIR}/zig-libc.txt)
 # CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES's first entry is typically GCC's
 # own internal include dir (freestanding headers like stddef.h, not
-# libc headers like stdio.h/stdlib.h) — blindly taking index 0 points
+# libc headers like stdio.h/stdlib.h) - blindly taking index 0 points
 # zig at a dir that's missing the actual libc headers. Search the list
 # instead: the real libc include_dir is the one literally named
 # ".../usr/include" (or "/usr/include" itself), and sys_include_dir is
@@ -95,7 +95,7 @@ gcc_dir=
     set(CTOON_ZIG_LIBC_ARGS --libc ${CTOON_ZIG_LIBC_FILE})
 else()
     # Couldn't find a real /usr/include entry or crt1.o (unusual
-    # compiler setup) — fall back to search-prefix-only behavior rather
+    # compiler setup) - fall back to search-prefix-only behavior rather
     # than writing a broken libc.txt that would hard-fail the build.
     set(CTOON_ZIG_LIBC_ARGS "")
 endif()

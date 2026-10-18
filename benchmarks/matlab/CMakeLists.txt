@@ -9,7 +9,7 @@ FetchContent_MakeAvailable(ctoon)
 
 if(NOT TARGET ctoon_build_mex)
     message(STATUS "ctoon_build_mex not available (MATLAB not found by the "
-                    "fetched ctoon's own CMakeLists.txt) — skipping MATLAB benchmark.")
+                    "fetched ctoon's own CMakeLists.txt) - skipping MATLAB benchmark.")
     return()
 endif()
 

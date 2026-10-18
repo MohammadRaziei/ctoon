@@ -9,7 +9,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ctoon)
 
 # ── TOONc (github.com/UsboKirishima/TOONc) ────────────────────────────────
-# Plain Makefile project, no CMakeLists.txt of its own — FetchContent just
+# Plain Makefile project, no CMakeLists.txt of its own - FetchContent just
 # populates the source (MakeAvailable skips add_subdirectory() when there's
 # no top-level CMakeLists.txt), and we build the one .c file directly.
 FetchContent_Declare(

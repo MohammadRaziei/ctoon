@@ -7,7 +7,7 @@ pull request.
 CToon is a C99 core library (`src/ctoon.c`, `include/ctoon.h`) with bindings
 for C++, Python, Go, Rust, Zig, Julia, MATLAB and GNU Octave, plus a CLI. **CMake is the
 single entry point for building, testing, coverage and documentation across
-all of them** — you do not need to learn each language's tooling separately
+all of them** - you do not need to learn each language's tooling separately
 to check your work.
 
 ---
@@ -35,7 +35,7 @@ to check your work.
 
 ## 1. Workflow: issue first, then fork
 
-**Always open an issue before you start working — and only then fork.**
+**Always open an issue before you start working - and only then fork.**
 
 1. **Open an issue** describing the bug, feature or change you have in mind.
    Search existing issues first to avoid duplicates.
@@ -80,7 +80,7 @@ Required for everything:
 - Network access at configure time the first time (CMake fetches the
   [toon-format/spec](https://github.com/toon-format/spec) test fixtures)
 
-Per language — only what you touch is required unless you opt in to
+Per language - only what you touch is required unless you opt in to
 everything (see [Configure options](#41-configure-options)):
 
 | Language | Toolchain |
@@ -119,11 +119,11 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 
 **How the per-language flags actually work.** Go, Rust, Zig, Julia, MATLAB and
 Octave are compiled by their *own* toolchains (`go`, `cargo`, `zig build`,
-Julia `Pkg`, MEX / `mkoctfile`) — not by CMake's own build graph. The `CTOON_BUILD_<LANG>` flags
+Julia `Pkg`, MEX / `mkoctfile`) - not by CMake's own build graph. The `CTOON_BUILD_<LANG>` flags
 therefore don't add a build step; they control what `tests/` and `docs/` do
 when they look for that language:
 
-- **Flag OFF (default):** the language is skipped entirely — no toolchain
+- **Flag OFF (default):** the language is skipped entirely - no toolchain
   probe, no noise. Handy on a machine that only has some toolchains.
 - **Flag ON (or `CTOON_BUILD_ALL_LANGS=ON`):** you have explicitly asked for
   that language, so a missing toolchain is a **hard configure error**
@@ -162,7 +162,7 @@ This builds the C library, the C++ wrapper, the `ctoon` CLI, tests, and (with
 There are two equivalent ways; use whichever you prefer:
 
 ```bash
-# A) ctest — runs every registered language test, verbose on failure
+# A) ctest - runs every registered language test, verbose on failure
 ctest --test-dir build --output-on-failure --extra-verbose
 
 # B) the aggregate custom target
@@ -264,7 +264,7 @@ this.
 
 At the same moment it writes `supported_spec.conf`, CMake also regenerates the
 `CTOON_SPEC_*` block in `include/ctoon.h` (between the `BEGIN/END CTOON_SPEC`
-markers) — **don't edit that block by hand**. Other languages read the values
+markers) - **don't edit that block by hand**. Other languages read the values
 through `ctoon_spec_version_string()`, `ctoon_spec_tag_hex()` and
 `ctoon_spec_date_string()` rather than parsing the header, and every
 language's test-suite checks them against `supported_spec.conf`.
@@ -281,7 +281,7 @@ has been discussed:
    `src/ctoon.c` / `include/ctoon.h`).
 3. Add or update tests under `tests/<lang>/`.
 4. Update the language's docs under `docs/<lang>/` if the public API changed.
-5. **Run the relevant CMake commands and make sure they pass** — CI runs the
+5. **Run the relevant CMake commands and make sure they pass** - CI runs the
    same commands, and it is much faster to catch problems locally:
 
    ```bash
@@ -311,16 +311,16 @@ why the binding is useful, how it will call the C core, and who will maintain
 it. Do not begin implementation until a maintainer confirms in the issue.
 
 Once approved, a new language is expected to be a complete, first-class
-citizen of the CMake and CI setup — not just source code. Use an existing
+citizen of the CMake and CI setup - not just source code. Use an existing
 binding (Rust or Go are the closest templates) as a guide. You will need to:
 
-1. **Binding source** — `src/bindings/<lang>/` plus the package manifest the
+1. **Binding source** - `src/bindings/<lang>/` plus the package manifest the
    language needs (some manifests must live at the repo root, like
    `Cargo.toml` and `build.zig.zon`).
-2. **Tests** — `tests/<lang>/`, including a round-trip test over
+2. **Tests** - `tests/<lang>/`, including a round-trip test over
    `tests/data/` and a spec-conformance test using
    `CTOON_SPEC_FIXTURES_DIR` / `CTOON_SPEC_EXAMPLES_DIR`.
-3. **CMake integration** — add `tests/<lang>/CMakeLists.txt` following the
+3. **CMake integration** - add `tests/<lang>/CMakeLists.txt` following the
    pattern in `tests/rust/CMakeLists.txt`:
    - `ctoon_lang_wanted(CTOON_BUILD_<LANG> ...)` and `return()` early when the
      language isn't requested;
@@ -340,7 +340,7 @@ binding (Rust or Go are the closest templates) as a guide. You will need to:
    If the toolchain needs discovering (interpreter, compiler wrapper,
    version probe), put that in a `cmake/Ctoon<Lang>.cmake` find module with
    a minimum version and an install hint, rather than inline.
-4. **Docs** — a `docs/<lang>/` folder with `index-docs.json`,
+4. **Docs** - a `docs/<lang>/` folder with `index-docs.json`,
    `index-install.txt` and `index-example.txt`, an entry in
    `docs/supported_langs.json` (display order and `role` are described in
    that file), and in `docs/CMakeLists.txt` a `ctoon_add_section(...)` plus a
@@ -349,16 +349,16 @@ binding (Rust or Go are the closest templates) as a guide. You will need to:
    automatically. Then list the new target in the docs sections of
    `README.md` and this file. Generate the docs once locally before opening
    the PR.
-5. **`ctoon.manager`** *(if the language ships an installable package)* — a
+5. **`ctoon.manager`** *(if the language ships an installable package)* - a
    `langs/<lang>/` package under `src/bindings/python/ctoon/manager/` with
    `add_parser`, registered in `langs/__init__.py`, plus tests in
    `tests/python/manager/`.
-6. **README, release notes and top-level lists** — the supported-language
+6. **README, release notes and top-level lists** - the supported-language
    list and install snippets in `README.md`, and `release_template.md` when
    the release assets need an explanation.
-7. **CI** — see the next section. This part is mandatory.
-8. **Benchmarks** *(optional but welcome)* — `benchmarks/<lang>/`.
-9. **Version sync** — if the manifest needs a literal version string, add it
+7. **CI** - see the next section. This part is mandatory.
+8. **Benchmarks** *(optional but welcome)* - `benchmarks/<lang>/`.
+9. **Version sync** - if the manifest needs a literal version string, add it
    to `version.py` so it stays in sync with `ctoon.h`.
 
 ### Build-time versus run-time requirements
@@ -383,10 +383,10 @@ CI is split into small workflows under `.github/workflows/`:
 | Workflow | Purpose |
 |----------|---------|
 | `cmake.yml` | The main workflow. Builds **all** languages on Ubuntu, macOS and Windows and runs the `ctest` suite on Ubuntu and macOS (the Windows job currently builds only), then builds docs and coverage and uploads them as artifacts. Runs on every PR to `master`. |
-| `wheels.yml` | Python — builds the sdist and wheels and uploads them as artifacts. |
-| `crates.yml` | Rust — runs `cargo test`, then `cargo package` / `cargo publish --dry-run`, and uploads the `.crate` as an artifact. |
-| `zig.yml` | Zig — cross-compiles release libraries and uploads them as artifacts. |
-| `mex.yml` | MATLAB + Octave (formerly `matlab.yml`) — packs the MATLAB source distribution (`ctoon-matlab-<ver>-src.zip`), builds prebuilt MEX zips and tests them on several MATLAB releases. For Octave it builds that same source zip with `mkoctfile` once per Octave release (Linux in the official `gnuoctave/octave` images, macOS via Homebrew) and tests each build in a separate job that installs no compiler. Octave has no release binary; it builds from the source zip. |
+| `wheels.yml` | Python - builds the sdist and wheels and uploads them as artifacts. |
+| `crates.yml` | Rust - runs `cargo test`, then `cargo package` / `cargo publish --dry-run`, and uploads the `.crate` as an artifact. |
+| `zig.yml` | Zig - cross-compiles release libraries and uploads them as artifacts. |
+| `mex.yml` | MATLAB + Octave (formerly `matlab.yml`) - packs the MATLAB source distribution (`ctoon-matlab-<ver>-src.zip`), builds prebuilt MEX zips and tests them on several MATLAB releases. For Octave it builds that same source zip with `mkoctfile` once per Octave release (Linux in the official `gnuoctave/octave` images, macOS via Homebrew) and tests each build in a separate job that installs no compiler. Octave has no release binary; it builds from the source zip. |
 | `orchestrator.yml` | Runs on pushes to `master` and version tags. Calls the workflows above, creates the release, attaches every artifact, publishes to PyPI/crates.io on tags, and deploys the docs + coverage site to GitHub Pages. |
 
 ### The per-language workflow pattern
@@ -445,7 +445,7 @@ The library version is defined once, in `include/ctoon.h`
 (`CTOON_VERSION_MAJOR/MINOR/PATCH`). `CMakeLists.txt` and `pyproject.toml`
 read it dynamically. Manifests that require a literal version (`Cargo.toml`,
 `build.zig.zon`, the Julia `Project.toml`) are kept in sync by `version.py`.
-**Do not bump versions in pull requests** — maintainers handle releases with
+**Do not bump versions in pull requests** - maintainers handle releases with
 `python version.py`.
 
 ---

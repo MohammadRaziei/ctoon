@@ -1,5 +1,5 @@
 /*
- * genhtml.css — CToon coverage theme
+ * genhtml.css - CToon coverage theme
  * Aligned with ctoon-docs.css dark palette.
  *
  * Author  : Mohammad Raziei
@@ -211,7 +211,7 @@ pre > span:hover {
 }
 
 /* ── TLA colors (aligned to ctoon palette) ──────────────────────────────── */
-/* Uncovered / lost — red tone */
+/* Uncovered / lost - red tone */
 td.tlaUNC, td.tlaBgUNC, span.tlaUNC, span.tlaBgUNC, a.tlaBgUNC,
 td.tlaLBC, td.tlaBgLBC, span.tlaLBC, span.tlaBgLBC, a.tlaBgLBC,
 td.tlaUIC, td.tlaBgUIC, span.tlaUIC, span.tlaBgUIC, a.tlaBgUIC,
@@ -220,7 +220,7 @@ td.tlaUBC, td.tlaBgUBC, span.tlaUBC, span.tlaBgUBC, a.tlaBgUBC {
     color: #ff6b6b;
 }
 
-/* Gained / covered — blue tone (accent) */
+/* Gained / covered - blue tone (accent) */
 td.tlaGBC, td.tlaBgGBC, span.tlaGBC, span.tlaBgGBC, a.tlaBgGBC,
 td.tlaGIC, td.tlaBgGIC, span.tlaGIC, span.tlaBgGIC, a.tlaBgGIC,
 td.tlaGNC, td.tlaBgGNC, span.tlaGNC, span.tlaBgGNC, a.tlaBgGNC,
@@ -229,7 +229,7 @@ td.tlaCBC, td.tlaBgCBC, span.tlaCBC, span.tlaBgCBC, a.tlaBgCBC {
     color: var(--accent);
 }
 
-/* Excluded / deleted — muted */
+/* Excluded / deleted - muted */
 td.tlaEUB, td.tlaBgEUB, span.tlaEUB, span.tlaBgEUB, a.tlaBgEUB,
 td.tlaECB, td.tlaBgECB, span.tlaECB, span.tlaBgECB, a.tlaBgECB,
 td.tlaDUB, td.tlaBgDUB, span.tlaDUB, span.tlaBgDUB, a.tlaDUB,

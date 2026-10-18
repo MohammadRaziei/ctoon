@@ -612,7 +612,7 @@ public:
     static document parse(const string_view &toon, read_flag flags = read_flag::NOFLAG) {
         return parse(toon.data(), toon.size(), flags);
     }
-    /* Same as parse(), but with a custom indentSize (spec §12) — the
+    /* Same as parse(), but with a custom indentSize (spec §12) - the
      * number of spaces that count as one indentation level (default 2). */
     static document parse_indent(const char *toon, std::size_t len, int indent_size,
                            read_flag flags = read_flag::NOFLAG) {

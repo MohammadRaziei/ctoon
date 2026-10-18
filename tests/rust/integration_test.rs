@@ -1,8 +1,8 @@
-//! Integration tests for the ctoon Rust binding — public API only (the
+//! Integration tests for the ctoon Rust binding - public API only (the
 //! crate's own unit tests, in src/lib.rs, additionally cover internals).
 //! Lives here rather than in the usual Cargo-native `<crate>/tests/`
 //! location so every language's tests stay under one root `tests/`
-//! folder — see Cargo.toml's `[[test]] path = "../../../tests/rust/..."`.
+//! folder - see Cargo.toml's `[[test]] path = "../../../tests/rust/..."`.
 
 use ctoon::Value;
 
@@ -97,7 +97,7 @@ fn unicode_string() {
 #[test]
 fn escaped_key_round_trip() {
     // Regression coverage for the keyed-tabular escaped-key bug fixed in
-    // the C core (src/ctoon.c) — the same case tests/python and
+    // the C core (src/ctoon.c) - the same case tests/python and
     // tests/c/tests/cpp cover, exercised here through the Rust binding.
     let v = Value::Object(vec![(
         "properties".into(),

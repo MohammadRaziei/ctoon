@@ -22,7 +22,7 @@ target_link_libraries(my_app PRIVATE ctoon::ctoonpp)
 ```
 
 Requires CMake 3.19+ and a C++11-compatible compiler. All RAII lifetime
-management is included automatically — no manual free calls needed.
+management is included automatically - no manual free calls needed.
 
 ## Quick example
 
@@ -66,6 +66,6 @@ ctoon::spec::tag::major();        // 4   (also minor(), patch(), hex())
 ctoon::spec::date::string();      // "2026-07-26"
 ```
 
-See the `ctoon` namespace reference for the full API — `ctoon::document`,
+See the `ctoon` namespace reference for the full API - `ctoon::document`,
 `ctoon::value`, `ctoon::make_document`, and the `EncodeOptions` /
 `DecodeOptions` structs.

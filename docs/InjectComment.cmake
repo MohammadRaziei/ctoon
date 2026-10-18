@@ -3,10 +3,10 @@
 # .html file found under OUTPUT_DIR.
 #
 # Called with -P (script mode). Required variables:
-#   OUTPUT_DIR       — root directory to scan for .html files (recursive)
-#   COMMENT_IN       — path to initial_comment.in template
-#   ASCII_ART_FILE   — path to the ASCII art .txt file
-#   PROJECT_VERSION  — project version string
+#   OUTPUT_DIR       - root directory to scan for .html files (recursive)
+#   COMMENT_IN       - path to initial_comment.in template
+#   ASCII_ART_FILE   - path to the ASCII art .txt file
+#   PROJECT_VERSION  - project version string
 
 cmake_policy(SET CMP0053 NEW)
 
@@ -63,8 +63,8 @@ message(STATUS "InjectComment: processing ${_COUNT} HTML file(s) in ${OUTPUT_DIR
 foreach(_html IN LISTS _HTML_FILES)
     file(READ "${_html}" _CONTENT)
 
-    # Idempotent — skip if already injected
-    string(FIND "${_CONTENT}" "CToon — C implementation" _ALREADY)
+    # Idempotent - skip if already injected
+    string(FIND "${_CONTENT}" "CToon - C implementation" _ALREADY)
     if(NOT _ALREADY EQUAL -1)
         continue()
     endif()

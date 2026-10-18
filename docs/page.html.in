@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@PAGE_TITLE@ — CToon</title>
+    <title>@PAGE_TITLE@ - CToon</title>
     <link rel="icon" href="@FAVICON@" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -162,7 +162,7 @@
     border-radius: 4px;
 }
 
-/* code blocks — rendered by highlight_code() in convert_page.py */
+/* code blocks - rendered by highlight_code() in convert_page.py */
 .page-article .code-wrap {
     margin: 1rem 0;
 }

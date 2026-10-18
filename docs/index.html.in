@@ -53,7 +53,7 @@
     </div>
     <h1>CToon Documentation</h1>
     <p class="hero-desc">
-        A high-performance serialisation library for the TOON format — a compact, human-readable alternative to JSON.
+        A high-performance serialisation library for the TOON format, a compact, human-readable alternative to JSON.
         Built on a fast C core, exposing idiomatic APIs for @LANG_LIST@.
     </p>
     <div class="hero-stats">
@@ -170,9 +170,9 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
     </div>
 
     <ul class="compare-notes">
-        <li><code>alerts[2]: frost,wind</code> &mdash; <strong>inline form</strong>: a primitive array on a single line, with its length declared.</li>
-        <li><code>forecast[3]{day,&hellip;}:</code> &mdash; <strong>tabular form</strong>: the field list is written once in the header, then one row per element.</li>
-        <li><code>temp{min,max}</code> &mdash; a <strong>nested field group</strong>: the uniform nested <code>temp</code> objects fold into the header, so rows stay flat.</li>
+        <li><code>alerts[2]: frost,wind</code> is the <strong>inline form</strong>: a primitive array on a single line, with its length declared.</li>
+        <li><code>forecast[3]{day,&hellip;}:</code> is the <strong>tabular form</strong>: the field list is written once in the header, then one row per element.</li>
+        <li><code>temp{min,max}</code> is a <strong>nested field group</strong>: the uniform nested <code>temp</code> objects fold into the header, so rows stay flat.</li>
     </ul>
 
     <p class="compare-caption">
@@ -305,7 +305,7 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
 
 <script>
     // ── State ────────────────────────────────────────────────
-    // Single source of truth — like React state but vanilla JS.
+    // Single source of truth - like React state but vanilla JS.
     // All panels (docs, install, example) are always in sync.
     const PANELS = ['docs', 'install', 'example'];
     const STORAGE_KEY = 'ctoon-docs';
@@ -327,7 +327,7 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
         document.getElementById('hljs-theme-dark').disabled  = (state.theme !== 'dark');
         document.getElementById('hljs-theme-light').disabled = (state.theme !== 'light');
 
-        // Tabs — sync all panels to state.lang, fallback to first tab if lang absent
+        // Tabs - sync all panels to state.lang, fallback to first tab if lang absent
         PANELS.forEach(panel => {
             const btns  = document.querySelectorAll('#' + panel + '-tabs .tab-btn');
             const panes = document.querySelectorAll('#' + panel + '-panel .tab-content');
@@ -363,7 +363,7 @@ forecast[3]{day,temp{min,max},condition,rainChance}:
 
     // ── Public API ───────────────────────────────────────────
     function switchTab(panel, lang) {
-        // panel arg is ignored — all panels always sync to the same lang
+        // panel arg is ignored - all panels always sync to the same lang
         setState({ lang });
     }
 

@@ -1,5 +1,5 @@
 # @toon-format/toon (fetched via npm, in package.json) is the only
-# implementation here — no ctoon Node.js binding exists yet (see bench.mjs).
+# implementation here - no ctoon Node.js binding exists yet (see bench.mjs).
 add_custom_target(ctoon_benchmarks_node_deps
     COMMAND ${NPM_EXECUTABLE} install --silent --no-audit --no-fund
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

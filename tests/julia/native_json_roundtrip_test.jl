@@ -1,7 +1,7 @@
-# JSON.jl (a test-only dependency added specifically for this file — see
+# JSON.jl (a test-only dependency added specifically for this file - see
 # src/bindings/julia/Project.toml's comment; CToon.jl itself never
 # `using`s it) vs CToon's own JSON reader/writer (CToon.parse/CToon.dumps,
-# which call ctoon.c's own cj_* parser via shim.c — see CToon.parse's own
+# which call ctoon.c's own cj_* parser via shim.c - see CToon.parse's own
 # comment on why it, not a separate parse_json, is the JSON entry point).
 #
 # Every other Julia test builds native Julia values by hand or goes
@@ -122,7 +122,7 @@ function check_pair(dir::AbstractString, name::AbstractString)
 end
 
 # ---------------------------------------------------------------------------
-# tests/data/*.json + *.toon — local to this repo, always available.
+# tests/data/*.json + *.toon - local to this repo, always available.
 # ---------------------------------------------------------------------------
 
 @testset "native JSON roundtrip: local data corpus" begin
@@ -142,7 +142,7 @@ end
 @testset "native JSON roundtrip: spec examples corpus" begin
     dir = spec_examples_dir()
     if dir === nothing
-        @test_skip "CTOON_SPEC_EXAMPLES_DIR not set/found — only available under CMake/ctest."
+        @test_skip "CTOON_SPEC_EXAMPLES_DIR not set/found - only available under CMake/ctest."
     else
         names = pair_files(dir)
         @test !isempty(names)

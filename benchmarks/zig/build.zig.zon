@@ -9,13 +9,13 @@
         "src",
     },
     .dependencies = .{
-        // toon-zig is NOT currently a dependency — see build.zig's
+        // toon-zig is NOT currently a dependency - see build.zig's
         // comment for why (it doesn't compile under Zig 0.16 yet, an
         // upstream issue, not something to patch around here).
         //
         // Left empty here on purpose: `zig fetch --save
         // git+https://github.com/mohammadraziei/ctoon.git` populates this
-        // with the `ctoon` entry (name + content hash) automatically — see
+        // with the `ctoon` entry (name + content hash) automatically - see
         // this directory's CMakeLists.txt, which runs that fetch before
         // every build so the hash always matches ctoon's current master,
         // the same way the Go benchmark's `go get`/`go mod tidy` step

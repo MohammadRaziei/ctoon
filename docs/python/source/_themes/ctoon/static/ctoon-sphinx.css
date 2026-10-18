@@ -418,7 +418,7 @@ pre code.hljs { display: block; overflow-x: auto; }
     .footer-links { align-items: flex-start; }
 }/* ── Import ctoon base ───────────────────────────────────────────────────── */
 /* All layout, topbar, sidebar, TOC, card, tab, code-block, footer styles
-   come from ctoon-docs.css — this file adds Sphinx-specific overrides.    */
+   come from ctoon-docs.css - this file adds Sphinx-specific overrides.    */
 
 /* ── Sphinx body content ─────────────────────────────────────────────────── */
 .page-article p              { font-size: 0.925rem; color: var(--fg2); line-height: 1.8; margin-bottom: 1rem; }
@@ -711,7 +711,7 @@ a:hover                     { color: var(--accent-hover) !important; text-decora
 .page-article a.reference:visited  { color: var(--accent) !important; }
 .page-article a.reference:hover    { color: var(--accent-hover) !important; }
 
-/* Internal/external reference distinction — keep same color */
+/* Internal/external reference distinction - keep same color */
 .page-article a.internal,
 .page-article a.external           { color: var(--accent) !important; }
 

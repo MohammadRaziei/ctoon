@@ -7,5 +7,5 @@
 ctoon = { git = "https://github.com/mohammadraziei/ctoon.git" }</code></pre>
             </div>
             <div class="install-note">
-                Requires Rust 1.70+. No runtime dependencies — <code>build.rs</code> compiles <code>ctoon.c</code> directly into the crate, so no separate C library install is needed. A C compiler must be available on the build host.
+                Requires Rust 1.70+. No runtime dependencies - <code>build.rs</code> compiles <code>ctoon.c</code> directly into the crate, so no separate C library install is needed. A C compiler must be available on the build host.
             </div>

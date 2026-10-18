@@ -8,7 +8,7 @@ pub enum Error {
     /// A [`Value`](crate::Value) could not be serialised.
     Write { message: String, code: u32 },
     /// Building the ctoon value tree failed (e.g. an internal allocation
-    /// failure) — not reachable in ordinary use.
+    /// failure) - not reachable in ordinary use.
     UnsupportedValue(String),
 }
 

@@ -2,7 +2,7 @@
  * CToon C++ benchmark.
  *
  * No competing C++ implementation exists in the ecosystem, so this is a
- * solo run — but it follows the exact same methodology, corpus, and JSON
+ * solo run - but it follows the exact same methodology, corpus, and JSON
  * output schema as every other language benchmark here, so the numbers
  * stay comparable across a rewrite of the wrapper.
  */
@@ -255,7 +255,7 @@ int main() {
     std::size_t total_json_bytes = 0;
     for (const auto &f : files) total_json_bytes += f.json.size();
 
-    std::printf("CToon Benchmarks — C++\n");
+    std::printf("CToon Benchmarks - C++\n");
     std::printf("Corpus: %zu files, %.2f MB (JSON)\n\n",
                  files.size(), static_cast<double>(total_json_bytes) / 1e6);
     std::printf("%-8s %-14s %12s %14s %9s %10s %12s\n",

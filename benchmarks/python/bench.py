@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CToon Python benchmark.
 
-Every implementation here — ctoon included — is one more peer entry,
+Every implementation here - ctoon included - is one more peer entry,
 installed from its own source (GitHub or PyPI), tested the same way. No
 "ctoon vs X" framing: one shared results table, one row per
 (library, operation) pair.
@@ -14,7 +14,7 @@ Methodology (same across every language benchmark in this repo):
      re-serialise to JSON. Measures interop with ctoon's specific output.
   5. Timed "roundtrip": json -> toon -> parse toon -> json, all four steps
      chained as one operation using each library's own encoder/decoder
-     together. Measures self-consistency, not interop — see the top-level
+     together. Measures self-consistency, not interop - see the top-level
      README for why a library's toon_to_json and roundtrip success rates
      can legitimately differ a lot.
   6. Timed "toon_to_struct" / "struct_to_toon": the same two directions
@@ -197,7 +197,7 @@ def main():
 
     total_json_bytes = sum(len(f["json"].encode("utf-8")) for f in files)
 
-    print("CToon Benchmarks — Python")
+    print("CToon Benchmarks - Python")
     print(f"Corpus: {len(files)} files, {total_json_bytes / 1e6:.2f} MB (JSON)\n")
 
     log_file = open(args.log_file, "w") if args.log_file else None

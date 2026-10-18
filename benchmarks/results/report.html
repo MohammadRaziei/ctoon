@@ -1,94 +1,625 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CToon Benchmarks</title>
+<link rel="icon" href="../ctoon-sq.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script>
+/* Same persisted theme as the documentation site (same origin, same key),
+   applied before first paint so the page never flashes the wrong theme. */
+(function () {
+  var theme = 'dark';
+  try {
+    var saved = JSON.parse(localStorage.getItem('ctoon-docs') || '{}');
+    if (saved.theme === 'light' || saved.theme === 'dark') theme = saved.theme;
+  } catch (e) {}
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
 <style>
 :root {
-  --bg: #0b0e14;
-  --bg-panel: #12161f;
-  --bg-panel-2: #171c28;
-  --border: #232938;
-  --text: #e6e9ef;
-  --text-dim: #8b93a7;
-  --accent: #5b8cff;
-  --accent-2: #35d0ba;
-  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --bg:           #ffffff;
+    --bg2:          #f8f9fa;
+    --bg3:          #f1f3f5;
+    --fg:           #111111;
+    --fg2:          #6c757d;
+    --fg3:          #adb5bd;
+    --border:       #dee2e6;
+    --border2:      #ced4da;
+    --accent:       #4dabf7;
+    --accent-hover: #339af0;
+    --accent-glow:  rgba(77,171,247,0.18);
+    --accent-glow2: rgba(77,171,247,0.08);
+    --card:         #ffffff;
+    --card-border:  #dee2e6;
+    --card-hover:   #f8f9fa;
+    --code-bg:      #f4f4f8;
+    --code-fg:      #1a1a2e;
+    --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #339af0 100%);
+    --shine:        linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 60%);
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md:    0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg:    0 12px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    --shadow-blue:  0 4px 20px rgba(77,171,247,0.25);
 }
-* { box-sizing: border-box; }
+[data-theme="dark"] {
+    --bg:           #0f0f12;
+    --bg2:          #1a1a1f;
+    --bg3:          #242429;
+    --fg:           #e8e8f0;
+    --fg2:          #9090a0;
+    --fg3:          #606070;
+    --border:       #2a2a35;
+    --border2:      #363645;
+    --accent:       #4dabf7;
+    --accent-hover: #74c0fc;
+    --accent-glow:  rgba(77,171,247,0.15);
+    --accent-glow2: rgba(77,171,247,0.06);
+    --card:         #1a1a1f;
+    --card-border:  #2a2a35;
+    --card-hover:   #242429;
+    --code-bg:      #13131a;
+    --code-fg:      #e0e0f0;
+    --icon-grad:    linear-gradient(135deg, #4dabf7 0%, #74c0fc 100%);
+    --shine:        linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 60%);
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md:    0 4px 12px rgba(0,0,0,0.5);
+    --shadow-lg:    0 12px 32px rgba(0,0,0,0.6);
+    --shadow-blue:  0 4px 24px rgba(77,171,247,0.2);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.55;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    line-height: 1.6;
+    transition: background 0.25s, color 0.25s;
 }
-.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 80px; }
+
+/* ── Topbar ─────────────────────────────────────────── */
+.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem;
+    height: 60px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+.topbar-brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--fg); }
+.topbar-logo { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+.topbar-logo svg { width: 100%; height: 100%; }
+.topbar-name { font-weight: 700; font-size: 1rem; letter-spacing: -0.02em; }
+.topbar-sep { width: 1px; height: 18px; background: var(--border2); margin: 0 0.25rem; }
+.topbar-subtitle { font-size: 0.8rem; color: var(--fg2); font-weight: 400; }
+.topbar-version {
+    font-size: 0.7rem; color: var(--accent); background: var(--accent-glow2);
+    border: 1px solid var(--accent-glow);
+    padding: 0.15rem 0.6rem; border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500;
+}
+.topbar-actions { display: flex; align-items: center; gap: 0.6rem; }
+.topbar-gh {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; font-weight: 500; color: var(--fg2);
+    text-decoration: none; padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 0;
+    transition: all 0.18s;
+}
+.topbar-gh:hover { color: var(--fg); border-color: var(--accent); background: var(--accent-glow2); }
+.theme-toggle {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    border: 1px solid var(--border); border-radius: 0;
+    background: transparent; color: var(--fg); cursor: pointer;
+    transition: all 0.18s;
+}
+.theme-toggle:hover { border-color: var(--accent); background: var(--accent-glow2); }
+.theme-toggle svg { width: 16px; height: 16px; }
+.theme-toggle .icon-moon { display: none; }
+.theme-toggle .icon-sun  { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+[data-theme="dark"] .theme-toggle .icon-sun  { display: none; }
+
+/* ── Layout ──────────────────────────────────────────── */
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+/* ── Hero ────────────────────────────────────────────── */
 .hero {
-  padding: 90px 24px 60px;
-  text-align: center;
-  background: radial-gradient(ellipse 900px 500px at 50% -10%, rgba(91,140,255,0.20), transparent 60%);
-  border-bottom: 1px solid var(--border);
+    text-align: center;
+    padding: 5rem 2rem 4rem;
+    position: relative;
+    overflow: hidden;
 }
-.hero .eyebrow {
-  font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--accent-2); font-weight: 600; margin-bottom: 18px;
+.hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 400px;
+    background: radial-gradient(ellipse at center, var(--accent-glow) 0%, transparent 70%);
+    pointer-events: none;
 }
-.hero h1 { font-size: clamp(28px, 4.4vw, 46px); margin: 0 auto 18px; max-width: 880px; font-weight: 800; letter-spacing: -0.02em; }
-.hero p.sub { color: var(--text-dim); font-size: 16px; max-width: 660px; margin: 0 auto; }
-.hero .meta { margin-top: 24px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); }
-section { padding: 56px 0; border-bottom: 1px solid var(--border); }
-section:last-of-type { border-bottom: none; }
-.kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-2); font-weight: 700; margin-bottom: 10px; }
-h2 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
-.corpus-note { color: var(--text-dim); font-size: 13.5px; margin: 0 0 28px; }
-.env-note { color: var(--text-dim); font-size: 12.5px; margin: 10px 0 20px; }
-h3.op-title { font-size: 17px; margin: 36px 0 12px; }
-h3.op-title:first-of-type { margin-top: 8px; }
-.chart-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; height: 340px; margin-bottom: 24px; }
-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 8px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11.5px; letter-spacing: .04em; }
-td.num, th.num { text-align: right; font-family: var(--mono); }
-tr:hover td { background: var(--bg-panel-2); }
-code.sample { display: block; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
-  padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); overflow-x: auto; white-space: pre; }
-.check-yes { color: var(--accent-2); font-weight: 700; }
-.check-no { color: #ff6b81; font-weight: 700; }
-footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding: 40px 24px; font-family: var(--mono); }
+.hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-glow2); border: 1px solid var(--accent-glow);
+    padding: 0.3rem 0.9rem; border-radius: 999px;
+    margin-bottom: 1.5rem;
+}
+.hero-eyebrow svg { width: 12px; height: 12px; }
+.hero h1 {
+    font-size: 3.2rem; font-weight: 800; letter-spacing: -0.04em;
+    margin-bottom: 1.2rem; line-height: 1.1;
+    background: linear-gradient(135deg, var(--accent) 0%, #22b8cf 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.hero-desc {
+    font-size: 1.1rem; color: var(--fg2); max-width: 620px; margin: 0 auto 2.5rem;
+    line-height: 1.75;
+}
+.hero-stats {
+    display: flex; align-items: center; justify-content: center; gap: 2.5rem;
+    flex-wrap: wrap;
+}
+.hero-stat { text-align: center; }
+.hero-stat-num { font-size: 1.6rem; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; line-height: 1; }
+.hero-stat-label { font-size: 0.75rem; color: var(--fg2); margin-top: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.hero-stat-div { width: 1px; height: 36px; background: var(--border); }
+
+/* ── Section ─────────────────────────────────────────── */
+.section { margin: 0 auto 4rem; }
+.section-header { margin-bottom: 1.5rem; }
+.section-label {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 0.35rem;
+}
+.section-title { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+.section-desc { font-size: 0.9rem; color: var(--fg2); margin-top: 0.35rem; }
+
+/* ── Doc cards ───────────────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+.card {
+    display: flex; flex-direction: column;
+    padding: 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 0;
+    box-shadow: var(--shadow-sm);
+    text-decoration: none; color: var(--fg);
+    transition: all 0.2s;
+    position: relative; overflow: hidden;
+}
+.card::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--shine);
+    pointer-events: none;
+    border-radius: 0;
+}
+.card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-blue), var(--shadow-md);
+    transform: translateY(-3px);
+    background: var(--card-hover);
+}
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
+.card-icon {
+    width: 46px; height: 46px;
+    border-radius: 0;
+    background: var(--icon-grad);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(77,171,247,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+    position: relative;
+    flex-shrink: 0;
+}
+.card-icon svg { width: 22px; height: 22px; color: #fff; }
+.card-badge {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; font-weight: 500;
+    color: var(--accent); background: var(--accent-glow2);
+    border: 1px solid var(--accent-glow);
+    padding: 0.2rem 0.55rem; border-radius: 999px;
+}
+.card h3 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 0.4rem; }
+.card-desc { font-size: 0.85rem; color: var(--fg2); line-height: 1.6; flex: 1; }
+.card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 1.25rem; padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem; color: var(--fg2);
+    font-family: 'IBM Plex Mono', monospace;
+}
+.card-tool { display: flex; align-items: center; gap: 0.4rem; }
+.card-tool-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.card-arrow {
+    color: var(--accent); opacity: 0;
+    transform: translateX(-4px); transition: all 0.18s;
+    font-size: 0.85rem;
+}
+.card:hover .card-arrow { opacity: 1; transform: translateX(0); }
+
+/* ── Tabbed panels ───────────────────────────────────── */
+.tabbed-panel {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 0;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+.tab-bar {
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 0 0.75rem;
+    overflow-x: auto;
+    gap: 0;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab-btn {
+    display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.7rem 1.1rem;
+    border: none; background: transparent;
+    color: var(--fg2);
+    font-family: 'Inter', sans-serif; font-size: 0.83rem; font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--fg); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn i { font-size: 0.88rem; }
+.tab-btn .tab-svg { width: 13px; height: 13px; }
+.tab-content { display: none; padding: 1.75rem; }
+.tab-content.active { display: block; }
+
+/* ── Code block ──────────────────────────────────────── */
+.code-wrap {
+    position: relative;
+    background: var(--code-bg);
+    border-radius: 0;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+.code-label {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+}
+.code-lang-row { display: flex; align-items: center; gap: 0.5rem; }
+.code-dots { display: flex; gap: 5px; }
+.code-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--border2); }
+.code-lang { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 500; color: var(--fg2); text-transform: uppercase; letter-spacing: 0.07em; }
+.copy-btn {
+    display: flex; align-items: center; gap: 0.35rem;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; font-weight: 500;
+    color: var(--fg2); background: transparent; border: none;
+    cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 0;
+    transition: all 0.15s;
+}
+.copy-btn:hover { color: var(--accent); background: var(--accent-glow2); }
+.copy-btn.copied { color: #40c057; }
+pre {
+    margin: 0; padding: 1.1rem 1.25rem;
+    overflow-x: auto;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.83rem; line-height: 1.7;
+    color: var(--code-fg);
+}
+
+/* highlight.js overrides - prevent hljs theme from overriding code-wrap colours */
+.hljs { background: transparent !important; padding: 0 !important; font-size: inherit; line-height: inherit; }
+pre code.hljs { display: block; overflow-x: auto; background: transparent !important; }
+.code-wrap pre code { background: transparent !important; }
+/* docutils section elements - reset any inherited background */
+.page-content section { background: transparent; }
+
+/* ── Install note ─────────────────────────────────────── */
+.install-note {
+    font-size: 0.82rem; color: var(--fg2);
+    margin-top: 1rem; padding: 0.85rem 1.1rem;
+    background: var(--bg2); border-radius: 0;
+    border-left: 3px solid var(--accent);
+    line-height: 1.6;
+}
+.install-note code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent); }
+
+/* ── Divider ─────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); margin: 1rem 0 2.5rem; }
+
+/* ── Footer ──────────────────────────────────────────── */
+.footer {
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 2rem;
+    margin-top: 2rem;
+}
+.footer-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 2rem; align-items: start;
+}
+.footer-brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+.footer-logo { width: 28px; height: 28px; }
+.footer-logo svg { width: 100%; height: 100%; }
+.footer-name { font-weight: 700; font-size: 0.95rem; }
+.footer-tagline { font-size: 0.82rem; color: var(--fg2); line-height: 1.5; max-width: 340px; }
+.footer-copy { font-size: 0.75rem; color: var(--fg3); margin-top: 1rem; }
+.footer-copy a { color: var(--fg2); text-decoration: none; }
+.footer-copy a:hover { color: var(--accent); }
+
+.footer-links { display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-end; }
+.footer-links-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg3); margin-bottom: 0.4rem; font-family: 'IBM Plex Mono', monospace; }
+.footer-link {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.83rem; color: var(--fg2); text-decoration: none;
+    padding: 0.35rem 0.7rem; border-radius: 0;
+    transition: all 0.15s;
+}
+.footer-link:hover { color: var(--accent); background: var(--accent-glow2); }
+.footer-link i { font-size: 0.82rem; width: 14px; }
+.footer-link-badge {
+    font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--accent); background: var(--accent-glow2);
+    border: 1px solid var(--accent-glow);
+    padding: 0.1rem 0.4rem; border-radius: 999px;
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+
+/* ── Doc card inner (tabbed docs) ────────────────────── */
+.doc-card-inner {
+    display: flex; gap: 1.5rem; align-items: flex-start;
+    padding: 0.25rem 0;
+}
+.doc-card-icon {
+    width: 52px; height: 52px; min-width: 52px;
+    border-radius: 0;
+    background: var(--icon-grad);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(77,171,247,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+    margin-top: 0.15rem;
+}
+.doc-card-icon svg { width: 24px; height: 24px; color: #fff; }
+.doc-card-body { flex: 1; }
+.doc-card-title {
+    font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em;
+    margin-bottom: 0.6rem;
+    display: flex; align-items: center; gap: 0.6rem;
+}
+.doc-card-desc {
+    font-size: 0.875rem; color: var(--fg2); line-height: 1.7;
+    margin-bottom: 1rem;
+}
+.doc-card-desc code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82em;
+    color: var(--accent); background: var(--accent-glow2);
+    padding: 0.1rem 0.35rem; border-radius: 4px;
+}
+.doc-card-meta { display: flex; gap: 1rem; margin-bottom: 1.1rem; }
+.doc-meta-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.78rem; color: var(--fg3);
+    font-family: 'IBM Plex Mono', monospace;
+}
+.doc-meta-item i { font-size: 0.75rem; }
+.doc-card-btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.85rem; font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-glow2);
+    border: 1px solid var(--accent-glow);
+    padding: 0.5rem 1rem; border-radius: 0;
+    text-decoration: none;
+    transition: all 0.18s;
+}
+.doc-card-btn:hover {
+    background: var(--accent-glow);
+    box-shadow: var(--shadow-blue);
+    transform: translateY(-1px);
+}
+/* ── TOON vs JSON overview ───────────────────────────── */
+.inline-link { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-glow); }
+.inline-link:hover { border-bottom-color: var(--accent); }
+.section-desc strong { color: var(--fg); font-weight: 600; }
+.compare-caption { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.compare-caption code, .compare-notes code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent);
+}
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+.compare .code-wrap { min-width: 0; }
+.compare-notes { margin: 1.25rem 0; padding-left: 1.2rem; font-size: 0.88rem; color: var(--fg2); line-height: 1.75; }
+
+@media (max-width: 900px) {
+    .compare { grid-template-columns: 1fr; }
+}
+@media (max-width: 500px) {
+    .doc-card-inner { flex-direction: column; }
+}
+
+@media (max-width: 768px) {
+    .hero h1 { font-size: 2.2rem; }
+    .wrap { padding: 0 1rem; }
+    .topbar { padding: 0 1rem; }
+    .topbar-subtitle, .topbar-sep { display: none; }
+    .footer-inner { grid-template-columns: 1fr; }
+    .footer-links { align-items: flex-start; }
+}
+
+/* ── Benchmark report specifics (built on the documentation site's tokens) ── */
+.corpus-note { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.corpus-note strong { color: var(--fg); font-weight: 600; }
+.corpus-note code, .env-note code {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent);
+}
+.env-note { font-size: 0.82rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
+.hero-stat-num.is-date { font-size: 1.25rem; padding-top: 0.2rem; }
+h3.op-title {
+    font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em;
+    margin: 2.25rem 0 0.6rem;
+}
+h3.op-title:first-of-type { margin-top: 0.5rem; }
+.chart-panel {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem;
+    height: 340px;
+    margin-bottom: 1.5rem;
+}
+.table-wrap {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+.table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.table-wrap th, .table-wrap td {
+    text-align: left; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+.table-wrap tbody tr:last-child td { border-bottom: none; }
+.table-wrap th {
+    background: var(--bg2); color: var(--fg2);
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+}
+.table-wrap td.num, .table-wrap th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+.table-wrap tbody tr:hover td { background: var(--card-hover); }
+.check-yes { color: #40c057; font-weight: 700; }
+.check-no { color: #fa5252; font-weight: 700; }
+.sample-wrap pre { white-space: pre; }
 </style>
 </head>
 <body>
 
+<!-- Topbar (same markup as the documentation site) -->
+<header class="topbar">
+    <a class="topbar-brand" href="../index.html">
+        <div class="topbar-logo"><svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 214 214">
+  <!-- Generator: Adobe Illustrator 30.1.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 136)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #4dabf7;
+      }
+    </style>
+  </defs>
+  <polygon class="st0" points="155.52 116.7 155.52 136.11 136.11 136.11 136.11 174.93 116.7 174.93 116.7 116.7 155.52 116.7"/>
+  <polygon class="st0" points="213.75 .25 213.75 39.07 194.34 39.07 194.34 19.66 19.66 19.66 19.66 194.34 194.34 194.34 194.34 174.93 213.75 174.93 213.75 213.75 .25 213.75 .25 .25 213.75 .25"/>
+  <polygon class="st0" points="97.3 39.07 97.3 58.48 77.89 58.48 77.89 97.3 58.48 97.3 58.48 58.48 39.07 58.48 39.07 39.07 97.3 39.07"/>
+  <path class="st0" d="M116.7,39.07v58.23h58.23v-58.23h-58.23ZM155.52,77.89h-19.41v-19.41h19.41v19.41Z"/>
+  <path class="st0" d="M39.07,116.7v58.23h58.23v-58.23h-58.23ZM77.89,155.52h-19.41v-19.41h19.41v19.41Z"/>
+  <rect class="st0" x="155.52" y="136.11" width="19.41" height="38.82"/>
+</svg></div>
+        <span class="topbar-name">CToon</span>
+        <span class="topbar-sep"></span>
+        <span class="topbar-subtitle">Benchmarks</span>
+    </a>
+    <div class="topbar-actions">
+        <span class="topbar-version">v0.8.3</span>
+        <a class="topbar-gh" href="../index.html">
+            <i class="fa-solid fa-book"></i> Docs
+        </a>
+        <a class="topbar-gh" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+            <i class="fa-brands fa-github"></i> GitHub
+        </a>
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></svg>
+            <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/></svg>
+        </button>
+    </div>
+</header>
+
+<!-- Hero -->
 <div class="hero">
-  <div class="eyebrow">CToon Benchmarks</div>
-  <h1>ctoon, measured honestly</h1>
-  <p class="sub">Every ctoon language binding &mdash; C, C++, Python, Go, Rust, Zig, MATLAB, Octave &mdash; benchmarked head-to-head against every maintained competing TOON implementation that exists for that language.</p>
-  <div class="meta">generated 2026-10-17 20:17 UTC</div>
+    <div class="hero-eyebrow">
+        <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M6 4v4M4 6h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        C · C++ · Go · Julia · Node.js · Octave · Python · Rust
+    </div>
+    <h1>ctoon, measured honestly</h1>
+    <p class="hero-desc">Every ctoon language binding (C, C++, Python, Go, Rust, Zig, MATLAB, Octave) benchmarked head-to-head against every maintained competing TOON implementation that exists for that language.</p>
+    <div class="hero-stats">
+        
+        
+        <div class="hero-stat">
+            <div class="hero-stat-num">8</div>
+            <div class="hero-stat-label">Languages</div>
+        </div>
+        
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num">8</div>
+            <div class="hero-stat-label">Libraries</div>
+        </div>
+        
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num">5</div>
+            <div class="hero-stat-label">Operations</div>
+        </div>
+        
+        <div class="hero-stat-div"></div>
+        <div class="hero-stat">
+            <div class="hero-stat-num is-date" title="2026-10-18 07:47 UTC">2026-10-18</div>
+            <div class="hero-stat-label">Generated</div>
+        </div>
+        
+    </div>
 </div>
 
 <div class="wrap">
-<section>
-  <div class="kicker">Method</div>
-  <h2>Success vs. correctness</h2>
-  <p class="corpus-note">Two separate numbers, because they answer different questions. <strong>Success</strong> is the share of corpus files a library converted <em>without an error</em>. <strong>Correct</strong> is, of the outputs it actually produced, the share that were <em>right</em> &mdash; so &ldquo;98% success, 0% correct&rdquo; reads as what it is: a library that never complains and never gets it right. Correct means: TOON that a library produced is decoded with the <strong>official reference decoder</strong> (<code>@toon-format/toon</code>) &mdash; not with the library's own, because a lenient decoder hides encoder bugs from its own round trip &mdash; and JSON that a library produced is parsed back; either way the result has to equal the original document. Equality is the spec's JSON-model equality: numbers compare as IEEE-754 doubles (the spec lets an encoder fall back to the host's numeric approximation), objects are unordered maps, arrays are ordered.</p>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Method</div>
+    <div class="section-title">Success vs. correctness</div>
+  </div>
+  <p class="corpus-note">Two separate numbers, because they answer different questions. <strong>Success</strong> is the share of corpus files a library converted <em>without an error</em>. <strong>Correct</strong> is, of the outputs it actually produced, the share that were <em>right</em>, so &ldquo;98% success, 0% correct&rdquo; reads as what it is: a library that never complains and never gets it right. Correct means: TOON that a library produced is decoded with the <strong>official reference decoder</strong> (<code>@toon-format/toon</code>), not with the library's own, because a lenient decoder hides encoder bugs from its own round trip; and JSON that a library produced is parsed back. Either way the result has to equal the original document. Equality is the spec's JSON-model equality: numbers compare as IEEE-754 doubles (the spec lets an encoder fall back to the host's numeric approximation), objects are unordered maps, arrays are ordered.</p>
   <p class="corpus-note"><strong>MB/s and docs/s count only correct conversions</strong>, so a wrong answer never looks like a fast one; the time is the time of all attempts, as before. <strong>TOON &rarr; JSON</strong> decodes the TOON that ctoon produced for each file; if that shared input is itself missing or wrong, the file is left out of every library's TOON &rarr; JSON row (the encoder is charged for it under JSON &rarr; TOON), so no decoder is blamed for someone else's output.</p>
   
-</section>
-
-<section>
-  <div class="kicker">Method</div>
-  <h2>Key order sample</h2>
-  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order &mdash; deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
-  <code class="sample">{"zebra": 1, "apple": 2, "mango": 3, "nested": {"beta": true, "alpha": false}, "list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}</code>
-</section>
+</div>
 
 
-<section>
-  <div class="kicker">C</div>
-  <h2>C bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Method</div>
+    <div class="section-title">Key order sample</div>
+  </div>
+  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order. The sample is deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
+  <div class="code-wrap sample-wrap">
+    <div class="code-label">
+      <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">json</span></div>
+    </div>
+    <pre><code>{"zebra": 1, "apple": 2, "mango": 3, "nested": {"beta": true, "alpha": false}, "list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}</code></pre>
+  </div>
+</div>
+
+
+
+<div class="divider"></div>
+<div class="section" id="c">
+  <div class="section-header">
+    <div class="section-label">C</div>
+    <div class="section-title">C bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -97,26 +628,27 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   <h3 class="op-title">JSON → TOON</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="chart-c-json_to_toon"></canvas></div>
   
   <h3 class="op-title">TOON → JSON</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="chart-c-toon_to_json"></canvas></div>
   
   <h3 class="op-title">JSON → TOON → JSON</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="chart-c-roundtrip"></canvas></div>
   
   <h3 class="op-title">TOON → struct (load)</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="chart-c-toon_to_struct"></canvas></div>
   
   <h3 class="op-title">struct → TOON (dump)</h3>
-  <p class="corpus-note">Throughput vs. input size &mdash; one line per library, marker per size bucket.</p>
+  <p class="corpus-note">Throughput vs. input size: one line per library, marker per size bucket.</p>
   <div class="chart-panel"><canvas id="chart-c-struct_to_toon"></canvas></div>
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -200,10 +732,12 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
   <h3 class="op-title">Key order preservation</h3>
-  <p class="corpus-note">Round-trips the fixed sample below through each library and checks whether keys come back in the same order they went in.</p>
+  <p class="corpus-note">Round-trips the fixed sample above through each library and checks whether keys come back in the same order they went in.</p>
+  <div class="table-wrap">
   <table>
     <thead>
       <tr><th>Library</th><th>Order preserved</th><th>Detail</th></tr>
@@ -213,24 +747,28 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       <tr>
         <td>ctoon</td>
         <td><span class="check-yes">&#10003; yes</span></td>
-        <td>—</td>
+        <td>n/a</td>
       </tr>
       
       <tr>
         <td>TOONc</td>
         <td><span class="check-yes">&#10003; yes</span></td>
-        <td>—</td>
+        <td>n/a</td>
       </tr>
       
     </tbody>
   </table>
+  </div>
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">C++</div>
-  <h2>C++ bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="cpp">
+  <div class="section-header">
+    <div class="section-label">C++</div>
+    <div class="section-title">C++ bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -239,6 +777,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -311,10 +850,12 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
   <h3 class="op-title">Key order preservation</h3>
-  <p class="corpus-note">Round-trips the fixed sample below through each library and checks whether keys come back in the same order they went in.</p>
+  <p class="corpus-note">Round-trips the fixed sample above through each library and checks whether keys come back in the same order they went in.</p>
+  <div class="table-wrap">
   <table>
     <thead>
       <tr><th>Library</th><th>Order preserved</th><th>Detail</th></tr>
@@ -324,18 +865,22 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       <tr>
         <td>ctoon</td>
         <td><span class="check-yes">&#10003; yes</span></td>
-        <td>—</td>
+        <td>n/a</td>
       </tr>
       
     </tbody>
   </table>
+  </div>
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Go</div>
-  <h2>Go bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="go">
+  <div class="section-header">
+    <div class="section-label">Go</div>
+    <div class="section-title">Go bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -344,6 +889,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -493,14 +1039,18 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Julia</div>
-  <h2>Julia bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="julia">
+  <div class="section-header">
+    <div class="section-label">Julia</div>
+    <div class="section-title">Julia bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -509,6 +1059,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -581,14 +1132,18 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Node.js</div>
-  <h2>Node.js bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="node">
+  <div class="section-header">
+    <div class="section-label">Node.js</div>
+    <div class="section-title">Node.js bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -597,6 +1152,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -669,14 +1225,18 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Octave</div>
-  <h2>Octave bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="octave">
+  <div class="section-header">
+    <div class="section-label">Octave</div>
+    <div class="section-title">Octave bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -685,6 +1245,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -757,14 +1318,18 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Python</div>
-  <h2>Python bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="python">
+  <div class="section-header">
+    <div class="section-label">Python</div>
+    <div class="section-title">Python bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -773,6 +1338,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -955,14 +1521,18 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
-<section>
-  <div class="kicker">Rust</div>
-  <h2>Rust bindings</h2>
-  <p class="corpus-note">Corpus: 457 files, 2.9 MB.</p>
+<div class="divider"></div>
+<div class="section" id="rust">
+  <div class="section-header">
+    <div class="section-label">Rust</div>
+    <div class="section-title">Rust bindings</div>
+    <div class="section-desc">Corpus: 457 files, 2.9 MB.</div>
+  </div>
 
   
   <h3 class="op-title">Average across the whole corpus</h3>
@@ -971,6 +1541,7 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 
   
   
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>
@@ -1098,18 +1669,23 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       
     </tbody>
   </table>
+  </div>
 
   
-</section>
+</div>
 
 
 
-<section>
-  <div class="kicker">Environment</div>
-  <h2>What machine these numbers ran on</h2>
+<div class="divider"></div>
+<div class="section">
+  <div class="section-header">
+    <div class="section-label">Environment</div>
+    <div class="section-title">What machine these numbers ran on</div>
+  </div>
   <p class="env-note">Recorded automatically by <code>system_info.py</code> at run
-    time &mdash; not filled in by hand. Numbers above are only meaningful relative
+    time, not filled in by hand. Numbers above are only meaningful relative
     to each other on this specific machine; they won't transfer directly to yours.</p>
+  <div class="table-wrap">
   <table>
     <tbody>
       <tr><td>CPU</td><td>Intel(R) Xeon(R) Processor @ 2.10GHz</td></tr>
@@ -1120,11 +1696,62 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
       <tr><td>Python</td><td>CPython 3.13.16</td></tr>
     </tbody>
   </table>
-</section>
-
+  </div>
 </div>
 
-<footer>ctoon benchmarks &middot; standalone report, no network or server needed to view</footer>
+
+</div><!-- /wrap -->
+
+<!-- Footer (same markup as the documentation site) -->
+<footer class="footer">
+    <div class="footer-inner">
+        <div>
+            <div class="footer-brand">
+                <div class="footer-logo"><svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 214 214">
+  <!-- Generator: Adobe Illustrator 30.1.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 136)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #4dabf7;
+      }
+    </style>
+  </defs>
+  <polygon class="st0" points="155.52 116.7 155.52 136.11 136.11 136.11 136.11 174.93 116.7 174.93 116.7 116.7 155.52 116.7"/>
+  <polygon class="st0" points="213.75 .25 213.75 39.07 194.34 39.07 194.34 19.66 19.66 19.66 19.66 194.34 194.34 194.34 194.34 174.93 213.75 174.93 213.75 213.75 .25 213.75 .25 .25 213.75 .25"/>
+  <polygon class="st0" points="97.3 39.07 97.3 58.48 77.89 58.48 77.89 97.3 58.48 97.3 58.48 58.48 39.07 58.48 39.07 39.07 97.3 39.07"/>
+  <path class="st0" d="M116.7,39.07v58.23h58.23v-58.23h-58.23ZM155.52,77.89h-19.41v-19.41h19.41v19.41Z"/>
+  <path class="st0" d="M39.07,116.7v58.23h58.23v-58.23h-58.23ZM77.89,155.52h-19.41v-19.41h19.41v19.41Z"/>
+  <rect class="st0" x="155.52" y="136.11" width="19.41" height="38.82"/>
+</svg></div>
+                <span class="footer-name">CToon</span>
+            </div>
+            <div class="footer-tagline">
+                Benchmark results for the CToon language bindings. Charts and data are
+                embedded in this page; only fonts and icons are fetched online.
+            </div>
+            <div class="footer-copy">
+                &copy; 2025 <a href="https://github.com/mohammadraziei">Mohammad Raziei</a>
+                &nbsp;·&nbsp; <a href="https://github.com/MohammadRaziei/ctoon/blob/main/LICENSE">MIT License</a>
+                &nbsp;·&nbsp; v0.8.3
+            </div>
+        </div>
+
+        <div>
+            <div class="footer-links-title">Resources</div>
+            <div class="footer-links">
+                <a class="footer-link" href="../index.html">
+                    <i class="fa-solid fa-book"></i> Documentation
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon" target="_blank">
+                    <i class="fa-brands fa-github"></i> Source code
+                </a>
+                <a class="footer-link" href="https://github.com/MohammadRaziei/ctoon/issues" target="_blank">
+                    <i class="fa-solid fa-bug"></i> Report issue
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
 
 <script>/*!
  * Chart.js v4.5.1
@@ -1144,9 +1771,50 @@ footer { text-align: center; color: var(--text-dim); font-size: 12.5px; padding:
 <script>
 const CTOON_BENCH_DATA = {"c": {"language": "c", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 245.3987, "docs_per_sec": 37503.59, "success_rate": 1, "total_time_s": 0.24371, "raw": {"throughput_mb_s": 245.3987, "docs_per_sec": 37503.59, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 118.6978, "docs_per_sec": 29809.95, "success_rate": 1, "total_time_s": 0.306609, "raw": {"throughput_mb_s": 118.6978, "docs_per_sec": 29809.95, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 218.0562, "docs_per_sec": 54763, "success_rate": 1, "total_time_s": 0.166901, "raw": {"throughput_mb_s": 218.0562, "docs_per_sec": 54763, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 525.9207, "docs_per_sec": 80374.97, "success_rate": 1, "total_time_s": 0.113717, "raw": {"throughput_mb_s": 525.9207, "docs_per_sec": 80374.97, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 126.742, "docs_per_sec": 19369.62, "success_rate": 1, "total_time_s": 0.471873, "raw": {"throughput_mb_s": 126.742, "docs_per_sec": 19369.62, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "TOONc", "operation": "toon_to_json", "throughput_mb_s": 0, "docs_per_sec": 0, "success_rate": 0.9846827133479212, "total_time_s": 0.718931, "raw": {"throughput_mb_s": 48.387, "docs_per_sec": 12518.59, "success_rate": 0.9847}, "verified": true, "correct_rate": 0, "verify": {"files": 457, "no_error": 450, "correct": 0, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}], "scaling": [{"library": "ctoon", "operation": "json_to_toon", "size_bytes": 1110, "throughput_mb_s": 305.1623, "docs_per_sec": 287141.07, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 103.1548, "docs_per_sec": 190950.6, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 1110, "throughput_mb_s": 109.9325, "docs_per_sec": 103440.52, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 1110, "throughput_mb_s": 186.2819, "docs_per_sec": 344827.59, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 1110, "throughput_mb_s": 568.4535, "docs_per_sec": 534883.72, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 2398, "throughput_mb_s": 257.0396, "docs_per_sec": 104072.4, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 107.2455, "docs_per_sec": 78969.96, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 2398, "throughput_mb_s": 107.842, "docs_per_sec": 43663.98, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 2398, "throughput_mb_s": 212.4847, "docs_per_sec": 156462.59, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 2398, "throughput_mb_s": 510.1549, "docs_per_sec": 206555.9, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 4657, "throughput_mb_s": 279.9542, "docs_per_sec": 60424.97, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 146.8093, "docs_per_sec": 51517.21, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 4657, "throughput_mb_s": 122.2132, "docs_per_sec": 26378.34, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 4657, "throughput_mb_s": 222.6722, "docs_per_sec": 78138.42, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 4657, "throughput_mb_s": 597.8602, "docs_per_sec": 129041.41, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 7731, "throughput_mb_s": 296.2577, "docs_per_sec": 38549.52, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 155.6887, "docs_per_sec": 32474.48, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 7731, "throughput_mb_s": 130.3194, "docs_per_sec": 16957.36, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 7731, "throughput_mb_s": 204.1703, "docs_per_sec": 42587.05, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 7731, "throughput_mb_s": 617.4695, "docs_per_sec": 80346.11, "success_rate": 1}, {"library": "ctoon", "operation": "json_to_toon", "size_bytes": 14018, "throughput_mb_s": 318.1083, "docs_per_sec": 18744.34, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 173.1885, "docs_per_sec": 16599.18, "success_rate": 1}, {"library": "ctoon", "operation": "roundtrip", "size_bytes": 14018, "throughput_mb_s": 141.4967, "docs_per_sec": 8337.61, "success_rate": 1}, {"library": "ctoon", "operation": "toon_to_struct", "size_bytes": 14018, "throughput_mb_s": 258.9326, "docs_per_sec": 24817.28, "success_rate": 1}, {"library": "ctoon", "operation": "struct_to_toon", "size_bytes": 14018, "throughput_mb_s": 676.0427, "docs_per_sec": 39835.41, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 1110, "throughput_mb_s": 56.852, "docs_per_sec": 105239.08, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 2398, "throughput_mb_s": 59.7689, "docs_per_sec": 44010.72, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 4657, "throughput_mb_s": 62.4366, "docs_per_sec": 21909.76, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 7731, "throughput_mb_s": 55.7592, "docs_per_sec": 11630.58, "success_rate": 1}, {"library": "TOONc", "operation": "toon_to_json", "size_bytes": 14018, "throughput_mb_s": 43.7028, "docs_per_sec": 4223.91, "success_rate": 0.9231}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}, {"library": "TOONc", "preserved": true, "detail": ""}]}, "cpp": {"language": "cpp", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 261.9789, "docs_per_sec": 40037.5, "success_rate": 1, "total_time_s": 0.228286, "raw": {"throughput_mb_s": 261.9789, "docs_per_sec": 40037.5, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 152.2065, "docs_per_sec": 38225.4, "success_rate": 1, "total_time_s": 0.239108, "raw": {"throughput_mb_s": 152.2065, "docs_per_sec": 38225.4, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 239.8495, "docs_per_sec": 60236.2, "success_rate": 1, "total_time_s": 0.151736, "raw": {"throughput_mb_s": 239.8495, "docs_per_sec": 60236.2, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 535.9884, "docs_per_sec": 81913.59, "success_rate": 1, "total_time_s": 0.111581, "raw": {"throughput_mb_s": 535.9884, "docs_per_sec": 81913.59, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 126.618, "docs_per_sec": 19350.67, "success_rate": 1, "total_time_s": 0.472335, "raw": {"throughput_mb_s": 126.618, "docs_per_sec": 19350.67, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}], "order_check": [{"library": "ctoon", "preserved": true, "detail": ""}]}, "go": {"language": "go", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 226.40617130363222, "docs_per_sec": 34601.01417238233, "success_rate": 1, "total_time_s": 0.264154107, "raw": {"throughput_mb_s": 226.40617130363222, "docs_per_sec": 34601.01417238233, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 126.60110587581629, "docs_per_sec": 31794.81416353777, "success_rate": 1, "total_time_s": 0.287468263, "raw": {"throughput_mb_s": 126.60110587581629, "docs_per_sec": 31794.81416353777, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 106.08405184368969, "docs_per_sec": 16212.525304288656, "success_rate": 1, "total_time_s": 0.563761649, "raw": {"throughput_mb_s": 106.08405184368969, "docs_per_sec": 16212.525304288656, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "json_to_toon", "throughput_mb_s": 15.877107751422106, "docs_per_sec": 2823.6926747818147, "success_rate": 1, "total_time_s": 2.634847647, "raw": {"throughput_mb_s": 22.698132117086313, "docs_per_sec": 3468.8912698260465, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "json_to_toon", "throughput_mb_s": 31.096526220556655, "docs_per_sec": 4752.394063615694, "success_rate": 1, "total_time_s": 1.923241187, "raw": {"throughput_mb_s": 31.096526220556655, "docs_per_sec": 4752.394063615694, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "toon_to_json", "throughput_mb_s": 33.470825016750055, "docs_per_sec": 8405.91915801855, "success_rate": 1, "total_time_s": 1.087329039, "raw": {"throughput_mb_s": 33.470825016750055, "docs_per_sec": 8405.91915801855, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "roundtrip", "throughput_mb_s": 19.371877063821998, "docs_per_sec": 2960.5491271350334, "success_rate": 1, "total_time_s": 3.087265101, "raw": {"throughput_mb_s": 19.371877063821998, "docs_per_sec": 2960.5491271350334, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 70.018751330126, "docs_per_sec": 17584.626698980363, "success_rate": 1, "total_time_s": 0.519772194, "raw": {"throughput_mb_s": 70.018751330126, "docs_per_sec": 17584.626698980363, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 148.88450538317008, "docs_per_sec": 22753.59744457882, "success_rate": 1, "total_time_s": 0.401694722, "raw": {"throughput_mb_s": 148.88450538317008, "docs_per_sec": 22753.59744457882, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "gotoon", "operation": "struct_to_toon", "throughput_mb_s": 22.174742865594144, "docs_per_sec": 3943.706875022003, "success_rate": 1, "total_time_s": 1.8865499479999999, "raw": {"throughput_mb_s": 31.70131809306329, "docs_per_sec": 4844.822693239395, "success_rate": 1}, "verified": true, "correct_rate": 0.8140043763676149, "verify": {"files": 457, "no_error": 457, "correct": 372, "incorrect_examples": ["arrays-nested.json", "arrays-primitive.json", "arrays-tabular.json"]}}, {"library": "toon-go", "operation": "toon_to_struct", "throughput_mb_s": 57.888894157746385, "docs_per_sec": 14538.31401507405, "success_rate": 1, "total_time_s": 0.628683628, "raw": {"throughput_mb_s": 57.888894157746385, "docs_per_sec": 14538.31401507405, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-go", "operation": "struct_to_toon", "throughput_mb_s": 52.20485541506473, "docs_per_sec": 7978.32025374145, "success_rate": 1, "total_time_s": 1.145604552, "raw": {"throughput_mb_s": 52.20485541506473, "docs_per_sec": 7978.32025374145, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "julia": {"language": "julia", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 185.86318861168533, "docs_per_sec": 28404.944910500864, "success_rate": 1, "total_time_s": 0.321774959564209, "raw": {"throughput_mb_s": 185.86318861168533, "docs_per_sec": 28404.944910500864, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 130.0540598076027, "docs_per_sec": 32661.994807947744, "success_rate": 1, "total_time_s": 0.27983593940734863, "raw": {"throughput_mb_s": 130.0540598076027, "docs_per_sec": 32661.994807947744, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 112.7840556753194, "docs_per_sec": 17236.467921216412, "success_rate": 1, "total_time_s": 0.530271053314209, "raw": {"throughput_mb_s": 112.7840556753194, "docs_per_sec": 17236.467921216412, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 78.584481022295, "docs_per_sec": 19735.83842697867, "success_rate": 1, "total_time_s": 0.4631168842315674, "raw": {"throughput_mb_s": 78.584481022295, "docs_per_sec": 19735.83842697867, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 57.39991847848885, "docs_per_sec": 8772.267033764907, "success_rate": 1, "total_time_s": 1.0419199466705322, "raw": {"throughput_mb_s": 57.39991847848885, "docs_per_sec": 8772.267033764907, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "node": {"language": "node", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "@toon-format/toon", "operation": "json_to_toon", "throughput_mb_s": 25.14483468876387, "docs_per_sec": 3842.813896893859, "success_rate": 1, "total_time_s": 2.378465428, "raw": {"throughput_mb_s": 25.14483468876387, "docs_per_sec": 3842.813896893859, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_json", "throughput_mb_s": 6.719950075165138, "docs_per_sec": 1687.589982415569, "success_rate": 1, "total_time_s": 5.416007499, "raw": {"throughput_mb_s": 6.719950075165138, "docs_per_sec": 1687.589982415569, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "roundtrip", "throughput_mb_s": 7.7301041328218405, "docs_per_sec": 1181.369929599038, "success_rate": 1, "total_time_s": 7.73678064, "raw": {"throughput_mb_s": 7.7301041328218405, "docs_per_sec": 1181.369929599038, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "toon_to_struct", "throughput_mb_s": 7.548061311313022, "docs_per_sec": 1895.554656381484, "success_rate": 1, "total_time_s": 4.82180768, "raw": {"throughput_mb_s": 7.548061311313022, "docs_per_sec": 1895.554656381484, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "@toon-format/toon", "operation": "struct_to_toon", "throughput_mb_s": 30.006593550121597, "docs_per_sec": 4585.822739346933, "success_rate": 1, "total_time_s": 1.99309928, "raw": {"throughput_mb_s": 30.006593550121597, "docs_per_sec": 4585.822739346933, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "octave": {"language": "octave", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 117.12016824385381, "docs_per_sec": 17899.143728916435, "success_rate": 1, "total_time_s": 0.510638952255249, "raw": {"throughput_mb_s": 117.12016824385381, "docs_per_sec": 17899.143728916435, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 57.514332144790835, "docs_per_sec": 14444.245882633531, "success_rate": 1, "total_time_s": 0.6327779293060303, "raw": {"throughput_mb_s": 57.514332144790835, "docs_per_sec": 14444.245882633531, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 67.86356579567645, "docs_per_sec": 10371.396629182478, "success_rate": 1, "total_time_s": 0.8812699317932129, "raw": {"throughput_mb_s": 67.86356579567645, "docs_per_sec": 10371.396629182478, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 8.867696758406879, "docs_per_sec": 2227.048243707414, "success_rate": 1, "total_time_s": 4.1040871143341064, "raw": {"throughput_mb_s": 8.867696758406879, "docs_per_sec": 2227.048243707414, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 23.31329800043328, "docs_per_sec": 3562.905330156181, "success_rate": 1, "total_time_s": 2.565322160720825, "raw": {"throughput_mb_s": 23.31329800043328, "docs_per_sec": 3562.905330156181, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "python": {"language": "python", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 284.5615974726798, "docs_per_sec": 43488.74330754601, "success_rate": 1, "total_time_s": 0.21016932899999574, "raw": {"throughput_mb_s": 284.5615974726798, "docs_per_sec": 43488.74330754601, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 169.33000994182015, "docs_per_sec": 42525.82282883997, "success_rate": 1, "total_time_s": 0.2149282340000127, "raw": {"throughput_mb_s": 169.33000994182015, "docs_per_sec": 42525.82282883997, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 144.9900060470139, "docs_per_sec": 22158.412136913532, "success_rate": 1, "total_time_s": 0.41248443000000634, "raw": {"throughput_mb_s": 144.9900060470139, "docs_per_sec": 22158.412136913532, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 116.0766327762836, "docs_per_sec": 29151.680329485578, "success_rate": 1, "total_time_s": 0.31353252700000667, "raw": {"throughput_mb_s": 116.0766327762836, "docs_per_sec": 29151.680329485578, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 315.7586485455685, "docs_per_sec": 48256.50029974351, "success_rate": 1, "total_time_s": 0.1894045349999942, "raw": {"throughput_mb_s": 315.7586485455685, "docs_per_sec": 48256.50029974351, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "json_to_toon", "throughput_mb_s": 14.894301921612616, "docs_per_sec": 2276.2539948008553, "success_rate": 1, "total_time_s": 4.015369120000003, "raw": {"throughput_mb_s": 14.894301921612616, "docs_per_sec": 2276.2539948008553, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_json", "throughput_mb_s": 8.167564380785663, "docs_per_sec": 2051.215823584813, "success_rate": 1, "total_time_s": 4.455893862999972, "raw": {"throughput_mb_s": 8.167564380785663, "docs_per_sec": 2051.215823584813, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "roundtrip", "throughput_mb_s": 7.862431998281703, "docs_per_sec": 1201.5932226383313, "success_rate": 1, "total_time_s": 7.606567537000046, "raw": {"throughput_mb_s": 7.862431998281703, "docs_per_sec": 1201.5932226383313, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "toon_to_struct", "throughput_mb_s": 8.728890303448884, "docs_per_sec": 2192.1881576950686, "success_rate": 1, "total_time_s": 4.16935013899996, "raw": {"throughput_mb_s": 8.728890303448884, "docs_per_sec": 2192.1881576950686, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon_format", "operation": "struct_to_toon", "throughput_mb_s": 20.061282341415726, "docs_per_sec": 3065.908983905656, "success_rate": 1, "total_time_s": 2.9811713420000387, "raw": {"throughput_mb_s": 20.061282341415726, "docs_per_sec": 3065.908983905656, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "json_to_toon", "throughput_mb_s": 108.83225079890734, "docs_per_sec": 16632.524770073916, "success_rate": 1, "total_time_s": 0.5495257110000011, "raw": {"throughput_mb_s": 108.83225079890734, "docs_per_sec": 16632.524770073916, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_json", "throughput_mb_s": 38.206076267545534, "docs_per_sec": 9595.138102791305, "success_rate": 1, "total_time_s": 0.9525657579999915, "raw": {"throughput_mb_s": 38.206076267545534, "docs_per_sec": 9595.138102791305, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "roundtrip", "throughput_mb_s": 44.65950936950544, "docs_per_sec": 6825.186379542424, "success_rate": 1, "total_time_s": 1.3391575690000082, "raw": {"throughput_mb_s": 44.65950936950544, "docs_per_sec": 6825.186379542424, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "toon_to_struct", "throughput_mb_s": 73.80276889458506, "docs_per_sec": 18534.951219617284, "success_rate": 1, "total_time_s": 0.49312242000002016, "raw": {"throughput_mb_s": 73.80276889458506, "docs_per_sec": 18534.951219617284, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toons", "operation": "struct_to_toon", "throughput_mb_s": 256.8959440397351, "docs_per_sec": 39260.67981877405, "success_rate": 1, "total_time_s": 0.23280289699999912, "raw": {"throughput_mb_s": 256.8959440397351, "docs_per_sec": 39260.67981877405, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}]}, "rust": {"language": "rust", "corpus": {"files": 457, "bytes": 2990306}, "results": [{"library": "ctoon", "operation": "json_to_toon", "throughput_mb_s": 213.3762, "docs_per_sec": 32609.67, "success_rate": 1, "total_time_s": 0.280285, "raw": {"throughput_mb_s": 213.3762, "docs_per_sec": 32609.67, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "toon_to_json", "throughput_mb_s": 130.9061, "docs_per_sec": 32875.97, "success_rate": 1, "total_time_s": 0.278015, "raw": {"throughput_mb_s": 130.9061, "docs_per_sec": 32875.97, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "roundtrip", "throughput_mb_s": 109.0983, "docs_per_sec": 16673.18, "success_rate": 1, "total_time_s": 0.548186, "raw": {"throughput_mb_s": 109.0983, "docs_per_sec": 16673.18, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "json_to_toon", "throughput_mb_s": 32.46557354705505, "docs_per_sec": 5126.482275711159, "success_rate": 1, "total_time_s": 1.564425, "raw": {"throughput_mb_s": 38.2288, "docs_per_sec": 5842.4, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}, {"library": "toon-rust", "operation": "toon_to_json", "throughput_mb_s": 12.38538851886216, "docs_per_sec": 7640.560481927711, "success_rate": 0.36323851203501095, "total_time_s": 0.408347, "raw": {"throughput_mb_s": 13.3025, "docs_per_sec": 8130.34, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "roundtrip", "throughput_mb_s": 19.832879549182326, "docs_per_sec": 3018.1611212814646, "success_rate": 0.9562363238512035, "total_time_s": 2.697008, "raw": {"throughput_mb_s": 20.8287, "docs_per_sec": 3240.63, "success_rate": 0.9562}, "verified": true, "correct_rate": 0.931350114416476, "verify": {"files": 457, "no_error": 437, "correct": 407, "incorrect_examples": ["primitives.json", "const.json", "multipleOf.json"]}}, {"library": "ctoon", "operation": "toon_to_struct", "throughput_mb_s": 86.8711, "docs_per_sec": 21816.96, "success_rate": 1, "total_time_s": 0.41894, "raw": {"throughput_mb_s": 86.8711, "docs_per_sec": 21816.96, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "ctoon", "operation": "struct_to_toon", "throughput_mb_s": 238.5563, "docs_per_sec": 36457.88, "success_rate": 1, "total_time_s": 0.2507, "raw": {"throughput_mb_s": 238.5563, "docs_per_sec": 36457.88, "success_rate": 1}, "verified": true, "correct_rate": 1, "verify": {"files": 457, "no_error": 457, "correct": 457, "incorrect_examples": []}}, {"library": "toon-rust", "operation": "toon_to_struct", "throughput_mb_s": 12.317793765509828, "docs_per_sec": 7598.835180722891, "success_rate": 0.36323851203501095, "total_time_s": 0.410589, "raw": {"throughput_mb_s": 13.2299, "docs_per_sec": 8085.94, "success_rate": 0.3632}, "verified": true, "correct_rate": 0.9397590361445783, "verify": {"files": 457, "no_error": 166, "correct": 156, "incorrect_examples": ["numbers.json", "whitespace.json", "whitespace.json"]}}, {"library": "toon-rust", "operation": "struct_to_toon", "throughput_mb_s": 43.43856849442833, "docs_per_sec": 6859.170809628009, "success_rate": 1, "total_time_s": 1.169238, "raw": {"throughput_mb_s": 51.1497, "docs_per_sec": 7817.06, "success_rate": 1}, "verified": true, "correct_rate": 0.8774617067833698, "verify": {"files": 457, "no_error": 457, "correct": 401, "incorrect_examples": ["comments.json", "whitespace.json", "arrays-nested.json"]}}]}};
 
+/* Theme: same state object and storage key as the documentation site, so the
+   choice made there carries over (and back). Only "theme" is touched. */
+const STORAGE_KEY = 'ctoon-docs';
+
+function toggleTheme() {
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) {}
+  state.theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  document.documentElement.setAttribute('data-theme', state.theme);
+  styleCharts();
+}
+
+/* Chart text and grid follow the page tokens. Only colors and the font family
+   are set here; chart types, datasets and their order come from the data below. */
+function styleCharts() {
+  const css = getComputedStyle(document.documentElement);
+  Chart.defaults.color = css.getPropertyValue('--fg2').trim();
+  Chart.defaults.borderColor = css.getPropertyValue('--border').trim();
+  Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  /* Chart.js caches each chart's resolved scale options, so changing the
+     defaults alone does not reach charts that already exist. */
+  const fg = Chart.defaults.color, line = Chart.defaults.borderColor;
+  Object.values(Chart.instances).forEach(function (chart) {
+    const o = chart.options;
+    Object.keys(o.scales || {}).forEach(function (k) {
+      const s = o.scales[k];
+      s.grid = Object.assign({}, s.grid, { color: line });
+      s.border = Object.assign({}, s.border, { color: line });
+      s.ticks = Object.assign({}, s.ticks, { color: fg });
+      if (s.title) s.title = Object.assign({}, s.title, { color: fg });
+    });
+    if (o.plugins && o.plugins.legend) {
+      o.plugins.legend.labels = Object.assign({}, o.plugins.legend.labels, { color: fg });
+    }
+    chart.update('none');
+  });
+}
+styleCharts();
+
+
 new Chart(document.getElementById('chart-c-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [245.4, 118.7, 126.74, 218.06, 525.92], "backgroundColor": "#5b8cff"}, {"label": "TOONc", "data": [null, 0, null, null, null], "backgroundColor": "#ff6b81"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [245.4, 118.7, 126.74, 218.06, 525.92], "backgroundColor": "#4dabf7"}, {"label": "TOONc", "data": [null, 0, null, null, null], "backgroundColor": "#ff6b81"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1158,7 +1826,7 @@ new Chart(document.getElementById('chart-c-agg'), {
 
 new Chart(document.getElementById('chart-c-json_to_toon'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [305.16, 257.04, 279.95, 296.26, 318.11], "borderColor": "#5b8cff", "backgroundColor": "#5b8cff", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [305.16, 257.04, 279.95, 296.26, 318.11], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1172,7 +1840,7 @@ new Chart(document.getElementById('chart-c-json_to_toon'), {
 
 new Chart(document.getElementById('chart-c-toon_to_json'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [103.15, 107.25, 146.81, 155.69, 173.19], "borderColor": "#5b8cff", "backgroundColor": "#5b8cff", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}, {"label": "TOONc", "data": [56.85, 59.77, 62.44, 55.76, 43.7], "borderColor": "#ff6b81", "backgroundColor": "#ff6b81", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [103.15, 107.25, 146.81, 155.69, 173.19], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}, {"label": "TOONc", "data": [56.85, 59.77, 62.44, 55.76, 43.7], "borderColor": "#ff6b81", "backgroundColor": "#ff6b81", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1186,7 +1854,7 @@ new Chart(document.getElementById('chart-c-toon_to_json'), {
 
 new Chart(document.getElementById('chart-c-roundtrip'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [109.93, 107.84, 122.21, 130.32, 141.5], "borderColor": "#5b8cff", "backgroundColor": "#5b8cff", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [109.93, 107.84, 122.21, 130.32, 141.5], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1200,7 +1868,7 @@ new Chart(document.getElementById('chart-c-roundtrip'), {
 
 new Chart(document.getElementById('chart-c-toon_to_struct'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [186.28, 212.48, 222.67, 204.17, 258.93], "borderColor": "#5b8cff", "backgroundColor": "#5b8cff", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [186.28, 212.48, 222.67, 204.17, 258.93], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1214,7 +1882,7 @@ new Chart(document.getElementById('chart-c-toon_to_struct'), {
 
 new Chart(document.getElementById('chart-c-struct_to_toon'), {
   type: 'line',
-  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [568.45, 510.15, 597.86, 617.47, 676.04], "borderColor": "#5b8cff", "backgroundColor": "#5b8cff", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
+  data: { labels: ["1.1 KB", "2.3 KB", "4.5 KB", "7.5 KB", "13.7 KB"], datasets: [{"label": "ctoon", "data": [568.45, 510.15, 597.86, 617.47, 676.04], "borderColor": "#4dabf7", "backgroundColor": "#4dabf7", "pointRadius": 4, "pointHoverRadius": 6, "tension": 0}] },
   options: {
     responsive: true, maintainAspectRatio: false,
     scales: {
@@ -1228,7 +1896,7 @@ new Chart(document.getElementById('chart-c-struct_to_toon'), {
 
 new Chart(document.getElementById('chart-cpp-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [261.98, 152.21, 126.62, 239.85, 535.99], "backgroundColor": "#5b8cff"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [261.98, 152.21, 126.62, 239.85, 535.99], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1240,7 +1908,7 @@ new Chart(document.getElementById('chart-cpp-agg'), {
 
 new Chart(document.getElementById('chart-go-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [226.41, 126.6, 106.08, 70.02, 148.88], "backgroundColor": "#5b8cff"}, {"label": "gotoon", "data": [15.88, null, null, null, 22.17], "backgroundColor": "#ff6b81"}, {"label": "toon-go", "data": [31.1, 33.47, 19.37, 57.89, 52.2], "backgroundColor": "#35d0ba"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [226.41, 126.6, 106.08, 70.02, 148.88], "backgroundColor": "#4dabf7"}, {"label": "gotoon", "data": [15.88, null, null, null, 22.17], "backgroundColor": "#ff6b81"}, {"label": "toon-go", "data": [31.1, 33.47, 19.37, 57.89, 52.2], "backgroundColor": "#35d0ba"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1252,7 +1920,7 @@ new Chart(document.getElementById('chart-go-agg'), {
 
 new Chart(document.getElementById('chart-julia-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [185.86, 130.05, 112.78, 78.58, 57.4], "backgroundColor": "#5b8cff"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [185.86, 130.05, 112.78, 78.58, 57.4], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1276,7 +1944,7 @@ new Chart(document.getElementById('chart-node-agg'), {
 
 new Chart(document.getElementById('chart-octave-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [117.12, 57.51, 67.86, 8.87, 23.31], "backgroundColor": "#5b8cff"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [117.12, 57.51, 67.86, 8.87, 23.31], "backgroundColor": "#4dabf7"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1288,7 +1956,7 @@ new Chart(document.getElementById('chart-octave-agg'), {
 
 new Chart(document.getElementById('chart-python-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [284.56, 169.33, 144.99, 116.08, 315.76], "backgroundColor": "#5b8cff"}, {"label": "toon_format", "data": [14.89, 8.17, 7.86, 8.73, 20.06], "backgroundColor": "#ff6b81"}, {"label": "toons", "data": [108.83, 38.21, 44.66, 73.8, 256.9], "backgroundColor": "#35d0ba"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [284.56, 169.33, 144.99, 116.08, 315.76], "backgroundColor": "#4dabf7"}, {"label": "toon_format", "data": [14.89, 8.17, 7.86, 8.73, 20.06], "backgroundColor": "#ff6b81"}, {"label": "toons", "data": [108.83, 38.21, 44.66, 73.8, 256.9], "backgroundColor": "#35d0ba"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,
@@ -1300,7 +1968,7 @@ new Chart(document.getElementById('chart-python-agg'), {
 
 new Chart(document.getElementById('chart-rust-agg'), {
   type: 'bar',
-  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [213.38, 130.91, 109.1, 86.87, 238.56], "backgroundColor": "#5b8cff"}, {"label": "toon-rust", "data": [32.47, 12.39, 19.83, 12.32, 43.44], "backgroundColor": "#ff6b81"}] },
+  data: { labels: ["JSON \u2192 TOON", "TOON \u2192 JSON", "JSON \u2192 TOON \u2192 JSON", "TOON \u2192 struct (load)", "struct \u2192 TOON (dump)"], datasets: [{"label": "ctoon", "data": [213.38, 130.91, 109.1, 86.87, 238.56], "backgroundColor": "#4dabf7"}, {"label": "toon-rust", "data": [32.47, 12.39, 19.83, 12.32, 43.44], "backgroundColor": "#ff6b81"}] },
   options: {
     indexAxis: 'x',
     responsive: true, maintainAspectRatio: false,

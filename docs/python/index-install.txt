@@ -6,6 +6,6 @@
     <pre><code class="language-bash">pip install ctoon</code></pre>
 </div>
 <div class="install-note">
-    Requires Python 3.9+. No runtime dependencies — wheels ship a pre-built native extension for Linux, macOS, and Windows.<br>
+    Requires Python 3.9+. No runtime dependencies - wheels ship a pre-built native extension for Linux, macOS, and Windows.<br>
     Install the latest development build directly from source: <code>pip install git+https://github.com/MohammadRaziei/ctoon</code>
 </div>

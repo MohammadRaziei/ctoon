@@ -1,9 +1,9 @@
 # Installation
 
-## Option 1 — pip (recommended)
+## Option 1 - pip (recommended)
 
 The easiest way. The Python package ships a pre-built `ctoon` binary
-alongside the Python extension — no compiler or CMake needed.
+alongside the Python extension - no compiler or CMake needed.
 
 ```bash
 pip install ctoon
@@ -15,7 +15,7 @@ After install, `ctoon` is immediately available in your shell:
 ctoon --version
 ```
 
-## Option 2 — build with CMake
+## Option 2 - build with CMake
 
 If you need a custom build configuration or are on a platform without
 a pre-built wheel, you can build from source:

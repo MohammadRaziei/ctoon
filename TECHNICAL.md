@@ -1,8 +1,8 @@
-# CToon — Technical Report
+# CToon - Technical Report
 
 ## 1. Overview
 
-CToon is a high-performance C implementation of the TOON serialisation format. Its design priority is **zero-copy parsing** and **minimal allocation overhead** — the same goals that motivated jq, RapidJSON, and yyjson. This report covers the internal data structures, memory layout, parsing algorithm, and the architectural differences between the immutable and mutable document models.
+CToon is a high-performance C implementation of the TOON serialisation format. Its design priority is **zero-copy parsing** and **minimal allocation overhead** - the same goals that motivated jq, RapidJSON, and yyjson. This report covers the internal data structures, memory layout, parsing algorithm, and the architectural differences between the immutable and mutable document models.
 
 ---
 
@@ -44,7 +44,7 @@ The `tag` field encodes type, subtype, and (for strings/containers) length in a 
 | `[4:3]` | subtype | NUM→ 0=uint, 1=sint, 2=real; BOOL→ 0=false, 1=true; STR→ 1=no-escape |
 | `[63:8]` | length | string byte length **or** container child count |
 
-This means a string's `strlen` and a container's `size()` are O(1) — they require no traversal, just a single bit-shift of the tag.
+This means a string's `strlen` and a container's `size()` are O(1) - they require no traversal, just a single bit-shift of the tag.
 
 ---
 
@@ -52,7 +52,7 @@ This means a string's `strlen` and a container's `size()` are O(1) — they requ
 
 ### 3.1 The Flat Arena (`ctoon_read_vpool`)
 
-When `ctoon_read()` parses a document, it allocates all `ctoon_val` nodes into a **single contiguous arena** — a bump-pointer allocator called `ctoon_read_vpool`:
+When `ctoon_read()` parses a document, it allocates all `ctoon_val` nodes into a **single contiguous arena** - a bump-pointer allocator called `ctoon_read_vpool`:
 
 ```
 struct ctoon_read_vpool {
@@ -63,7 +63,7 @@ struct ctoon_read_vpool {
 };
 ```
 
-The arena grows by 1.5× when full (`realloc`). After parsing completes, `vp.cur` is final and the arena is never modified again — making the document **read-only and pointer-stable**.
+The arena grows by 1.5× when full (`realloc`). After parsing completes, `vp.cur` is final and the arena is never modified again - making the document **read-only and pointer-stable**.
 
 ### 3.2 Depth-First Pre-order Layout
 
@@ -138,7 +138,7 @@ graph LR
 
 String values do **not** copy the input buffer. `uni.str` points directly into the original input memory. This means:
 
-- `ctoon_get_str()` is a single pointer load — no allocation, no copy.
+- `ctoon_get_str()` is a single pointer load - no allocation, no copy.
 - The input buffer **must remain valid** for the lifetime of the document.
 - `CTOON_READ_INSITU` allows in-place NUL-termination for even faster string access.
 
@@ -172,9 +172,9 @@ graph LR
     note["uni.ptr → last child\nlast->next → first child"]
 ```
 
-- **Append**: `new->next = last->next; last->next = new; last = new` — O(1)
-- **Prepend**: `new->next = last->next; last->next = new` — O(1)
-- **Size**: stored in `tag >> 8` — O(1)
+- **Append**: `new->next = last->next; last->next = new; last = new` - O(1)
+- **Prepend**: `new->next = last->next; last->next = new` - O(1)
+- **Size**: stored in `tag >> 8` - O(1)
 
 ### 4.2 Val Pool (Chunk Allocator)
 
@@ -199,11 +199,11 @@ graph TD
     subgraph "Mutable (built)"
         MA["Chunk pool\nGrowable\nPointer-stable\nO(1) insert/delete\nCircular linked-list"]
     end
-    IA -->|"ctoon_doc_mut_copy() — O(n)"| MA
-    MA -->|"ctoon_mut_doc_imut_copy() — O(n)"| IA
+    IA -->|"ctoon_doc_mut_copy() - O(n)"| MA
+    MA -->|"ctoon_mut_doc_imut_copy() - O(n)"| IA
 ```
 
-The conversion between the two is always O(n) — there is no zero-copy cast because the binary layouts are incompatible.
+The conversion between the two is always O(n) - there is no zero-copy cast because the binary layouts are incompatible.
 
 ---
 
@@ -241,7 +241,7 @@ typedef struct {
 
 When a container closes, the parser:
 1. Pops its frame
-2. **For an OBJ with more than one child**: checks for duplicate keys among its *direct* children (§14.3 of the TOON spec) — in strict mode a duplicate key is a hard parse error; in non-strict mode, duplicates are resolved by last-write-wins, keeping only the final occurrence of each key *in its original position*. Resolution is an in-place compaction: earlier duplicate key/value blocks are removed by `memmove`-ing the surviving tail left over them, and `vp.cur` is rewound by the bytes reclaimed. This is safe *only* at this exact moment — the container being closed is always the most-recently-written region of the arena, so nothing outside `[val_idx, vp.cur)` can reference into the middle of a block being removed, and because `uni.ofs` values are self-relative (distance from a node to its own subtree's end), a uniform shift of that whole span preserves every offset already written inside it without adjustment.
+2. **For an OBJ with more than one child**: checks for duplicate keys among its *direct* children (§14.3 of the TOON spec) - in strict mode a duplicate key is a hard parse error; in non-strict mode, duplicates are resolved by last-write-wins, keeping only the final occurrence of each key *in its original position*. Resolution is an in-place compaction: earlier duplicate key/value blocks are removed by `memmove`-ing the surviving tail left over them, and `vp.cur` is rewound by the bytes reclaimed. This is safe *only* at this exact moment - the container being closed is always the most-recently-written region of the arena, so nothing outside `[val_idx, vp.cur)` can reference into the middle of a block being removed, and because `uni.ofs` values are self-relative (distance from a node to its own subtree's end), a uniform shift of that whole span preserves every offset already written inside it without adjustment.
 3. Computes `uni.ofs = (vp.cur - &vpool[val_idx]) * sizeof(ctoon_val)` (using the *post-compaction* `vp.cur` and the *post-compaction* child count)
 4. Writes the (possibly reduced) count into the tag's upper bits
 
@@ -261,21 +261,21 @@ typedef struct {
 } ctoon_tab_field;
 ```
 
-A leaf field is one column; a group field (`customer{name,country}`) recurses arbitrarily deep, letting a single tabular row expand into a nested object per column. The header is walked once to build this tree; each row then re-walks the same tree depth-first, pulling one leaf value per column (via a running "is this the row's very last leaf" counter, since only the last leaf of a row stops at end-of-line rather than the active delimiter) and opening/closing a nested `OBJ` frame for every group node it passes through. Keyed-tabular rows (`entrykey: c1,c2,...`) use the identical tree-walk for their cell values — the only difference from plain tabular rows is that the row itself is a `key: value` pair (with its own duplicate-key handling per §5.2) rather than a bare array element.
+A leaf field is one column; a group field (`customer{name,country}`) recurses arbitrarily deep, letting a single tabular row expand into a nested object per column. The header is walked once to build this tree; each row then re-walks the same tree depth-first, pulling one leaf value per column (via a running "is this the row's very last leaf" counter, since only the last leaf of a row stops at end-of-line rather than the active delimiter) and opening/closing a nested `OBJ` frame for every group node it passes through. Keyed-tabular rows (`entrykey: c1,c2,...`) use the identical tree-walk for their cell values - the only difference from plain tabular rows is that the row itself is a `key: value` pair (with its own duplicate-key handling per §5.2) rather than a bare array element.
 
 ### 5.4 Header-Span Blank-Line Validation
 
-Per spec §12, a blank line is only a *structural* error when it falls strictly inside an already-started array/list/tabular/keyed-tabular scope; a blank line before the first row, or after the scope's last row (once nothing more continues it), is always fine. Since the parser can't know in advance whether a given row is the *last* one, this can't be decided by a simple "are we inside a scope" flag — it requires a bounded lookahead: skip forward past comment lines (removed unconditionally) and blank lines (tentatively), then check whether what follows still matches this scope's shape (same indentation depth, and for list items specifically, a `-` marker). If it does, and a blank line was skipped to get there, that's a strict-mode error (or silently tolerated in non-strict mode); if it doesn't, the skipped blank lines are left unconsumed for the enclosing (shallower) scope to evaluate on its own next turn. This lookahead is one shared routine used by list items, tabular rows, keyed-tabular rows, and a list-item object's own continuation fields — each just supplies its own target depth and "does this need a `-` marker" flag.
+Per spec §12, a blank line is only a *structural* error when it falls strictly inside an already-started array/list/tabular/keyed-tabular scope; a blank line before the first row, or after the scope's last row (once nothing more continues it), is always fine. Since the parser can't know in advance whether a given row is the *last* one, this can't be decided by a simple "are we inside a scope" flag - it requires a bounded lookahead: skip forward past comment lines (removed unconditionally) and blank lines (tentatively), then check whether what follows still matches this scope's shape (same indentation depth, and for list items specifically, a `-` marker). If it does, and a blank line was skipped to get there, that's a strict-mode error (or silently tolerated in non-strict mode); if it doesn't, the skipped blank lines are left unconsumed for the enclosing (shallower) scope to evaluate on its own next turn. This lookahead is one shared routine used by list items, tabular rows, keyed-tabular rows, and a list-item object's own continuation fields - each just supplies its own target depth and "does this need a `-` marker" flag.
 
-One subtlety this interacts with: some sub-parses (an inline array `key[N]: a,b`, or the `[]` empty-array literal) leave the cursor sitting mid-line on their own not-yet-consumed line terminator, while others (list/tabular/keyed sub-forms) already advance the cursor to the start of the following line. Cursor *position* alone can't distinguish "my own unfinished line" from "a genuinely empty line with zero leading characters" — both look identical. Call sites that need to know which happened take an explicit `out_mid_line` flag from `ctoon_parse_array()` rather than inferring it from `ctoon_cur_at_eol()`.
+One subtlety this interacts with: some sub-parses (an inline array `key[N]: a,b`, or the `[]` empty-array literal) leave the cursor sitting mid-line on their own not-yet-consumed line terminator, while others (list/tabular/keyed sub-forms) already advance the cursor to the start of the following line. Cursor *position* alone can't distinguish "my own unfinished line" from "a genuinely empty line with zero leading characters" - both look identical. Call sites that need to know which happened take an explicit `out_mid_line` flag from `ctoon_parse_array()` rather than inferring it from `ctoon_cur_at_eol()`.
 
 ### 5.5 Configurable Indent Size
 
-`indentSize` (spec §12, default 2) is a decode-time parameter, not something inferred from the document. `ctoon_read_opts()` always decodes with the default; `ctoon_read_opts_indent()` takes an explicit `indent_size` and threads it into `ctoon_read_ctx.indent`, which every depth computation (`ctoon_cur_measure_indent`/`ctoon_cur_consume_indent`) divides leading-space counts by. In non-strict mode only, indentation that isn't an exact multiple of `indentSize` is still accepted (any remainder is swallowed as part of the same indentation rather than leaking into the following token), and a leading tab counts as one full indentation level on top of any complete space-multiples before it — both are implementation-defined leniencies the spec explicitly allows non-strict decoders to choose.
+`indentSize` (spec §12, default 2) is a decode-time parameter, not something inferred from the document. `ctoon_read_opts()` always decodes with the default; `ctoon_read_opts_indent()` takes an explicit `indent_size` and threads it into `ctoon_read_ctx.indent`, which every depth computation (`ctoon_cur_measure_indent`/`ctoon_cur_consume_indent`) divides leading-space counts by. In non-strict mode only, indentation that isn't an exact multiple of `indentSize` is still accepted (any remainder is swallowed as part of the same indentation rather than leaking into the following token), and a leading tab counts as one full indentation level on top of any complete space-multiples before it - both are implementation-defined leniencies the spec explicitly allows non-strict decoders to choose.
 
 ### 5.6 String Handling
 
-Strings are **not copied** during parsing. The parser records a pointer (`uni.str`) directly into the input buffer and stores the byte length in the tag. Escape sequences are handled lazily — the `CTOON_SUBTYPE_NOESC` flag marks strings that require no unescaping, so `ctoon_get_str()` can return the pointer directly.
+Strings are **not copied** during parsing. The parser records a pointer (`uni.str`) directly into the input buffer and stores the byte length in the tag. Escape sequences are handled lazily - the `CTOON_SUBTYPE_NOESC` flag marks strings that require no unescaping, so `ctoon_get_str()` can return the pointer directly.
 
 ---
 
@@ -283,11 +283,11 @@ Strings are **not copied** during parsing. The parser records a pointer (`uni.st
 
 For float-to-decimal conversion, CToon uses a port of the **Schubfach algorithm** (as implemented in yyjson). The key functions:
 
-- `f64_bin_to_dec()` — converts IEEE-754 significand/exponent to shortest decimal using cached `pow10_sig_table` + `u128_mul` / `u128_mul_add`
-- `write_f64_ryu()` — formats the result with correct decimal-point placement and scientific notation fallback
-- `write_u64_len_16_to_17_trim()` — fast 16-or-17-digit writer with trailing-zero trimming
+- `f64_bin_to_dec()` - converts IEEE-754 significand/exponent to shortest decimal using cached `pow10_sig_table` + `u128_mul` / `u128_mul_add`
+- `write_f64_ryu()` - formats the result with correct decimal-point placement and scientific notation fallback
+- `write_u64_len_16_to_17_trim()` - fast 16-or-17-digit writer with trailing-zero trimming
 
-The algorithm guarantees the **shortest round-trip** representation — the minimal number of decimal digits that uniquely identifies the original `double` bit pattern.
+The algorithm guarantees the **shortest round-trip** representation - the minimal number of decimal digits that uniquely identifies the original `double` bit pattern.
 
 ---
 
@@ -333,15 +333,15 @@ graph LR
     end
 ```
 
-The immutable document is **fully thread-safe for concurrent reads** — it is never modified after `ctoon_read` returns. The mutable document and its underlying pool are **not thread-safe** — the bump pointer and linked-list manipulation require external locking if shared across threads.
+The immutable document is **fully thread-safe for concurrent reads** - it is never modified after `ctoon_read` returns. The mutable document and its underlying pool are **not thread-safe** - the bump pointer and linked-list manipulation require external locking if shared across threads.
 
 ---
 
 ## 9. JSON Interop
 
-When JSON support is enabled (on by default — define `CTOON_DISABLE_JSON` to turn it off), CToon embeds a JSON reader and writer:
+When JSON support is enabled (on by default - define `CTOON_DISABLE_JSON` to turn it off), CToon embeds a JSON reader and writer:
 
-- **`ctoon_read_json()`** parses JSON directly into the same flat-arena immutable format — the resulting `ctoon_doc` is indistinguishable from a TOON-parsed document.
+- **`ctoon_read_json()`** parses JSON directly into the same flat-arena immutable format - the resulting `ctoon_doc` is indistinguishable from a TOON-parsed document.
 - **`ctoon_doc_to_json()`** serialises an immutable doc to JSON in a single O(n) pass using `cj_doc_write`, which understands the flat-arena layout and `uni.ofs` skip offsets.
 - **`ctoon_mut_doc_to_json()`** first calls `ctoon_mut_doc_imut_copy()` (one O(n) traversal of the circular linked-list) then delegates to `cj_doc_write`. The temporary immutable copy is freed immediately after serialisation.
 

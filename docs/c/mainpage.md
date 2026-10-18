@@ -69,7 +69,7 @@ CTOON_SPEC_DATE_STRING      // "2026-07-26"
 The same values are available at runtime through `ctoon_spec_version_string()`,
 `ctoon_spec_tag_hex()` and `ctoon_spec_date_string()`.
 
-See @ref ctoon.h for the full function reference — document I/O
+See @ref ctoon.h for the full function reference - document I/O
 (`ctoon_read`, `ctoon_write`), the object/array accessors
 (`ctoon_obj_get`, `ctoon_arr_get`, ...), and JSON interop
 (`ctoon_doc_to_json`).

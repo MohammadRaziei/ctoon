@@ -20,19 +20,19 @@ concurrency:
   group: zig-${{ github.ref }}
   cancel-in-progress: true
 
-# Testing the Zig binding itself is not this workflow's job — it happens
+# Testing the Zig binding itself is not this workflow's job - it happens
 # in cmake.yml's build-and-test matrix (ubuntu/macos/windows) alongside
 # every other language, the same way Python and Rust are tested there,
 # via `ctest` picking up tests/zig/CMakeLists.txt's `zig build test`.
 # A second, standalone 3-OS test job here would just duplicate that.
 #
 # Zig has no central *binary* package registry the way PyPI (wheels) or
-# crates.io do — a Zig package is fetched as source (URL+hash) by
+# crates.io do - a Zig package is fetched as source (URL+hash) by
 # consumers, who compile it themselves via build.zig. So instead of a
 # "publish" step, this workflow's only job is to cross-compile the
 # static library + headers for a handful of common targets and attach
 # the tarballs to the GitHub release, for anyone who'd rather not build
-# ctoon.c themselves — the closest equivalent to wheels.yml's per-platform
+# ctoon.c themselves - the closest equivalent to wheels.yml's per-platform
 # wheel artifacts.
 jobs:
   build_release_libs:

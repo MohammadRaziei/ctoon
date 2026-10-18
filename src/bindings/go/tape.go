@@ -2,7 +2,7 @@ package binding
 
 // Pure-Go binary "tape" format used to exchange a whole value tree with
 // bridge.c in a single CGo call, instead of one call per tree node. See
-// bridge.h for the full format description and rationale — the tags below
+// bridge.h for the full format description and rationale - the tags below
 // MUST match bridge.c's TAPE_* enum exactly.
 //
 // Nothing in this file ever crosses the CGo boundary itself: encodeTape
@@ -42,7 +42,7 @@ func appendRawStr(buf []byte, s string) []byte {
 }
 
 // encodeTape serialises v into the tape format, appending to buf (pass nil
-// to start a new buffer). No CGo calls are made here — this is the whole
+// to start a new buffer). No CGo calls are made here - this is the whole
 // point: the entire tree is built natively in Go, and only the finished
 // byte slice crosses into C, once, via ctoon_go_bridge_encode.
 func encodeTape(buf []byte, v interface{}) ([]byte, error) {
@@ -227,6 +227,6 @@ func (r *tapeReader) decode() (interface{}, error) {
 		}
 		return out, nil
 	default:
-		return nil, fmt.Errorf("ctoon: corrupt tape (unknown tag %d) — internal error, please report", tag)
+		return nil, fmt.Errorf("ctoon: corrupt tape (unknown tag %d) - internal error, please report", tag)
 	}
 }

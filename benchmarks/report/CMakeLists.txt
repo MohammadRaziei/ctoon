@@ -114,7 +114,7 @@ if(CTOON_BENCH_MEMORY)
     add_dependencies(ctoon_bench_memory ${MEMORY_DEPS})
   endif()
 else()
-  message(STATUS "ctoon benchmarks: memory measurement is OFF (CTOON_BENCH_MEMORY=OFF) — "
+  message(STATUS "ctoon benchmarks: memory measurement is OFF (CTOON_BENCH_MEMORY=OFF) - "
                   "peak_rss_mb will not appear in the report. Enable with -DCTOON_BENCH_MEMORY=ON.")
 endif()
 

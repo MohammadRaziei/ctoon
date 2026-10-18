@@ -41,11 +41,11 @@ option(CTOON_BUILD_DOCS "Build documentation" OFF)
 
 # Self-building language bindings (Go, Rust, Zig, MATLAB, Octave, Julia): each has its
 # own external toolchain and is never compiled by this project's own
-# CMake graph the way Python is — these flags don't turn on a build step
+# CMake graph the way Python is - these flags don't turn on a build step
 # here, they tell tests/, docs/, src/bindings/matlab and src/bindings/octave (each of which
 # detects these toolchains independently) that a missing toolchain
 # should be a hard error instead of a silent skip. See
-# cmake/CtoonLangGuard.cmake. This is the main ctoon project only —
+# cmake/CtoonLangGuard.cmake. This is the main ctoon project only -
 # benchmarks/ is a fully standalone CMake project and always
 # warn-and-skips regardless, since its whole point is running whatever
 # it can find.
@@ -104,7 +104,7 @@ target_compile_options(ctoon PRIVATE
 # Apply optimization flags
 apply_optimization_flags(ctoon)
 
-# Add CLI executable — no longer depends on yyjson; uses ctoon JSON API directly
+# Add CLI executable - no longer depends on yyjson; uses ctoon JSON API directly
 add_executable(ctoon_cli
     ${PROJECT_SOURCE_DIR}/src/cli/cli.cpp
 )

@@ -1,4 +1,4 @@
-# Both dependencies — ctoon included — are fetched by Cargo itself from
+# Both dependencies - ctoon included - are fetched by Cargo itself from
 # their real GitHub/crates.io homes (see Cargo.toml), the same way every
 # other language benchmark fetches its own dependencies. Built with
 # `cargo build --release`; nothing else for this project to fetch here.

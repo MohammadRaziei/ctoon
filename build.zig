@@ -2,30 +2,30 @@
 //
 // Targets Zig 0.16.0. Two structural changes from 0.13 matter here:
 //   1. (0.14+) A Compile step (library/executable/test) no longer takes
-//      root_source_file, target, and optimize directly — those live on
+//      root_source_file, target, and optimize directly - those live on
 //      a *Module* now, built with b.createModule() and passed in as
 //      .root_module. addStaticLibrary was replaced by
 //      addLibrary(.{ .linkage = .static }).
 //   2. (0.16) Compile's convenience wrappers that used to forward to its
-//      root_module — addIncludePath, addCSourceFile, linkLibrary — were
+//      root_module - addIncludePath, addCSourceFile, linkLibrary - were
 //      removed. Those must be called on `<compile>.root_module` directly
 //      now, not on the Compile step itself. installHeadersDirectory and
-//      installArtifact are unaffected — those are genuinely install-step
+//      installArtifact are unaffected - those are genuinely install-step
 //      (not module) operations.
 //
 // Lives at the repo root (like Cargo.toml and pyproject.toml) so
 // `zig build test` works from the repo root the same way `cargo test`
-// and `pip install .` do — but the binding's own source and shim stay
+// and `pip install .` do - but the binding's own source and shim stay
 // under their designated location, src/bindings/zig/ (mirrors
 // src/bindings/rust/ for the Rust binding).
 //
-// Compiles the C core directly into this binding — the same approach the
+// Compiles the C core directly into this binding - the same approach the
 // Rust binding's build.rs and the Go binding's cgo preamble take. No CMake
 // step is required: `zig build test` (or `zig build` from a downstream
 // project that depends on this as a module) is fully self-contained.
 //
 // Plain `zig build` (no step name) additionally installs the compiled
-// static library and headers under zig-out/ — see .github/workflows/zig.yml,
+// static library and headers under zig-out/ - see .github/workflows/zig.yml,
 // which cross-compiles that for a release the same way wheels.yml builds
 // platform wheels: Zig has no central *binary* package registry the way
 // PyPI or crates.io do (Zig packages are fetched as source, by URL+hash),
@@ -67,7 +67,7 @@ pub fn build(b: *std.Build) void {
     });
     // shim.c gives the `static inline` parts of ctoon.h's API (tree
     // inspection, mutable-document building) real extern linkage, under
-    // their `ctoon_rs_`-prefixed names — see shim.c's header comment.
+    // their `ctoon_rs_`-prefixed names - see shim.c's header comment.
     // Same file the Rust binding uses (src/bindings/rust/shim.c).
     ctoon_lib.root_module.addCSourceFile(.{
         .file = b.path(shim_c),
@@ -85,7 +85,7 @@ pub fn build(b: *std.Build) void {
     ctoon_module.addIncludePath(b.path(include_dir));
     ctoon_module.linkLibrary(ctoon_lib);
 
-    // `zig build test` — unit tests in src/bindings/zig/src/ctoon.zig
+    // `zig build test` - unit tests in src/bindings/zig/src/ctoon.zig
     // plus the shared cross-binding integration test in
     // tests/zig/integration_test.zig (mirrors tests/rust, tests/go, etc,
     // all likewise centralized under the repo-root tests/ folder).

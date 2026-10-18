@@ -45,7 +45,7 @@ autodoc_member_order   = 'groupwise'
 autodoc_typehints      = 'description'
 autosummary_generate   = True
 
-# ── Hide internal ctoon_py module — rewrite to ctoon ─────────────────────────
+# ── Hide internal ctoon_py module - rewrite to ctoon ─────────────────────────
 add_module_names       = False
 modindex_common_prefix = ['ctoon.']
 

@@ -20,7 +20,7 @@ function teardownOnce(~)
 end
 
 %% -------------------------------------------------------------------------
-%  ctoon.decode — scalar primitives
+%  ctoon.decode - scalar primitives
 %% -------------------------------------------------------------------------
 
 function testDecodeNull(testCase)
@@ -64,7 +64,7 @@ verifyEqual(testCase, v, 'hello');
 end
 
 %% -------------------------------------------------------------------------
-%  ctoon.decode — composite types
+%  ctoon.decode - composite types
 %% -------------------------------------------------------------------------
 
 function testDecodeArray(testCase)
@@ -171,12 +171,12 @@ verifyFalse(testCase, v.flag);
 end
 
 %% -------------------------------------------------------------------------
-%  ctoon.read / ctoon.write — file I/O
+%  ctoon.read / ctoon.write - file I/O
 %% -------------------------------------------------------------------------
 
 function testReadSample1(testCase)
 sample = fullfile(testCase.TestData.DataDir, 'sample1_user.toon');
-assumeTrue(testCase, isfile(sample), 'Test data file not found — skipping.');
+assumeTrue(testCase, isfile(sample), 'Test data file not found - skipping.');
 v = ctoon.read(sample);
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, v.name, 'Alice');
@@ -209,7 +209,7 @@ end
 
 function testDecodeEmptyString(testCase)
 % Spec §5/§8: a zero-length TOON document is valid input and decodes as
-% an empty object — it is NOT an error.
+% an empty object - it is NOT an error.
 v = ctoon.decode('');
 verifyClass(testCase, v, 'struct');
 verifyEqual(testCase, numel(fieldnames(v)), 0);
@@ -229,7 +229,7 @@ verifyError(testCase, @() ctoon.write(struct('x', 1.5), '/no/such/dir/out.toon')
 end
 
 %% -------------------------------------------------------------------------
-%  ctoon.encode — MATLAB-native jsondecode() round trips
+%  ctoon.encode - MATLAB-native jsondecode() round trips
 %
 %  Every test above feeds ctoon.encode/decode hand-built MATLAB literals
 %  (struct(...), {...}, scalars) directly -- none of them ever go through

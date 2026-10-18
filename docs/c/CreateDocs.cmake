@@ -1,4 +1,4 @@
-# CreateDocs.cmake — C documentation (Doxygen)
+# CreateDocs.cmake - C documentation (Doxygen)
 # Called via: cmake -P CreateDocs.cmake
 # Required CMake variables (passed via -D):
 #   PROJECT_SOURCE_DIR, PROJECT_VERSION, OUTPUT_DIR, DOXYGEN_EXECUTABLE,

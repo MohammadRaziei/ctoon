@@ -47,7 +47,7 @@ set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
 set(CTOON_ZIG_LIB_PATH_LIST "")
 foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
     # zig's --search-prefix requires every path given to actually exist
-    # as a directory — GCC's own implicit-link-directory list routinely
+    # as a directory - GCC's own implicit-link-directory list routinely
     # includes paths that don't exist on disk (this is normal for GCC;
     # it's an optional search list, not a guarantee), so filter those
     # out before handing the list to zig.
@@ -58,7 +58,7 @@ foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
 endforeach()
 # Belt-and-suspenders: also set LD_LIBRARY_PATH to the same list, in case
 # --search-prefix and LD_LIBRARY_PATH aren't both honored the same way
-# in every zig/lld version — whichever one actually gets picked up is
+# in every zig/lld version - whichever one actually gets picked up is
 # enough. Harmless to set when unneeded.
 string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
 
@@ -88,13 +88,13 @@ add_custom_target(ctoon_test_zig
 
 add_dependencies(ctoon_test ctoon_test_zig)
 
-# ── ctoon_coverage_zig — not implemented ─────────────────────────────────────
+# ── ctoon_coverage_zig - not implemented ─────────────────────────────────────
 # Deliberately absent for now: Zig's own coverage tooling (kcov-based, via
 # `zig build test --test-coverage` on some setups) is still too immature/
-# unstable across Zig versions to build a reliable CMake target around it —
+# unstable across Zig versions to build a reliable CMake target around it -
 # unlike Go and Rust, which each have one well-established, stable tool
 # (`go tool cover`, `cargo-llvm-cov`). Revisit once Zig's native coverage
 # support stabilizes. This is the same slot ctoon_coverage_go and
-# ctoon_coverage_rust fill in their own tests/<lang>/CMakeLists.txt — see
+# ctoon_coverage_rust fill in their own tests/<lang>/CMakeLists.txt - see
 # tests/CMakeLists.txt's merge/dashboard logic for how a future
 # ctoon_coverage_zig target would plug in the same way.

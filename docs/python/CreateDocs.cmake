@@ -1,10 +1,10 @@
-# CreateDocs.cmake — Python documentation (Sphinx)
+# CreateDocs.cmake - Python documentation (Sphinx)
 # Called via: cmake -P CreateDocs.cmake
 # Required CMake variables (passed via -D):
-#   PYTHON_EXECUTABLE        — Python interpreter
-#   SOURCE_DIR               — Sphinx source dir (contains conf.py)
-#   OUTPUT_DIR               — Output directory for generated HTML
-#   CTOON_PYTHON_INSTALL_DIR — Path to ${CMAKE_BINARY_DIR}/python/install
+#   PYTHON_EXECUTABLE        - Python interpreter
+#   SOURCE_DIR               - Sphinx source dir (contains conf.py)
+#   OUTPUT_DIR               - Output directory for generated HTML
+#   CTOON_PYTHON_INSTALL_DIR - Path to ${CMAKE_BINARY_DIR}/python/install
 #                              where ctoon was installed (ctoon_build_python target)
 
 cmake_minimum_required(VERSION 3.19)

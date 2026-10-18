@@ -1,5 +1,5 @@
 """
-generate_report.py — combine every benchmarks/*/<language>.json result
+generate_report.py - combine every benchmarks/*/<language>.json result
 into one standalone HTML report: Chart.js and all the raw JSON data are
 embedded directly in the file (via a fetched Chart.js UMD build and
 inline <script> tags), so the output needs nothing else to view or to
@@ -24,6 +24,7 @@ import datetime
 import glob
 import json
 import os
+import re
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -43,7 +44,8 @@ LANG_TITLES = {
     "node": "Node.js",
 }
 PALETTE = ["#ff6b81", "#35d0ba", "#ffb454", "#b98bff", "#8b93a7", "#4dd0e1"]
-CTOON_COLOR = "#5b8cff"  # fixed across every chart, in every language --
+CTOON_COLOR = "#4dabf7"  # the documentation site's accent color (docs/ctoon-docs.css).
+                          # Fixed across every chart, in every language --
                           # not a special filtering rule, just a stable
                           # visual anchor so the same bar is always the
                           # same color from section to section.
@@ -52,6 +54,41 @@ ORDER_CHECK_SAMPLE = (
     '{"zebra": 1, "apple": 2, "mango": 3, "nested": {"beta": true, "alpha": false}, '
     '"list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}'
 )  # same literal string every language's bench runner checks against
+
+
+REPO_ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
+DOCS_DIR = os.path.join(REPO_ROOT, "docs")
+
+
+def _read_text(path, what):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError as exc:
+        raise SystemExit(f"generate_report: cannot read {what} ({path}): {exc}")
+
+
+def _docs_assets():
+    """The report is styled by the documentation site's own stylesheet and
+    logo, inlined here so the report stays a single standalone file and
+    follows the site automatically whenever docs/ctoon-docs.css changes."""
+    css = _read_text(os.path.join(DOCS_DIR, "ctoon-docs.css"), "the documentation stylesheet")
+    logo = _read_text(os.path.join(DOCS_DIR, "images", "ctoon-sq.svg"), "the CToon logo")
+    logo = "\n".join(line for line in logo.splitlines() if not line.startswith("<?xml")).strip()
+    return css, logo
+
+
+def _project_version():
+    """CTOON_VERSION_{MAJOR,MINOR,PATCH} from include/ctoon.h (the same source
+    the documentation site's version badge comes from), or None."""
+    header = _read_text(os.path.join(REPO_ROOT, "include", "ctoon.h"), "include/ctoon.h")
+    parts = []
+    for name in ("MAJOR", "MINOR", "PATCH"):
+        m = re.search(rf"#define\s+CTOON_VERSION_{name}\s+(\d+)", header)
+        if not m:
+            return None
+        parts.append(m.group(1))
+    return ".".join(parts)
 
 
 def _load_all(results_dir):
@@ -275,12 +312,27 @@ def build(results_dir, output_path, chartjs_path):
     env = Environment(loader=FileSystemLoader(HERE), autoescape=False)
     template = env.get_template("template.html.jinja2")
 
+    docs_css, logo_svg = _docs_assets()
+    generated_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    libraries = {r["library"] for d in langs for r in d["results"]}
+    hero_stats = [
+        {"num": len(sections), "label": "Languages"},
+        {"num": len(libraries), "label": "Libraries"},
+        {"num": len(OPERATIONS), "label": "Operations"},
+        {"num": generated_at.split(" ")[0], "label": "Generated", "title": generated_at, "small": True},
+    ]
+
     html = template.render(
-        generated_at=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated_at=generated_at,
+        docs_css=docs_css,
+        logo_svg=logo_svg,
+        version=_project_version(),
+        eyebrow=" · ".join(sec["title"] for sec in sections),
+        hero_stats=hero_stats,
         headline="ctoon, measured honestly",
         subhead=(
-            "Every ctoon language binding &mdash; C, C++, Python, Go, Rust, Zig, "
-            "MATLAB, Octave &mdash; benchmarked head-to-head against every maintained "
+            "Every ctoon language binding (C, C++, Python, Go, Rust, Zig, "
+            "MATLAB, Octave) benchmarked head-to-head against every maintained "
             "competing TOON implementation that exists for that language."
         ),
         sections=sections,

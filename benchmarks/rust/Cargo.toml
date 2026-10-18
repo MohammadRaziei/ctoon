@@ -6,7 +6,7 @@ edition = "2021"
 # toon-rust reserves the "toon-format" crate name on crates.io
 # (default-features off: skips its CLI/TUI deps, which pull in a lot we
 # don't need for a benchmark). ctoon is fetched the same way every other
-# language fetches it here — straight from GitHub, not a local path —
+# language fetches it here - straight from GitHub, not a local path -
 # even though this repo's root is right above us; see this directory's
 # CMakeLists.txt comment for why.
 [dependencies]

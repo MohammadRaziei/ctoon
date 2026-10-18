@@ -1,4 +1,4 @@
-//! serde_json (a dev-dependency added specifically for this file — ctoon's
+//! serde_json (a dev-dependency added specifically for this file - ctoon's
 //! crate itself stays zero-dependency, see Cargo.toml's [dev-dependencies]
 //! comment) vs ctoon's own JSON reader/writer.
 //!
@@ -214,7 +214,7 @@ fn check_pair(dir: &Path, name: &str) {
 }
 
 // ---------------------------------------------------------------------------
-// tests/data/*.json + *.toon — local to this repo, always available.
+// tests/data/*.json + *.toon - local to this repo, always available.
 // ---------------------------------------------------------------------------
 
 #[test]
@@ -235,7 +235,7 @@ fn native_json_roundtrip_local_data() {
 fn native_json_roundtrip_spec_examples() {
     let Some(dir) = spec_examples_dir() else {
         eprintln!(
-            "CTOON_SPEC_EXAMPLES_DIR not set/found — skipping (only available under CMake/ctest)."
+            "CTOON_SPEC_EXAMPLES_DIR not set/found - skipping (only available under CMake/ctest)."
         );
         return;
     };

@@ -1,6 +1,6 @@
 /*
  * Most of ctoon's tree-inspection and mutable-document-building API is
- * declared `ctoon_api_inline` (= `static inline`) in ctoon.h — meant to be
+ * declared `ctoon_api_inline` (= `static inline`) in ctoon.h - meant to be
  * used by C/C++ code that #includes the header directly, where each
  * translation unit gets its own internal-linkage copy. That's exactly how
  * bridge.c (the Go binding's C shim) uses it.
@@ -11,11 +11,11 @@
  * to link against, and `static inline` functions don't produce one in
  * the compiled ctoon.c object. This file's only job is to give each of
  * those functions a thin, non-static wrapper with real (extern) linkage,
- * so they can be called across the FFI boundary — the wrappers
+ * so they can be called across the FFI boundary - the wrappers
  * themselves do nothing but forward the call.
  *
  * Shared verbatim by the Rust binding (src/bindings/rust/shim.c), the
- * Zig binding, and the Julia binding (this copy) — same symbols, same
+ * Zig binding, and the Julia binding (this copy) - same symbols, same
  * `ctoon_rs_` prefix, kept identical across all three so their FFI
  * declarations (ffi.rs, ctoon.zig, CToon.jl's ccall signatures) never
  * diverge from what's actually exported.
