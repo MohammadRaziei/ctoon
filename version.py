@@ -228,7 +228,7 @@ def cmd_tag(args):
         version["MAJOR"], version["MINOR"], version["PATCH"] = map(int, parts)
         write_version(version, text)
         print(f"Version set from tag → {value}")
-        return 0
+        exit(0)
 
     # --------------------------------------------------------
     # python version.py tag create [...]
@@ -255,7 +255,7 @@ def cmd_tag(args):
         run(["git", "commit", "-m", f"Release {new_version}", "--allow-empty"])
         run(["git", "tag", tag_name])
         print(f"Committed and tagged {tag_name}")
-        return 0
+        exit(0)
 
 # ============================================================
 # CLI
