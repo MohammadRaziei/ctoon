@@ -433,8 +433,12 @@ pre code.hljs { display: block; overflow-x: auto; background: transparent !impor
     transform: translateY(-1px);
 }
 /* ── TOON vs JSON overview ───────────────────────────── */
-.inline-link { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-glow); }
-.inline-link:hover { border-bottom-color: var(--accent); }
+.inline-link,
+.doc-card-desc a,
+.install-note a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-glow); }
+.inline-link:hover,
+.doc-card-desc a:hover,
+.install-note a:hover { border-bottom-color: var(--accent); }
 .section-desc strong { color: var(--fg); font-weight: 600; }
 .compare-caption { font-size: 0.88rem; color: var(--fg2); line-height: 1.65; margin: 0 0 1.25rem; }
 .compare-caption code, .compare-notes code {

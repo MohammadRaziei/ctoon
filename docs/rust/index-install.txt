@@ -14,5 +14,5 @@
 ctoon = "@PROJECT_VERSION@"</code></pre>
             </div>
             <div class="install-note">
-                Published on <a class="inline-link" href="https://crates.io/crates/ctoon" target="_blank">crates.io</a>. Requires Rust 1.70+. No runtime dependencies - <code>build.rs</code> compiles <code>ctoon.c</code> directly into the crate, so no separate C library install is needed. A C compiler must be available on the build host.
+                Published on <a href="https://crates.io/crates/ctoon" target="_blank">crates.io</a>. Requires Rust 1.70+. No runtime dependencies - <code>build.rs</code> compiles <code>ctoon.c</code> directly into the crate, so no separate C library install is needed. A C compiler must be available on the build host.
             </div>
