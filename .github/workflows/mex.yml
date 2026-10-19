@@ -43,11 +43,14 @@ concurrency:
 #       Prebuilt "wheel": a ready-to-addpath folder containing +ctoon/ with
 #       the MEX binary for one platform. No compiler needed.
 #
-# Build matrix and test matrix are deliberately separate. The MEX is plain
-# C and is built ONCE per platform with the oldest MATLAB release CI can run
-# there; the test matrix then loads that same prebuilt zip under many MATLAB
-# releases WITHOUT rebuilding. If some release turns out not to load the
-# prebuilt binary, add a per-release build job for just that release.
+# The MEX is plain C, but every MATLAB release gets its own build here: the
+# build and test matrices are both platform x release (a grid, minus the
+# cells that cannot exist, see `exclude`). Each cell compiles the source dist
+# with that release and the test job loads exactly that build. Only ONE cell
+# per platform (`ship: true`, the oldest release it is built with) also
+# uploads the matlab-lib-<platform> artifact that is released; the other
+# cells upload internal mex-build-<platform>-<release> artifacts, named so
+# that they do NOT match the `matlab-*` pattern the orchestrator releases.
 #
 # Not covered by CI: releases older than R2021a (setup-matlab's floor).
 # CMake still accepts MATLAB >= R2014b (8.4); those users build from the
@@ -134,18 +137,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # `release` = oldest MATLAB release this platform's prebuilt MEX is
-          # built with. Chosen per platform, see notes:
-          - { platform: linux-x86_64,   os: ubuntu-latest,   release: R2021a }
+        platform: [linux-x86_64, windows-x86_64, macos-x86_64, macos-arm64]
+        release: [R2021a, R2022b, R2023b, R2024b, latest]
+        exclude:
           # Windows builds with the Visual Studio 2022 that ships on the runner
-          # (see "Select MSVC" below), which needs no download. VS 2022 is
-          # supported from R2022a on; R2023b is kept as the oldest release here.
-          - { platform: windows-x86_64, os: windows-latest,  release: R2023b }
+          # (see "Select MSVC" below), which is supported from R2022a on.
+          - { platform: windows-x86_64, release: R2021a }
+          # First MATLAB release with native Apple silicon support is R2023b.
+          - { platform: macos-arm64,    release: R2021a }
+          - { platform: macos-arm64,    release: R2022b }
+        include:
+          - { platform: linux-x86_64,   os: ubuntu-latest }
+          - { platform: windows-x86_64, os: windows-latest }
           # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
-          - { platform: macos-x86_64,   os: macos-15-intel,  release: R2021a }
-          # First MATLAB release with native Apple silicon support.
-          - { platform: macos-arm64,    os: macos-latest,    release: R2023b }
+          - { platform: macos-x86_64,   os: macos-15-intel }
+          - { platform: macos-arm64,    os: macos-latest }
+          # The cell per platform whose build is released (oldest release it
+          # is built with; unchanged from when there was one build per platform).
+          - { platform: linux-x86_64,   release: R2021a, ship: true }
+          - { platform: windows-x86_64, release: R2023b, ship: true }
+          - { platform: macos-x86_64,   release: R2021a, ship: true }
+          - { platform: macos-arm64,    release: R2023b, ship: true }
     steps:
 
 
@@ -192,7 +204,9 @@ jobs:
           addpath('${{ github.workspace }}/src-dist/ctoon-matlab-${{ needs.dist.outputs.version }}-src');
           ctoon_build('${{ github.workspace }}/out', true);
 
+    # Released artifact: only the `ship` cell of each platform.
     - name: Package prebuilt binding
+      if: matrix.ship
       shell: python
       run: |
         import os, shutil
@@ -201,6 +215,7 @@ jobs:
         shutil.make_archive(base, "zip", "out", "+ctoon")
 
     - uses: Wandalen/wretry.action@v3.8.0
+      if: matrix.ship
       with:
         action: actions/upload-artifact@v7
         attempt_limit: 3
@@ -211,24 +226,41 @@ jobs:
           overwrite: true
           if-no-files-found: error
 
+    # Internal, per cell, for the test job (not released).
+    - uses: Wandalen/wretry.action@v3.8.0
+      with:
+        action: actions/upload-artifact@v7
+        attempt_limit: 3
+        attempt_delay: 15000
+        with: |
+          name: mex-build-${{ matrix.platform }}-${{ matrix.release }}
+          path: out/+ctoon
+          retention-days: 1
+          if-no-files-found: error
+
   test:
     name: Test (${{ matrix.platform }}, ${{ matrix.release }})
     needs: [build]
     runs-on: ${{ matrix.os }}
+    # Same grid as the build job: keep the two matrices in sync.
     strategy:
       fail-fast: false
       matrix:
+        platform: [linux-x86_64, windows-x86_64, macos-x86_64, macos-arm64]
+        release: [R2021a, R2022b, R2023b, R2024b, latest]
+        exclude:
+          # Windows builds with the Visual Studio 2022 that ships on the runner
+          # (see "Select MSVC" below), which is supported from R2022a on.
+          - { platform: windows-x86_64, release: R2021a }
+          # First MATLAB release with native Apple silicon support is R2023b.
+          - { platform: macos-arm64,    release: R2021a }
+          - { platform: macos-arm64,    release: R2022b }
         include:
-          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2021a }
-          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2022b }
-          - { platform: linux-x86_64,   os: ubuntu-latest,  release: R2024b }
-          - { platform: linux-x86_64,   os: ubuntu-latest,  release: latest }
-          # R2022b is not tested on Windows: the Windows MEX is built with R2023b (see the build matrix).
-          - { platform: windows-x86_64, os: windows-latest, release: R2023b }
-          - { platform: windows-x86_64, os: windows-latest, release: latest }
-          - { platform: macos-x86_64,   os: macos-15-intel, release: R2021a }
-          - { platform: macos-arm64,    os: macos-latest,   release: R2023b }
-          - { platform: macos-arm64,    os: macos-latest,   release: latest }
+          - { platform: linux-x86_64,   os: ubuntu-latest }
+          - { platform: windows-x86_64, os: windows-latest }
+          # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
+          - { platform: macos-x86_64,   os: macos-15-intel }
+          - { platform: macos-arm64,    os: macos-latest }
     steps:
     - uses: actions/checkout@v6
       with:
@@ -240,16 +272,10 @@ jobs:
         attempt_limit: 3
         attempt_delay: 15000
         with: |
-          name: matlab-lib-${{ matrix.platform }}
-          path: dl
+          name: mex-build-${{ matrix.platform }}-${{ matrix.release }}
+          path: lib/+ctoon
 
-    # Test exactly the zip that ships, not a rebuilt copy.
-    - name: Unpack prebuilt binding
-      shell: python
-      run: |
-        import glob, zipfile
-        z = glob.glob("dl/*.zip")[0]
-        zipfile.ZipFile(z).extractall("lib")
+    # Test exactly the build of this cell (no compiler step in this job).
 
     - name: Set up MATLAB
       uses: matlab-actions/setup-matlab@v2
