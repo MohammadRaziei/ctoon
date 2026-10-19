@@ -76,7 +76,7 @@ include(FetchContent)
 FetchContent_Declare(
   ctoon
   GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
-  GIT_TAG        v0.8.3
+  GIT_TAG        v0.9.0
 )
 FetchContent_MakeAvailable(ctoon)
 target_link_libraries(my_app PRIVATE ctoon::ctoon)
@@ -209,7 +209,7 @@ or add it to `Cargo.toml` yourself (the crate is on
 
 ```toml
 [dependencies]
-ctoon = "0.8.3"
+ctoon = "0.9.0"
 ```
 
 ```rust
