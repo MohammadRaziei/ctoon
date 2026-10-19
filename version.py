@@ -36,6 +36,11 @@ CARGO_TOML_ABS_PATH = Path(__file__).parent / "Cargo.toml"
 ZON_ABS_PATH = Path(__file__).parent / "build.zig.zon"
 JULIA_PROJECT_TOML_ABS_PATH = Path(__file__).parent / "src" / "bindings" / "julia" / "Project.toml"
 
+# README.md is rendered raw by GitHub, so it cannot use @PROJECT_VERSION@
+# the way the docs site does. Its two install snippets (CMake GIT_TAG and
+# the Cargo dependency line) are rewritten here instead.
+README_ABS_PATH = Path(__file__).parent / "README.md"
+
 # ============================================================
 # Utilities
 # ============================================================
@@ -115,6 +120,30 @@ def sync_manifest_versions(v):
         )
         if new_text != text:
             JULIA_PROJECT_TOML_ABS_PATH.write_text(new_text)
+
+    if README_ABS_PATH.exists():
+        text = README_ABS_PATH.read_text()
+        new_text, n_tag = re.subn(
+            r'(?m)^([ \t]*GIT_TAG[ \t]+)v\d+\.\d+\.\d+[ \t]*$',
+            lambda m: f'{m.group(1)}v{v}',
+            text,
+            count=1,
+        )
+        new_text, n_dep = re.subn(
+            r'(?m)^ctoon = "[^"]*"[ \t]*$',
+            f'ctoon = "{v}"',
+            new_text,
+            count=1,
+        )
+        # Fail loudly instead of silently drifting if the README snippets
+        # are ever reworded so the patterns no longer match.
+        if n_tag != 1 or n_dep != 1:
+            sys.exit(
+                "version.py: could not find the README.md install snippets "
+                f"(GIT_TAG matches: {n_tag}, Cargo line matches: {n_dep})"
+            )
+        if new_text != text:
+            README_ABS_PATH.write_text(new_text)
 
 def version_str(v):
     return f"{v['MAJOR']}.{v['MINOR']}.{v['PATCH']}"

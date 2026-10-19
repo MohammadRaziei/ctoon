@@ -73,8 +73,11 @@ Requires CMake 3.19+ and a C99 compiler.
 ```cmake
 # CMakeLists.txt
 include(FetchContent)
-FetchContent_Declare(ctoon
-  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git  GIT_TAG main)
+FetchContent_Declare(
+  ctoon
+  GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
+  GIT_TAG        v0.8.3
+)
 FetchContent_MakeAvailable(ctoon)
 target_link_libraries(my_app PRIVATE ctoon::ctoon)
 ```
@@ -206,7 +209,7 @@ or add it to `Cargo.toml` yourself (the crate is on
 
 ```toml
 [dependencies]
-ctoon = "0.8"
+ctoon = "0.8.3"
 ```
 
 ```rust

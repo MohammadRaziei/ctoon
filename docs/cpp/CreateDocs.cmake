@@ -39,6 +39,16 @@ file(MAKE_DIRECTORY "${CPP_HTML}")
 set(DOXYGEN_FOOTER_OUT "${CPP_OUT}/footer.html")
 configure_file("${FOOTER_IN}" "${DOXYGEN_FOOTER_OUT}" @ONLY)
 
+# ── Stamp the version into the main page ─────────────────────
+# Plain string replace (not configure_file @ONLY) so any Doxygen @commands
+# in the page are left untouched.
+# The token is built with string(CONCAT) because CMake would expand a literal
+# "@PROJECT_VERSION@" argument before the search happens.
+string(CONCAT _VERSION_TOKEN "@" "PROJECT_VERSION" "@")
+file(READ "${PROJECT_SOURCE_DIR}/docs/cpp/mainpage.md" _MAINPAGE)
+string(REPLACE "${_VERSION_TOKEN}" "${PROJECT_VERSION}" _MAINPAGE "${_MAINPAGE}")
+file(WRITE "${CPP_OUT}/mainpage.md" "${_MAINPAGE}")
+
 # ── Configure Doxyfile ───────────────────────────────────────
 set(DOXYGEN_OUT "${CPP_OUT}/Doxyfile")
 configure_file("${DOXYFILE_IN}" "${DOXYGEN_OUT}" @ONLY)

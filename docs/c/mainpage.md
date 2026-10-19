@@ -12,7 +12,7 @@ include(FetchContent)
 FetchContent_Declare(
   ctoon
   GIT_REPOSITORY https://github.com/MohammadRaziei/ctoon.git
-  GIT_TAG        main
+  GIT_TAG        v@PROJECT_VERSION@
 )
 FetchContent_MakeAvailable(ctoon)
 

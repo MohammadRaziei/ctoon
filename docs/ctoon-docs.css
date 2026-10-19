@@ -459,6 +459,11 @@ pre code.hljs { display: block; overflow-x: auto; background: transparent !impor
     .footer-links { align-items: flex-start; }
 }
 
+@media (max-width: 560px) {
+    .hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem 1rem; }
+    .hero-stat-div { display: none; }
+}
+
 @media (max-width: 640px) {
     .topbar-nav { margin-left: 0.5rem; }
     .topbar-link { padding: 0 0.55rem; }
