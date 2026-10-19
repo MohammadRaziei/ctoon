@@ -16,6 +16,7 @@
 [![Go 1.21+](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://go.dev/)
 [![Julia 1.7+](https://img.shields.io/badge/Julia-1.7+-blue.svg)](https://julialang.org/)
 [![MATLAB R2014b+](https://img.shields.io/badge/MATLAB-R2014b+-blue.svg)](https://www.mathworks.com/products/matlab.html)
+[![Octave 8.1+](https://img.shields.io/badge/Octave-8.1+-blue.svg)](https://octave.org/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Rust 1.70+](https://img.shields.io/badge/Rust-1.70+-blue.svg)](https://www.rust-lang.org/)
 [![Zig 0.16.0+](https://img.shields.io/badge/Zig-0.16.0+-blue.svg)](https://ziglang.org/)
@@ -24,7 +25,7 @@
 
 The fastest implementation of the [TOON format](https://github.com/toon-format/toon) - a compact, human-readable serialisation format designed to minimise LLM token usage. Achieves 30-60% token reduction versus JSON while remaining fully readable and structured.
 
-CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Go, Julia, MATLAB, Python, Rust, and Zig, plus a standalone CLI. The name reflects its foundation: **C** + **TOON**.
+CToon is built on a high-performance C core and exposes the same logic through idiomatic bindings for C++, Go, Julia, MATLAB, Octave, Python, Rust, and Zig, plus a standalone CLI. The name reflects its foundation: **C** + **TOON**.
 
 ## Format Overview
 
@@ -169,15 +170,25 @@ v.name    % 'Alice'
 
 → [Full MATLAB reference](https://mohammadraziei.github.io/ctoon/matlab/index.html) (type mapping, `ctoon.read`/`ctoon.write`, Python-style aliases, ...)
 
-**GNU Octave 8.1+** uses the very same binding. There is no prebuilt Octave binary: build once with `mkoctfile` (Debian/Ubuntu: `apt install octave octave-dev`; needs a C compiler to build only), then load it with a single `addpath`:
+### Octave
+
+Requires GNU Octave 8.1+ and a C compiler. Octave uses the very same binding as MATLAB, but there is no prebuilt Octave binary: build once with `mkoctfile` (Debian/Ubuntu: `apt install octave octave-dev`; the compiler is needed for the build only), then load it with a single `addpath`.
 
 ```octave
 cd src/bindings/matlab
-ctoon_build('/path/to/ctoon-octave')
+ctoon_build('/path/to/ctoon-octave')    % compiles the MEX gateway with mkoctfile
 addpath('/path/to/ctoon-octave')
 ```
 
-Or, without a checkout: `python -m ctoon.manager octave install` (builds a release's MATLAB source distribution).
+```octave
+s = ctoon.encode(struct('name', 'Alice', 'age', uint64(30)));
+v = ctoon.decode(s);
+v.name    % 'Alice'
+```
+
+Without a checkout: `python -m ctoon.manager octave install` (builds a release's MATLAB source distribution).
+
+→ [Octave installation guide](https://mohammadraziei.github.io/ctoon/octave/index.html) · usage and API are the same as in the [MATLAB reference](https://mohammadraziei.github.io/ctoon/matlab/index.html)
 
 ### Python
 
@@ -251,6 +262,7 @@ The [toon-format/spec](https://github.com/toon-format/spec) release a build targ
 | Go | `ctoon.SpecVersion()` | `ctoon.SpecTag()` | `ctoon.SpecDate()` |
 | Julia | `CToon.spec_version()` | `CToon.spec_tag()` | `CToon.spec_date()` |
 | MATLAB | `info.Spec.Version` | `info.Spec.Tag` | `info.Spec.Date` (`[~, info] = ctoon.version()`) |
+| Octave | `info.Spec.Version` | `info.Spec.Tag` | `info.Spec.Date` (`[~, info] = ctoon.version()`, same as MATLAB) |
 | Python | `ctoon.__toon_spec__` | `ctoon.__toon_spec_tag__` | `ctoon.__toon_spec_date__` |
 | Rust | `ctoon::spec_version()` | `ctoon::spec_tag()` | `ctoon::spec_date()` |
 | Zig | `ctoon.specVersion()` | `ctoon.specTag()` (`major`/`minor`/`patch`) | `ctoon.specDate()` |
