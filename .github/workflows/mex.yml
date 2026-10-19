@@ -138,14 +138,9 @@ jobs:
       fail-fast: false
       matrix:
         platform: [linux-x86_64, windows-x86_64, macos-x86_64, macos-arm64]
+        # Full grid on purpose: no cell is excluded by guesswork. A cell that
+        # really cannot exist gets an `exclude` with the error that proved it.
         release: [R2021a, R2022b, R2023b, R2024b, latest]
-        exclude:
-          # Windows builds with the Visual Studio 2022 that ships on the runner
-          # (see "Select MSVC" below), which is supported from R2022a on.
-          - { platform: windows-x86_64, release: R2021a }
-          # First MATLAB release with native Apple silicon support is R2023b.
-          - { platform: macos-arm64,    release: R2021a }
-          - { platform: macos-arm64,    release: R2022b }
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
           - { platform: windows-x86_64, os: windows-latest }
@@ -247,14 +242,9 @@ jobs:
       fail-fast: false
       matrix:
         platform: [linux-x86_64, windows-x86_64, macos-x86_64, macos-arm64]
+        # Full grid on purpose: no cell is excluded by guesswork. A cell that
+        # really cannot exist gets an `exclude` with the error that proved it.
         release: [R2021a, R2022b, R2023b, R2024b, latest]
-        exclude:
-          # Windows builds with the Visual Studio 2022 that ships on the runner
-          # (see "Select MSVC" below), which is supported from R2022a on.
-          - { platform: windows-x86_64, release: R2021a }
-          # First MATLAB release with native Apple silicon support is R2023b.
-          - { platform: macos-arm64,    release: R2021a }
-          - { platform: macos-arm64,    release: R2022b }
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
           - { platform: windows-x86_64, os: windows-latest }
