@@ -178,6 +178,18 @@ jobs:
       with:
         release: ${{ matrix.release }}
 
+    # Diagnostic: which Visual Studio installs does this runner image have?
+    # (Remove once the Windows cells are green.)
+    - name: List Visual Studio installs (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $vw = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        & $vw -all -products * -format json | ConvertFrom-Json |
+          Select-Object displayName, installationVersion, installationPath, productId |
+          Format-List
+        Write-Host "runner image: $env:ImageOS $env:ImageVersion"
+
     # mex picks the compiler itself. On the Windows runner that is the
     # preinstalled MSVC, so no compiler is downloaded. This step only pins it
     # explicitly and prints what was found, so a missing compiler fails here
