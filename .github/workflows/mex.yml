@@ -141,12 +141,19 @@ jobs:
         # Full grid on purpose: no cell is excluded by guesswork. A cell that
         # really cannot exist gets an `exclude` with the error that proved it.
         release: [R2021a, R2022b, R2023b, R2024b, latest]
+        exclude:
+          # Windows builds with MinGW-w64 from Chocolatey. Each MATLAB release
+          # accepts exactly one MinGW version: 6.3 up to R2022b, 8.1 from R2023a
+          # on. Chocolatey has 8.1.0 but no 6.3.0, so older releases cannot be
+          # built here (MinGW does not depend on the runner's Visual Studio).
+          - { platform: windows-x86_64, release: R2021a }
+          - { platform: windows-x86_64, release: R2022b }
+          # `latest` is R2026b, which has no Intel macOS build: setup-matlab
+          # fails with "Installation failed ... exit code 255" on macos-15-intel.
+          - { platform: macos-x86_64,   release: latest }
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
-          # NOT windows-latest: since June 2026 that image only has Visual Studio
-          # 2026, which MATLAB's mex does not detect ("Supported compiler not
-          # detected"). windows-2022 keeps Visual Studio 2022.
-          - { platform: windows-x86_64, os: windows-2022 }
+          - { platform: windows-x86_64, os: windows-latest }
           # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
           - { platform: macos-x86_64,   os: macos-15-intel }
           - { platform: macos-arm64,    os: macos-latest }
@@ -176,32 +183,49 @@ jobs:
         zipfile.ZipFile(z).extractall("src-dist")
 
 
+    # mex does NOT find a MinGW on PATH: it reads MW_MINGW64_LOC (a folder
+    # without spaces that contains bin\gcc.exe) and only accepts the MinGW-w64
+    # version its release was built for. A bare `choco install mingw` installs
+    # the newest GCC, which mex rejects with "Supported compiler not detected".
+    # So: pin 8.1.0, locate it, check it, and export MW_MINGW64_LOC to the
+    # steps that follow. (Only the build needs this; the test job compiles
+    # nothing.)
+    - name: Set up MinGW-w64 8.1.0 (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # community.chocolatey.org returns 503 now and then: retry before failing.
+        $ok = $false
+        foreach ($i in 1..4) {
+          choco install mingw --version=8.1.0 -y --no-progress
+          if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+          Write-Host "choco install mingw attempt $i failed ($LASTEXITCODE); retrying in 20s"
+          Start-Sleep -Seconds 20
+        }
+        if (-not $ok) { throw "choco install mingw 8.1.0 failed after 4 attempts" }
+
+        # PATH changes made by choco do not reach later steps, so find the
+        # install folder instead of relying on `gcc` being on PATH.
+        $choco = if ($env:ChocolateyInstall) { $env:ChocolateyInstall } else { 'C:\ProgramData\chocolatey' }
+        $gcc = Get-ChildItem -Path "$choco\lib\mingw" -Recurse -Filter gcc.exe -ErrorAction SilentlyContinue |
+               Where-Object { $_.FullName -match '\\mingw64\\bin\\gcc\.exe$' } |
+               Select-Object -First 1
+        if (-not $gcc) {
+          Get-ChildItem -Path "$choco\lib\mingw" -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+            Select-Object -First 40 -ExpandProperty FullName
+          throw "mingw64\bin\gcc.exe not found under $choco\lib\mingw"
+        }
+        $root = Split-Path (Split-Path $gcc.FullName)
+        if ($root -match '\s') { throw "MinGW path contains spaces (MATLAB rejects that): $root" }
+        $ver = (& $gcc.FullName -dumpversion)
+        if ($ver -notlike '8.1*') { throw "expected GCC 8.1.x, found $ver at $root" }
+        "MW_MINGW64_LOC=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        Write-Host "MinGW-w64 GCC $ver at $root"
+
     - name: Set up MATLAB
       uses: matlab-actions/setup-matlab@v2
       with:
         release: ${{ matrix.release }}
-
-    # Diagnostic: which Visual Studio installs does this runner image have?
-    # (Remove once the Windows cells are green.)
-    - name: List Visual Studio installs (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $vw = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-        & $vw -all -products * -format json | ConvertFrom-Json |
-          Select-Object displayName, installationVersion, installationPath, productId |
-          Format-List
-        Write-Host "runner image: $env:ImageOS $env:ImageVersion"
-
-    # mex picks the compiler itself. On the Windows runner that is the
-    # preinstalled MSVC, so no compiler is downloaded. This step only pins it
-    # explicitly and prints what was found, so a missing compiler fails here
-    # with a clear message instead of inside the build.
-    - name: Select MSVC (Windows)
-      if: runner.os == 'Windows'
-      uses: matlab-actions/run-command@v2
-      with:
-        command: mex -setup C
 
     # Build only. Same entry point an end user runs on the source dist:
     # ctoon_build compiles ctoon_mex.c + ctoon.c with `mex` into
@@ -260,12 +284,19 @@ jobs:
         # Full grid on purpose: no cell is excluded by guesswork. A cell that
         # really cannot exist gets an `exclude` with the error that proved it.
         release: [R2021a, R2022b, R2023b, R2024b, latest]
+        exclude:
+          # Windows builds with MinGW-w64 from Chocolatey. Each MATLAB release
+          # accepts exactly one MinGW version: 6.3 up to R2022b, 8.1 from R2023a
+          # on. Chocolatey has 8.1.0 but no 6.3.0, so older releases cannot be
+          # built here (MinGW does not depend on the runner's Visual Studio).
+          - { platform: windows-x86_64, release: R2021a }
+          - { platform: windows-x86_64, release: R2022b }
+          # `latest` is R2026b, which has no Intel macOS build: setup-matlab
+          # fails with "Installation failed ... exit code 255" on macos-15-intel.
+          - { platform: macos-x86_64,   release: latest }
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
-          # NOT windows-latest: since June 2026 that image only has Visual Studio
-          # 2026, which MATLAB's mex does not detect ("Supported compiler not
-          # detected"). windows-2022 keeps Visual Studio 2022.
-          - { platform: windows-x86_64, os: windows-2022 }
+          - { platform: windows-x86_64, os: windows-latest }
           # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
           - { platform: macos-x86_64,   os: macos-15-intel }
           - { platform: macos-arm64,    os: macos-latest }
