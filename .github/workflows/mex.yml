@@ -143,7 +143,10 @@ jobs:
         release: [R2021a, R2022b, R2023b, R2024b, latest]
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
-          - { platform: windows-x86_64, os: windows-latest }
+          # NOT windows-latest: since June 2026 that image only has Visual Studio
+          # 2026, which MATLAB's mex does not detect ("Supported compiler not
+          # detected"). windows-2022 keeps Visual Studio 2022.
+          - { platform: windows-x86_64, os: windows-2022 }
           # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
           - { platform: macos-x86_64,   os: macos-15-intel }
           - { platform: macos-arm64,    os: macos-latest }
@@ -259,7 +262,10 @@ jobs:
         release: [R2021a, R2022b, R2023b, R2024b, latest]
         include:
           - { platform: linux-x86_64,   os: ubuntu-latest }
-          - { platform: windows-x86_64, os: windows-latest }
+          # NOT windows-latest: since June 2026 that image only has Visual Studio
+          # 2026, which MATLAB's mex does not detect ("Supported compiler not
+          # detected"). windows-2022 keeps Visual Studio 2022.
+          - { platform: windows-x86_64, os: windows-2022 }
           # Last free Intel runner label (GitHub retires Intel macOS in Fall 2027).
           - { platform: macos-x86_64,   os: macos-15-intel }
           - { platform: macos-arm64,    os: macos-latest }
