@@ -1,0 +1,10 @@
+{
+  "os": "Linux 7.0.0-42-generic",
+  "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+  "architecture": "x86_64",
+  "cpu_model": "13th Gen Intel(R) Core(TM) i7-13620H",
+  "logical_cores": 16,
+  "ram_gib": 30.5,
+  "python_implementation": "CPython",
+  "python_version": "3.12.14"
+}
