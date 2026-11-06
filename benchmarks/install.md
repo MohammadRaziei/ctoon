@@ -11,7 +11,7 @@ ended up installed.
 | cmake   | 3.28.3  | preinstalled (`/usr/bin/cmake`) |
 | Go      | 1.24.7  | preinstalled (`/usr/local/go`)  |
 | Rust    | 1.97.0  | preinstalled (`~/.cargo/bin`)   |
-| Zig     | 0.16.0  | `pip install ziglang==0.16.0` |
+| Zig     | 0.16.0 + 0.15.2 | installed by the build from PyPI (`ziglang`) with `uv`, one venv each |
 | Julia   | 1.13.2  | `pip install julialang` + `julialang install` |
 | Octave  | 8.4.0   | `apt-get install octave octave-dev` |
 
@@ -32,26 +32,23 @@ go version        # `go --version` is not valid, Go uses `go version`
 
 Result: cmake, Go and Rust were already installed. Octave was missing.
 
-## 2. Zig (via PyPI)
+## 2. Zig (via PyPI, installed by the build)
 
-```bash
-pip install --break-system-packages ziglang==0.16.0
-python-zig version             # 0.16.0
-python3 -m ziglang version     # 0.16.0, same compiler
-```
+Nothing to install by hand any more: the CMake build creates the venvs and
+runs `uv pip install ziglang==<version>` in each. It needs `uv` and network
+access to PyPI (or a mirror, see `CTOON_PYPI_INDEX`). Two versions are used
+because the two Zig benchmarks need different compilers, and pip cannot put
+two versions of one package into one environment:
 
-- **Pin 0.16.0.** A plain `pip install ziglang` installs the newest release
-  (0.17.0 at the time of writing), which this benchmark cannot build:
-  `zig/build.zig` uses `b.args`, which Zig 0.17 removed, and 0.17 also
-  changed the format of the libc paths file that `zig/CMakeLists.txt`
-  writes. The project and its CI target 0.16, so the benchmark's CMake
-  skips any other Zig version with a warning that names this command.
-- **The command is `python-zig`, not `zig`.** That is what the wheel puts
-  on `PATH` (`/usr/local/bin/python-zig`). `python3 -m ziglang` does the
-  same thing. No alias is needed: the benchmark's CMake looks for both
-  `zig` and `python-zig`.
-- `--break-system-packages` is needed because pip is on the system Python
-  (PEP 668).
+| Benchmark   | Zig    | venv (under the build dir) |
+|-------------|--------|----------------------------|
+| `zig/ctoon/`         | 0.16.0 | `venv_zig_0.16.0` |
+| `zig/zig-toon/`      | 0.15.2 | `venv_zig_0.15.2` |
+
+Each venv has its own Zig cache (`zig_cache_<version>/`) and is separate from
+the Python benchmark's venv. A Zig on `PATH` is not used. The compiler
+inside is `<build-bench>/venv_zig_<version>/bin/python-zig`. (This section
+describes how the build is meant to work; it has not been run end to end.)
 
 ### Running the Zig benchmark
 
@@ -66,18 +63,18 @@ untouched:
 
 ```bash
 S=$(mktemp -d)
-cp -r benchmarks/zig/. $S/ && ln -s "$PWD" $S/ctoon-src
+cp -r benchmarks/zig/ctoon/. $S/ && ln -s "$PWD" $S/ctoon-src
 # in $S/build.zig.zon, replace the whole `.ctoon = .{ .url = ..., .hash = ... }`
 # entry with a local path (Zig only accepts a path relative to the build root):
 #     .ctoon = .{ .path = "ctoon-src" },
 cd $S
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu \
-python-zig build --libc <build-bench>/zig/zig-libc.txt \
+python-zig build --libc <build-bench>/zig/ctoon/zig-libc.txt \
   --search-prefix /usr/lib/x86_64-linux-gnu --release=fast run -- \
   <build-bench>/corpus_manifest.txt <build-bench>/results/zig.json
 ```
 
-`<build-bench>/zig/zig-libc.txt` is the libc paths file CMake wrote during
+`<build-bench>/zig/ctoon/zig-libc.txt` is the libc paths file CMake wrote during
 configure. The benchmark then runs on the local checkout instead of the
 GitHub master, which is the one difference from the normal path.
 

@@ -22,12 +22,12 @@ go/ctoonbenchgo
 go/go.sum
 
 # zig builds in-source (CMakeLists.txt runs it with WORKING_DIRECTORY
-# set to benchmarks/zig) - same reasoning as rust/target/ above.
-zig/.zig-cache/
-zig/zig-out/
+# set to benchmarks/zig/ctoon or benchmarks/zig/zig-toon) - same reasoning as rust/target/ above.
+zig/*/.zig-cache/
+zig/*/zig-out/
 # Zig 0.16's local package cache fallback, created alongside
 # build.zig.zon by `zig fetch`/`zig build` when run in this directory.
-zig/zig-pkg/
+zig/*/zig-pkg/
 
 # npm installs in-source (CMakeLists.txt runs it with WORKING_DIRECTORY
 # set to benchmarks/node) - same reasoning as rust/target/ above.

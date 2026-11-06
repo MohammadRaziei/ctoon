@@ -1,0 +1,15 @@
+.{
+    .name = .ctoon_bench_toon_zig,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.15.2",
+    .fingerprint = 0x479b78896d3a41c5,
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+    // Left empty on purpose: this directory's CMakeLists.txt runs
+    // `zig fetch --save git+https://github.com/LatentEvals/toon-zig.git#<tag>`
+    // before every build, which adds the `toon` entry (url + hash) here.
+    .dependencies = .{},
+}

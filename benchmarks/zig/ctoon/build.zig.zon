@@ -9,9 +9,8 @@
         "src",
     },
     .dependencies = .{
-        // toon-zig is NOT currently a dependency - see build.zig's
-        // comment for why (it doesn't compile under Zig 0.16 yet, an
-        // upstream issue, not something to patch around here).
+        // toon-zig is not a dependency of this project: it is benchmarked
+        // by ../zig-toon, built with a different Zig version.
         //
         // Left empty here on purpose: `zig fetch --save
         // git+https://github.com/mohammadraziei/ctoon.git` populates this

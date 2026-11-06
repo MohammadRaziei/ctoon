@@ -10,8 +10,8 @@ competitor, from `https://github.com/mohammadraziei/ctoon.git` (C/C++),
 `Cargo.toml` (Rust), `zig fetch --save` (Zig), or `pip install
 git+https://github.com/mohammadraziei/ctoon.git` (Python).
 **ctoon is never a special case here** - it's one more row in the same
-results table as gotoon, toon-go, or toon-rust (Zig has no peer
-currently benchmarked - see Layout below).
+results table as gotoon, toon-go, or toon-rust (the Zig peer, toon-zig,
+is built with its own Zig version - see Layout below).
 
 ## Running
 
@@ -91,7 +91,11 @@ etc.) is plain CMake, not something this project adds:
 |-------------------------|---------|--------|
 | `CTOON_BENCH_LOG_DEBUG` | `OFF`   | Writes a per-file diagnostic log (which files failed, for which library/operation, and why) to `build-bench/logs/<language>.log`. Off by default - extra I/O, only useful while chasing a success-rate anomaly. This is what produced the `[ctoon] [pre_pass] FILE: ... ERROR: ...` lines used above. |
 | `CTOON_BENCH_MEMORY`    | `OFF`   | Measures peak RSS per (language, library) in isolated processes - see "Memory" below for the full explanation of why and what it costs. |
-| `CTOON_PYPI_INDEX`      | empty   | PyPI index URL used for the Python benchmark venv (`uv pip install --index-url ...`), e.g. `-DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple`. Empty means default PyPI. Only affects that venv, no global pip/uv config. |
+| `CTOON_PYPI_INDEX`      | empty   | PyPI index URL used by every venv the suite creates (`uv pip install --index-url ...`), e.g. `-DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple`. Empty means default PyPI. Only affects those venvs, no global pip/uv config. |
+| `CTOON_BENCH_PYTHON_VERSION` | `3.12` | Python version of every venv (`uv venv --python ...`): the Python benchmark's and the Zig ones. |
+| `CTOON_ZIG_VERSION`     | `0.16.0` | `ziglang` version installed for the ctoon Zig benchmark (`zig/ctoon/build.zig` targets 0.16.x). |
+| `CTOON_TOONZIG_ZIG_VERSION` | `0.15.2` | `ziglang` version installed for the toon-zig benchmark. |
+| `CTOON_TOONZIG_REF`     | `v0.1.3` | toon-zig git tag fetched with `zig fetch --save`. |
 
 ```bash
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DCTOON_BENCH_LOG_DEBUG=ON
@@ -248,7 +252,9 @@ benchmarks/
   python/          bench.py       - ctoon, toon_format, toons
   go/              bench.go       - ctoon, gotoon, toon-go
   rust/            main.rs        - ctoon, toon-rust
-  zig/             main.zig       - ctoon (toon-zig doesn't compile on Zig 0.16 yet)
+  zig/ctoon/       main.zig       - ctoon (Zig 0.16.x)
+  zig/zig-toon/    main.zig       - toon-zig (Zig 0.15.2); its rows are merged into the same
+                   results/zig.json by merge_results.py
   matlab/          bench.m        - ctoon (no competitor exists)
   octave/          bench.m        - ctoon (no competitor exists; same method as matlab/)
   node/            bench.mjs      - @toon-format/toon (the reference);
@@ -411,11 +417,17 @@ and Rust specifically, when the version found is too old:
   placeholder - the crate reserved its name early) and the git `HEAD`,
   neither avoids this; it's a genuine requirement of the only functional
   release, not a git-vs-crates.io difference.
-- `toon-zig` is not currently benchmarked: its decoder calls
-  `std.json.ObjectMap.init(allocator)`, the pre-0.16 single-arg form
-  that Zig 0.16's ArrayHashMap-based `ObjectMap` no longer accepts -
-  an upstream compatibility gap, not something patched around here.
-  Revisit once upstream supports 0.16; see `benchmarks/zig/build.zig`.
+- `toon-zig` declares `minimum_zig_version = "0.15.2"`, while the ctoon
+  Zig benchmark is built with Zig 0.16.x, and one executable cannot be
+  built by two compilers. So it is a second project, `zig/zig-toon/`, built
+  with its own Zig 0.15.2; `ctoon_benchmarks_zig` runs both. Zig is never
+  taken from the system: each version is installed from PyPI (`ziglang`)
+  into its own venv (`venv_zig_0.16.0`, `venv_zig_0.15.2`) with its own
+  Zig cache, all separate from the Python benchmark's venv. toon-zig
+  decodes the TOON that ctoon produced (read from ctoon's dump), like
+  every other library's `toon_to_json` leg. toon-zig implements TOON
+  spec v3.0 while the corpus here is v4.4, so expect it to fail or
+  differ on some files; the correctness column shows how many.
 
 Everything else - a Python venv, `pip install`, `go get`, `cargo build`,
 `zig fetch --save`, CMake `FetchContent` - happens inside that language's

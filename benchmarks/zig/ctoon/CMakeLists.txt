@@ -1,0 +1,121 @@
+# Zig 0.16.x for ctoon, from its own pinned `ziglang` venv (created by
+# ../CMakeLists.txt with ../ZigToolchain.cmake) - never the system Zig.
+# toon-zig is benchmarked by ../zig-toon with a different Zig version.
+set(ZIG_EXECUTABLE "${CTOON_ZIG_ctoon_EXE}")
+
+# ctoon is fetched by `zig fetch --save`, the same way `go get` fetches
+# ctoon for the Go benchmark - run before every build so build.zig.zon's
+# dependency hash always matches ctoon's current master, instead of
+# committing a fixed version.
+add_custom_target(ctoon_benchmarks_zig_deps
+    COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV}
+            ${ZIG_EXECUTABLE} fetch --save git+https://github.com/mohammadraziei/ctoon.git
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Fetching Zig benchmark dependency (ctoon) from GitHub"
+    USES_TERMINAL
+)
+add_dependencies(ctoon_benchmarks_zig_deps ctoon_zig_toolchain_ctoon)
+
+if(CTOON_BENCH_LOG_DEBUG)
+    set(CTOON_ZIG_LOG_ARG ${CTOON_BENCH_LOGS_DIR}/zig.log)
+else()
+    set(CTOON_ZIG_LOG_ARG "")
+endif()
+
+# On some Linux setups (notably Debian/Ubuntu multiarch layouts, and
+# some WSL/conda environments), Zig's bundled lld linker looks for libc
+# pieces (libm.so.6, etc.) under /lib64 by default and doesn't find them
+# if the system instead keeps them under a triplet directory like
+# /usr/lib/x86_64-linux-gnu. Rather than assume any particular layout -
+# or ask anyone to add a system-wide /lib64 symlink - ask the C compiler
+# CMake already found where IT looks for libraries by default
+# (CMAKE_C_IMPLICIT_LINK_DIRECTORIES, populated by CMake's own compiler
+# detection) and hand each of those to zig via --search-prefix. No-op on
+# setups that don't need it (e.g. /lib64 already resolves correctly).
+set(CTOON_ZIG_SEARCH_PREFIX_ARGS "")
+set(CTOON_ZIG_LIB_PATH_LIST "")
+foreach(_dir IN LISTS CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
+    # zig's --search-prefix requires every path given to actually exist
+    # as a directory - GCC's own implicit-link-directory list routinely
+    # includes paths that don't exist on disk (this is normal for GCC;
+    # it's an optional search list, not a guarantee), so filter those
+    # out before handing the list to zig.
+    if(IS_DIRECTORY "${_dir}")
+        list(APPEND CTOON_ZIG_SEARCH_PREFIX_ARGS --search-prefix "${_dir}")
+        list(APPEND CTOON_ZIG_LIB_PATH_LIST "${_dir}")
+    endif()
+endforeach()
+# Belt-and-suspenders: also set LD_LIBRARY_PATH to the same list, in case
+# --search-prefix and LD_LIBRARY_PATH aren't both honored the same way
+# in every zig/lld version - whichever one actually gets picked up is
+# enough. Harmless to set when unneeded.
+string(REPLACE ";" ":" CTOON_ZIG_LD_LIBRARY_PATH "${CTOON_ZIG_LIB_PATH_LIST}")
+
+# --search-prefix alone isn't enough on setups where `zig libc`'s own
+# native-libc autodetection is the thing pointing at the wrong sysroot
+# (e.g. conda/anaconda environments): that autodetection shells out to
+# whatever `cc` resolves to on PATH, completely independent of
+# CMAKE_C_COMPILER, so a stray conda `cc` ahead of the system one on
+# PATH silently pulls in conda's (often older) glibc regardless of what
+# compiler this CMake build was configured with. Generate an explicit
+# zig libc.txt from CMake's own compiler-detection results instead,
+# and pass it via --libc so zig never has to guess.
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -print-file-name=crt1.o
+    OUTPUT_VARIABLE CTOON_ZIG_CRT1_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+get_filename_component(CTOON_ZIG_CRT_DIR "${CTOON_ZIG_CRT1_PATH}" DIRECTORY)
+set(CTOON_ZIG_LIBC_FILE ${CMAKE_CURRENT_BINARY_DIR}/zig-libc.txt)
+# CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES's first entry is typically GCC's
+# own internal include dir (freestanding headers like stddef.h, not
+# libc headers like stdio.h/stdlib.h) - blindly taking index 0 points
+# zig at a dir that's missing the actual libc headers. Search the list
+# instead: the real libc include_dir is the one literally named
+# ".../usr/include" (or "/usr/include" itself), and sys_include_dir is
+# that same directory's target-triplet subdir (e.g.
+# /usr/include/x86_64-linux-gnu) if one is present in the list,
+# otherwise the same as include_dir.
+set(CTOON_ZIG_INCLUDE_DIR "")
+set(CTOON_ZIG_SYS_INCLUDE_DIR "")
+foreach(_dir IN LISTS CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
+    if(_dir MATCHES "/usr/include$")
+        set(CTOON_ZIG_INCLUDE_DIR "${_dir}")
+    elseif(_dir MATCHES "/usr/include/[^/]*-linux-gnu$")
+        set(CTOON_ZIG_SYS_INCLUDE_DIR "${_dir}")
+    endif()
+endforeach()
+if(NOT CTOON_ZIG_SYS_INCLUDE_DIR)
+    set(CTOON_ZIG_SYS_INCLUDE_DIR "${CTOON_ZIG_INCLUDE_DIR}")
+endif()
+
+if(CTOON_ZIG_INCLUDE_DIR AND CTOON_ZIG_CRT_DIR)
+    # This is the Zig 0.16 libc paths file format (it has `gcc_dir`; Zig 0.17
+    # renamed it and added fields, which is one more reason the benchmarks
+    # require Zig 0.16.x, see ../CMakeLists.txt).
+    file(WRITE ${CTOON_ZIG_LIBC_FILE}
+"include_dir=${CTOON_ZIG_INCLUDE_DIR}
+sys_include_dir=${CTOON_ZIG_SYS_INCLUDE_DIR}
+crt_dir=${CTOON_ZIG_CRT_DIR}
+msvc_lib_dir=
+kernel32_lib_dir=
+gcc_dir=
+")
+    set(CTOON_ZIG_LIBC_ARGS --libc ${CTOON_ZIG_LIBC_FILE})
+else()
+    # Couldn't find a real /usr/include entry or crt1.o (unusual
+    # compiler setup) - fall back to search-prefix-only behavior rather
+    # than writing a broken libc.txt that would hard-fail the build.
+    set(CTOON_ZIG_LIBC_ARGS "")
+endif()
+
+add_custom_target(ctoon_benchmarks_zig_ctoon
+    COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig benchmark (ctoon, Zig ${CTOON_ZIG_VERSION})..."
+    COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV} "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
+            ${ZIG_EXECUTABLE} build ${CTOON_ZIG_LIBC_ARGS} ${CTOON_ZIG_SEARCH_PREFIX_ARGS} --release=fast run --
+            ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/zig.json ${CTOON_ZIG_LOG_ARG}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    USES_TERMINAL
+)
+add_dependencies(ctoon_benchmarks_zig_ctoon ctoon_benchmarks_zig_deps)
+# (the ctoon_benchmarks_zig umbrella target is defined in ../CMakeLists.txt)

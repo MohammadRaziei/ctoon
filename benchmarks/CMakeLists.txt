@@ -133,8 +133,23 @@ find_package(Python3 COMPONENTS Interpreter)
 find_program(GO_EXECUTABLE go)
 find_program(CARGO_EXECUTABLE cargo)
 find_program(RUSTC_EXECUTABLE rustc)
-# `pip install ziglang` puts the compiler on PATH as `python-zig`, not `zig`.
-find_program(ZIG_EXECUTABLE NAMES zig python-zig)
+# uv creates and fills every venv this suite uses: the Python benchmark's and
+# the Zig compilers' (Zig is installed from PyPI as `ziglang`, never taken
+# from the system).
+find_program(UV_EXECUTABLE uv)
+set(CTOON_BENCH_PYTHON_VERSION "3.12" CACHE STRING
+    "Python version of every venv the benchmarks create (uv venv --python <version>)")
+
+# Optional PyPI mirror for every `uv pip install` of every venv here, e.g.
+# -DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple. Applies only to
+# those venvs - no global pip/uv config is touched. Empty = default PyPI.
+set(CTOON_PYPI_INDEX "" CACHE STRING
+    "PyPI index URL for the benchmark venvs (empty = default PyPI)")
+set(CTOON_UV_INDEX_ARGS "")
+if(CTOON_PYPI_INDEX)
+    list(APPEND CTOON_UV_INDEX_ARGS --index-url ${CTOON_PYPI_INDEX})
+endif()
+
 find_program(JULIA_EXECUTABLE julia)
 find_program(NODE_EXECUTABLE node)
 find_program(NPM_EXECUTABLE npm)
@@ -164,10 +179,10 @@ endif()
 add_subdirectory(c)
 add_subdirectory(cpp)
 
-if(Python3_Interpreter_FOUND)
+if(UV_EXECUTABLE)
     add_subdirectory(python)
 else()
-    message(WARNING "Python3 not found - Python benchmark skipped.")
+    message(WARNING "uv not found - Python benchmark skipped. Install uv (https://docs.astral.sh/uv/).")
 endif()
 
 if(GO_EXECUTABLE)
@@ -229,35 +244,14 @@ else()
                      "skipped. Install Rust >= 1.87 and make sure 'cargo' is on PATH.")
 endif()
 
-# zig/build.zig targets Zig 0.16 (the same version the CI uses): Zig 0.17
-# removed `b.args`, so the benchmark's build script no longer compiles there.
-# `pip install ziglang` installs the newest release, so say so up front
-# instead of failing deep inside `zig build`.
-set(CTOON_ZIG_USABLE FALSE)
-if(ZIG_EXECUTABLE)
-    execute_process(COMMAND ${ZIG_EXECUTABLE} version
-                    OUTPUT_VARIABLE CTOON_ZIG_VERSION
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    RESULT_VARIABLE _zig_version_rc)
-    if(NOT _zig_version_rc EQUAL 0)
-        message(WARNING "'${ZIG_EXECUTABLE} version' failed - Zig benchmark skipped.")
-    elseif(CTOON_ZIG_VERSION VERSION_LESS 0.16 OR CTOON_ZIG_VERSION VERSION_GREATER_EQUAL 0.17)
-        message(WARNING "Zig ${CTOON_ZIG_VERSION} found, but the Zig benchmark needs Zig 0.16.x - "
-                         "Zig benchmark skipped. Install it with: pip install ziglang==0.16.0, then "
-                         "point at it (pip names it python-zig): "
-                         "-DZIG_EXECUTABLE=$(command -v python-zig)")
-    else()
-        set(CTOON_ZIG_USABLE TRUE)
-    endif()
-endif()
-
-if(CTOON_ZIG_USABLE)
+# Zig (zig/: the ctoon benchmark with Zig 0.16.x and the toon-zig benchmark
+# with Zig 0.15.2) is installed from PyPI by uv into private venvs, see
+# zig/CMakeLists.txt. Target: ctoon_benchmarks_zig.
+if(UV_EXECUTABLE)
     add_subdirectory(zig)
-elseif(ZIG_EXECUTABLE)
-    # Already explained above (wrong or unusable version).
 else()
-    message(WARNING "Zig toolchain not found - Zig benchmark skipped. "
-                     "Install Zig >= 0.16.0 and make sure 'zig' is on PATH.")
+    message(WARNING "uv not found - Zig benchmark skipped (it installs Zig from PyPI with uv). "
+                     "Install uv (https://docs.astral.sh/uv/).")
 endif()
 
 if(JULIA_EXECUTABLE)

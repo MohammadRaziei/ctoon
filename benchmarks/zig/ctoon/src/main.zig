@@ -1,15 +1,11 @@
 // CToon Benchmark - Zig.
 //
-// ctoon (this project) only for now. toon-zig
-// (github.com/LatentEvals/toon-zig) is the only pure-Zig TOON peer
-// found, but doesn't compile under Zig 0.16 yet - an upstream issue,
-// not something to patch around here; see build.zig's comment for the
-// specifics. Once it's fixed upstream, re-add it here the same way it
-// was removed: a `toon_dep`/`addImport("toon", ...)` pair in build.zig,
-// and json_to_toon/toon_to_json/roundtrip legs calling `toon.stringify`/
-// `toon.parse` alongside ctoon's own, using `std.json.Value` as the
-// shared decode type - kept as one shared results table / JSON schema,
-// same as every other language benchmark here; see
+// ctoon only: toon-zig (github.com/LatentEvals/toon-zig) is benchmarked
+// by ../zig-toon, a separate executable built with Zig 0.15.2 (this one needs
+// Zig 0.16.x), and its rows are merged into the same zig.json. That harness
+// uses the TOON dumped by this one (dump_zig_ctoon_json_to_toon.frames) as its
+// shared decode input. Every result is kept as one shared results table / JSON
+// schema, same as every other language benchmark here; see
 // benchmarks/go/bench.go for the reference version of this comment.
 //
 // ctoon is fetched the same way every other language fetches its peers
