@@ -91,6 +91,7 @@ etc.) is plain CMake, not something this project adds:
 |-------------------------|---------|--------|
 | `CTOON_BENCH_LOG_DEBUG` | `OFF`   | Writes a per-file diagnostic log (which files failed, for which library/operation, and why) to `build-bench/logs/<language>.log`. Off by default - extra I/O, only useful while chasing a success-rate anomaly. This is what produced the `[ctoon] [pre_pass] FILE: ... ERROR: ...` lines used above. |
 | `CTOON_BENCH_MEMORY`    | `OFF`   | Measures peak RSS per (language, library) in isolated processes - see "Memory" below for the full explanation of why and what it costs. |
+| `CTOON_PYPI_INDEX`      | empty   | PyPI index URL used for the Python benchmark venv (`uv pip install --index-url ...`), e.g. `-DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple`. Empty means default PyPI. Only affects that venv, no global pip/uv config. |
 
 ```bash
 cmake -S . -B build-bench -DCMAKE_BUILD_TYPE=Release -DCTOON_BENCH_LOG_DEBUG=ON
