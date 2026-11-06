@@ -7,6 +7,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ctoon)
 
+# ctoon defines ctoon_build_mex only when CTOON_BUILD_MATLAB is ON
+# (benchmarks/CMakeLists.txt sets it once MATLAB was found) and ctoon finds it itself.
 if(NOT TARGET ctoon_build_mex)
     message(STATUS "ctoon_build_mex not available (MATLAB not found by the "
                     "fetched ctoon's own CMakeLists.txt) - skipping MATLAB benchmark.")

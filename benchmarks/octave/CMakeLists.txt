@@ -7,9 +7,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ctoon)
 
-# The fetched ctoon defines ctoon_build_octave_mex only when it finds
-# Octave + mkoctfile itself (CTOON_BUILD_OCTAVE=ON requires them; AUTO
-# detects them). Without it there is nothing to benchmark.
+# The fetched ctoon defines ctoon_build_octave_mex only when
+# CTOON_BUILD_OCTAVE is ON (benchmarks/CMakeLists.txt sets it once it has
+# found Octave + mkoctfile) and ctoon finds them itself. Without it there is
+# nothing to benchmark.
 if(NOT TARGET ctoon_build_octave_mex)
     message(STATUS "ctoon_build_octave_mex not available (Octave / mkoctfile "
                     "not found by the fetched ctoon's own CMakeLists.txt) - "

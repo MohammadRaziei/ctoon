@@ -146,6 +146,19 @@ add_custom_target(ctoon_bench_langs
     COMMENT "Running all available CToon language benchmarks"
 )
 
+# The fetched ctoon only defines its MATLAB / Octave MEX targets when asked
+# (CTOON_BUILD_MATLAB / CTOON_BUILD_OCTAVE, see cmake/CtoonLangGuard.cmake),
+# and it is configured exactly once, by the first add_subdirectory() below
+# (c/), so these must be set before that. Only when the toolchain was found
+# here: a missing one stays a warn-and-skip instead of becoming a FATAL_ERROR
+# inside the fetched project.
+if(Matlab_FOUND)
+    set(CTOON_BUILD_MATLAB ON)
+endif()
+if(OCTAVE_EXECUTABLE AND MKOCTFILE_EXECUTABLE)
+    set(CTOON_BUILD_OCTAVE ON)
+endif()
+
 # C and C++ always run: this project itself requires a C/CXX compiler to
 # configure at all, so there's nothing to conditionally detect.
 add_subdirectory(c)
@@ -230,7 +243,9 @@ if(ZIG_EXECUTABLE)
         message(WARNING "'${ZIG_EXECUTABLE} version' failed - Zig benchmark skipped.")
     elseif(CTOON_ZIG_VERSION VERSION_LESS 0.16 OR CTOON_ZIG_VERSION VERSION_GREATER_EQUAL 0.17)
         message(WARNING "Zig ${CTOON_ZIG_VERSION} found, but the Zig benchmark needs Zig 0.16.x - "
-                         "Zig benchmark skipped. Install it with: pip install ziglang==0.16.0")
+                         "Zig benchmark skipped. Install it with: pip install ziglang==0.16.0, then "
+                         "point at it (pip names it python-zig): "
+                         "-DZIG_EXECUTABLE=$(command -v python-zig)")
     else()
         set(CTOON_ZIG_USABLE TRUE)
     endif()
