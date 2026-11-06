@@ -14,17 +14,16 @@ find_program(UV_EXECUTABLE uv REQUIRED)
 # without re-deriving the venv path or re-installing anything.
 set(CTOON_PY_VENV_PYTHON "${VENV_PYTHON}" CACHE INTERNAL "ctoon python benchmark venv interpreter")
 
-# A real venv (created with uv, not the system Python) - installs ctoon and toon_format
-# straight from their GitHub repos, exactly like every other language
-# fetches its dependencies here. Nothing comes from a local checkout.
+# A real venv (created with uv, not the system Python). Competitors
+# (toon_format, toons, ...) come from PyPI via requirements.txt; only
+# ctoon is installed straight from its GitHub repo. Nothing comes from
+# a local checkout.
 add_custom_target(ctoon_benchmarks_python_venv
     COMMAND ${UV_EXECUTABLE} venv --clear ${VENV_DIR}
     COMMAND ${UV_EXECUTABLE} pip install -q --python ${VENV_PYTHON}
             -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
     COMMAND ${UV_EXECUTABLE} pip install -q --python ${VENV_PYTHON}
             --reinstall --no-deps "git+${CTOON_GITHUB_URL}"
-    COMMAND ${UV_EXECUTABLE} pip install -q --python ${VENV_PYTHON}
-            --reinstall --no-deps "git+https://github.com/toon-format/toon-python.git"
     COMMENT "Setting up Python venv and installing benchmark dependencies"
     USES_TERMINAL
 )

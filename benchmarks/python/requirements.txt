@@ -1,5 +1,6 @@
-# Harness-only dependencies. ctoon and toon_format are installed directly
-# from their GitHub repos by CMakeLists.txt (git+https), not listed here -
-# same treatment for every library benchmarked, nothing local.
+# Harness + competitor dependencies, all from PyPI. ctoon is the only one
+# installed directly from its GitHub repo by CMakeLists.txt (git+https),
+# so it is not listed here. Nothing local.
+toon-format   # official (github.com/toon-format/toon-python)
 tabulate>=0.9
 toons>=0.7   # community, Rust backend (github.com/alesanfra/toons) - prebuilt wheel on PyPI
