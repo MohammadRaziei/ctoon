@@ -263,24 +263,24 @@ else()
                      "skipped. Install Node.js and make sure 'node'/'npm' are on PATH.")
 endif()
 
-# ── Report: combine every language's JSON into one standalone HTML ───────
-# Needs only Python3 + jinja2 (installed into its own throwaway venv) -
-# independent of which language toolchains were detected above. Modeled
-# on https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report.
+# ── Results: system info, optional memory, and copying the JSON out ──────
+# Needs only Python3 (stdlib) - independent of which language toolchains
+# were detected above. The HTML page is NOT built here: the docs build
+# renders it from results/*.json (docs/benchmarks/render_benchmarks.py).
 if(Python3_Interpreter_FOUND)
     add_subdirectory(report)
 else()
-    message(WARNING "Python3 not found - HTML report skipped (per-language "
-                     "JSON results are still written to CTOON_BENCH_RESULTS_DIR).")
+    message(WARNING "Python3 not found - system info and the results copy are skipped "
+                     "(per-language JSON is still written to CTOON_BENCH_RESULTS_DIR).")
 endif()
 
-# ── Umbrella target: run every language benchmark, THEN build the report ──
+# ── Umbrella target: run every language benchmark, THEN copy the JSON ─────
 # `ctoon_benchmarks` is the one target people actually run; it fans out to
 # ctoon_bench_langs (all per-language benchmarks) and, once those are done,
 # ctoon_bench_report (which depends on ctoon_bench_langs itself, so the
-# report always renders last, from fresh JSON).
+# copy always runs last, from fresh JSON).
 add_custom_target(ctoon_benchmarks
-    COMMENT "CToon: running all language benchmarks and building the standalone HTML report"
+    COMMENT "CToon: running all language benchmarks and writing results/*.json"
 )
 add_dependencies(ctoon_benchmarks ctoon_bench_langs)
 if(TARGET ctoon_bench_report)

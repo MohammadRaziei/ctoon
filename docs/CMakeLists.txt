@@ -382,21 +382,26 @@ add_custom_command(TARGET ctoon_docs POST_BUILD
 )
 
 # ── Benchmarks page ───────────────────────────────────────────
-# benchmarks/results/report.html is generated on a developer machine
-# (cmake --build build-bench --target ctoon_benchmarks, see
-# benchmarks/README.md) and committed; it is only copied here, never
-# rebuilt. Runs after InjectComment above so the standalone file is
-# published byte-for-byte as committed.
-set(CTOON_BENCH_REPORT ${PROJECT_SOURCE_DIR}/benchmarks/results/report.html)
-if(EXISTS ${CTOON_BENCH_REPORT})
+# benchmarks/results/*.json (one per language) is generated on a developer
+# machine (cmake --build build-bench --target ctoon_benchmarks, see
+# benchmarks/README.md) and committed; the benchmarks only produce JSON,
+# and this is where the HTML page is rendered from it. Runs after
+# InjectComment above, like the copy it replaces.
+set(CTOON_BENCH_RESULTS ${PROJECT_SOURCE_DIR}/benchmarks/results)
+file(GLOB CTOON_BENCH_JSONS ${CTOON_BENCH_RESULTS}/*.json)
+execute_process(COMMAND ${Python3_EXECUTABLE} -c "import jinja2"
+    RESULT_VARIABLE CTOON_JINJA2_RC OUTPUT_QUIET ERROR_QUIET)
+if(CTOON_BENCH_JSONS AND CTOON_JINJA2_RC EQUAL 0)
     add_custom_command(TARGET ctoon_docs POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CTOON_DOCS_OUT}/benchmarks
-        COMMAND ${CMAKE_COMMAND} -E copy ${CTOON_BENCH_REPORT} ${CTOON_DOCS_OUT}/benchmarks/index.html
-        COMMENT "Publishing committed benchmark report -> ${CTOON_DOCS_OUT}/benchmarks/index.html"
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/render_benchmarks.py
+            ${CTOON_BENCH_RESULTS} ${CTOON_DOCS_OUT}/benchmarks/index.html
+        COMMENT "Rendering benchmarks page -> ${CTOON_DOCS_OUT}/benchmarks/index.html"
         VERBATIM
     )
 else()
-    message(WARNING "benchmarks/results/report.html not found -- the docs site "
-                    "will have no /benchmarks/ page. Generate it with the "
-                    "ctoon_benchmarks target in benchmarks/ and commit it.")
+    message(WARNING "benchmarks/results/*.json not found, or jinja2 is not installed -- "
+                    "the docs site will have no /benchmarks/ page. Generate the JSON with "
+                    "the ctoon_benchmarks target in benchmarks/ and commit it; "
+                    "pip install jinja2.")
 endif()

@@ -29,14 +29,15 @@ cmake --build build-bench --target ctoon_benchmarks
 (the corpus, and every language's own libraries), runs every benchmark
 whose language toolchain is present (via `ctoon_bench_langs`), records
 the machine it ran on (via `ctoon_bench_system_info`), and - once that
-finishes - renders one standalone HTML report combining everything (via
-`ctoon_bench_report`) to `benchmarks/results/report.html`. Chart.js and
-every language's JSON are embedded inline, so the file needs no server
-or network to view and is safe to send around on its own.
-Modeled on [pygixml's own report generator](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks/report) -
-same CMake-fetched Chart.js, same jinja2-rendered single-file output.
+finishes - copies one raw JSON file per language (`c.json`, `cpp.json`, ...,
+plus `system_info.json`) to `benchmarks/results/` (via `ctoon_bench_report`).
+There is no HTML here on purpose: the documentation build renders the public
+page from that JSON (`docs/benchmarks/render_benchmarks.py`, called from
+`docs/CMakeLists.txt`; Chart.js loads from the jsDelivr CDN).
+Modeled on [pygixml's benchmark suite](https://github.com/MohammadRaziei/pygixml/tree/main/benchmarks) -
+same split: benchmarks write JSON, docs render the page.
 
-The report draws, for **every language**, one bar chart of throughput per
+The page draws, for **every language**, one bar chart of throughput per
 operation (JSON→TOON, TOON→JSON, JSON→TOON→JSON, TOON→struct, struct→TOON),
 one bar per library, so all languages look the same. **C alone** adds line
 charts on top, one per operation, with x-axis = input size: the corpus is
@@ -58,20 +59,26 @@ cmake --build build-bench --target ctoon_benchmarks_matlab
 cmake --build build-bench --target ctoon_benchmarks_octave
 ```
 
-The report lands in **`benchmarks/results/report.html`**, and that file is
+The results land in **`benchmarks/results/*.json`**, and those files are
 meant to be **committed**: benchmarks are run on your own machine, not in CI
-(shared runners are too noisy). CI only publishes the committed file, as
-`/benchmarks/` on the docs site. Everything else (JSON, venvs, fetched
-sources) stays under `build-bench/`. Override the location with
-`-DCTOON_BENCH_REPORT_DIR=...`.
+(shared runners are too noisy). CI only renders the page from the committed
+JSON and publishes it, as `/benchmarks/` on the docs site. Everything else
+(venvs, fetched sources, dumps) stays under `build-bench/`. Override the
+location with `-DCTOON_BENCH_REPORT_DIR=...`.
 
-To run every language without rendering the report, or to re-render just
-the report from whatever JSON is already in `build-bench/results/`
-(no re-running the benchmarks, no API/network spend beyond Chart.js):
+To run every language without copying the results out, or to re-copy just
+the JSON from whatever is already in `build-bench/results/` (no re-running
+the benchmarks):
 
 ```bash
-cmake --build build-bench --target ctoon_bench_langs   # every language, no report
-cmake --build build-bench --target ctoon_bench_report  # report only, from existing JSON
+cmake --build build-bench --target ctoon_bench_langs   # every language, no copy
+cmake --build build-bench --target ctoon_bench_report  # copy only, from existing JSON
+```
+
+To render the page by hand from the committed JSON (needs `jinja2`):
+
+```bash
+python docs/benchmarks/render_benchmarks.py benchmarks/results /tmp/benchmarks/index.html
 ```
 
 ## Build options
@@ -168,7 +175,7 @@ reorder the original file data; (2) re-run each (library, operation) on each sli
 throughput_mb_s, docs_per_sec, success_rate}` into a `"scaling"` array
 in that language's results JSON, alongside the existing `"results"`
 array (see the schema above); (3) nothing to change in
-`report/CMakeLists.txt` or `generate_report.py` - the report already
+`report/CMakeLists.txt` or `docs/benchmarks/render_benchmarks.py` - the page already
 draws line charts for whatever `"scaling"` data it finds, and quietly
 skips the line charts for a language that has none.
 

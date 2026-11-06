@@ -1,11 +1,14 @@
 """
-generate_report.py - combine every benchmarks/*/<language>.json result
-into one standalone HTML report: Chart.js and all the raw JSON data are
-embedded directly in the file (via a fetched Chart.js UMD build and
-inline <script> tags), so the output needs nothing else to view or to
-keep -- no server, no network, no sibling files.
+render_benchmarks.py - render the public benchmarks page from the JSON
+files the benchmark suite commits (benchmarks/results/<language>.json,
+one per language). The benchmarks only produce JSON; the HTML is built
+here, by the documentation build (docs/CMakeLists.txt).
 
-Modeled on https://github.com/MohammadRaziei/pygixml/blob/main/benchmarks/report/generate_report.py,
+The raw JSON data is embedded in the page and Chart.js loads from the
+jsDelivr CDN, so the output is one file with no server and no sibling
+files needed.
+
+Modeled on https://github.com/MohammadRaziei/pygixml/blob/main/docs/site/benchmarks/render_benchmarks.py,
 adapted for ctoon's per-language result files (language, corpus, results[]
 with library/operation/throughput_mb_s/docs_per_sec/success_rate; after
 node/verify_outputs.mjs has run, a row also has correct_rate -- of the outputs
@@ -29,6 +32,10 @@ import re
 from jinja2 import Environment, FileSystemLoader
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+CHARTJS_VERSION = "4.5.1"
+CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@" + CHARTJS_VERSION + "/dist/chart.umd.min.js"
+CHARTJS_SRI = "sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
 
 OPERATIONS = ["json_to_toon", "toon_to_json", "roundtrip", "toon_to_struct", "struct_to_toon"]
 OP_TITLES = {
@@ -65,7 +72,7 @@ def _read_text(path, what):
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
     except OSError as exc:
-        raise SystemExit(f"generate_report: cannot read {what} ({path}): {exc}")
+        raise SystemExit(f"render_benchmarks: cannot read {what} ({path}): {exc}")
 
 
 def _docs_assets():
@@ -290,13 +297,10 @@ def _load_system_info(results_dir):
         return json.load(f)
 
 
-def build(results_dir, output_path, chartjs_path):
+def build(results_dir, output_path):
     langs = _load_all(results_dir)
     sections = [_build_language_section(d) for d in langs]
     system_info = _load_system_info(results_dir)
-
-    with open(chartjs_path, "r", encoding="utf-8") as f:
-        chartjs_source = f.read()
 
     chart_scripts = []
     for sec in sections:
@@ -336,7 +340,7 @@ def build(results_dir, output_path, chartjs_path):
             "competing TOON implementation that exists for that language."
         ),
         sections=sections,
-        chartjs_source=chartjs_source,
+        chartjs_cdn=CHARTJS_CDN, chartjs_sri=CHARTJS_SRI,
         embedded_json=json.dumps(embedded),
         chart_scripts="\n".join(chart_scripts),
         system_info=system_info,
@@ -353,11 +357,10 @@ def build(results_dir, output_path, chartjs_path):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("results_dir", help="directory containing <language>.json result files")
-    p.add_argument("output", help="path to write the standalone report.html")
-    p.add_argument("--chartjs-path", required=True, help="path to a Chart.js UMD build")
+    p.add_argument("results_dir", help="benchmarks/results/ (one <language>.json per language)")
+    p.add_argument("output", help="path to write the benchmarks page (index.html)")
     args = p.parse_args()
 
-    out = build(args.results_dir, args.output, args.chartjs_path)
+    out = build(args.results_dir, args.output)
     size_kb = os.path.getsize(out) / 1024
-    print(f"generate_report: wrote {out} ({size_kb:.0f}KB, standalone)")
+    print(f"render_benchmarks: wrote {out} ({size_kb:.0f}KB)")

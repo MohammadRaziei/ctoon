@@ -1,77 +1,25 @@
-# ------------------------------------------------------------- Chart.js --
-# Fetched fresh via plain file(DOWNLOAD) from the npm registry (a tarball,
-# same as `npm pack` would give you) -- nothing vendored in the source
-# tree, same convention as
-# https://github.com/MohammadRaziei/pygixml/blob/main/benchmarks/report/CMakeLists.txt
-
-set(CHARTJS_VERSION "4.5.1" CACHE STRING "Chart.js version to embed in the report")
-set(CHARTJS_DL_DIR "${CMAKE_CURRENT_BINARY_DIR}/_chartjs")
-set(CHARTJS_ARCHIVE "${CHARTJS_DL_DIR}/chart.js-${CHARTJS_VERSION}.tgz")
-set(CHARTJS_EXTRACTED "${CHARTJS_DL_DIR}/extracted")
-set(CHARTJS_UMD_MIN "${CHARTJS_EXTRACTED}/package/dist/chart.umd.min.js")
-
-file(MAKE_DIRECTORY "${CHARTJS_DL_DIR}")
-file(MAKE_DIRECTORY "${CHARTJS_EXTRACTED}")
-
-add_custom_command(
-  OUTPUT "${CHARTJS_UMD_MIN}"
-  COMMAND ${CMAKE_COMMAND} -DURL=https://registry.npmjs.org/chart.js/-/chart.js-${CHARTJS_VERSION}.tgz
-                            -DDEST=${CHARTJS_ARCHIVE}
-                            -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/Download.cmake"
-  COMMAND ${CMAKE_COMMAND} -E tar xzf "${CHARTJS_ARCHIVE}"
-          WORKING_DIRECTORY "${CHARTJS_EXTRACTED}"
-  COMMENT "ctoon benchmarks: fetching Chart.js ${CHARTJS_VERSION} (for the standalone report)"
-  USES_TERMINAL
-)
-add_custom_target(ctoon_bench_chartjs DEPENDS "${CHARTJS_UMD_MIN}")
-
-# ------------------------------------------------------- python venv ------
-# generate_report.py only needs jinja2 -- reuse a tiny throwaway venv
-# rather than requiring it on the system interpreter.
-
-set(REPORT_VENV_DIR "${CMAKE_CURRENT_BINARY_DIR}/_venv")
-if(WIN32)
-  set(REPORT_VENV_PYTHON "${REPORT_VENV_DIR}/Scripts/python.exe")
-else()
-  set(REPORT_VENV_PYTHON "${REPORT_VENV_DIR}/bin/python")
-endif()
-set(REPORT_VENV_STAMP "${CMAKE_CURRENT_BINARY_DIR}/_venv.stamp")
-
-add_custom_command(
-  OUTPUT "${REPORT_VENV_STAMP}"
-  COMMAND ${Python3_EXECUTABLE} -m venv "${REPORT_VENV_DIR}"
-  COMMAND "${REPORT_VENV_PYTHON}" -m pip install --quiet --upgrade pip jinja2
-  COMMAND ${CMAKE_COMMAND} -E touch "${REPORT_VENV_STAMP}"
-  COMMENT "ctoon benchmarks: creating report venv (jinja2)"
-  USES_TERMINAL
-)
-add_custom_target(ctoon_bench_report_venv DEPENDS "${REPORT_VENV_STAMP}")
-
 # ------------------------------------------------------------ system info --
 # A factual record of the machine these numbers ran on (CPU, cores, RAM,
 # OS) -- same as https://github.com/MohammadRaziei/pygixml/blob/main/benchmarks/python/system_info.py.
-# Uses the report's own venv (plain stdlib -- platform/os -- no extra deps),
-# so it doesn't depend on whether the python *language* benchmark subdir
-# was configured.
+# Plain stdlib (platform/os), run with the system interpreter -- no venv.
 
 set(SYSTEM_INFO_JSON "${CTOON_BENCH_RESULTS_DIR}/system_info.json")
 
 add_custom_command(
   OUTPUT "${SYSTEM_INFO_JSON}"
-  COMMAND "${REPORT_VENV_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/system_info.py" "${SYSTEM_INFO_JSON}"
-  DEPENDS "${REPORT_VENV_STAMP}" "${CMAKE_CURRENT_SOURCE_DIR}/system_info.py"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/system_info.py" "${SYSTEM_INFO_JSON}"
+  DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/system_info.py"
   COMMENT "ctoon benchmarks: recording system info (CPU/RAM/OS)"
   USES_TERMINAL
 )
 add_custom_target(ctoon_bench_system_info DEPENDS "${SYSTEM_INFO_JSON}")
-add_dependencies(ctoon_bench_system_info ctoon_bench_report_venv)
 
 # --------------------------------------------------------------- memory ----
 # Peak RSS per (language, library), each in its own fresh process (see
 # collect_memory.py's docstring for why) -- merged straight into the
 # c.json/cpp.json that ctoon_benchmarks_c / _cpp
 # already wrote, so it MUST run after those, and MUST finish before
-# generate_report.py reads those files. Only languages whose toolchain
+# the results are copied out. Only languages whose toolchain
 # was actually found (bench_c / bench_cpp targets exist) get a --*-exe flag; the others are
 # silently left out of collect_memory.py's argv, same "only what's
 # configured" convention as everywhere else in this suite.
@@ -101,21 +49,20 @@ if(CTOON_BENCH_MEMORY)
 
   add_custom_command(
     OUTPUT "${MEMORY_STAMP}"
-    COMMAND "${REPORT_VENV_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
             "${CTOON_BENCH_RESULTS_DIR}" ${MEMORY_ARGS}
     COMMAND ${CMAKE_COMMAND} -E touch "${MEMORY_STAMP}"
-    DEPENDS "${REPORT_VENV_STAMP}" "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/collect_memory.py"
     COMMENT "ctoon benchmarks: measuring peak memory per library (isolated processes)"
     USES_TERMINAL
   )
   add_custom_target(ctoon_bench_memory DEPENDS "${MEMORY_STAMP}")
-  add_dependencies(ctoon_bench_memory ctoon_bench_report_venv)
   if(MEMORY_DEPS)
     add_dependencies(ctoon_bench_memory ${MEMORY_DEPS})
   endif()
 else()
   message(STATUS "ctoon benchmarks: memory measurement is OFF (CTOON_BENCH_MEMORY=OFF) - "
-                  "peak_rss_mb will not appear in the report. Enable with -DCTOON_BENCH_MEMORY=ON.")
+                  "peak_rss_mb will not appear in the results. Enable with -DCTOON_BENCH_MEMORY=ON.")
 endif()
 
 # ------------------------------------------------------------------ verify --
@@ -131,7 +78,7 @@ endif()
 # A plain custom target, not an OUTPUT-stamp rule: the language targets
 # rewrite their JSON on every run, so this has to re-judge on every run too.
 # Needs Node (it uses @toon-format/toon as the reference decoder); without it
-# the report still renders, with every row marked unverified.
+# the JSON is still written, with every row marked unverified.
 if(TARGET ctoon_benchmarks_node_deps AND NODE_EXECUTABLE)
   add_custom_target(ctoon_bench_verify
     COMMAND ${CMAKE_COMMAND} -E echo "-- Verifying that every benchmark output is correct..."
@@ -151,44 +98,39 @@ endif()
 
 # ------------------------------------------------------------------ report --
 
-# report.html is the one artifact meant to be COMMITTED (same convention as
-# pygixml's benchmarks/results/report.html): run the suite on your own
-# machine, commit the file, and CI just publishes it (docs/CMakeLists.txt
-# copies it to <site>/benchmarks/index.html) -- CI never runs the benchmarks.
-# The per-language JSON stays in the disposable build dir.
+# The suite's only committed output is results/*.json: one raw JSON file
+# per language (c.json, cpp.json, ...) plus system_info.json. The HTML
+# page is NOT built here: the documentation build (docs/CMakeLists.txt)
+# reads that directory and renders <site>/benchmarks/index.html with
+# docs/benchmarks/render_benchmarks.py. Run the suite on your own machine,
+# commit the JSON, and CI just publishes the page -- CI never runs the
+# benchmarks. Everything else (venvs, fetched sources, dumps) stays in the
+# disposable build dir.
+#
+# A plain custom target, not an OUTPUT rule: the language targets rewrite
+# their JSON on every run, so this has to copy on every run too.
 set(CTOON_BENCH_REPORT_DIR "${CTOON_BENCH_SOURCE_DIR}/results"
-    CACHE PATH "Where the final standalone report.html is written -- the one artifact meant to be committed")
-file(MAKE_DIRECTORY "${CTOON_BENCH_REPORT_DIR}")
-set(REPORT_HTML "${CTOON_BENCH_REPORT_DIR}/report.html")
+    CACHE PATH "Where the final per-language results/*.json are copied -- the one artifact meant to be committed")
 
-add_custom_command(
-  OUTPUT "${REPORT_HTML}"
-  COMMAND "${REPORT_VENV_PYTHON}" "${CMAKE_CURRENT_SOURCE_DIR}/generate_report.py"
-          "${CTOON_BENCH_RESULTS_DIR}" "${REPORT_HTML}"
-          --chartjs-path "${CHARTJS_UMD_MIN}"
-  DEPENDS
-    "${REPORT_VENV_STAMP}"
-    "${CHARTJS_UMD_MIN}"
-    "${SYSTEM_INFO_JSON}"
-    "${MEMORY_STAMP}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/generate_report.py"
-    "${CMAKE_CURRENT_SOURCE_DIR}/template.html.jinja2"
-  COMMENT "ctoon benchmarks: rendering the standalone HTML report"
+add_custom_target(ctoon_bench_report
+  COMMAND ${CMAKE_COMMAND}
+          -DSRC=${CTOON_BENCH_RESULTS_DIR} -DDST=${CTOON_BENCH_REPORT_DIR}
+          -P "${CTOON_BENCH_SOURCE_DIR}/cmake/CopyResults.cmake"
+  COMMENT "ctoon benchmarks: copying results/*.json -> ${CTOON_BENCH_REPORT_DIR}"
   USES_TERMINAL
 )
-add_custom_target(ctoon_bench_report DEPENDS "${REPORT_HTML}")
-add_dependencies(ctoon_bench_report ctoon_bench_report_venv ctoon_bench_chartjs ctoon_bench_system_info)
+add_dependencies(ctoon_bench_report ctoon_bench_system_info)
 if(CTOON_BENCH_MEMORY)
   add_dependencies(ctoon_bench_report ctoon_bench_memory)
 endif()
 
-# The report target always runs *after* whichever language benchmarks
+# The copy target always runs *after* whichever language benchmarks
 # were actually configured (see toolchain detection in the parent
 # CMakeLists.txt) -- ctoon_bench_langs itself already collects exactly
 # those, so just depend on that umbrella target instead of hardcoding
 # ctoon_benchmarks_c / _cpp / _python / ... here. ctoon_benchmarks (the
 # top-level target people actually run) then depends on both this
-# target and ctoon_bench_langs, so the report always renders last.
+# target and ctoon_bench_langs, so the copy always runs last.
 add_dependencies(ctoon_bench_report ctoon_bench_langs)
 if(TARGET ctoon_bench_verify)
   add_dependencies(ctoon_bench_report ctoon_bench_verify)

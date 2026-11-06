@@ -14,4 +14,4 @@ pytest-cov
 sphinx
 furo
 doxygen-awesome-css
-
+jinja2

@@ -1,0 +1,239 @@
+{
+  "language": "rust",
+  "corpus": {
+    "files": 457,
+    "bytes": 2990306
+  },
+  "results": [
+    {
+      "library": "ctoon",
+      "operation": "json_to_toon",
+      "throughput_mb_s": 267.6809,
+      "docs_per_sec": 40908.92,
+      "success_rate": 1,
+      "total_time_s": 0.223423,
+      "raw": {
+        "throughput_mb_s": 267.6809,
+        "docs_per_sec": 40908.92,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 457,
+        "incorrect_examples": []
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "toon_to_json",
+      "throughput_mb_s": 122.6986,
+      "docs_per_sec": 30814.73,
+      "success_rate": 1,
+      "total_time_s": 0.296611,
+      "raw": {
+        "throughput_mb_s": 122.6986,
+        "docs_per_sec": 30814.73,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 457,
+        "incorrect_examples": []
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "roundtrip",
+      "throughput_mb_s": 137.8,
+      "docs_per_sec": 21059.58,
+      "success_rate": 1,
+      "total_time_s": 0.434007,
+      "raw": {
+        "throughput_mb_s": 137.8,
+        "docs_per_sec": 21059.58,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 457,
+        "incorrect_examples": []
+      }
+    },
+    {
+      "library": "toon-rust",
+      "operation": "json_to_toon",
+      "throughput_mb_s": 39.12933531702107,
+      "docs_per_sec": 6178.716805251641,
+      "success_rate": 1,
+      "total_time_s": 1.298003,
+      "raw": {
+        "throughput_mb_s": 46.0755,
+        "docs_per_sec": 7041.58,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 0.8774617067833698,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 401,
+        "incorrect_examples": [
+          "comments.json",
+          "whitespace.json",
+          "arrays-nested.json"
+        ]
+      }
+    },
+    {
+      "library": "toon-rust",
+      "operation": "toon_to_json",
+      "throughput_mb_s": 14.623836260042268,
+      "docs_per_sec": 9021.423614457832,
+      "success_rate": 0.36323851203501095,
+      "total_time_s": 0.345843,
+      "raw": {
+        "throughput_mb_s": 15.7067,
+        "docs_per_sec": 9599.72,
+        "success_rate": 0.3632
+      },
+      "verified": true,
+      "correct_rate": 0.9397590361445783,
+      "verify": {
+        "files": 457,
+        "no_error": 166,
+        "correct": 156,
+        "incorrect_examples": [
+          "numbers.json",
+          "whitespace.json",
+          "whitespace.json"
+        ]
+      }
+    },
+    {
+      "library": "toon-rust",
+      "operation": "roundtrip",
+      "throughput_mb_s": 22.090712442594835,
+      "docs_per_sec": 3361.745491990847,
+      "success_rate": 0.9562363238512035,
+      "total_time_s": 2.42136,
+      "raw": {
+        "throughput_mb_s": 23.1999,
+        "docs_per_sec": 3609.54,
+        "success_rate": 0.9562
+      },
+      "verified": true,
+      "correct_rate": 0.931350114416476,
+      "verify": {
+        "files": 457,
+        "no_error": 437,
+        "correct": 407,
+        "incorrect_examples": [
+          "primitives.json",
+          "const.json",
+          "multipleOf.json"
+        ]
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "toon_to_struct",
+      "throughput_mb_s": 109.1011,
+      "docs_per_sec": 27399.84,
+      "success_rate": 1,
+      "total_time_s": 0.333579,
+      "raw": {
+        "throughput_mb_s": 109.1011,
+        "docs_per_sec": 27399.84,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 457,
+        "incorrect_examples": []
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "struct_to_toon",
+      "throughput_mb_s": 294.2149,
+      "docs_per_sec": 44964.02,
+      "success_rate": 1,
+      "total_time_s": 0.203274,
+      "raw": {
+        "throughput_mb_s": 294.2149,
+        "docs_per_sec": 44964.02,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 457,
+        "incorrect_examples": []
+      }
+    },
+    {
+      "library": "toon-rust",
+      "operation": "toon_to_struct",
+      "throughput_mb_s": 15.204536641114574,
+      "docs_per_sec": 9379.716144578313,
+      "success_rate": 0.36323851203501095,
+      "total_time_s": 0.332633,
+      "raw": {
+        "throughput_mb_s": 16.3304,
+        "docs_per_sec": 9980.98,
+        "success_rate": 0.3632
+      },
+      "verified": true,
+      "correct_rate": 0.9397590361445783,
+      "verify": {
+        "files": 457,
+        "no_error": 166,
+        "correct": 156,
+        "incorrect_examples": [
+          "numbers.json",
+          "whitespace.json",
+          "whitespace.json"
+        ]
+      }
+    },
+    {
+      "library": "toon-rust",
+      "operation": "struct_to_toon",
+      "throughput_mb_s": 48.1274136757576,
+      "docs_per_sec": 7599.572997811816,
+      "success_rate": 1,
+      "total_time_s": 1.055323,
+      "raw": {
+        "throughput_mb_s": 56.6709,
+        "docs_per_sec": 8660.86,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 0.8774617067833698,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 401,
+        "incorrect_examples": [
+          "comments.json",
+          "whitespace.json",
+          "arrays-nested.json"
+        ]
+      }
+    }
+  ]
+}
