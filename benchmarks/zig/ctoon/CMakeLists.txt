@@ -9,7 +9,8 @@ set(ZIG_EXECUTABLE "${CTOON_ZIG_ctoon_EXE}")
 # committing a fixed version.
 add_custom_target(ctoon_benchmarks_zig_deps
     COMMAND ${CMAKE_COMMAND} -E echo "-- [zig ${CTOON_ZIG_VERSION}] zig fetch --save ctoon - git clone from GitHub, prints the package hash when done"
-    COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV}
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/Retry.cmake 3
+            ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV}
             ${ZIG_EXECUTABLE} fetch --save git+https://github.com/mohammadraziei/ctoon.git
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Fetching Zig benchmark dependency (ctoon) from GitHub"
