@@ -38,7 +38,7 @@ set(CTOON_TOONZIG_PARTIAL ${CMAKE_CURRENT_BINARY_DIR}/toon-zig.partial.json)
 # its own dumps next to it for the verifier. toon-zig needs no libc, so
 # unlike ../ctoon there are no libc / search-prefix arguments here.
 add_custom_target(ctoon_benchmarks_zig_toonzig
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Running toon-zig benchmark (Zig ${CTOON_TOONZIG_ZIG_VERSION})..."
+    COMMAND ${CMAKE_COMMAND} -E echo "-- Running toon-zig benchmark - Zig ${CTOON_TOONZIG_ZIG_VERSION}..."
     COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_toonzig_ENV}
             ${TOONZIG_ZIG} build --release=fast run --
             ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR} ${CTOON_TOONZIG_PARTIAL} ${CTOON_TOONZIG_LOG_ARG}

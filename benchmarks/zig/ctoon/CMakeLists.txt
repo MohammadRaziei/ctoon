@@ -111,7 +111,7 @@ else()
 endif()
 
 add_custom_target(ctoon_benchmarks_zig_ctoon
-    COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig benchmark (ctoon, Zig ${CTOON_ZIG_VERSION})..."
+    COMMAND ${CMAKE_COMMAND} -E echo "-- Running Zig benchmark - ctoon, Zig ${CTOON_ZIG_VERSION}..."
     COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV} "LD_LIBRARY_PATH=${CTOON_ZIG_LD_LIBRARY_PATH}:$ENV{LD_LIBRARY_PATH}"
             ${ZIG_EXECUTABLE} build ${CTOON_ZIG_LIBC_ARGS} ${CTOON_ZIG_SEARCH_PREFIX_ARGS} --release=fast run --
             ${CTOON_BENCH_MANIFEST} ${CTOON_BENCH_RESULTS_DIR}/zig.json ${CTOON_ZIG_LOG_ARG}

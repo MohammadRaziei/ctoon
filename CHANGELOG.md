@@ -11,6 +11,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ## [Unreleased]
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - Benchmarks CMake: every step now says what it is doing and from where
@@ -46,6 +52,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
   every page, including the Python (Sphinx) docs.
 - Benchmarks: GNU Octave benchmark, native Julia value to TOON benchmark, and
   Zig results in the report.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
@@ -97,6 +109,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - TOON spec version documentation for every language.
 - README badges for the TOON spec version and the online documentation.
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - Unified the spec version write logic and the `CTOON_SPEC` macro generation.
@@ -113,6 +131,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - Documentation comparing TOON and JSON, with an overview section.
 - Linux aarch64 wheels, built on a native ARM runner.
 - Spec macros are generated and updated automatically in the header.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
@@ -131,6 +155,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - `CONTRIBUTING.md` with CMake-based build guidelines and multi-language
   binding documentation.
 - MIT license file.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
@@ -156,6 +186,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - Optional TOON spec version field in the docs hero stats.
 - MATLAB: support for non-scalar logical arrays in the MEX binding.
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - Project build options now default to OFF.
@@ -179,6 +215,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 - Rust: configurable serialization options.
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - JSON support is optional via `CTOON_DISABLE_JSON`.
@@ -190,6 +232,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - Zig binding, with README, source, build and tests.
 - Rust crate packaging, verification and publishing.
 - CI: Zig tests and cross-platform release artifacts.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
@@ -217,6 +265,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 - `encoding/json`-compatible Marshal and Unmarshal functions (Go).
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - Go: `bridge.h` added and encoding/decoding optimized.
@@ -241,6 +295,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
   awesome-css theme.
 - `Python::SABIModule` added to the `Development.Module` dependencies.
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - `write()` renamed to `to_string()` for clarity.
@@ -257,6 +317,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - CLI accepts empty TOON input for decoding.
 - Go: input validation in `Loads`.
 
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
+
 ### Changed
 
 - Improved string quoting, number formatting and number parsing, and number
@@ -270,6 +336,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
   encode/decode/read, `dump`/`dumps` and `load`/`loads` helpers, and LCOV
   coverage reports for R2024a.
 - MATLAB API documentation.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
@@ -313,6 +385,12 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 - Release orchestrator workflow, PyPI publishing, and musl Linux wheel badges
   in the release template.
 - GitHub Pages deployment.
+
+### Fixed
+
+- Benchmarks CMake: the Zig run steps printed a message with parentheses that
+  the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
+  `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.
 
 ### Changed
 
