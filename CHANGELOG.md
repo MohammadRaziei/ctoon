@@ -11,6 +11,17 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ## [Unreleased]
 
+### Changed
+
+- Benchmarks CMake: every step now says what it is doing and from where
+  (`[fetch]` git clone/update with URL and ref, `[config]` PyPI index in use,
+  numbered `[python]`/`[go]`/`[zig]`/`[node]`/`[julia]` steps, git progress
+  from FetchContent, cargo/npm output no longer silenced).
+- Benchmarks CMake: new `ctoon_bench_net_pypi` check runs first and fails in
+  seconds with a hint (`-DCTOON_PYPI_INDEX=<mirror>`) when PyPI is
+  unreachable. New options `CTOON_BENCH_NET_CHECK`, `CTOON_BENCH_VERBOSE`,
+  `CTOON_UV_HTTP_TIMEOUT`, `CTOON_UV_HTTP_RETRIES`.
+
 ## [0.9.0] - 2026-10-19
 
 ### Added

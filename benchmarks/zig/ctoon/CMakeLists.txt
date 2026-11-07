@@ -8,6 +8,7 @@ set(ZIG_EXECUTABLE "${CTOON_ZIG_ctoon_EXE}")
 # dependency hash always matches ctoon's current master, instead of
 # committing a fixed version.
 add_custom_target(ctoon_benchmarks_zig_deps
+    COMMAND ${CMAKE_COMMAND} -E echo "-- [zig ${CTOON_ZIG_VERSION}] zig fetch --save ctoon - git clone from GitHub, prints the package hash when done"
     COMMAND ${CMAKE_COMMAND} -E env ${CTOON_ZIG_ctoon_ENV}
             ${ZIG_EXECUTABLE} fetch --save git+https://github.com/mohammadraziei/ctoon.git
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

@@ -18,7 +18,7 @@
 #     CTOON_ZIG_<name>_EXE      the python-zig executable
 #     CTOON_ZIG_<name>_PYTHON   that venv's python (handy for helper scripts)
 #     CTOON_ZIG_<name>_ENV      VAR=value list for `cmake -E env`
-# Needs UV_EXECUTABLE, CTOON_BENCH_PYTHON_VERSION, CTOON_UV_INDEX_ARGS and
+# Needs CTOON_UV_CMD, CTOON_UV_PIP_ARGS, CTOON_BENCH_PYTHON_VERSION, CTOON_UV_INDEX_ARGS and
 # CTOON_BENCH_BINARY_DIR (all set by benchmarks/CMakeLists.txt).
 function(ctoon_bench_zig_toolchain NAME VERSION)
     set(_venv "${CTOON_BENCH_BINARY_DIR}/venv_zig_${VERSION}")
@@ -32,13 +32,17 @@ function(ctoon_bench_zig_toolchain NAME VERSION)
     endif()
 
     add_custom_target(ctoon_zig_toolchain_${NAME}
-        COMMAND ${UV_EXECUTABLE} venv --clear --python ${CTOON_BENCH_PYTHON_VERSION} ${_venv}
-        COMMAND ${UV_EXECUTABLE} pip install -q --python ${_py} ${CTOON_UV_INDEX_ARGS}
+        COMMAND ${CMAKE_COMMAND} -E echo "-- [zig ${VERSION}] creating venv ${_venv}"
+        COMMAND ${CTOON_UV_CMD} venv --clear --python ${CTOON_BENCH_PYTHON_VERSION} ${_venv}
+        COMMAND ${CMAKE_COMMAND} -E echo "-- [zig ${VERSION}] installing ziglang==${VERSION} from PyPI index ${CTOON_PYPI_INDEX_SHOWN}"
+        COMMAND ${CTOON_UV_CMD} pip install ${CTOON_UV_PIP_ARGS} --python ${_py} ${CTOON_UV_INDEX_ARGS}
                 ziglang==${VERSION}
         COMMAND ${_zig} version
         COMMENT "Zig ${VERSION}: installing ziglang==${VERSION} into ${_venv}"
         USES_TERMINAL
     )
+
+    add_dependencies(ctoon_zig_toolchain_${NAME} ctoon_bench_net_pypi)
 
     set(CTOON_ZIG_${NAME}_EXE "${_zig}" PARENT_SCOPE)
     set(CTOON_ZIG_${NAME}_PYTHON "${_py}" PARENT_SCOPE)

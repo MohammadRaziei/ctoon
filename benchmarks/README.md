@@ -92,6 +92,9 @@ etc.) is plain CMake, not something this project adds:
 | `CTOON_BENCH_LOG_DEBUG` | `OFF`   | Writes a per-file diagnostic log (which files failed, for which library/operation, and why) to `build-bench/logs/<language>.log`. Off by default - extra I/O, only useful while chasing a success-rate anomaly. This is what produced the `[ctoon] [pre_pass] FILE: ... ERROR: ...` lines used above. |
 | `CTOON_BENCH_MEMORY`    | `OFF`   | Measures peak RSS per (language, library) in isolated processes - see "Memory" below for the full explanation of why and what it costs. |
 | `CTOON_PYPI_INDEX`      | empty   | PyPI index URL used by every venv the suite creates (`uv pip install --index-url ...`), e.g. `-DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple`. Empty means default PyPI. Only affects those venvs, no global pip/uv config. |
+| `CTOON_BENCH_NET_CHECK` | `ON`    | Before any venv step, probes the PyPI index (`<index>/pip/`) and stops in a few seconds with the reason if it is unreachable, instead of uv retrying for minutes. It runs first in `ctoon_benchmarks`. Turn it off with `-DCTOON_BENCH_NET_CHECK=OFF`. |
+| `CTOON_BENCH_VERBOSE`   | `OFF`   | Passes `-v` to uv, so every HTTP request (index and file URLs) is printed. |
+| `CTOON_UV_HTTP_TIMEOUT` / `CTOON_UV_HTTP_RETRIES` | `20` / `3` | uv's `UV_HTTP_TIMEOUT` (s) and `UV_HTTP_RETRIES` for the venv steps. A value already exported in the shell wins. |
 | `CTOON_BENCH_PYTHON_VERSION` | `3.12` | Python version of every venv (`uv venv --python ...`): the Python benchmark's and the Zig ones. |
 | `CTOON_ZIG_VERSION`     | `0.16.0` | `ziglang` version installed for the ctoon Zig benchmark (`zig/ctoon/build.zig` targets 0.16.x). |
 | `CTOON_TOONZIG_ZIG_VERSION` | `0.15.2` | `ziglang` version installed for the toon-zig benchmark. |

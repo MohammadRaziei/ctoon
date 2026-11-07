@@ -7,9 +7,13 @@ set(CTOON_BENCH_GO_ENV
 )
 
 add_custom_target(ctoon_benchmarks_go_deps
+    COMMAND ${CMAKE_COMMAND} -E echo "-- [go] 1/4 go get ctoon@master - GOPROXY=direct: git clone from github.com"
     COMMAND ${CTOON_BENCH_GO_ENV} ${GO_EXECUTABLE} get github.com/mohammadraziei/ctoon@master
+    COMMAND ${CMAKE_COMMAND} -E echo "-- [go] 2/4 go get gotoon@main"
     COMMAND ${CTOON_BENCH_GO_ENV} ${GO_EXECUTABLE} get github.com/alpkeskin/gotoon@main
+    COMMAND ${CMAKE_COMMAND} -E echo "-- [go] 3/4 go get toon-go@main"
     COMMAND ${CTOON_BENCH_GO_ENV} ${GO_EXECUTABLE} get github.com/toon-format/toon-go@main
+    COMMAND ${CMAKE_COMMAND} -E echo "-- [go] 4/4 go mod tidy - fetches the dependencies of those modules, also from GitHub / their own hosts"
     COMMAND ${CTOON_BENCH_GO_ENV} ${GO_EXECUTABLE} mod tidy
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Fetching Go benchmark dependencies from GitHub"

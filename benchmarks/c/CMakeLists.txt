@@ -6,6 +6,7 @@ FetchContent_Declare(
     GIT_TAG        master
     GIT_SHALLOW    TRUE
 )
+ctoon_bench_fetch_note(ctoon ${CTOON_GITHUB_URL} master)
 FetchContent_MakeAvailable(ctoon)
 
 # ── TOONc (github.com/UsboKirishima/TOONc) ────────────────────────────────
@@ -18,6 +19,7 @@ FetchContent_Declare(
     GIT_TAG        main
     GIT_SHALLOW    TRUE
 )
+ctoon_bench_fetch_note(toonc https://github.com/UsboKirishima/TOONc.git main)
 FetchContent_MakeAvailable(toonc)
 
 add_library(toonc_upstream STATIC ${toonc_SOURCE_DIR}/toonc.c)

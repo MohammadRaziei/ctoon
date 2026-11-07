@@ -64,6 +64,9 @@ endif()
 
 # ── Corpus: fetch real-world JSON to benchmark against ────────────────────
 include(FetchContent)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/BenchLog.cmake)
+# Show git's own clone/fetch progress instead of hiding it until the end.
+set(FETCHCONTENT_QUIET OFF)
 
 # Small, varied JSON shapes covering the format's edge cases - the same
 # fixtures the main repo's own spec-conformance tests use.
@@ -104,6 +107,8 @@ FetchContent_Declare(
     GIT_PROGRESS   TRUE
 )
 
+ctoon_bench_fetch_note(toon_format_spec https://github.com/toon-format/spec.git ${CTOON_SPEC_TAG})
+ctoon_bench_fetch_note(json_schema_test_suite https://github.com/json-schema-org/JSON-Schema-Test-Suite.git main)
 FetchContent_MakeAvailable(toon_format_spec json_schema_test_suite)
 
 file(GLOB_RECURSE CTOON_BENCH_JSON_SPEC
@@ -146,8 +151,47 @@ set(CTOON_BENCH_PYTHON_VERSION "3.12" CACHE STRING
 set(CTOON_PYPI_INDEX "" CACHE STRING
     "PyPI index URL for the benchmark venvs (empty = default PyPI)")
 set(CTOON_UV_INDEX_ARGS "")
+set(CTOON_PYPI_INDEX_SHOWN "https://pypi.org/simple - default")
+set(_ctoon_pypi_probe "https://pypi.org/simple/pip/")
 if(CTOON_PYPI_INDEX)
     list(APPEND CTOON_UV_INDEX_ARGS --index-url ${CTOON_PYPI_INDEX})
+    set(CTOON_PYPI_INDEX_SHOWN "${CTOON_PYPI_INDEX} - from -DCTOON_PYPI_INDEX")
+    string(REGEX REPLACE "/+$" "" _ctoon_pypi_probe "${CTOON_PYPI_INDEX}")
+    set(_ctoon_pypi_probe "${_ctoon_pypi_probe}/pip/")
+endif()
+
+# uv network behaviour for every venv here. uv's own defaults (30 s x 3 retries
+# per request, or whatever UV_HTTP_* is set to in the shell, which wins) make
+# an unreachable index look like a hang; these fail in about a minute instead.
+set(CTOON_UV_HTTP_TIMEOUT "20" CACHE STRING "uv HTTP timeout in seconds (UV_HTTP_TIMEOUT) unless already set in the environment")
+set(CTOON_UV_HTTP_RETRIES "3" CACHE STRING "uv HTTP retries (UV_HTTP_RETRIES) unless already set in the environment")
+option(CTOON_BENCH_VERBOSE "Pass -v to uv so every HTTP request (index, files) is printed" OFF)
+option(CTOON_BENCH_NET_CHECK "Check the PyPI index is reachable before the venv steps (fails in seconds instead of minutes)" ON)
+set(CTOON_UV_ENV "")
+if(NOT DEFINED ENV{UV_HTTP_TIMEOUT})
+    list(APPEND CTOON_UV_ENV UV_HTTP_TIMEOUT=${CTOON_UV_HTTP_TIMEOUT})
+endif()
+if(NOT DEFINED ENV{UV_HTTP_RETRIES})
+    list(APPEND CTOON_UV_ENV UV_HTTP_RETRIES=${CTOON_UV_HTTP_RETRIES})
+endif()
+set(CTOON_UV_CMD ${CMAKE_COMMAND} -E env ${CTOON_UV_ENV} ${UV_EXECUTABLE})
+set(CTOON_UV_PIP_ARGS "")
+if(CTOON_BENCH_VERBOSE)
+    list(APPEND CTOON_UV_PIP_ARGS -v)
+endif()
+
+if(UV_EXECUTABLE)
+    message(STATUS "[config] uv: ${UV_EXECUTABLE}, Python ${CTOON_BENCH_PYTHON_VERSION}, PyPI index: ${CTOON_PYPI_INDEX_SHOWN}")
+    set(_ctoon_net_hint "uv would not reach it either. Either set a mirror: cmake -S . -B build-bench -DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple (remembered in the CMake cache), or set HTTPS_PROXY, or skip this check with -DCTOON_BENCH_NET_CHECK=OFF.")
+    if(CTOON_BENCH_NET_CHECK)
+        add_custom_target(ctoon_bench_net_pypi
+            COMMAND ${CMAKE_COMMAND} -DURL=${_ctoon_pypi_probe} "-DLABEL=PyPI index" -DTMP_FILE=${CTOON_BENCH_BINARY_DIR}/net_probe.tmp
+                    "-DHINT=${_ctoon_net_hint}" -P ${CMAKE_CURRENT_LIST_DIR}/cmake/CheckUrl.cmake
+            VERBATIM
+        )
+    else()
+        add_custom_target(ctoon_bench_net_pypi COMMAND ${CMAKE_COMMAND} -E echo "-- [net] PyPI reachability check skipped - CTOON_BENCH_NET_CHECK=OFF")
+    endif()
 endif()
 
 find_program(JULIA_EXECUTABLE julia)
@@ -291,6 +335,11 @@ endif()
 add_custom_target(ctoon_benchmarks
     COMMENT "CToon: running all language benchmarks and writing results/*.json"
 )
+# First dependency on purpose: an unreachable PyPI is reported before any
+# language has been built, not minutes into the run.
+if(TARGET ctoon_bench_net_pypi)
+    add_dependencies(ctoon_benchmarks ctoon_bench_net_pypi)
+endif()
 add_dependencies(ctoon_benchmarks ctoon_bench_langs)
 if(TARGET ctoon_bench_report)
     add_dependencies(ctoon_benchmarks ctoon_bench_report)
