@@ -1,0 +1,142 @@
+{
+  "language": "matlab",
+  "corpus": {
+    "files": 457,
+    "bytes": 3019287
+  },
+  "results": [
+    {
+      "library": "ctoon",
+      "operation": "json_to_toon",
+      "throughput_mb_s": 219.34730445906268,
+      "docs_per_sec": 32805.43851465539,
+      "success_rate": 1,
+      "total_time_s": 0.261542,
+      "raw": {
+        "throughput_mb_s": 230.8835292228399,
+        "docs_per_sec": 34946.58601677742,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 0.9387308533916849,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 429,
+        "incorrect_examples": [
+          "primitives.json",
+          "primitives.json",
+          "ipv4.json"
+        ]
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "toon_to_json",
+      "throughput_mb_s": 158.36529054557832,
+      "docs_per_sec": 39391.62777066659,
+      "success_rate": 1,
+      "total_time_s": 0.232029,
+      "raw": {
+        "throughput_mb_s": 158.36529054557832,
+        "docs_per_sec": 39391.62777066659,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 429,
+        "no_error": 429,
+        "correct": 429,
+        "incorrect_examples": [],
+        "excluded_bad_shared_inputs": 28
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "roundtrip",
+      "throughput_mb_s": 117.58111747515336,
+      "docs_per_sec": 17585.35455600054,
+      "success_rate": 1,
+      "total_time_s": 0.487906,
+      "raw": {
+        "throughput_mb_s": 123.76511049259489,
+        "docs_per_sec": 18733.116624923652,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 0.9387308533916849,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 429,
+        "incorrect_examples": [
+          "primitives.json",
+          "primitives.json",
+          "ipv4.json"
+        ]
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "toon_to_struct",
+      "throughput_mb_s": 82.26341511465728,
+      "docs_per_sec": 20462.121568285056,
+      "success_rate": 0.351981351981352,
+      "total_time_s": 0.446679,
+      "raw": {
+        "throughput_mb_s": 82.26341511465728,
+        "docs_per_sec": 20462.121568285056,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 1,
+      "verify": {
+        "files": 429,
+        "no_error": 151,
+        "correct": 151,
+        "incorrect_examples": [],
+        "excluded_bad_shared_inputs": 28
+      }
+    },
+    {
+      "library": "ctoon",
+      "operation": "struct_to_toon",
+      "throughput_mb_s": 189.47704287645257,
+      "docs_per_sec": 28338.061848315403,
+      "success_rate": 1,
+      "total_time_s": 0.302773,
+      "raw": {
+        "throughput_mb_s": 199.44228844712043,
+        "docs_per_sec": 30187.63231860172,
+        "success_rate": 1
+      },
+      "verified": true,
+      "correct_rate": 0.9387308533916849,
+      "verify": {
+        "files": 457,
+        "no_error": 457,
+        "correct": 429,
+        "incorrect_examples": [
+          "primitives.json",
+          "primitives.json",
+          "ipv4.json"
+        ]
+      }
+    }
+  ],
+  "order_check": [
+    {
+      "library": "ctoon",
+      "operation": "json_to_toon",
+      "preserved": false,
+      "detail": "got zebra,apple,mango,nested,beta,alpha,list"
+    },
+    {
+      "library": "ctoon",
+      "operation": "toon_to_json",
+      "preserved": true,
+      "detail": ""
+    }
+  ]
+}
