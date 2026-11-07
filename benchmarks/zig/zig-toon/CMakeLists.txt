@@ -14,9 +14,8 @@ set(TOONZIG_ZIG "${CTOON_ZIG_toonzig_EXE}")
 # with -DCTOON_TOONZIG_REF=...).
 add_custom_target(ctoon_benchmarks_zig_toonzig_deps
     COMMAND ${CMAKE_COMMAND} -E echo "-- [zig ${CTOON_TOONZIG_ZIG_VERSION}] zig fetch --save toon-zig ${CTOON_TOONZIG_REF} - git clone from GitHub, prints the package hash when done"
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/Retry.cmake 3
-            ${CMAKE_COMMAND} -E env ${CTOON_ZIG_toonzig_ENV}
-            ${TOONZIG_ZIG} fetch --save "git+https://github.com/LatentEvals/toon-zig.git#${CTOON_TOONZIG_REF}"
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ZigFetch.cmake
+            https://github.com/LatentEvals/toon-zig.git ${CTOON_TOONZIG_REF} ${TOONZIG_ZIG} ${CTOON_ZIG_toonzig_ENV}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Fetching Zig benchmark dependency (toon-zig ${CTOON_TOONZIG_REF}) from GitHub"
     USES_TERMINAL

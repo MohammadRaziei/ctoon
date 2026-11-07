@@ -19,10 +19,11 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ### Changed
 
-- Benchmarks CMake: the two `zig fetch --save` steps (ctoon and toon-zig) are
-  retried up to 3 times (`cmake/Retry.cmake`), since GitHub sometimes drops
-  the connection (`unable to discover remote git server capabilities:
-  HttpConnectionClosing`).
+- Benchmarks CMake: the two `zig fetch --save` steps (ctoon, toon-zig) go
+  through `cmake/ZigFetch.cmake`: 3 tries, then, when Zig's own HTTP client
+  cannot reach GitHub (`unable to discover remote git server capabilities:
+  HttpConnectionClosing`, ziglang/zig#25996), a fallback with `git clone` +
+  `git archive` and `zig fetch` of the local tarball (same package hash).
 - Benchmarks: the key-order check is just ✓/✗ per direction. The always-empty
   `detail` is gone from every harness' `order_check` JSON and from the docs
   table (JSON → TOON and TOON → JSON columns only).
