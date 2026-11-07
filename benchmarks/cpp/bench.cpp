@@ -53,49 +53,135 @@ struct Result {
 std::vector<Result> g_results;
 
 // ------------------------------------------------------------ order check --
-// Same fixed, deliberately non-alphabetical sample and same check as
-// bench.c / bench.py -- see bench.py's docstring for the rationale.
-const std::string kOrderCheckSampleJson =
-    R"({"zebra": 1, "apple": 2, "mango": 3, )"
-    R"("nested": {"beta": true, "alpha": false}, )"
-    R"("list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]})";
+// Key order, one direction at a time, against the shared samples in
+// benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+// a nested object, a tabular array):
+//   json_to_toon -- keys of the TOON output must follow the order of sample.json
+//   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+// Both reduce to "first-occurrence order of the keys" so the tabular header
+// `list[2]{z,a}:` and the expanded `- z: 1` form compare equal. Same
+// hand-written scanners as bench.c (no regex dependency).
+using Keys = std::vector<std::string>;
 
-std::vector<std::string> extract_key_order(const std::string &text) {
-    std::vector<std::string> keys;
+void add_key(Keys &keys, std::string k) {
+    size_t b = k.find_first_not_of(" \t");
+    size_t e = k.find_last_not_of(" \t");
+    if (b == std::string::npos) return;
+    k = k.substr(b, e - b + 1);
+    if (k.size() >= 2 && k.front() == '"' && k.back() == '"') k = k.substr(1, k.size() - 2);
+    if (k.empty()) return;
+    if (std::find(keys.begin(), keys.end(), k) == keys.end()) keys.push_back(k);
+}
+
+// Every `"key":` in a JSON text, first occurrence only.
+Keys json_keys(const std::string &text) {
+    Keys keys;
     size_t i = 0;
     while (i < text.size()) {
-        if (text[i] == '"') {
-            size_t start = i + 1;
-            size_t end = text.find('"', start);
-            if (end == std::string::npos) break;
-            size_t q = end + 1;
-            while (q < text.size() && std::isspace(static_cast<unsigned char>(text[q]))) q++;
-            if (q < text.size() && text[q] == ':') {
-                keys.push_back(text.substr(start, end - start));
-            }
-            i = end + 1;
+        if (text[i] != '"') { i++; continue; }
+        size_t start = i + 1, q = start;
+        while (q < text.size() && text[q] != '"') q += (text[q] == '\\' && q + 1 < text.size()) ? 2 : 1;
+        if (q >= text.size()) break;
+        size_t r = q + 1;
+        while (r < text.size() && std::isspace(static_cast<unsigned char>(text[r]))) r++;
+        if (r < text.size() && text[r] == ':') add_key(keys, text.substr(start, q - start));
+        i = q + 1;
+    }
+    return keys;
+}
+
+// Line by line: strip indent and `- ` list markers, then `key:`, `key[N]:`
+// or `key[N]{f1,f2}:` -- the key and, for the tabular form, the fields.
+Keys toon_keys(const std::string &text) {
+    Keys keys;
+    std::istringstream lines(text);
+    std::string line;
+    while (std::getline(lines, line)) {
+        size_t s = 0, end = line.size();
+        while (s < end && line[s] == ' ') s++;
+        while (s + 1 < end && line[s] == '-' && line[s + 1] == ' ') {
+            s += 2;
+            while (s < end && line[s] == ' ') s++;
+        }
+        size_t q = s;
+        if (q < end && line[q] == '"') {
+            q++;
+            while (q < end && line[q] != '"') q += (line[q] == '\\' && q + 1 < end) ? 2 : 1;
+            if (q < end) q++;
         } else {
-            i++;
+            while (q < end && std::string(" \t:[{,\"").find(line[q]) == std::string::npos) q++;
+        }
+        size_t key_end = q;
+        std::string fields;
+        bool has_fields = false;
+        if (q < end && line[q] == '[') { while (q < end && line[q] != ']') q++; if (q < end) q++; }
+        if (q < end && line[q] == '{') {
+            size_t f = ++q;
+            while (q < end && line[q] != '}') q++;
+            fields = line.substr(f, q - f);
+            has_fields = true;
+            if (q < end) q++;
+        }
+        if (q < end && line[q] == ':' && key_end > s) {
+            add_key(keys, line.substr(s, key_end - s));
+            if (has_fields) {
+                size_t f = 0;
+                while (f <= fields.size()) {
+                    size_t g = fields.find_first_of(",|\t", f);
+                    if (g == std::string::npos) g = fields.size();
+                    add_key(keys, fields.substr(f, g - f));
+                    f = g + 1;
+                }
+            }
         }
     }
     return keys;
 }
 
-bool order_preserved(const std::string &output_json) {
-    return extract_key_order(kOrderCheckSampleJson) == extract_key_order(output_json);
-}
-
-struct OrderCheckResult { std::string library; bool preserved; std::string detail; };
+struct OrderCheckResult { std::string library, operation; bool preserved; std::string detail; };
 std::vector<OrderCheckResult> g_order_checks;
 
+// Compare against `expected`; when it differs the detail lists what came out.
+void record_order(const std::string &library, const std::string &operation,
+                  const Keys &expected, const Keys &got) {
+    bool same = (expected == got);
+    std::string detail;
+    if (!same) {
+        detail = "got ";
+        for (size_t i = 0; i < got.size(); i++) {
+            for (char c : got[i]) detail += (c == '"' || c == '\\') ? '\'' : c;
+            if (i + 1 < got.size()) detail += ',';
+        }
+        if (detail.size() > 127) detail.resize(127);
+    }
+    g_order_checks.push_back({library, operation, same, detail});
+}
+
+std::string read_sample(const char *name) {
+    std::ifstream in(std::string(CTOON_BENCH_ORDER_DIR) + "/" + name, std::ios::binary);
+    std::stringstream ss;
+    ss << in.rdbuf();
+    return ss.str();
+}
+
 void run_order_check() {
+    const std::string json = read_sample("sample.json"), toon = read_sample("sample.toon");
+    if (json.empty() || toon.empty()) {
+        std::fprintf(stderr, "warning: order-check samples not found in %s\n", CTOON_BENCH_ORDER_DIR);
+        return;
+    }
+    const Keys expected = json_keys(json);
     try {
-        auto toon = ctoon::json_to_toon(kOrderCheckSampleJson);
-        auto json_result = ctoon::toon_to_json(toon.view());
-        std::string json_out = json_result.str();
-        g_order_checks.push_back({"ctoon", order_preserved(json_out), ""});
+        auto out = ctoon::json_to_toon(json);
+        record_order("ctoon", "json_to_toon", expected, toon_keys(std::string(out.view())));
     } catch (const ctoon::error &e) {
-        g_order_checks.push_back({"ctoon", false, std::string("exception: ") + e.what()});
+        g_order_checks.push_back({"ctoon", "json_to_toon", false, std::string("exception: ") + e.what()});
+    }
+    try {
+        auto out = ctoon::toon_to_json(toon);
+        record_order("ctoon", "toon_to_json", expected, json_keys(out.str()));
+    } catch (const ctoon::error &e) {
+        g_order_checks.push_back({"ctoon", "toon_to_json", false, std::string("exception: ") + e.what()});
     }
 }
 
@@ -157,9 +243,9 @@ void write_results_json(size_t n_files, size_t total_json_bytes) {
     f << "\n  \"order_check\": [\n";
     for (size_t i = 0; i < g_order_checks.size(); i++) {
         const OrderCheckResult &r = g_order_checks[i];
-        char buf[256];
-        std::snprintf(buf, sizeof(buf), "    {\"library\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
-                      r.library.c_str(), r.preserved ? "true" : "false", r.detail.c_str(),
+        char buf[512];
+        std::snprintf(buf, sizeof(buf), "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
+                      r.library.c_str(), r.operation.c_str(), r.preserved ? "true" : "false", r.detail.c_str(),
                       (i + 1 < g_order_checks.size()) ? "," : "");
         f << buf;
     }

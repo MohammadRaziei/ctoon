@@ -11,6 +11,7 @@ add_executable(bench_cpp bench.cpp)
 target_link_libraries(bench_cpp PRIVATE ctoon::ctoonpp)
 target_compile_definitions(bench_cpp PRIVATE
     CTOON_BENCH_MANIFEST="${CTOON_BENCH_MANIFEST}"
+    CTOON_BENCH_ORDER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../order_check"
     CTOON_BENCH_RESULTS_JSON="${CTOON_BENCH_RESULTS_DIR}/cpp.json")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")

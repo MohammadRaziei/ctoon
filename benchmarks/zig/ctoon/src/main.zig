@@ -150,6 +150,148 @@ fn dumpOutputs(gpa: std.mem.Allocator, results_path: []const u8, files: []const 
     writeFrames(gpa, dir, "struct_to_toon", st.written());
 }
 
+// ------------------------------------------------------------ order check --
+// Key order, one direction at a time, against the shared samples in
+// benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+// a nested object, a tabular array):
+//   json_to_toon -- keys of the TOON output must follow the order of sample.json
+//   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+// Both reduce to "first-occurrence order of the keys", so the tabular header
+// `list[2]{z,a}:` and the expanded `- z: 1` form compare equal. Hand-written
+// scanners, no regex. The samples are read relative to the working directory
+// (benchmarks/zig/ctoon, which is where CMake runs this).
+const Keys = std.ArrayList([]const u8);
+
+const OrderRow = struct {
+    library: []const u8,
+    operation: []const u8,
+    preserved: bool,
+    detail: []const u8,
+};
+
+fn addKey(gpa: std.mem.Allocator, keys: *Keys, raw: []const u8) !void {
+    var k = std.mem.trim(u8, raw, " \t");
+    if (k.len >= 2 and k[0] == '"' and k[k.len - 1] == '"') k = k[1 .. k.len - 1];
+    if (k.len == 0) return;
+    for (keys.items) |x| if (std.mem.eql(u8, x, k)) return;
+    try keys.append(gpa, k);
+}
+
+/// Every `"key":` in a JSON text, first occurrence only.
+fn jsonKeys(gpa: std.mem.Allocator, text: []const u8) !Keys {
+    var keys: Keys = .empty;
+    var i: usize = 0;
+    while (i < text.len) {
+        if (text[i] != '"') {
+            i += 1;
+            continue;
+        }
+        const start = i + 1;
+        var q = start;
+        while (q < text.len and text[q] != '"') q += if (text[q] == '\\' and q + 1 < text.len) @as(usize, 2) else 1;
+        if (q >= text.len) break;
+        var r = q + 1;
+        while (r < text.len and std.ascii.isWhitespace(text[r])) r += 1;
+        if (r < text.len and text[r] == ':') try addKey(gpa, &keys, text[start..q]);
+        i = q + 1;
+    }
+    return keys;
+}
+
+/// Line by line: strip indent and `- ` list markers, then `key:`, `key[N]:`
+/// or `key[N]{f1,f2}:` -- the key and, for the tabular form, the fields.
+fn toonKeys(gpa: std.mem.Allocator, text: []const u8) !Keys {
+    var keys: Keys = .empty;
+    var lines = std.mem.splitScalar(u8, text, '\n');
+    while (lines.next()) |line| {
+        const end = line.len;
+        var s: usize = 0;
+        while (s < end and line[s] == ' ') s += 1;
+        while (s + 1 < end and line[s] == '-' and line[s + 1] == ' ') {
+            s += 2;
+            while (s < end and line[s] == ' ') s += 1;
+        }
+        var q = s;
+        if (q < end and line[q] == '"') {
+            q += 1;
+            while (q < end and line[q] != '"') q += if (line[q] == '\\' and q + 1 < end) @as(usize, 2) else 1;
+            if (q < end) q += 1;
+        } else {
+            while (q < end and std.mem.indexOfScalar(u8, " \t:[{,\"", line[q]) == null) q += 1;
+        }
+        const key_end = q;
+        var fields: ?[]const u8 = null;
+        if (q < end and line[q] == '[') {
+            while (q < end and line[q] != ']') q += 1;
+            if (q < end) q += 1;
+        }
+        if (q < end and line[q] == '{') {
+            const f = q + 1;
+            while (q < end and line[q] != '}') q += 1;
+            fields = line[f..q];
+            if (q < end) q += 1;
+        }
+        if (q < end and line[q] == ':' and key_end > s) {
+            try addKey(gpa, &keys, line[s..key_end]);
+            if (fields) |fs| {
+                var parts = std.mem.splitAny(u8, fs, ",|\t");
+                while (parts.next()) |part| try addKey(gpa, &keys, part);
+            }
+        }
+    }
+    return keys;
+}
+
+fn recordOrder(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), library: []const u8, operation: []const u8, expected: []const []const u8, got: []const []const u8) !void {
+    var same = expected.len == got.len;
+    if (same) {
+        for (expected, got) |a, b| {
+            if (!std.mem.eql(u8, a, b)) {
+                same = false;
+                break;
+            }
+        }
+    }
+    var detail: std.ArrayList(u8) = .empty;
+    if (!same) {
+        try detail.appendSlice(gpa, "got ");
+        for (got, 0..) |k, i| {
+            if (i > 0) try detail.append(gpa, ',');
+            for (k) |c| try detail.append(gpa, if (c == '"' or c == '\\' or c < 0x20) '\'' else c);
+        }
+        if (detail.items.len > 127) detail.items.len = 127;
+    }
+    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = same, .detail = detail.items });
+}
+
+fn recordOrderFailed(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), library: []const u8, operation: []const u8, err: anyerror) !void {
+    const detail = try std.fmt.allocPrint(gpa, "exception: {s}", .{@errorName(err)});
+    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = false, .detail = detail });
+}
+
+fn runOrderChecks(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow)) !void {
+    const cwd = std.Io.Dir.cwd();
+    const sample_json = cwd.readFileAlloc(io, "../../order_check/sample.json", gpa, .limited(1 << 20)) catch {
+        std.debug.print("warning: order-check samples not found in ../../order_check\n", .{});
+        return;
+    };
+    const sample_toon = cwd.readFileAlloc(io, "../../order_check/sample.toon", gpa, .limited(1 << 20)) catch {
+        std.debug.print("warning: order-check samples not found in ../../order_check\n", .{});
+        return;
+    };
+    const expected = try jsonKeys(gpa, sample_json);
+
+    if (ctoon.jsonToToon(gpa, sample_json, .{})) |toon| {
+        const got = try toonKeys(gpa, toon);
+        try recordOrder(gpa, rows, "ctoon", "json_to_toon", expected.items, got.items);
+    } else |err| try recordOrderFailed(gpa, rows, "ctoon", "json_to_toon", err);
+
+    if (ctoon.toonToJson(gpa, sample_toon, 0)) |js| {
+        const got = try jsonKeys(gpa, js);
+        try recordOrder(gpa, rows, "ctoon", "toon_to_json", expected.items, got.items);
+    } else |err| try recordOrderFailed(gpa, rows, "ctoon", "toon_to_json", err);
+}
+
 pub fn main(init: std.process.Init) !void {
     io = init.io;
     const gpa = init.arena.allocator();
@@ -334,6 +476,15 @@ pub fn main(init: std.process.Init) !void {
         try w.print(
             "    {{\"library\": \"{s}\", \"operation\": \"{s}\", \"throughput_mb_s\": {d:.4}, \"docs_per_sec\": {d:.2}, \"success_rate\": {d:.4}, \"total_time_s\": {d:.6}}}{s}\n",
             .{ r.library, r.operation, r.throughput_mb_s, r.docs_per_sec, r.success_rate, r.total_time_s, if (i + 1 < results.items.len) "," else "" },
+        );
+    }
+    try w.print("  ],\n  \"order_check\": [\n", .{});
+    var order_rows: std.ArrayList(OrderRow) = .empty;
+    runOrderChecks(gpa, &order_rows) catch |err| std.debug.print("warning: key-order check failed: {}\n", .{err});
+    for (order_rows.items, 0..) |r, i| {
+        try w.print(
+            "    {{\"library\": \"{s}\", \"operation\": \"{s}\", \"preserved\": {}, \"detail\": \"{s}\"}}{s}\n",
+            .{ r.library, r.operation, r.preserved, r.detail, if (i + 1 < order_rows.items.len) "," else "" },
         );
     }
     try w.print("  ]\n}}\n", .{});

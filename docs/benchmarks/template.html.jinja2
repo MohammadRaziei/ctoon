@@ -128,19 +128,25 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
   {% endif %}
 </div>
 
-{% if order_check_sample %}
+{% if order_check_sample_json %}
 <div class="divider"></div>
 <div class="section">
   <div class="section-header">
     <div class="section-label">Method</div>
-    <div class="section-title">Key order sample</div>
+    <div class="section-title">Key order samples</div>
   </div>
-  <p class="corpus-note">Every "Key order preservation" table below round-trips this exact JSON through that library and checks whether the keys come back in this same order. The sample is deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up.</p>
+  <p class="corpus-note">Every &ldquo;Key order preservation&rdquo; table below checks each library one direction at a time, with these two samples. For <code>json_to_toon</code> the JSON sample is converted and the keys of the TOON that comes out must follow the JSON sample's order. For <code>toon_to_json</code> the TOON sample is converted and the keys of the JSON that comes out must follow the TOON sample's order. A key repeated in every row of an array counts once, so the tabular header form and the expanded list form compare equal. The samples are deliberately non-alphabetical, with a nested object and an array of objects, so sorting or hash-based reordering would show up. A direction a library does not have shows as &ndash;.</p>
   <div class="code-wrap sample-wrap">
     <div class="code-label">
       <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">json</span></div>
     </div>
-    <pre><code>{{ order_check_sample }}</code></pre>
+    <pre><code>{{ order_check_sample_json }}</code></pre>
+  </div>
+  <div class="code-wrap sample-wrap">
+    <div class="code-label">
+      <div class="code-lang-row"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">toon</span></div>
+    </div>
+    <pre><code>{{ order_check_sample_toon }}</code></pre>
   </div>
 </div>
 {% endif %}
@@ -201,17 +207,19 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
 
   {% if sec.order_check %}
   <h3 class="op-title">Key order preservation</h3>
-  <p class="corpus-note">Round-trips the fixed sample above through each library and checks whether keys come back in the same order they went in.</p>
+  <p class="corpus-note">Converts the fixed samples above in each direction and checks whether keys come out in the same order they went in.</p>
   <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Library</th><th>Order preserved</th><th>Detail</th></tr>
+      <tr><th>Library</th><th>JSON &rarr; TOON</th><th>TOON &rarr; JSON</th><th>Detail</th></tr>
     </thead>
     <tbody>
       {% for oc in sec.order_check %}
       <tr>
         <td>{{ oc.library }}</td>
-        <td>{% if oc.preserved %}<span class="check-yes">&#10003; yes</span>{% else %}<span class="check-no">&#10007; no</span>{% endif %}</td>
+        {% for cell in [oc.json_to_toon, oc.toon_to_json] %}
+        <td>{% if cell is none %}&ndash;{% elif cell.preserved %}<span class="check-yes">&#10003; yes</span>{% else %}<span class="check-no">&#10007; no</span>{% endif %}</td>
+        {% endfor %}
         <td>{{ oc.detail or "n/a" }}</td>
       </tr>
       {% endfor %}

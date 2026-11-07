@@ -149,6 +149,167 @@ fn dump_outputs(results_path: &str, files: &[BenchFile]) {
     }
 }
 
+// ------------------------------------------------------------ order check --
+// Key order, one direction at a time, against the shared samples in
+// benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+// a nested object, a tabular array):
+//   json_to_toon -- keys of the TOON output must follow the order of sample.json
+//   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+// Both reduce to "first-occurrence order of the keys", so the tabular header
+// `list[2]{z,a}:` and the expanded `- z: 1` form compare equal. Hand-written
+// scanners (no regex crate: this benchmark keeps its dependency list short).
+const ORDER_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../order_check");
+
+fn add_key(keys: &mut Vec<String>, raw: &str) {
+    let mut k = raw.trim();
+    if k.len() >= 2 && k.starts_with('"') && k.ends_with('"') {
+        k = &k[1..k.len() - 1];
+    }
+    if !k.is_empty() && !keys.iter().any(|x| x == k) {
+        keys.push(k.to_string());
+    }
+}
+
+/// Every `"key":` in a JSON text, first occurrence only.
+fn json_keys(text: &str) -> Vec<String> {
+    let b = text.as_bytes();
+    let mut keys = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] != b'"' {
+            i += 1;
+            continue;
+        }
+        let start = i + 1;
+        let mut q = start;
+        while q < b.len() && b[q] != b'"' {
+            q += if b[q] == b'\\' && q + 1 < b.len() { 2 } else { 1 };
+        }
+        if q >= b.len() {
+            break;
+        }
+        let mut r = q + 1;
+        while r < b.len() && b[r].is_ascii_whitespace() {
+            r += 1;
+        }
+        if r < b.len() && b[r] == b':' {
+            add_key(&mut keys, &text[start..q]);
+        }
+        i = q + 1;
+    }
+    keys
+}
+
+/// Line by line: strip indent and `- ` list markers, then `key:`, `key[N]:`
+/// or `key[N]{f1,f2}:` -- the key and, for the tabular form, the fields.
+fn toon_keys(text: &str) -> Vec<String> {
+    let mut keys = Vec::new();
+    for line in text.lines() {
+        let b = line.as_bytes();
+        let end = b.len();
+        let mut s = 0;
+        while s < end && b[s] == b' ' {
+            s += 1;
+        }
+        while s + 1 < end && b[s] == b'-' && b[s + 1] == b' ' {
+            s += 2;
+            while s < end && b[s] == b' ' {
+                s += 1;
+            }
+        }
+        let mut q = s;
+        if q < end && b[q] == b'"' {
+            q += 1;
+            while q < end && b[q] != b'"' {
+                q += if b[q] == b'\\' && q + 1 < end { 2 } else { 1 };
+            }
+            if q < end {
+                q += 1;
+            }
+        } else {
+            while q < end && !b" \t:[{,\"".contains(&b[q]) {
+                q += 1;
+            }
+        }
+        let key_end = q;
+        let mut fields: Option<&str> = None;
+        if q < end && b[q] == b'[' {
+            while q < end && b[q] != b']' {
+                q += 1;
+            }
+            if q < end {
+                q += 1;
+            }
+        }
+        if q < end && b[q] == b'{' {
+            let f = q + 1;
+            while q < end && b[q] != b'}' {
+                q += 1;
+            }
+            fields = Some(&line[f..q]);
+            if q < end {
+                q += 1;
+            }
+        }
+        if q < end && b[q] == b':' && key_end > s {
+            add_key(&mut keys, &line[s..key_end]);
+            if let Some(f) = fields {
+                for part in f.split(|c| c == ',' || c == '|' || c == '\t') {
+                    add_key(&mut keys, part);
+                }
+            }
+        }
+    }
+    keys
+}
+
+struct OrderRow {
+    library: &'static str,
+    operation: &'static str,
+    preserved: bool,
+    detail: String,
+}
+
+type Convert<'a> = Option<&'a dyn Fn(&str) -> Result<String, String>>;
+
+/// One row per direction; a `None` function (the library has no such
+/// direction) adds no row.
+fn check_order(library: &'static str, json_to_toon: Convert, toon_to_json: Convert) -> Vec<OrderRow> {
+    let sample_json = fs::read_to_string(format!("{}/sample.json", ORDER_DIR));
+    let sample_toon = fs::read_to_string(format!("{}/sample.toon", ORDER_DIR));
+    let (sample_json, sample_toon) = match (sample_json, sample_toon) {
+        (Ok(j), Ok(t)) => (j, t),
+        _ => {
+            eprintln!("warning: order-check samples not found in {}", ORDER_DIR);
+            return Vec::new();
+        }
+    };
+    let expected = json_keys(&sample_json);
+    let mut rows = Vec::new();
+    let cases: [(&'static str, Convert, &str, fn(&str) -> Vec<String>); 2] = [
+        ("json_to_toon", json_to_toon, &sample_json, toon_keys),
+        ("toon_to_json", toon_to_json, &sample_toon, json_keys),
+    ];
+    for (operation, convert, sample, extract) in cases {
+        let Some(convert) = convert else { continue };
+        let (preserved, detail) = match convert(sample) {
+            Ok(out) => {
+                let got = extract(&out);
+                if got == expected { (true, String::new()) } else { (false, format!("got {}", got.join(","))) }
+            }
+            Err(e) => (false, format!("exception: {}", e)),
+        };
+        // keep the hand-built results JSON valid: no quotes/backslashes, short
+        let detail: String = detail
+            .chars()
+            .map(|c| if c == '"' || c == '\\' || c.is_control() { '\'' } else { c })
+            .take(127)
+            .collect();
+        rows.push(OrderRow { library, operation, preserved, detail });
+    }
+    rows
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
@@ -379,6 +540,33 @@ fn main() {
             "    {{\"library\": \"{}\", \"operation\": \"{}\", \"throughput_mb_s\": {:.4}, \"docs_per_sec\": {:.2}, \"success_rate\": {:.4}, \"total_time_s\": {:.6}}}{}\n",
             r.library, r.operation, r.throughput_mb_s, r.docs_per_sec, r.success_rate, r.total_time_s,
             if i + 1 < results.len() { "," } else { "" }
+        ));
+    }
+    out.push_str("  ],\n  \"order_check\": [\n");
+
+    // Key order per library and direction. toon-rust goes through
+    // serde_json::Value (what it takes), exactly as in the timed rows above.
+    let mut order_rows = check_order(
+        "ctoon",
+        Some(&|s| ctoon::json_to_toon(s).map_err(|e| format!("{:?}", e))),
+        Some(&|s| ctoon::toon_to_json(s).map_err(|e| format!("{:?}", e))),
+    );
+    order_rows.extend(check_order(
+        "toon-rust",
+        Some(&|s| {
+            let val = serde_json::from_str::<JsonValue>(s).map_err(|e| e.to_string())?;
+            encode_default(&val).map_err(|e| format!("{:?}", e))
+        }),
+        Some(&|s| {
+            let val = decode_default::<JsonValue>(s).map_err(|e| format!("{:?}", e))?;
+            serde_json::to_string(&val).map_err(|e| e.to_string())
+        }),
+    ));
+    for (i, r) in order_rows.iter().enumerate() {
+        out.push_str(&format!(
+            "    {{\"library\": \"{}\", \"operation\": \"{}\", \"preserved\": {}, \"detail\": \"{}\"}}{}\n",
+            r.library, r.operation, r.preserved, r.detail,
+            if i + 1 < order_rows.len() { "," } else { "" }
         ));
     }
     out.push_str("  ]\n}\n");

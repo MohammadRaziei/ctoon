@@ -147,18 +147,39 @@ number to combine them into.
 
 ## Key order preservation
 
-C and C++ run one extra, fixed check: a deliberately
-non-alphabetical sample (nested object, array of objects) round-tripped
-through each library, then checked with a `"key":` regex/scanner against
-the JSON text - not a full structural diff, just "did the keys come back
-in the same order they went in". Recorded as an `"order_check"` array
-(`{library, preserved, detail}`) in each language's results JSON, and
-rendered as its own small ✓/✗ table under that language's results table
-in the report - with the sample itself shown once, near the top of the
-report, so it's clear exactly what was tested. `detail` is empty on
-success; on failure it says what came back instead (or, more likely for
-a library like TOONc that only *reads* TOON, that a step in the chain
-threw or crashed).
+**Every language and every library** runs one extra, fixed check, one
+direction at a time (no round trip, so a library that only reads or only
+writes TOON still gets a result for the direction it has):
+
+| direction | input | what is checked |
+|---|---|---|
+| `json_to_toon` | `order_check/sample.json` | keys of the TOON output, taken line by line (`key:`, `key[N]:`, or the fields in `key[N]{a,b}:`), must follow the JSON sample's order |
+| `toon_to_json` | `order_check/sample.toon` | keys of the JSON output (`"key":` occurrences) must follow the TOON sample's order |
+
+Both samples are deliberately non-alphabetical (a nested object and an
+array of objects), so sorting or hash-based reordering shows up. The
+comparison is on the *first-occurrence* order of the keys, so the tabular
+form `list[2]{z,a}:` and the expanded `- z: 1` form are equal. Each harness
+carries its own small scanner (a regex where the language has one; no regex
+dependency in C, C++, Rust and Zig) and reads the two shared sample files,
+so the sample is defined once.
+
+Recorded as an `"order_check"` array (`{library, operation, preserved,
+detail}`, `operation` being `json_to_toon` or `toon_to_json`) in each
+language's results JSON, and rendered as a small table (one row per
+library, a ✓/✗ cell per direction, `–` for a direction the library does not
+have) under that language's results, with the two samples shown once near
+the top of the page. `detail` is empty on success; on failure it lists the
+order that came out (`got apple,zebra,...`) or the error that was raised.
+
+Two things to know when reading it:
+
+- **Go.** gotoon and toon-go take native Go values, so, as in the timed rows,
+  the JSON sample goes through `encoding/json` into a `map` first, and Go maps
+  have no order. Their ✗ reflects that, not necessarily what the library could
+  do with an ordered input.
+- **TOONc** only reads TOON, so it only has the `toon_to_json` check (gotoon
+  likewise only has `json_to_toon`).
 
 ## Scaling
 

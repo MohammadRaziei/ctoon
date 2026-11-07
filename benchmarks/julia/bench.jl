@@ -57,7 +57,74 @@ end
 json_escape(s::AbstractString) = replace(s, "\\" => "\\\\", "\"" => "\\\"")
 json_num(x::Real) = isfinite(x) ? string(Float64(x)) : "0"
 
-function write_results_json(path, language, n_files, n_bytes, results)
+# ------------------------------------------------------------ order check --
+# Key order, one direction at a time, against the shared samples in
+# benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+# a nested object, a tabular array):
+#   json_to_toon -- keys of the TOON output must follow the order of sample.json
+#   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+# Both reduce to "first-occurrence order of the keys", so the tabular header
+# `list[2]{z,a}:` and the expanded `- z: 1` form compare equal.
+# (\x22 is the double quote, so the regexes need no escaping.)
+const ORDER_DIR = joinpath(@__DIR__, "..", "order_check")
+const JSON_KEY_RE = r"\x22((?:[^\x22\\]|\\.)*)\x22\s*:"
+const TOON_KEY_RE = r"^\s*(?:-\s+)*(\x22(?:[^\x22\\]|\\.)*\x22|[^\s:\[\]{}\x22,]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:"
+
+struct OrderRow
+    library::String
+    operation::String
+    preserved::Bool
+    detail::String
+end
+
+function unique_keys(keys)
+    seen = String[]
+    for k in keys
+        k = String(strip(k))
+        if length(k) >= 2 && startswith(k, '"') && endswith(k, '"')
+            k = chop(k; head = 1, tail = 1)
+        end
+        if !isempty(k) && !(k in seen)
+            push!(seen, k)
+        end
+    end
+    return seen
+end
+
+json_keys(text) = unique_keys([String(m.captures[1]) for m in eachmatch(JSON_KEY_RE, text)])
+
+function toon_keys(text)
+    keys = String[]
+    for line in split(text, '\n')
+        m = match(TOON_KEY_RE, line)
+        m === nothing && continue
+        push!(keys, String(m.captures[1]))
+        m.captures[2] === nothing || append!(keys, String.(split(m.captures[2], r"[,|\t]")))
+    end
+    return unique_keys(keys)
+end
+
+# One row per direction; `nothing` (the library has no such direction) adds no row.
+function check_order(library, json_to_toon, toon_to_json)
+    sample_json = read(joinpath(ORDER_DIR, "sample.json"), String)
+    sample_toon = read(joinpath(ORDER_DIR, "sample.toon"), String)
+    expected = json_keys(sample_json)
+    rows = OrderRow[]
+    for (op, fn, sample, extract) in (("json_to_toon", json_to_toon, sample_json, toon_keys),
+                                      ("toon_to_json", toon_to_json, sample_toon, json_keys))
+        fn === nothing && continue
+        preserved, detail = try
+            got = extract(String(fn(sample)))
+            got == expected ? (true, "") : (false, "got " * join(got, ","))
+        catch e
+            (false, first("exception: " * sprint(showerror, e), 127))
+        end
+        push!(rows, OrderRow(library, op, preserved, detail))
+    end
+    return rows
+end
+
+function write_results_json(path, language, n_files, n_bytes, results, order_rows)
     open(path, "w") do io
         println(io, "{")
         println(io, "  \"language\": \"$(json_escape(language))\",")
@@ -73,6 +140,13 @@ function write_results_json(path, language, n_files, n_bytes, results)
             println(io, "      \"success_rate\": $(json_num(r.success_rate)),")
             println(io, "      \"total_time_s\": $(json_num(r.total_time_s))")
             println(io, "    }$comma")
+        end
+        println(io, "  ],")
+        println(io, "  \"order_check\": [")
+        for (i, r) in enumerate(order_rows)
+            comma = i == length(order_rows) ? "" : ","
+            println(io, "    {\"library\": \"$(json_escape(r.library))\", \"operation\": \"$(json_escape(r.operation))\", " *
+                        "\"preserved\": $(r.preserved), \"detail\": \"$(json_escape(r.detail))\"}$comma")
         end
         println(io, "  ]")
         println(io, "}")
@@ -319,7 +393,14 @@ function main()
     seconds, ok, bytes = bench_struct_to_toon(files, log_fail, natives, has_native)
     record!(results, "ctoon", "struct_to_toon", seconds, ok, length(files) * REPEATS, bytes)
 
-    write_results_json(results_path, "julia", length(files), total_json_bytes, results)
+    order_rows = try
+        check_order("ctoon", CToon.json_to_toon, CToon.toon_to_json)
+    catch e
+        println(stderr, "warning: key-order check skipped: $e")
+        OrderRow[]
+    end
+
+    write_results_json(results_path, "julia", length(files), total_json_bytes, results, order_rows)
     println("\nResults written to $results_path")
     if log_io !== nothing
         println("Debug log written to $log_path")

@@ -44,7 +44,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alpkeskin/gotoon"
@@ -77,6 +80,130 @@ type result struct {
 
 var results []result
 var logFile *os.File
+
+// ------------------------------------------------------------ order check --
+// Key order, one direction at a time, against the shared samples in
+// benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+// a nested object, a tabular array):
+//   json_to_toon -- keys of the TOON output must follow the order of sample.json
+//   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+// Both reduce to "first-occurrence order of the keys", so the tabular header
+// `list[2]{z,a}:` and the expanded `- z: 1` form compare equal.
+
+type orderResult struct {
+	Library   string `json:"library"`
+	Operation string `json:"operation"`
+	Preserved bool   `json:"preserved"`
+	Detail    string `json:"detail"`
+}
+
+var (
+	jsonKeyRE  = regexp.MustCompile(`"((?:[^"\\]|\\.)*)"\s*:`)
+	toonKeyRE  = regexp.MustCompile(`^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:`)
+	fieldSepRE = regexp.MustCompile(`[,|\t]`)
+)
+
+func uniqueKeys(keys []string) []string {
+	seen := []string{}
+	for _, k := range keys {
+		k = strings.TrimSpace(k)
+		if len(k) >= 2 && k[0] == '"' && k[len(k)-1] == '"' {
+			k = k[1 : len(k)-1]
+		}
+		dup := k == ""
+		for _, x := range seen {
+			if x == k {
+				dup = true
+			}
+		}
+		if !dup {
+			seen = append(seen, k)
+		}
+	}
+	return seen
+}
+
+func jsonKeys(text string) []string {
+	var keys []string
+	for _, m := range jsonKeyRE.FindAllStringSubmatch(text, -1) {
+		keys = append(keys, m[1])
+	}
+	return uniqueKeys(keys)
+}
+
+func toonKeys(text string) []string {
+	var keys []string
+	for _, line := range strings.Split(text, "\n") {
+		m := toonKeyRE.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		keys = append(keys, m[1])
+		if m[2] != "" {
+			keys = append(keys, fieldSepRE.Split(m[2], -1)...)
+		}
+	}
+	return uniqueKeys(keys)
+}
+
+// orderDir finds benchmarks/order_check next to this source file, falling
+// back to ../order_check from the working directory.
+func orderDir() string {
+	if _, file, _, ok := runtime.Caller(0); ok {
+		d := filepath.Join(filepath.Dir(file), "..", "order_check")
+		if _, err := os.Stat(d); err == nil {
+			return d
+		}
+	}
+	return filepath.Join("..", "order_check")
+}
+
+// checkOrder returns one row per direction; a nil function (the library has
+// no such direction) adds no row.
+func checkOrder(library string, jsonToToon, toonToJSON func(string) (string, error)) []orderResult {
+	dir := orderDir()
+	sj, err1 := os.ReadFile(filepath.Join(dir, "sample.json"))
+	st, err2 := os.ReadFile(filepath.Join(dir, "sample.toon"))
+	if err1 != nil || err2 != nil {
+		fmt.Fprintf(os.Stderr, "warning: order-check samples not found in %s\n", dir)
+		return nil
+	}
+	expected := jsonKeys(string(sj))
+	var rows []orderResult
+	for _, c := range []struct {
+		op      string
+		fn      func(string) (string, error)
+		sample  string
+		extract func(string) []string
+	}{
+		{"json_to_toon", jsonToToon, string(sj), toonKeys},
+		{"toon_to_json", toonToJSON, string(st), jsonKeys},
+	} {
+		if c.fn == nil {
+			continue
+		}
+		row := orderResult{Library: library, Operation: c.op}
+		out, err := c.fn(c.sample)
+		if err != nil {
+			row.Detail = ("exception: " + err.Error())
+			if len(row.Detail) > 127 {
+				row.Detail = row.Detail[:127]
+			}
+		} else if got := c.extract(out); strings.Join(got, "\n") == strings.Join(expected, "\n") {
+			row.Preserved = true
+		} else {
+			row.Detail = "got " + strings.Join(got, ",")
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func jsonToValue(s string) (interface{}, error) {
+	var v interface{}
+	err := json.Unmarshal([]byte(s), &v)
+	return v, err
+}
 
 func logFail(library, operation, path string, err error) {
 	if logFile == nil {
@@ -525,11 +652,50 @@ func main() {
 			Files int `json:"files"`
 			Bytes int `json:"bytes"`
 		} `json:"corpus"`
-		Results []result `json:"results"`
+		Results    []result      `json:"results"`
+		OrderCheck []orderResult `json:"order_check"`
 	}{Language: "go"}
 	out.Corpus.Files = len(files)
 	out.Corpus.Bytes = totalJSONBytes
 	out.Results = results
+
+	// Key order, per library and direction. gotoon has no TOON decoder, so it
+	// only gets json_to_toon. The peers go through encoding/json's map (as in
+	// the timed rows above), which is exactly where Go loses key order.
+	out.OrderCheck = append(out.OrderCheck, checkOrder("ctoon",
+		func(s string) (string, error) {
+			t, err := ctoon.JSONToToon(s, ctoon.DefaultEncodeOptions())
+			return string(t), err
+		},
+		func(s string) (string, error) {
+			j, err := ctoon.ToonToJSON(s, 0)
+			return string(j), err
+		})...)
+	out.OrderCheck = append(out.OrderCheck, checkOrder("gotoon",
+		func(s string) (string, error) {
+			v, err := jsonToValue(s)
+			if err != nil {
+				return "", err
+			}
+			t, err := gotoon.Encode(v)
+			return string(t), err
+		}, nil)...)
+	out.OrderCheck = append(out.OrderCheck, checkOrder("toon-go",
+		func(s string) (string, error) {
+			v, err := jsonToValue(s)
+			if err != nil {
+				return "", err
+			}
+			return toongo.MarshalString(v)
+		},
+		func(s string) (string, error) {
+			v, err := toongo.DecodeString(s)
+			if err != nil {
+				return "", err
+			}
+			j, err := json.Marshal(v)
+			return string(j), err
+		})...)
 
 	f, err := os.Create(resultsPath)
 	if err != nil {

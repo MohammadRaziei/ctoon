@@ -57,14 +57,27 @@ CTOON_COLOR = "#4dabf7"  # the documentation site's accent color (docs/ctoon-doc
                           # visual anchor so the same bar is always the
                           # same color from section to section.
 
-ORDER_CHECK_SAMPLE = (
-    '{"zebra": 1, "apple": 2, "mango": 3, "nested": {"beta": true, "alpha": false}, '
-    '"list": [{"z": 1, "a": 2}, {"z": 3, "a": 4}]}'
-)  # same literal string every language's bench runner checks against
-
-
 REPO_ROOT = os.path.normpath(os.path.join(HERE, "..", ".."))
 DOCS_DIR = os.path.join(REPO_ROOT, "docs")
+
+
+def _group_order_check(rows):
+    """[{library, operation, preserved, detail}] -> one row per library with a
+    cell per direction ({preserved, detail} or None when the library has no
+    such direction). Rows without an "operation" are from before the check
+    ran per direction and are skipped; re-run the benchmarks to refresh them."""
+    by_lib = {}
+    for r in rows:
+        op = r.get("operation")
+        if op in ("json_to_toon", "toon_to_json"):
+            lib = by_lib.setdefault(r["library"], {"library": r["library"],
+                                                   "json_to_toon": None, "toon_to_json": None})
+            lib[op] = {"preserved": r.get("preserved", False), "detail": r.get("detail", "")}
+    for lib in by_lib.values():
+        lib["detail"] = "; ".join(
+            f"{op}: {lib[op]['detail']}" for op in ("json_to_toon", "toon_to_json")
+            if lib[op] and lib[op]["detail"])
+    return list(by_lib.values())
 
 
 def _read_text(path, what):
@@ -271,7 +284,7 @@ new Chart(document.getElementById('chart-{language}-mem'), {{
 
     has_memory = any(r.get("peak_rss_mb") is not None for r in table_rows)
 
-    order_check = lang_data.get("order_check", [])
+    order_check = _group_order_check(lang_data.get("order_check", []))
 
     return {
         "key": language,
@@ -344,7 +357,8 @@ def build(results_dir, output_path):
         embedded_json=json.dumps(embedded),
         chart_scripts="\n".join(chart_scripts),
         system_info=system_info,
-        order_check_sample=ORDER_CHECK_SAMPLE,
+        order_check_sample_json=_read_text(os.path.join(REPO_ROOT, "benchmarks", "order_check", "sample.json"), "benchmarks/order_check/sample.json").strip(),
+        order_check_sample_toon=_read_text(os.path.join(REPO_ROOT, "benchmarks", "order_check", "sample.toon"), "benchmarks/order_check/sample.toon").rstrip(),
         all_verified=all(row["verified"] for sec in sections for row in sec["rows"]),
     )
 

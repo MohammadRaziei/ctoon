@@ -132,73 +132,143 @@ static int cmp_bench_file_ptr_by_len(const void *a, const void *b) {
 }
 
 /* ------------------------------------------------------------ order check --
- * A fixed, deliberately non-alphabetical sample -- if a library reorders
- * keys, this catches it. extract_key_order() is a small hand-written
- * scanner (no regex dependency) that pulls out the sequence of `"key":`
- * occurrences from a JSON text; comparing that sequence between the
- * sample and its round-tripped output is enough for a single-level-deep,
- * honest yes/no per library, the same check bench.py does. */
-#define ORDER_CHECK_MAX_KEYS 16
-/* A char[] (not `const char *`) -- a real, separate, writable array
-   the compiler fills from the literal at load time, not a pointer
-   into read-only literal storage. ctoon_read_json's `dat` param is
-   deliberately `char *` (it supports in-situ parsing), so passing a
-   genuinely mutable buffer here is correct by construction: no
-   cast-away-const, no defensive copy, no core-library API change --
-   this stays entirely local to the benchmark. (flg=0 below means
-   CTOON_READ_INSITU is off, so this buffer isn't actually written
-   through anyway -- but it's still the right *type* to hand a
-   function whose contract says it might be.) */
-static char ORDER_CHECK_SAMPLE_JSON[] =
-    "{\"zebra\": 1, \"apple\": 2, \"mango\": 3, "
-    "\"nested\": {\"beta\": true, \"alpha\": false}, "
-    "\"list\": [{\"z\": 1, \"a\": 2}, {\"z\": 3, \"a\": 4}]}";
+ * Key order, checked one direction at a time against the shared samples in
+ * benchmarks/order_check/ (sample.json / sample.toon: deliberately
+ * non-alphabetical keys, a nested object and a tabular array):
+ *   json_to_toon -- keys of the TOON output must follow the order of sample.json
+ *   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+ * Both reduce to "first-occurrence order of the keys" (a key repeated in every
+ * row of an array counts once), so the tabular header form `list[2]{z,a}:`
+ * and the expanded `- z: 1` form compare equal. Hand-written scanners, no
+ * regex dependency. */
+#define ORDER_CHECK_MAX_KEYS 32
+#define ORDER_KEY_LEN 32
+typedef char order_keys[ORDER_CHECK_MAX_KEYS][ORDER_KEY_LEN];
 
-static int extract_key_order(const char *text, char keys[][32]) {
+static int order_add_key(order_keys keys, int n, const char *s, size_t len) {
+    while (len && (*s == ' ' || *s == '\t')) { s++; len--; }
+    while (len && (s[len - 1] == ' ' || s[len - 1] == '\t')) len--;
+    if (len >= 2 && s[0] == '"' && s[len - 1] == '"') { s++; len -= 2; }
+    if (!len) return n;
+    if (len >= ORDER_KEY_LEN) len = ORDER_KEY_LEN - 1;
+    for (int i = 0; i < n; i++)
+        if (strlen(keys[i]) == len && memcmp(keys[i], s, len) == 0) return n;
+    if (n >= ORDER_CHECK_MAX_KEYS) return n;
+    memcpy(keys[n], s, len);
+    keys[n][len] = '\0';
+    return n + 1;
+}
+
+/* Every `"key":` in a JSON text, first occurrence only. */
+static int order_json_keys(const char *text, order_keys keys) {
     int n = 0;
-    const char *p = text;
-    while (*p && n < ORDER_CHECK_MAX_KEYS) {
-        if (*p == '"') {
-            const char *start = p + 1;
-            const char *end = strchr(start, '"');
-            if (!end) break;
-            const char *q = end + 1;
-            while (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r') q++;
-            if (*q == ':') {
-                size_t len = (size_t)(end - start);
-                if (len >= sizeof(keys[0])) len = sizeof(keys[0]) - 1;
-                memcpy(keys[n], start, len);
-                keys[n][len] = '\0';
-                n++;
-            }
-            p = end + 1;
-        } else {
-            p++;
-        }
+    for (const char *p = text; *p; ) {
+        if (*p != '"') { p++; continue; }
+        const char *start = p + 1, *q = start;
+        while (*q && *q != '"') q += (*q == '\\' && q[1]) ? 2 : 1;
+        if (!*q) break;
+        const char *r = q + 1;
+        while (*r == ' ' || *r == '\t' || *r == '\n' || *r == '\r') r++;
+        if (*r == ':') n = order_add_key(keys, n, start, (size_t)(q - start));
+        p = q + 1;
     }
     return n;
 }
 
-static bool order_preserved(const char *output_json) {
-    char expected[ORDER_CHECK_MAX_KEYS][32], got[ORDER_CHECK_MAX_KEYS][32];
-    int n_expected = extract_key_order(ORDER_CHECK_SAMPLE_JSON, expected);
-    int n_got = extract_key_order(output_json, got);
-    if (n_expected != n_got) return false;
-    for (int i = 0; i < n_expected; i++) {
-        if (strcmp(expected[i], got[i]) != 0) return false;
+/* Line by line: strip indent and `- ` list markers, then `key:`,
+   `key[N]:` or `key[N]{f1,f2}:` -- the key and, for the tabular form, the
+   fields in the braces. Row lines (`1,2`) have no `:` after the token. */
+static int order_toon_keys(const char *text, order_keys keys) {
+    int n = 0;
+    const char *p = text;
+    while (*p) {
+        const char *eol = strchr(p, '\n');
+        const char *end = eol ? eol : p + strlen(p);
+        const char *s = p;
+        while (s < end && *s == ' ') s++;
+        while (s + 1 < end && s[0] == '-' && s[1] == ' ') { s += 2; while (s < end && *s == ' ') s++; }
+        const char *k = s, *q = s;
+        if (q < end && *q == '"') {
+            q++;
+            while (q < end && *q != '"') q += (*q == '\\' && q + 1 < end) ? 2 : 1;
+            if (q < end) q++;
+        } else {
+            while (q < end && !strchr(" \t:[{,\"", *q)) q++;
+        }
+        const char *key_end = q, *fields = NULL, *fields_end = NULL;
+        if (q < end && *q == '[') { while (q < end && *q != ']') q++; if (q < end) q++; }
+        if (q < end && *q == '{') {
+            fields = q + 1;
+            while (q < end && *q != '}') q++;
+            fields_end = q;
+            if (q < end) q++;
+        }
+        if (q < end && *q == ':' && key_end > k) {
+            n = order_add_key(keys, n, k, (size_t)(key_end - k));
+            if (fields) {
+                const char *f = fields;
+                while (f <= fields_end) {
+                    const char *g = f;
+                    while (g < fields_end && *g != ',' && *g != '|' && *g != '\t') g++;
+                    n = order_add_key(keys, n, f, (size_t)(g - f));
+                    f = g + 1;
+                }
+            }
+        }
+        p = eol ? eol + 1 : end;
     }
-    return true;
+    return n;
 }
 
-typedef struct { char library[32]; bool preserved; char detail[64]; } order_check_result;
-static order_check_result g_order_checks[4];
+typedef struct {
+    char library[32];
+    char operation[16];
+    bool preserved;
+    char detail[128];
+} order_check_result;
+static order_check_result g_order_checks[16];
 static int g_order_check_count = 0;
 
-static void record_order_check(const char *library, bool preserved, const char *detail) {
+static void record_order_check(const char *library, const char *operation,
+                               bool preserved, const char *detail) {
     order_check_result *r = &g_order_checks[g_order_check_count++];
     snprintf(r->library, sizeof(r->library), "%s", library);
+    snprintf(r->operation, sizeof(r->operation), "%s", operation);
     r->preserved = preserved;
     snprintf(r->detail, sizeof(r->detail), "%s", detail ? detail : "");
+}
+
+/* Compare the key order found in `got` against `expected`; when it differs
+   the detail lists what came out ("got apple,zebra,..."). */
+static void record_order_keys(const char *library, const char *operation,
+                              order_keys expected, int ne, order_keys got, int ng) {
+    bool same = (ne == ng);
+    for (int i = 0; same && i < ne; i++) same = strcmp(expected[i], got[i]) == 0;
+    char detail[128] = "";
+    if (!same) {
+        size_t len = (size_t)snprintf(detail, sizeof(detail), "got ");
+        for (int i = 0; i < ng && len + 2 < sizeof(detail); i++) {
+            for (const char *c = got[i]; *c && len + 2 < sizeof(detail); c++)
+                detail[len++] = (*c == '"' || *c == '\\') ? '\'' : *c;
+            if (i + 1 < ng && len + 2 < sizeof(detail)) detail[len++] = ',';
+        }
+        detail[len] = '\0';
+    }
+    record_order_check(library, operation, same, detail);
+}
+
+static char *order_read_sample(const char *name) {
+    char path[1024];
+    snprintf(path, sizeof(path), "%s/%s", CTOON_BENCH_ORDER_DIR, name);
+    FILE *f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long n = ftell(f);
+    rewind(f);
+    char *buf = (char *)malloc((size_t)n + 1);
+    if (buf) { size_t got = fread(buf, 1, (size_t)n, f); buf[got] = '\0'; }
+    fclose(f);
+    return buf;
 }
 
 static void log_fail(const char *library, const char *operation,
@@ -702,35 +772,37 @@ static void bench_toonc_scaling(bench_file **sorted, size_t n) {
 }
 
 static void run_order_checks(void) {
-    /* ctoon_read_json_const() -- the const-safe counterpart to
-       ctoon_read_json(), same pattern ctoon_read() already uses for
-       TOON input (see its own doc comment in ctoon.h). */
-    ctoon_doc *doc1 = ctoon_read_json_const(ORDER_CHECK_SAMPLE_JSON, strlen(ORDER_CHECK_SAMPLE_JSON), 0);
-    if (!doc1) { record_order_check("ctoon", false, "sample failed to parse as JSON"); return; }
-    size_t toon_len = 0;
-    char *toon = ctoon_write(doc1, &toon_len);
-    ctoon_doc_free(doc1);
-    if (!toon) { record_order_check("ctoon", false, "ctoon_write failed on sample"); return; }
+    char *json = order_read_sample("sample.json"), *toon = order_read_sample("sample.toon");
+    if (!json || !toon) {
+        fprintf(stderr, "warning: order-check samples not found in %s\n", CTOON_BENCH_ORDER_DIR);
+        free(json); free(toon);
+        return;
+    }
+    order_keys expected, got;
+    int ne = order_json_keys(json, expected), ng;
 
-    ctoon_doc *doc2 = ctoon_read(toon, toon_len, 0);
-    if (doc2) {
-        size_t jlen = 0;
-        ctoon_write_err werr; memset(&werr, 0, sizeof(werr));
-        char *json_out = ctoon_doc_to_json(doc2, 2, CTOON_WRITE_NOFLAG, NULL, &jlen, &werr);
-        ctoon_doc_free(doc2);
-        if (json_out) {
-            record_order_check("ctoon", order_preserved(json_out), "");
-            free(json_out);
-        } else {
-            record_order_check("ctoon", false, "ctoon_doc_to_json failed on roundtrip");
-        }
+    /* ctoon, JSON -> TOON */
+    size_t out_len = 0;
+    char *out = ctoon_json_to_toon(json, strlen(json), &out_len);
+    if (out) {
+        ng = order_toon_keys(out, got);
+        record_order_keys("ctoon", "json_to_toon", expected, ne, got, ng);
+        free(out);
     } else {
-        record_order_check("ctoon", false, "ctoon_read failed on its own TOON output");
+        record_order_check("ctoon", "json_to_toon", false, "ctoon_json_to_toon failed on the sample");
     }
 
-    /* TOONc has no JSON parser at all, so it can't do a JSON->TOON->JSON
-       roundtrip on its own -- it's only fed the TOON text ctoon already
-       produced above (same as bench_toonc() does for the timed run). */
+    /* ctoon, TOON -> JSON */
+    out = ctoon_toon_to_json(toon, strlen(toon), &out_len);
+    if (out) {
+        ng = order_json_keys(out, got);
+        record_order_keys("ctoon", "toon_to_json", expected, ne, got, ng);
+        free(out);
+    } else {
+        record_order_check("ctoon", "toon_to_json", false, "ctoon_toon_to_json failed on the sample");
+    }
+
+    /* TOONc has no JSON parser, so only TOON -> JSON exists for it. */
     fflush(stdout);
     int devnull = open("/dev/null", O_WRONLY);
     int saved_stdout = dup(STDOUT_FILENO);
@@ -743,16 +815,17 @@ static void run_order_checks(void) {
         if (mem) {
             TOONc_toJSON(obj, mem, 0);
             fclose(mem);
-            record_order_check("TOONc", order_preserved(membuf), "");
+            ng = order_json_keys(membuf, got);
+            record_order_keys("TOONc", "toon_to_json", expected, ne, got, ng);
             free(membuf);
         } else {
-            record_order_check("TOONc", false, "open_memstream failed");
+            record_order_check("TOONc", "toon_to_json", false, "open_memstream failed");
         }
         TOONc_free(obj);
     } else {
-        record_order_check("TOONc", false, "TOONc_parseString failed on ctoon's TOON output for the sample");
+        record_order_check("TOONc", "toon_to_json", false, "TOONc_parseString failed on the sample");
     }
-    free(toon);
+    free(json); free(toon);
 }
 
 static void write_results_json(size_t n_files, size_t total_json_bytes) {
@@ -786,8 +859,8 @@ static void write_results_json(size_t n_files, size_t total_json_bytes) {
     for (int i = 0; i < g_order_check_count; i++) {
         order_check_result *r = &g_order_checks[i];
         fprintf(f,
-            "    {\"library\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
-            r->library, r->preserved ? "true" : "false", r->detail,
+            "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
+            r->library, r->operation, r->preserved ? "true" : "false", r->detail,
             (i + 1 < g_order_check_count) ? "," : "");
     }
     fprintf(f, "  ]\n}\n");

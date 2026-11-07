@@ -19,6 +19,9 @@ with open(src_path, encoding="utf-8") as f:
 
 libs = {r["library"] for r in src["results"]}
 dst["results"] = [r for r in dst["results"] if r["library"] not in libs] + src["results"]
+# key-order rows (one per library and direction) are merged the same way
+order_libs = {r["library"] for r in src.get("order_check", [])}
+dst["order_check"] = [r for r in dst.get("order_check", []) if r["library"] not in order_libs] + src.get("order_check", [])
 
 with open(dst_path, "w", encoding="utf-8") as f:
     json.dump(dst, f, indent=2)

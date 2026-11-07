@@ -198,11 +198,99 @@ function bench(manifestPath, resultsJsonPath, logPath)
     tW = toc;
     results{end+1} = record('ctoon', 'struct_to_toon', bytesW, opsW, tW, numel(files) * repeats, repeats); %#ok<AGROW>
 
-    write_results_json(resultsJsonPath, numel(files), totalJSONBytes, results);
+    orderRows = {};
+    try
+        orderRows = checkOrder('ctoon', @(s) ctoon.json_to_toon(s), @(s) ctoon.toon_to_json(s));
+    catch err
+        fprintf('warning: key-order check skipped: %s\n', err.message);
+    end
+
+    write_results_json(resultsJsonPath, numel(files), totalJSONBytes, results, orderRows);
 
     if logFid ~= -1
         fclose(logFid);
         fprintf('Debug log written to %s\n', logPath);
+    end
+end
+
+function rows = checkOrder(library, jsonToToon, toonToJson)
+% Key order, one direction at a time, against the shared samples in
+% benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+% a nested object, a tabular array):
+%   json_to_toon -- keys of the TOON output must follow the order of sample.json
+%   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+% Both reduce to "first-occurrence order of the keys", so the tabular header
+% `list[2]{z,a}:` and the expanded `- z: 1` form compare equal.
+% Returns a cell array of structs; an empty function handle (the library has no
+% such direction) adds no row.
+    here = fileparts(mfilename('fullpath'));
+    sampleDir = fullfile(here, '..', 'order_check');
+    sampleJson = fileread(fullfile(sampleDir, 'sample.json'));
+    sampleToon = fileread(fullfile(sampleDir, 'sample.toon'));
+    expected = jsonKeys(sampleJson);
+    ops = {'json_to_toon', jsonToToon, sampleJson, @toonKeys; ...
+           'toon_to_json', toonToJson, sampleToon, @jsonKeys};
+    rows = {};
+    for k = 1:size(ops, 1)
+        convert = ops{k, 2};
+        extract = ops{k, 4};
+        if isempty(convert)
+            continue;
+        end
+        detail = '';
+        try
+            got = extract(convert(ops{k, 3}));
+            preserved = isequal(got, expected);
+            if ~preserved
+                detail = ['got ' strjoin(got, ',')];
+            end
+        catch err
+            preserved = false;
+            detail = ['exception: ' err.message];
+        end
+        detail = strrep(strrep(detail, '"', ''''), '\', '/');   % keep the JSON valid
+        detail = detail(1:min(end, 127));
+        rows{end+1} = struct('library', library, 'operation', ops{k, 1}, ...
+                             'preserved', preserved, 'detail', detail); %#ok<AGROW>
+    end
+end
+
+function keys = jsonKeys(text)
+% Every "key": in a JSON text, first occurrence only.
+    tok = regexp(text, '"((?:[^"\\]|\\.)*)"\s*:', 'tokens');
+    keys = uniqueKeys(cellfun(@(t) t{1}, tok, 'UniformOutput', false));
+end
+
+function keys = toonKeys(text)
+% Line by line: strip indent and "- " list markers, then key:, key[N]: or
+% key[N]{f1,f2}: -- the key and, for the tabular form, the fields.
+    keys = {};
+    lines = strsplit(text, char(10));
+    for i = 1:numel(lines)
+        tok = regexp(lines{i}, ...
+            '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:', ...
+            'tokens', 'once');
+        if isempty(tok)
+            continue;
+        end
+        keys{end+1} = tok{1}; %#ok<AGROW>
+        if numel(tok) >= 2 && ~isempty(tok{2})
+            keys = [keys, strsplit(tok{2}, {',', '|', char(9)})]; %#ok<AGROW>
+        end
+    end
+    keys = uniqueKeys(keys);
+end
+
+function out = uniqueKeys(keys)
+    out = {};
+    for i = 1:numel(keys)
+        k = strtrim(keys{i});
+        if numel(k) >= 2 && k(1) == '"' && k(end) == '"'
+            k = k(2:end-1);
+        end
+        if ~isempty(k) && ~any(strcmp(out, k))
+            out{end+1} = k; %#ok<AGROW>
+        end
     end
 end
 
@@ -334,10 +422,11 @@ function r = record(library, operation, bytes, ops, seconds, attempted, repeats)
         'success_rate', successRate, 'total_time_s', seconds);
 end
 
-function write_results_json(path, nFiles, totalBytes, results)
+function write_results_json(path, nFiles, totalBytes, results, orderRows)
     out = struct('language', 'matlab', ...
         'corpus', struct('files', nFiles, 'bytes', totalBytes), ...
-        'results', {results});
+        'results', {results}, ...
+        'order_check', {orderRows});
     fid = fopen(path, 'w');
     if fid == -1
         fprintf('warning: could not write %s\n', path);

@@ -1,0 +1,9 @@
+zebra: 1
+apple: 2
+mango: 3
+nested:
+  beta: true
+  alpha: false
+list[2]{z,a}:
+  1,2
+  3,4

@@ -83,6 +83,64 @@ function dumpOutputs(dumpRoot, library, files, ops) {
   }
 }
 
+// ------------------------------------------------------------ order check --
+// Key order, one direction at a time, against the shared samples in
+// benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+// a nested object, a tabular array):
+//   json_to_toon -- keys of the TOON output must follow the order of sample.json
+//   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+// Both reduce to "first-occurrence order of the keys", so the tabular header
+// `list[2]{z,a}:` and the expanded `- z: 1` form compare equal.
+const ORDER_DIR = new URL("../order_check/", import.meta.url);
+const JSON_KEY_RE = /"((?:[^"\\]|\\.)*)"\s*:/g;
+const TOON_KEY_RE = /^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:/;
+
+function uniqueKeys(keys) {
+  const seen = [];
+  for (let k of keys) {
+    k = k.trim();
+    if (k.length >= 2 && k[0] === '"' && k[k.length - 1] === '"') k = k.slice(1, -1);
+    if (k && !seen.includes(k)) seen.push(k);
+  }
+  return seen;
+}
+const jsonKeys = (text) => uniqueKeys([...text.matchAll(JSON_KEY_RE)].map((m) => m[1]));
+function toonKeys(text) {
+  const keys = [];
+  for (const line of text.split("\n")) {
+    const m = TOON_KEY_RE.exec(line);
+    if (!m) continue;
+    keys.push(m[1]);
+    if (m[2]) keys.push(...m[2].split(/[,|\t]/));
+  }
+  return uniqueKeys(keys);
+}
+
+// -> [{library, operation, preserved, detail}]; a null function (the library
+// has no such direction) adds no row.
+function checkOrder(library, jsonToToon, toonToJson) {
+  const sampleJson = readFileSync(new URL("sample.json", ORDER_DIR), "utf8");
+  const sampleToon = readFileSync(new URL("sample.toon", ORDER_DIR), "utf8");
+  const expected = jsonKeys(sampleJson);
+  const rows = [];
+  for (const [operation, fn, sample, extract] of [
+    ["json_to_toon", jsonToToon, sampleJson, toonKeys],
+    ["toon_to_json", toonToJson, sampleToon, jsonKeys],
+  ]) {
+    if (!fn) continue;
+    let got = null, detail = "";
+    try {
+      got = extract(fn(sample));
+      if (got.join("\n") !== expected.join("\n")) detail = "got " + got.join(",");
+    } catch (e) {
+      got = null;
+      detail = `exception: ${e.message}`.slice(0, 127);
+    }
+    rows.push({ library, operation, preserved: got !== null && detail === "", detail });
+  }
+  return rows;
+}
+
 function main() {
   const [, , manifestPath, resultsJsonPath, logPath] = process.argv;
   if (!manifestPath || !resultsJsonPath) {
@@ -245,6 +303,11 @@ function main() {
         language: "node",
         corpus: { files: files.length, bytes: totalJSONBytes },
         results,
+        order_check: checkOrder(
+          "@toon-format/toon",
+          (text) => encode(JSON.parse(text)),
+          (text) => JSON.stringify(decode(text))
+        ),
       },
       null,
       2

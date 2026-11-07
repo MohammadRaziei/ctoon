@@ -34,6 +34,7 @@ Implementations:
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -56,6 +57,68 @@ except ImportError:
     toons = None
 
 REPEATS = 20
+
+# ------------------------------------------------------------ order check --
+# Key order, one direction at a time, against the shared samples in
+# benchmarks/order_check/ (sample.json / sample.toon: non-alphabetical keys,
+# a nested object, a tabular array):
+#   json_to_toon -- keys of the TOON output must follow the order of sample.json
+#   toon_to_json -- keys of the JSON output must follow the order of sample.toon
+# Both reduce to "first-occurrence order of the keys", so the tabular header
+# `list[2]{z,a}:` and the expanded `- z: 1` form compare equal.
+ORDER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "order_check")
+JSON_KEY_RE = re.compile(r'"((?:[^"\\]|\\.)*)"\s*:')
+TOON_KEY_RE = re.compile(r'^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:')
+
+
+def _unique(keys):
+    seen = []
+    for k in keys:
+        k = k.strip()
+        if len(k) >= 2 and k[0] == k[-1] == '"':
+            k = k[1:-1]
+        if k and k not in seen:
+            seen.append(k)
+    return seen
+
+
+def json_keys(text):
+    return _unique(JSON_KEY_RE.findall(text))
+
+
+def toon_keys(text):
+    keys = []
+    for line in text.splitlines():
+        m = TOON_KEY_RE.match(line)
+        if m:
+            keys.append(m.group(1))
+            if m.group(2):
+                keys.extend(re.split(r"[,|\t]", m.group(2)))
+    return _unique(keys)
+
+
+def check_order(library, json_to_toon_fn, toon_to_json_fn):
+    """-> list of {library, operation, preserved, detail}; a None function
+    (the library has no such direction) adds no row."""
+    with open(os.path.join(ORDER_DIR, "sample.json"), encoding="utf-8") as f:
+        sample_json = f.read()
+    with open(os.path.join(ORDER_DIR, "sample.toon"), encoding="utf-8") as f:
+        sample_toon = f.read()
+    expected = json_keys(sample_json)
+    rows = []
+    for operation, fn, sample, extract in (
+            ("json_to_toon", json_to_toon_fn, sample_json, toon_keys),
+            ("toon_to_json", toon_to_json_fn, sample_toon, json_keys)):
+        if fn is None:
+            continue
+        try:
+            got = extract(fn(sample))
+            detail = "" if got == expected else "got " + ",".join(got)
+        except Exception as e:  # noqa: BLE001 -- any failure is a failed check
+            got, detail = None, f"exception: {e}"[:127]
+        rows.append({"library": library, "operation": operation,
+                     "preserved": got == expected, "detail": detail})
+    return rows
 
 def load_corpus(manifest_path):
     files = []
@@ -217,8 +280,10 @@ def main():
 
     rows = []
     results = []
+    order_checks = []
 
     def add_rows(name, json_to_toon_fn, toon_to_json_fn, roundtrip_fn, toon_to_struct_fn, struct_to_toon_fn):
+        order_checks.extend(check_order(name, json_to_toon_fn, toon_to_json_fn))
         dump_outputs(dump_root, name, files, json_to_toon_fn, toon_to_json_fn, roundtrip_fn,
                      toon_to_struct_fn, struct_to_toon_fn)
 
@@ -331,6 +396,7 @@ def main():
             "language": "python",
             "corpus": {"files": len(files), "bytes": total_json_bytes},
             "results": results,
+            "order_check": order_checks,
         }, f, indent=2)
     print(f"\nResults written to {args.results_json}")
 
