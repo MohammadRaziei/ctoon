@@ -21,6 +21,9 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
   seconds with a hint (`-DCTOON_PYPI_INDEX=<mirror>`) when PyPI is
   unreachable. New options `CTOON_BENCH_NET_CHECK`, `CTOON_BENCH_VERBOSE`,
   `CTOON_UV_HTTP_TIMEOUT`, `CTOON_UV_HTTP_RETRIES`.
+- Benchmarks CMake: the `CTOON_PYPI_INDEX` host is trusted automatically
+  (`uv --allow-insecure-host`, like pip's `--trusted-host`); turn off with
+  `-DCTOON_PYPI_TRUSTED_HOST=OFF`.
 
 ## [0.9.0] - 2026-10-19
 

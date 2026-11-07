@@ -153,11 +153,22 @@ set(CTOON_PYPI_INDEX "" CACHE STRING
 set(CTOON_UV_INDEX_ARGS "")
 set(CTOON_PYPI_INDEX_SHOWN "https://pypi.org/simple - default")
 set(_ctoon_pypi_probe "https://pypi.org/simple/pip/")
+set(_ctoon_pypi_insecure OFF)
 if(CTOON_PYPI_INDEX)
     list(APPEND CTOON_UV_INDEX_ARGS --index-url ${CTOON_PYPI_INDEX})
     set(CTOON_PYPI_INDEX_SHOWN "${CTOON_PYPI_INDEX} - from -DCTOON_PYPI_INDEX")
     string(REGEX REPLACE "/+$" "" _ctoon_pypi_probe "${CTOON_PYPI_INDEX}")
     set(_ctoon_pypi_probe "${_ctoon_pypi_probe}/pip/")
+    # Like pip's `--trusted-host`: mirrors often have a certificate uv rejects, which
+    # breaks the install. Extract the host from the URL and allow it, for this mirror only.
+    # ponytail: on by default for a mirror, one switch, no per-host list.
+    option(CTOON_PYPI_TRUSTED_HOST "Trust the TLS certificate of the CTOON_PYPI_INDEX host (uv --allow-insecure-host)" ON)
+    if(CTOON_PYPI_TRUSTED_HOST AND CTOON_PYPI_INDEX MATCHES "^https?://([^/:]+(:[0-9]+)?)")
+        set(_ctoon_pypi_host "${CMAKE_MATCH_1}")
+        list(APPEND CTOON_UV_INDEX_ARGS --allow-insecure-host ${_ctoon_pypi_host})
+        set(CTOON_PYPI_INDEX_SHOWN "${CTOON_PYPI_INDEX_SHOWN}, trusted host ${_ctoon_pypi_host}")
+        set(_ctoon_pypi_insecure ON)
+    endif()
 endif()
 
 # uv network behaviour for every venv here. uv's own defaults (30 s x 3 retries
@@ -185,7 +196,7 @@ if(UV_EXECUTABLE)
     set(_ctoon_net_hint "uv would not reach it either. Either set a mirror: cmake -S . -B build-bench -DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple (remembered in the CMake cache), or set HTTPS_PROXY, or skip this check with -DCTOON_BENCH_NET_CHECK=OFF.")
     if(CTOON_BENCH_NET_CHECK)
         add_custom_target(ctoon_bench_net_pypi
-            COMMAND ${CMAKE_COMMAND} -DURL=${_ctoon_pypi_probe} "-DLABEL=PyPI index" -DTMP_FILE=${CTOON_BENCH_BINARY_DIR}/net_probe.tmp
+            COMMAND ${CMAKE_COMMAND} -DURL=${_ctoon_pypi_probe} "-DLABEL=PyPI index" -DTMP_FILE=${CTOON_BENCH_BINARY_DIR}/net_probe.tmp -DINSECURE=${_ctoon_pypi_insecure}
                     "-DHINT=${_ctoon_net_hint}" -P ${CMAKE_CURRENT_LIST_DIR}/cmake/CheckUrl.cmake
             VERBATIM
         )
