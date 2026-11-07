@@ -166,7 +166,6 @@ const OrderRow = struct {
     library: []const u8,
     operation: []const u8,
     preserved: bool,
-    detail: []const u8,
 };
 
 fn addKey(gpa: std.mem.Allocator, keys: *Keys, raw: []const u8) !void {
@@ -252,21 +251,12 @@ fn recordOrder(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), library: 
             }
         }
     }
-    var detail: std.ArrayList(u8) = .empty;
-    if (!same) {
-        try detail.appendSlice(gpa, "got ");
-        for (got, 0..) |k, i| {
-            if (i > 0) try detail.append(gpa, ',');
-            for (k) |c| try detail.append(gpa, if (c == '"' or c == '\\' or c < 0x20) '\'' else c);
-        }
-        if (detail.items.len > 127) detail.items.len = 127;
-    }
-    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = same, .detail = detail.items });
+    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = same });
 }
 
 fn recordOrderFailed(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), library: []const u8, operation: []const u8, err: anyerror) !void {
-    const detail = try std.fmt.allocPrint(gpa, "exception: {s}", .{@errorName(err)});
-    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = false, .detail = detail });
+    _ = err; // any failure is a failed check
+    try rows.append(gpa, .{ .library = library, .operation = operation, .preserved = false });
 }
 
 fn runOrderChecks(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow)) !void {
@@ -483,8 +473,8 @@ pub fn main(init: std.process.Init) !void {
     runOrderChecks(gpa, &order_rows) catch |err| std.debug.print("warning: key-order check failed: {}\n", .{err});
     for (order_rows.items, 0..) |r, i| {
         try w.print(
-            "    {{\"library\": \"{s}\", \"operation\": \"{s}\", \"preserved\": {}, \"detail\": \"{s}\"}}{s}\n",
-            .{ r.library, r.operation, r.preserved, r.detail, if (i + 1 < order_rows.items.len) "," else "" },
+            "    {{\"library\": \"{s}\", \"operation\": \"{s}\", \"preserved\": {}}}{s}\n",
+            .{ r.library, r.operation, r.preserved, if (i + 1 < order_rows.items.len) "," else "" },
         );
     }
     try w.print("  ]\n}}\n", .{});

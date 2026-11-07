@@ -74,7 +74,6 @@ struct OrderRow
     library::String
     operation::String
     preserved::Bool
-    detail::String
 end
 
 function unique_keys(keys)
@@ -113,13 +112,12 @@ function check_order(library, json_to_toon, toon_to_json)
     for (op, fn, sample, extract) in (("json_to_toon", json_to_toon, sample_json, toon_keys),
                                       ("toon_to_json", toon_to_json, sample_toon, json_keys))
         fn === nothing && continue
-        preserved, detail = try
-            got = extract(String(fn(sample)))
-            got == expected ? (true, "") : (false, "got " * join(got, ","))
-        catch e
-            (false, first("exception: " * sprint(showerror, e), 127))
+        preserved = try
+            extract(String(fn(sample))) == expected
+        catch
+            false   # any failure is a failed check
         end
-        push!(rows, OrderRow(library, op, preserved, detail))
+        push!(rows, OrderRow(library, op, preserved))
     end
     return rows
 end
@@ -146,7 +144,7 @@ function write_results_json(path, language, n_files, n_bytes, results, order_row
         for (i, r) in enumerate(order_rows)
             comma = i == length(order_rows) ? "" : ","
             println(io, "    {\"library\": \"$(json_escape(r.library))\", \"operation\": \"$(json_escape(r.operation))\", " *
-                        "\"preserved\": $(r.preserved), \"detail\": \"$(json_escape(r.detail))\"}$comma")
+                        "\"preserved\": $(r.preserved)}$comma")
         end
         println(io, "  ]")
         println(io, "}")

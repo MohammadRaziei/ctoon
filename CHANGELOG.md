@@ -19,6 +19,9 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ### Changed
 
+- Benchmarks: the key-order check is just ✓/✗ per direction. The always-empty
+  `detail` is gone from every harness' `order_check` JSON and from the docs
+  table (JSON → TOON and TOON → JSON columns only).
 - Benchmarks CMake: every step now says what it is doing and from where
   (`[fetch]` git clone/update with URL and ref, `[config]` PyPI index in use,
   numbered `[python]`/`[go]`/`[zig]`/`[node]`/`[julia]` steps, git progress

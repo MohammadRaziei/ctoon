@@ -116,7 +116,7 @@ function toonKeys(text) {
   return uniqueKeys(keys);
 }
 
-// -> [{library, operation, preserved, detail}]; a null function (the library
+// -> [{library, operation, preserved}]; a null function (the library
 // has no such direction) adds no row.
 function checkOrder(library, jsonToToon, toonToJson) {
   const sampleJson = readFileSync(new URL("sample.json", ORDER_DIR), "utf8");
@@ -128,15 +128,11 @@ function checkOrder(library, jsonToToon, toonToJson) {
     ["toon_to_json", toonToJson, sampleToon, jsonKeys],
   ]) {
     if (!fn) continue;
-    let got = null, detail = "";
+    let preserved = false;
     try {
-      got = extract(fn(sample));
-      if (got.join("\n") !== expected.join("\n")) detail = "got " + got.join(",");
-    } catch (e) {
-      got = null;
-      detail = `exception: ${e.message}`.slice(0, 127);
-    }
-    rows.push({ library, operation, preserved: got !== null && detail === "", detail });
+      preserved = extract(fn(sample)).join("\n") === expected.join("\n");
+    } catch { /* any failure is a failed check */ }
+    rows.push({ library, operation, preserved });
   }
   return rows;
 }

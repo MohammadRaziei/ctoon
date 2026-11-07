@@ -211,7 +211,7 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
   <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Library</th><th>JSON &rarr; TOON</th><th>TOON &rarr; JSON</th><th>Detail</th></tr>
+      <tr><th>Library</th><th>JSON &rarr; TOON</th><th>TOON &rarr; JSON</th></tr>
     </thead>
     <tbody>
       {% for oc in sec.order_check %}
@@ -220,7 +220,6 @@ h3.op-title:first-of-type { margin-top: 0.5rem; }
         {% for cell in [oc.json_to_toon, oc.toon_to_json] %}
         <td>{% if cell is none %}&ndash;{% elif cell.preserved %}<span class="check-yes">&#10003; yes</span>{% else %}<span class="check-no">&#10007; no</span>{% endif %}</td>
         {% endfor %}
-        <td>{{ oc.detail or "n/a" }}</td>
       </tr>
       {% endfor %}
     </tbody>

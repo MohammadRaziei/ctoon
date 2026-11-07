@@ -94,7 +94,6 @@ type orderResult struct {
 	Library   string `json:"library"`
 	Operation string `json:"operation"`
 	Preserved bool   `json:"preserved"`
-	Detail    string `json:"detail"`
 }
 
 var (
@@ -183,16 +182,8 @@ func checkOrder(library string, jsonToToon, toonToJSON func(string) (string, err
 			continue
 		}
 		row := orderResult{Library: library, Operation: c.op}
-		out, err := c.fn(c.sample)
-		if err != nil {
-			row.Detail = ("exception: " + err.Error())
-			if len(row.Detail) > 127 {
-				row.Detail = row.Detail[:127]
-			}
-		} else if got := c.extract(out); strings.Join(got, "\n") == strings.Join(expected, "\n") {
-			row.Preserved = true
-		} else {
-			row.Detail = "got " + strings.Join(got, ",")
+		if out, err := c.fn(c.sample); err == nil {
+			row.Preserved = strings.Join(c.extract(out), "\n") == strings.Join(expected, "\n")
 		}
 		rows = append(rows, row)
 	}

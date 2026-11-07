@@ -224,37 +224,23 @@ typedef struct {
     char library[32];
     char operation[16];
     bool preserved;
-    char detail[128];
 } order_check_result;
 static order_check_result g_order_checks[16];
 static int g_order_check_count = 0;
 
-static void record_order_check(const char *library, const char *operation,
-                               bool preserved, const char *detail) {
+static void record_order_check(const char *library, const char *operation, bool preserved) {
     order_check_result *r = &g_order_checks[g_order_check_count++];
     snprintf(r->library, sizeof(r->library), "%s", library);
     snprintf(r->operation, sizeof(r->operation), "%s", operation);
     r->preserved = preserved;
-    snprintf(r->detail, sizeof(r->detail), "%s", detail ? detail : "");
 }
 
-/* Compare the key order found in `got` against `expected`; when it differs
-   the detail lists what came out ("got apple,zebra,..."). */
+/* Compare the key order found in `got` against `expected`. */
 static void record_order_keys(const char *library, const char *operation,
                               order_keys expected, int ne, order_keys got, int ng) {
     bool same = (ne == ng);
     for (int i = 0; same && i < ne; i++) same = strcmp(expected[i], got[i]) == 0;
-    char detail[128] = "";
-    if (!same) {
-        size_t len = (size_t)snprintf(detail, sizeof(detail), "got ");
-        for (int i = 0; i < ng && len + 2 < sizeof(detail); i++) {
-            for (const char *c = got[i]; *c && len + 2 < sizeof(detail); c++)
-                detail[len++] = (*c == '"' || *c == '\\') ? '\'' : *c;
-            if (i + 1 < ng && len + 2 < sizeof(detail)) detail[len++] = ',';
-        }
-        detail[len] = '\0';
-    }
-    record_order_check(library, operation, same, detail);
+    record_order_check(library, operation, same);
 }
 
 static char *order_read_sample(const char *name) {
@@ -789,7 +775,7 @@ static void run_order_checks(void) {
         record_order_keys("ctoon", "json_to_toon", expected, ne, got, ng);
         free(out);
     } else {
-        record_order_check("ctoon", "json_to_toon", false, "ctoon_json_to_toon failed on the sample");
+        record_order_check("ctoon", "json_to_toon", false);
     }
 
     /* ctoon, TOON -> JSON */
@@ -799,7 +785,7 @@ static void run_order_checks(void) {
         record_order_keys("ctoon", "toon_to_json", expected, ne, got, ng);
         free(out);
     } else {
-        record_order_check("ctoon", "toon_to_json", false, "ctoon_toon_to_json failed on the sample");
+        record_order_check("ctoon", "toon_to_json", false);
     }
 
     /* TOONc has no JSON parser, so only TOON -> JSON exists for it. */
@@ -819,11 +805,11 @@ static void run_order_checks(void) {
             record_order_keys("TOONc", "toon_to_json", expected, ne, got, ng);
             free(membuf);
         } else {
-            record_order_check("TOONc", "toon_to_json", false, "open_memstream failed");
+            record_order_check("TOONc", "toon_to_json", false);
         }
         TOONc_free(obj);
     } else {
-        record_order_check("TOONc", "toon_to_json", false, "TOONc_parseString failed on the sample");
+        record_order_check("TOONc", "toon_to_json", false);
     }
     free(json); free(toon);
 }
@@ -858,10 +844,9 @@ static void write_results_json(size_t n_files, size_t total_json_bytes) {
     fprintf(f, "\n  \"order_check\": [\n");
     for (int i = 0; i < g_order_check_count; i++) {
         order_check_result *r = &g_order_checks[i];
-        fprintf(f,
-            "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
-            r->library, r->operation, r->preserved ? "true" : "false", r->detail,
-            (i + 1 < g_order_check_count) ? "," : "");
+        fprintf(f, "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s}%s\n",
+                r->library, r->operation, r->preserved ? "true" : "false",
+                (i + 1 < g_order_check_count) ? "," : "");
     }
     fprintf(f, "  ]\n}\n");
     fclose(f);

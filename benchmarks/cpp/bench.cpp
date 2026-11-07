@@ -138,23 +138,13 @@ Keys toon_keys(const std::string &text) {
     return keys;
 }
 
-struct OrderCheckResult { std::string library, operation; bool preserved; std::string detail; };
+struct OrderCheckResult { std::string library, operation; bool preserved; };
 std::vector<OrderCheckResult> g_order_checks;
 
-// Compare against `expected`; when it differs the detail lists what came out.
+// Compare against `expected`.
 void record_order(const std::string &library, const std::string &operation,
                   const Keys &expected, const Keys &got) {
-    bool same = (expected == got);
-    std::string detail;
-    if (!same) {
-        detail = "got ";
-        for (size_t i = 0; i < got.size(); i++) {
-            for (char c : got[i]) detail += (c == '"' || c == '\\') ? '\'' : c;
-            if (i + 1 < got.size()) detail += ',';
-        }
-        if (detail.size() > 127) detail.resize(127);
-    }
-    g_order_checks.push_back({library, operation, same, detail});
+    g_order_checks.push_back({library, operation, expected == got});
 }
 
 std::string read_sample(const char *name) {
@@ -177,13 +167,13 @@ void run_order_check() {
         const auto view = out.view();
         record_order("ctoon", "json_to_toon", expected, toon_keys(std::string(view.data(), view.size())));
     } catch (const ctoon::error &e) {
-        g_order_checks.push_back({"ctoon", "json_to_toon", false, std::string("exception: ") + e.what()});
+        g_order_checks.push_back({"ctoon", "json_to_toon", false});
     }
     try {
         auto out = ctoon::toon_to_json(toon);
         record_order("ctoon", "toon_to_json", expected, json_keys(out.str()));
     } catch (const ctoon::error &e) {
-        g_order_checks.push_back({"ctoon", "toon_to_json", false, std::string("exception: ") + e.what()});
+        g_order_checks.push_back({"ctoon", "toon_to_json", false});
     }
 }
 
@@ -246,8 +236,8 @@ void write_results_json(size_t n_files, size_t total_json_bytes) {
     for (size_t i = 0; i < g_order_checks.size(); i++) {
         const OrderCheckResult &r = g_order_checks[i];
         char buf[512];
-        std::snprintf(buf, sizeof(buf), "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s, \"detail\": \"%s\"}%s\n",
-                      r.library.c_str(), r.operation.c_str(), r.preserved ? "true" : "false", r.detail.c_str(),
+        std::snprintf(buf, sizeof(buf), "    {\"library\": \"%s\", \"operation\": \"%s\", \"preserved\": %s}%s\n",
+                      r.library.c_str(), r.operation.c_str(), r.preserved ? "true" : "false",
                       (i + 1 < g_order_checks.size()) ? "," : "");
         f << buf;
     }

@@ -98,7 +98,7 @@ def toon_keys(text):
 
 
 def check_order(library, json_to_toon_fn, toon_to_json_fn):
-    """-> list of {library, operation, preserved, detail}; a None function
+    """-> list of {library, operation, preserved}; a None function
     (the library has no such direction) adds no row."""
     with open(os.path.join(ORDER_DIR, "sample.json"), encoding="utf-8") as f:
         sample_json = f.read()
@@ -112,12 +112,10 @@ def check_order(library, json_to_toon_fn, toon_to_json_fn):
         if fn is None:
             continue
         try:
-            got = extract(fn(sample))
-            detail = "" if got == expected else "got " + ",".join(got)
-        except Exception as e:  # noqa: BLE001 -- any failure is a failed check
-            got, detail = None, f"exception: {e}"[:127]
-        rows.append({"library": library, "operation": operation,
-                     "preserved": got == expected, "detail": detail})
+            preserved = extract(fn(sample)) == expected
+        except Exception:  # noqa: BLE001 -- any failure is a failed check
+            preserved = False
+        rows.append({"library": library, "operation": operation, "preserved": preserved})
     return rows
 
 def load_corpus(manifest_path):

@@ -62,8 +62,8 @@ DOCS_DIR = os.path.join(REPO_ROOT, "docs")
 
 
 def _group_order_check(rows):
-    """[{library, operation, preserved, detail}] -> one row per library with a
-    cell per direction ({preserved, detail} or None when the library has no
+    """[{library, operation, preserved}] -> one row per library with a
+    cell per direction ({preserved} or None when the library has no
     such direction). Rows without an "operation" are from before the check
     ran per direction and are skipped; re-run the benchmarks to refresh them."""
     by_lib = {}
@@ -72,11 +72,7 @@ def _group_order_check(rows):
         if op in ("json_to_toon", "toon_to_json"):
             lib = by_lib.setdefault(r["library"], {"library": r["library"],
                                                    "json_to_toon": None, "toon_to_json": None})
-            lib[op] = {"preserved": r.get("preserved", False), "detail": r.get("detail", "")}
-    for lib in by_lib.values():
-        lib["detail"] = "; ".join(
-            f"{op}: {lib[op]['detail']}" for op in ("json_to_toon", "toon_to_json")
-            if lib[op] and lib[op]["detail"])
+            lib[op] = {"preserved": r.get("preserved", False)}
     return list(by_lib.values())
 
 

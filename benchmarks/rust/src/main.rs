@@ -267,7 +267,6 @@ struct OrderRow {
     library: &'static str,
     operation: &'static str,
     preserved: bool,
-    detail: String,
 }
 
 type Convert<'a> = Option<&'a dyn Fn(&str) -> Result<String, String>>;
@@ -292,20 +291,11 @@ fn check_order(library: &'static str, json_to_toon: Convert, toon_to_json: Conve
     ];
     for (operation, convert, sample, extract) in cases {
         let Some(convert) = convert else { continue };
-        let (preserved, detail) = match convert(sample) {
-            Ok(out) => {
-                let got = extract(&out);
-                if got == expected { (true, String::new()) } else { (false, format!("got {}", got.join(","))) }
-            }
-            Err(e) => (false, format!("exception: {}", e)),
+        let preserved = match convert(sample) {
+            Ok(out) => extract(&out) == expected,
+            Err(_) => false, // any failure is a failed check
         };
-        // keep the hand-built results JSON valid: no quotes/backslashes, short
-        let detail: String = detail
-            .chars()
-            .map(|c| if c == '"' || c == '\\' || c.is_control() { '\'' } else { c })
-            .take(127)
-            .collect();
-        rows.push(OrderRow { library, operation, preserved, detail });
+        rows.push(OrderRow { library, operation, preserved });
     }
     rows
 }
@@ -564,8 +554,8 @@ fn main() {
     ));
     for (i, r) in order_rows.iter().enumerate() {
         out.push_str(&format!(
-            "    {{\"library\": \"{}\", \"operation\": \"{}\", \"preserved\": {}, \"detail\": \"{}\"}}{}\n",
-            r.library, r.operation, r.preserved, r.detail,
+            "    {{\"library\": \"{}\", \"operation\": \"{}\", \"preserved\": {}}}{}\n",
+            r.library, r.operation, r.preserved,
             if i + 1 < order_rows.len() { "," } else { "" }
         ));
     }

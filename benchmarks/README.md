@@ -168,13 +168,13 @@ carries its own small scanner (a regex where the language has one; no regex
 dependency in C, C++, Rust and Zig) and reads the two shared sample files,
 so the sample is defined once.
 
-Recorded as an `"order_check"` array (`{library, operation, preserved,
-detail}`, `operation` being `json_to_toon` or `toon_to_json`) in each
-language's results JSON, and rendered as a small table (one row per
-library, a ✓/✗ cell per direction, `–` for a direction the library does not
-have) under that language's results, with the two samples shown once near
-the top of the page. `detail` is empty on success; on failure it lists the
-order that came out (`got apple,zebra,...`) or the error that was raised.
+Recorded as an `"order_check"` array (`{library, operation, preserved}`,
+`operation` being `json_to_toon` or `toon_to_json`) in each language's
+results JSON, and rendered as a small table (one row per library, two
+columns: JSON → TOON and TOON → JSON, a ✓/✗ cell each, `–` for a direction
+the library does not have) under that language's results, with the two
+samples shown once near the top of the page. ✗ means the keys came out in a
+different order, or the conversion failed.
 
 Two things to know when reading it:
 

@@ -239,21 +239,13 @@ function rows = checkOrder(library, jsonToToon, toonToJson)
         if isempty(convert)
             continue;
         end
-        detail = '';
         try
-            got = extract(convert(ops{k, 3}));
-            preserved = isequal(got, expected);
-            if ~preserved
-                detail = ['got ' strjoin(got, ',')];
-            end
-        catch err
-            preserved = false;
-            detail = ['exception: ' err.message];
+            preserved = isequal(extract(convert(ops{k, 3})), expected);
+        catch
+            preserved = false;   % any failure is a failed check
         end
-        detail = strrep(strrep(detail, '"', ''''), '\', '/');   % keep the JSON valid
-        detail = detail(1:min(end, 127));
         rows{end+1} = struct('library', library, 'operation', ops{k, 1}, ...
-                             'preserved', preserved, 'detail', detail); %#ok<AGROW>
+                             'preserved', preserved); %#ok<AGROW>
     end
 end
 
