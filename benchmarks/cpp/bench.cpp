@@ -173,7 +173,9 @@ void run_order_check() {
     const Keys expected = json_keys(json);
     try {
         auto out = ctoon::json_to_toon(json);
-        record_order("ctoon", "json_to_toon", expected, toon_keys(std::string(out.view())));
+        // ctoon::string_view is its own class before C++17 (no std::string conversion)
+        const auto view = out.view();
+        record_order("ctoon", "json_to_toon", expected, toon_keys(std::string(view.data(), view.size())));
     } catch (const ctoon::error &e) {
         g_order_checks.push_back({"ctoon", "json_to_toon", false, std::string("exception: ") + e.what()});
     }
