@@ -35,6 +35,10 @@ file(MAKE_DIRECTORY "${CTOON_JULIA_DEPOT}")
 # CTOON_JULIA_CORE_REF=master is set for this one build too.
 add_custom_target(ctoon_benchmarks_julia_deps
     COMMAND ${CMAKE_COMMAND} -E echo "-- [julia] Pkg: General registry from the Julia package server + ctoon - git clone from GitHub (ctoon, ToonFormat.jl) into ${CTOON_JULIA_DEPOT}"
+    # Project.toml's Manifest.toml is written next to it, i.e. into the SOURCE dir, so it
+    # survives `rm -rf build-bench` and goes stale (a dependency added to Project.toml
+    # later is then "not in the manifest"). It is regenerated below anyway.
+    COMMAND ${CMAKE_COMMAND} -E rm -f ${CMAKE_CURRENT_SOURCE_DIR}/Manifest.toml
     COMMAND ${CMAKE_COMMAND} -E env
             CTOON_JULIA_CORE_REF=master
             ${CTOON_JULIA_PROXY_ENV}

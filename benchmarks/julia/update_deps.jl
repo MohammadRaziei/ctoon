@@ -34,6 +34,13 @@ import Pkg
 # makes instantiate() stop with "direct dependency, but does not appear in the
 # manifest" instead of re-resolving. resolve() brings it up to date and, with no
 # manifest at all, creates it.
+# A depot whose registry download was cut off (flaky proxy/mirror) is left with an
+# empty or partial registries/ and then fails with "no registries have been
+# installed": drop it and download General again.
+if isempty(Pkg.Registry.reachable_registries())
+    rm(joinpath(first(DEPOT_PATH), "registries"); force = true, recursive = true)
+    Pkg.Registry.add("General")
+end
 Pkg.resolve()
 Pkg.instantiate()
 Pkg.update(["CToon", "ToonFormat"])
