@@ -281,7 +281,7 @@ fn recordOrder(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), lib: []co
 }
 
 fn recordOrderFailed(gpa: std.mem.Allocator, rows: *std.ArrayList(OrderRow), lib: []const u8, operation: []const u8, err: anyerror) !void {
-    _ = err; // any failure is a failed check
+    std.debug.print("warning: key-order check {s} {s} failed: {s}\n", .{ lib, operation, @errorName(err) });
     try rows.append(gpa, .{ .library = lib, .operation = operation, .preserved = false });
 }
 
