@@ -13,6 +13,10 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ### Fixed
 
+- Benchmarks (MATLAB): `toonKeys` in `bench.m` lost the tabular header fields
+  (`list[2]{z,a}:`) because MATLAB's `regexp` drops a capture group nested in an
+  optional non-capturing group, so the JSON → TOON key-order check failed even
+  though ctoon's output was correct. The fields now come from their own regexp.
 - MATLAB/Octave binding: `ctoon.json_to_toon` and `ctoon.toon_to_json` built their
   result with `mxCreateString`, which stops at the first NUL, while
   `ctoon.loads`/`decode` already used the NUL-safe `str_to_mx`. Both now use

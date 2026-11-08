@@ -260,14 +260,18 @@ function keys = toonKeys(text)
     lines = strsplit(text, char(10));
     for i = 1:numel(lines)
         tok = regexp(lines{i}, ...
-            '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:', ...
+            '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{[^}]*\})?:', ...
             'tokens', 'once');
         if isempty(tok)
             continue;
         end
         keys{end+1} = tok{1}; %#ok<AGROW>
-        if numel(tok) >= 2 && ~isempty(tok{2})
-            keys = [keys, strsplit(tok{2}, {',', '|', char(9)})]; %#ok<AGROW>
+        % Header fields in their own regexp: MATLAB drops a capture group nested
+        % in an optional non-capturing group (Octave keeps it), which lost
+        % the tabular fields {z,a} and failed the order check.
+        fld = regexp(lines{i}, '\{([^}]*)\}\s*:\s*$', 'tokens', 'once');
+        if ~isempty(fld) && ~isempty(fld{1})
+            keys = [keys, strsplit(fld{1}, {',', '|', char(9)})]; %#ok<AGROW>
         end
     end
     keys = uniqueKeys(keys);
