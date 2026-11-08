@@ -17,7 +17,7 @@
 # Creates the target ctoon_zig_toolchain_<name> and sets, in the caller's scope:
 #     CTOON_ZIG_<name>_EXE      the python-zig executable
 #     CTOON_ZIG_<name>_PYTHON   that venv's python (handy for helper scripts)
-#     CTOON_ZIG_<name>_ENV      VAR=value list for `cmake -E env`
+#     CTOON_ZIG_<name>_ENV      VAR=value list for `cmake -E env` (incl. the ZIG_PROXY ones, if set)
 # Needs CTOON_UV_CMD, CTOON_UV_PIP_ARGS, CTOON_BENCH_PYTHON_VERSION, CTOON_UV_INDEX_ARGS and
 # CTOON_BENCH_BINARY_DIR (all set by benchmarks/CMakeLists.txt).
 function(ctoon_bench_zig_toolchain NAME VERSION)
@@ -49,5 +49,6 @@ function(ctoon_bench_zig_toolchain NAME VERSION)
     set(CTOON_ZIG_${NAME}_ENV
         "ZIG_GLOBAL_CACHE_DIR=${_cache}/global"
         "ZIG_LOCAL_CACHE_DIR=${_cache}/local"
+        ${CTOON_ZIG_PROXY_ENV}
         PARENT_SCOPE)
 endfunction()

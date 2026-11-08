@@ -3,7 +3,7 @@
 # GOSUMDB=off so this works even where the module proxy/sum database
 # isn't reachable (falls back to a direct git clone).
 set(CTOON_BENCH_GO_ENV
-    ${CMAKE_COMMAND} -E env GOPROXY=direct GOSUMDB=off GOTOOLCHAIN=local
+    ${CMAKE_COMMAND} -E env GOPROXY=direct GOSUMDB=off GOTOOLCHAIN=local ${CTOON_GO_PROXY_ENV}
 )
 
 add_custom_target(ctoon_benchmarks_go_deps

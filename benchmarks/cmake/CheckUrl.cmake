@@ -1,5 +1,5 @@
 # Fail-fast reachability probe, run as a build step:
-#   cmake -DURL=<url> -DLABEL=<text> -DTMP_FILE=<path> [-DHINT=<text>] [-DTIMEOUT=20] [-DINSECURE=ON] -P CheckUrl.cmake
+#   cmake -DURL=<url> -DLABEL=<text> -DTMP_FILE=<path> [-DHINT=<text>] [-DTIMEOUT=20] [-DINSECURE=ON] [-DPROXY=<url>] -P CheckUrl.cmake
 # Prints what it is checking and how long it took; on failure stops the build
 # with the reason (instead of uv retrying for minutes and printing "timed out").
 foreach(_v URL LABEL TMP_FILE)
@@ -14,6 +14,10 @@ endif()
 message(STATUS "[net] checking ${LABEL}: ${URL} (timeout ${TIMEOUT}s)")
 string(TIMESTAMP _t0 "%s")
 set(_tls "")
+if(PROXY)  # file(DOWNLOAD) is curl: it reads the proxy from the environment
+    set(ENV{http_proxy} "${PROXY}")
+    set(ENV{https_proxy} "${PROXY}")
+endif()
 if(INSECURE)
     set(_tls TLS_VERIFY OFF)  # the mirror host is trusted, same as uv's --allow-insecure-host
 endif()

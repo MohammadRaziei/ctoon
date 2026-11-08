@@ -62,6 +62,40 @@ if(CTOON_BENCH_LOG_DEBUG)
     message(STATUS "CToon benchmarks: debug logging ON -> ${CTOON_BENCH_LOGS_DIR}")
 endif()
 
+# ── Per-tool network proxies ───────────────────────────────────────────────
+# Each is empty by default = nothing changes for that tool. Set one and only
+# that tool's network steps run through it, e.g.
+#   cmake -S . -B build-bench -DUV_PROXY=http://127.0.0.1:8080 -DJULIA_PROXY=socks5h://127.0.0.1:1080
+# (remembered in the CMake cache; no global tool config is touched).
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Proxy.cmake)
+set(UV_PROXY    "" CACHE STRING "Proxy for uv (venvs, Python and ziglang downloads, ctoon git install) and the PyPI check")
+set(GIT_PROXY   "" CACHE STRING "Proxy for the configure-time git clones (FetchContent: corpus, ctoon, toonc)")
+set(GO_PROXY    "" CACHE STRING "Proxy for go get / go mod tidy (not the Go module proxy GOPROXY)")
+set(CARGO_PROXY "" CACHE STRING "Proxy for cargo (crates.io and git dependencies)")
+set(NPM_PROXY   "" CACHE STRING "Proxy for npm install")
+set(JULIA_PROXY "" CACHE STRING "Proxy for Julia Pkg (registry, packages, git)")
+set(ZIG_PROXY   "" CACHE STRING "Proxy for zig fetch and its git fallback")
+foreach(_p UV GIT GO CARGO NPM JULIA ZIG)
+    if(${_p}_PROXY)
+        # hide user:password@ from the log
+        string(REGEX REPLACE "//[^@/]*@" "//***@" _shown "${${_p}_PROXY}")
+        message(STATUS "[config] proxy ${_p}: ${_shown}")
+    endif()
+endforeach()
+ctoon_bench_proxy_env(CTOON_UV_PROXY_ENV    "${UV_PROXY}")
+ctoon_bench_proxy_env(CTOON_GO_PROXY_ENV    "${GO_PROXY}")
+ctoon_bench_proxy_env(CTOON_CARGO_PROXY_ENV "${CARGO_PROXY}" CARGO_HTTP_PROXY)
+ctoon_bench_proxy_env(CTOON_NPM_PROXY_ENV   "${NPM_PROXY}" npm_config_proxy npm_config_https_proxy)
+ctoon_bench_proxy_env(CTOON_JULIA_PROXY_ENV "${JULIA_PROXY}")
+ctoon_bench_proxy_env(CTOON_ZIG_PROXY_ENV   "${ZIG_PROXY}")
+# FetchContent runs git inside this very configure process: put the proxy in its environment.
+ctoon_bench_proxy_env(_ctoon_git_env "${GIT_PROXY}")
+foreach(_e IN LISTS _ctoon_git_env)
+    if(_e MATCHES "^([^=]+)=(.*)$")
+        set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
+    endif()
+endforeach()
+
 # ── Corpus: fetch real-world JSON to benchmark against ────────────────────
 include(FetchContent)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/BenchLog.cmake)
@@ -185,6 +219,7 @@ endif()
 if(NOT DEFINED ENV{UV_HTTP_RETRIES})
     list(APPEND CTOON_UV_ENV UV_HTTP_RETRIES=${CTOON_UV_HTTP_RETRIES})
 endif()
+list(APPEND CTOON_UV_ENV ${CTOON_UV_PROXY_ENV})
 set(CTOON_UV_CMD ${CMAKE_COMMAND} -E env ${CTOON_UV_ENV} ${UV_EXECUTABLE})
 set(CTOON_UV_PIP_ARGS "")
 if(CTOON_BENCH_VERBOSE)
@@ -193,10 +228,10 @@ endif()
 
 if(UV_EXECUTABLE)
     message(STATUS "[config] uv: ${UV_EXECUTABLE}, Python ${CTOON_BENCH_PYTHON_VERSION}, PyPI index: ${CTOON_PYPI_INDEX_SHOWN}")
-    set(_ctoon_net_hint "uv would not reach it either. Either set a mirror: cmake -S . -B build-bench -DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple (remembered in the CMake cache), or set HTTPS_PROXY, or skip this check with -DCTOON_BENCH_NET_CHECK=OFF.")
+    set(_ctoon_net_hint "uv would not reach it either. Either set a mirror: cmake -S . -B build-bench -DCTOON_PYPI_INDEX=https://mirror-pypi.runflare.com/simple (remembered in the CMake cache), or set a proxy: -DUV_PROXY=http://host:port, or skip this check with -DCTOON_BENCH_NET_CHECK=OFF.")
     if(CTOON_BENCH_NET_CHECK)
         add_custom_target(ctoon_bench_net_pypi
-            COMMAND ${CMAKE_COMMAND} -DURL=${_ctoon_pypi_probe} "-DLABEL=PyPI index" -DTMP_FILE=${CTOON_BENCH_BINARY_DIR}/net_probe.tmp -DINSECURE=${_ctoon_pypi_insecure}
+            COMMAND ${CMAKE_COMMAND} -DURL=${_ctoon_pypi_probe} "-DLABEL=PyPI index" -DTMP_FILE=${CTOON_BENCH_BINARY_DIR}/net_probe.tmp -DINSECURE=${_ctoon_pypi_insecure} "-DPROXY=${UV_PROXY}"
                     "-DHINT=${_ctoon_net_hint}" -P ${CMAKE_CURRENT_LIST_DIR}/cmake/CheckUrl.cmake
             VERBATIM
         )

@@ -3,7 +3,7 @@
 add_custom_target(ctoon_benchmarks_node_deps
     COMMAND ${CMAKE_COMMAND} -E echo "-- [node] npm install from registry:"
     COMMAND ${NPM_EXECUTABLE} config get registry
-    COMMAND ${NPM_EXECUTABLE} install --no-audit --no-fund
+    COMMAND ${CMAKE_COMMAND} -E env ${CTOON_NPM_PROXY_ENV} ${NPM_EXECUTABLE} install --no-audit --no-fund
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Installing Node.js benchmark dependencies from npm"
     USES_TERMINAL

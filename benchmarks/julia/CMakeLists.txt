@@ -37,6 +37,7 @@ add_custom_target(ctoon_benchmarks_julia_deps
     COMMAND ${CMAKE_COMMAND} -E echo "-- [julia] Pkg: General registry from the Julia package server + ctoon - git clone from GitHub into ${CTOON_JULIA_DEPOT}"
     COMMAND ${CMAKE_COMMAND} -E env
             CTOON_JULIA_CORE_REF=master
+            ${CTOON_JULIA_PROXY_ENV}
             JULIA_DEPOT_PATH=${CTOON_JULIA_DEPOT}
             ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/update_deps.jl
