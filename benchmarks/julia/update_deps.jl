@@ -18,7 +18,7 @@
 #     package `CToon` to be registered" when CToon isn't in the
 #     Manifest yet at all, since update() upgrades an existing pinned
 #     entry rather than performing an initial resolve.
-#   - Pkg.update("CToon") is what actually re-resolves against current
+#   - Pkg.update(["CToon", "ToonFormat"]) is what actually re-resolves against current
 #     master on every subsequent run. A `[sources]` entry pinned to
 #     rev="master" is only resolved into a specific commit ONCE --
 #     after Manifest.toml exists, plain `Pkg.instantiate()` just
@@ -30,7 +30,7 @@
 #     benchmark always measures current master.
 import Pkg
 Pkg.instantiate()
-Pkg.update("CToon")
+Pkg.update(["CToon", "ToonFormat"])
 
 # Explicit build, belt and braces: on Julia >= 1.12 the precompile that
 # instantiate()/update() trigger can run BEFORE CToon's deps/build.jl, fail

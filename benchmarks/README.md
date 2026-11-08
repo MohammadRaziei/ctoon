@@ -283,6 +283,7 @@ benchmarks/
                    results/zig.json by merge_results.py
   matlab/          bench.m        - ctoon (no competitor exists)
   octave/          bench.m        - ctoon (no competitor exists; same method as matlab/)
+  julia/           bench.jl       - ctoon, ToonFormat.jl
   node/            bench.mjs      - @toon-format/toon (the reference);
                    verify_outputs.mjs - judges every recorded output (see Success vs. correctness)
 ```

@@ -2,6 +2,10 @@ name = "CToonBenchJulia"
 
 [deps]
 CToon = "7c8e6b1a-0c1e-4a9e-9c3e-c1000ffee001"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+ToonFormat = "7e1e1c4e-8b9a-4f3d-9c1e-2f3a4b5c6d7e"
 
 [sources]
 CToon = {url = "https://github.com/mohammadraziei/ctoon.git", rev = "master", subdir = "src/bindings/julia"}
+ToonFormat = {url = "https://github.com/toon-format/ToonFormat.jl.git", rev = "main"}

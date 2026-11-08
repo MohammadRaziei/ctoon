@@ -1,11 +1,13 @@
-# CToon Julia benchmark.
+# CToon Julia benchmark: ctoon next to its one Julia peer, ToonFormat.jl
+# (github.com/toon-format/ToonFormat.jl, the official implementation).
 #
-# Unlike every other language folder here, there is no peer library to
-# test alongside ctoon: a search of Julia's General registry turned up
-# no TOON implementation for Julia at the time this was written. So
-# this is a one-library table, same as benchmarks/matlab's.
+# ctoon works on JSON/TOON text directly (one call into the C core). ToonFormat.jl
+# only converts native Julia values, so - exactly like toon_format in bench.py -
+# its text operations go through JSON.jl: json_to_toon = encode(JSON.parse(text)),
+# toon_to_json = JSON.json(decode(text)). Its two struct operations are the bare
+# decode / encode, same as ctoon's parse_toon / dumps.
 #
-# Same three operations as every other language benchmark here:
+# Same operations as every other language benchmark here (ctoon's calls shown):
 #  - json_to_toon: CToon.json_to_toon (JSON text -> TOON text, one call into
 #    the C core; no Julia value is built).
 #  - toon_to_json: CToon.toon_to_json (TOON text -> JSON text, same).
@@ -29,7 +31,10 @@
 #
 # If a log file path is given (3rd CLI arg), one line per failure is
 # written there - only for the first repeat, not all `REPEATS` reps.
-using CToon
+import CToon
+import ToonFormat
+import JSON
+using OrderedCollections: OrderedDict
 
 const REPEATS = 20
 
@@ -50,6 +55,33 @@ function load_corpus(manifest_path::AbstractString)
     end
     return files
 end
+
+# One entry per library: the six calls every operation below is built from.
+#   json_to_toon / toon_to_json   text -> text
+#   parse / dumps                 JSON text -> native value / native value -> TOON text
+#   parse_toon / to_json          TOON text -> native value / native value -> JSON text
+# ToonFormat.jl has no text API, so JSON.jl fills the JSON side (timed, like toon_format in bench.py).
+struct Lib
+    name::String
+    json_to_toon::Function
+    toon_to_json::Function
+    parse::Function
+    dumps::Function
+    parse_toon::Function
+    to_json::Function
+end
+
+const LIBS = [
+    Lib("ctoon", CToon.json_to_toon, CToon.toon_to_json,
+        CToon.parse, CToon.dumps, CToon.parse_toon, CToon.to_json),
+    # JSON.jl 0.21 (the version CToon.jl's own compat pins): `parse` builds an unordered Dict
+    # unless told otherwise, and the indent is a positional argument of `json`.
+    Lib("ToonFormat.jl",
+        text -> ToonFormat.encode(JSON.parse(text; dicttype = OrderedDict{String,Any})),
+        text -> JSON.json(ToonFormat.decode(text), 2),
+        text -> JSON.parse(text; dicttype = OrderedDict{String,Any}),
+        ToonFormat.encode, ToonFormat.decode, JSON.json),
+]
 
 # Minimal hand-rolled JSON writer for the fixed, small results shape
 # below - not worth pulling in a whole JSON package (JSON.jl) just to
@@ -165,7 +197,7 @@ function record!(results, library, operation, seconds, ok, attempted, bytes)
     success_rate = attempted > 0 ? ok / attempted : 0.0
     push!(results, Result(library, operation, throughput, ok / seconds, success_rate, seconds))
     println(
-        rpad(library, 8), " ", rpad(operation, 14), " ",
+        rpad(library, 14), " ", rpad(operation, 14), " ",
         lpad(round(throughput; digits=2), 9), " MB/s ",
         lpad(round(Int, ok / seconds), 14), " ",
         lpad(round(Int, success_rate * 100), 8), "%  ",
@@ -173,28 +205,49 @@ function record!(results, library, operation, seconds, ok, attempted, bytes)
     )
 end
 
-function bench_json_to_toon(files, log_fail)
+function bench_json_to_toon(lib, files, log_fail)
     ok = 0
     bytes = 0.0
     t0 = time()
     for r in 1:REPEATS
         for f in files
             try
-                CToon.json_to_toon(f.json)
+                lib.json_to_toon(f.json)
                 ok += 1
                 bytes += sizeof(f.json)
             catch e
-                r == 1 && log_fail("json_to_toon", f.path, e)
+                r == 1 && log_fail(lib, "json_to_toon", f.path, e)
             end
         end
     end
     return time() - t0, ok, bytes
 end
 
-function bench_toon_to_json(files, log_fail)
-    # Needs each file's TOON text first (same untimed pre-pass every
-    # other language's benchmark does) -- ctoon is the only thing that
-    # can produce that here, there being no other Julia TOON library.
+# `toons` is the shared decode input (see shared_toons): every library decodes
+# the SAME ctoon-made TOON, like every other language benchmark here.
+function bench_toon_to_json(lib, files, log_fail, toons)
+    ok = 0
+    bytes = 0.0
+    t0 = time()
+    for r in 1:REPEATS
+        for (i, f) in enumerate(files)
+            t = toons[i]
+            t === nothing && continue
+            try
+                lib.toon_to_json(t)
+                ok += 1
+                bytes += sizeof(t)
+            catch e
+                r == 1 && log_fail(lib, "toon_to_json", f.path, e)
+            end
+        end
+    end
+    return time() - t0, ok, bytes
+end
+
+# Untimed. Each file's TOON text as ctoon writes it; `nothing` when ctoon could
+# not handle the file (that file is then skipped by the decode operations).
+function shared_toons(files)
     toons = Vector{Union{String,Nothing}}(undef, length(files))
     for (i, f) in enumerate(files)
         toons[i] = try
@@ -203,47 +256,25 @@ function bench_toon_to_json(files, log_fail)
             nothing
         end
     end
-
-    ok = 0
-    bytes = 0.0
-    t0 = time()
-    for r in 1:REPEATS
-        for (i, f) in enumerate(files)
-            t = toons[i]
-            t === nothing && continue
-            try
-                CToon.toon_to_json(t)
-                ok += 1
-                bytes += sizeof(t)
-            catch e
-                r == 1 && log_fail("toon_to_json", f.path, e)
-            end
-        end
-    end
-    return time() - t0, ok, bytes
+    return toons
 end
 
-# Untimed pre-pass shared by the two struct benchmarks: each file's native
-# Julia value (CToon.parse) and its TOON text (CToon.dumps of that value);
-# `nothing` for a file CToon could not handle.
-function prepass(files)
+# Untimed pre-pass for struct_to_toon: each file's native value as THIS
+# library's own parser builds it; `has_native` is false where it failed.
+function prepass(lib, files)
     natives = Vector{Any}(undef, length(files))
-    toons = Vector{Union{String,Nothing}}(undef, length(files))
     has_native = falses(length(files))
     for (i, f) in enumerate(files)
-        toons[i] = nothing
         try
-            v = CToon.parse(f.json)
-            natives[i] = v
+            natives[i] = lib.parse(f.json)
             has_native[i] = true
-            toons[i] = CToon.dumps(v)
         catch
         end
     end
-    return natives, has_native, toons
+    return natives, has_native
 end
 
-function bench_toon_to_struct(files, log_fail, toons)
+function bench_toon_to_struct(lib, files, log_fail, toons)
     ok = 0
     bytes = 0.0
     t0 = time()
@@ -252,18 +283,18 @@ function bench_toon_to_struct(files, log_fail, toons)
             t = toons[i]
             t === nothing && continue
             try
-                CToon.parse_toon(t)
+                lib.parse_toon(t)
                 ok += 1
                 bytes += sizeof(t)
             catch e
-                r == 1 && log_fail("toon_to_struct", f.path, e)
+                r == 1 && log_fail(lib, "toon_to_struct", f.path, e)
             end
         end
     end
     return time() - t0, ok, bytes
 end
 
-function bench_struct_to_toon(files, log_fail, natives, has_native)
+function bench_struct_to_toon(lib, files, log_fail, natives, has_native)
     ok = 0
     bytes = 0.0
     t0 = time()
@@ -271,30 +302,30 @@ function bench_struct_to_toon(files, log_fail, natives, has_native)
         for (i, f) in enumerate(files)
             has_native[i] || continue
             try
-                CToon.dumps(natives[i])
+                lib.dumps(natives[i])
                 ok += 1
                 bytes += sizeof(f.json)
             catch e
-                r == 1 && log_fail("struct_to_toon", f.path, e)
+                r == 1 && log_fail(lib, "struct_to_toon", f.path, e)
             end
         end
     end
     return time() - t0, ok, bytes
 end
 
-function bench_roundtrip(files, log_fail)
+function bench_roundtrip(lib, files, log_fail)
     ok = 0
     bytes = 0.0
     t0 = time()
     for r in 1:REPEATS
         for f in files
             try
-                toon = CToon.json_to_toon(f.json)
-                CToon.toon_to_json(toon)
+                toon = lib.json_to_toon(f.json)
+                lib.toon_to_json(toon)
                 ok += 1
                 bytes += sizeof(f.json)
             catch e
-                r == 1 && log_fail("roundtrip", f.path, e)
+                r == 1 && log_fail(lib, "roundtrip", f.path, e)
             end
         end
     end
@@ -306,38 +337,40 @@ end
 # (0-based index; nothing for a file the library failed on) so
 # report/verify_outputs.mjs can judge whether the output is CORRECT, not merely
 # error-free -- see that script's header.
-function dump_outputs(results_path, files)
+function dump_outputs(results_path, files, toons)
     lang_root = joinpath(dirname(abspath(results_path)), "dump", "julia")
     rm(lang_root; force=true, recursive=true)
-    for op in ("json_to_toon", "toon_to_json", "roundtrip", "toon_to_struct", "struct_to_toon")
-        mkpath(joinpath(lang_root, "ctoon", op))
+    for lib in LIBS, op in ("json_to_toon", "toon_to_json", "roundtrip", "toon_to_struct", "struct_to_toon")
+        mkpath(joinpath(lang_root, lib.name, op))
     end
-    write_out(op, i, text) = write(joinpath(lang_root, "ctoon", op, "$(i - 1).txt"), string(text))
 
-    for (i, f) in enumerate(files)
-        toon = try
-            CToon.json_to_toon(f.json)
-        catch
-            nothing
-        end
-        toon === nothing && continue
-        write_out("json_to_toon", i, toon)
-        # struct_to_toon: the same encode of the same value -- dumped from the
-        # pre-built native value, exactly what the timed loop serialises.
-        try
-            write_out("struct_to_toon", i, CToon.dumps(CToon.parse(f.json)))
-        catch
-        end
-        # toon_to_json decodes this same ctoon-made TOON (the shared pre-pass),
-        # and the roundtrip decodes it too, so one decode serves both files.
-        try
-            json = CToon.toon_to_json(toon)
-            write_out("toon_to_json", i, json)
-            write_out("roundtrip", i, json)
+    for lib in LIBS
+        write_out(op, i, text) = write(joinpath(lang_root, lib.name, op, "$(i - 1).txt"), string(text))
+        for (i, f) in enumerate(files)
+            # json_to_toon, and the roundtrip decoding that very output
+            try
+                toon = lib.json_to_toon(f.json)
+                write_out("json_to_toon", i, toon)
+                write_out("roundtrip", i, lib.toon_to_json(toon))
+            catch
+            end
+            # struct_to_toon: the same encode of the value the timed loop serialises
+            try
+                write_out("struct_to_toon", i, lib.dumps(lib.parse(f.json)))
+            catch
+            end
+            toons[i] === nothing && continue
+            # toon_to_json decodes the shared ctoon-made TOON, like the timed loop
+            try
+                write_out("toon_to_json", i, lib.toon_to_json(toons[i]))
+            catch
+            end
             # toon_to_struct: the decoded value serialised to JSON (untimed),
             # only so the verifier can compare it to the original document.
-            write_out("toon_to_struct", i, CToon.to_json(CToon.parse_toon(toon)))
-        catch
+            try
+                write_out("toon_to_struct", i, lib.to_json(lib.parse_toon(toons[i])))
+            catch
+            end
         end
     end
 end
@@ -351,7 +384,7 @@ function main()
     log_path = length(ARGS) >= 3 ? ARGS[3] : ""
     log_io = isempty(log_path) ? nothing : open(log_path, "w")
 
-    log_fail = (op, path, err) -> (log_io === nothing || println(log_io, "[ctoon] [$op] FILE: $path ERROR: $err"))
+    log_fail = (lib, op, path, err) -> (log_io === nothing || println(log_io, "[$(lib.name)] [$op] FILE: $path ERROR: $err"))
 
     files = load_corpus(manifest_path)
     if isempty(files)
@@ -363,39 +396,41 @@ function main()
 
     println("CToon Benchmarks - Julia")
     println("Corpus: $(length(files)) files, $(round(total_json_bytes / 1e6; digits=2)) MB (JSON)\n")
-    println(rpad("Library", 8), " ", rpad("Operation", 14), " ", lpad("Throughput", 12), " ",
+    println(rpad("Library", 14), " ", rpad("Operation", 14), " ", lpad("Throughput", 12), " ",
             lpad("Docs/sec", 14), " ", lpad("Success", 9), "  ", lpad("Total time", 12))
+
+    toons = shared_toons(files)
 
     # Outputs for report/verify_outputs.mjs live next to the results JSON.
     try
-        dump_outputs(results_path, files)
+        dump_outputs(results_path, files, toons)
     catch e
         println(stderr, "warning: could not record outputs for verification: $e")
     end
 
     results = Result[]
+    order_rows = OrderRow[]
+    n = length(files) * REPEATS
 
-    natives, has_native, struct_toons = prepass(files)
+    for lib in LIBS
+        seconds, ok, bytes = bench_json_to_toon(lib, files, log_fail)
+        record!(results, lib.name, "json_to_toon", seconds, ok, n, bytes)
+        seconds, ok, bytes = bench_toon_to_json(lib, files, log_fail, toons)
+        record!(results, lib.name, "toon_to_json", seconds, ok, n, bytes)
+        seconds, ok, bytes = bench_roundtrip(lib, files, log_fail)
+        record!(results, lib.name, "roundtrip", seconds, ok, n, bytes)
 
-    for (op, bench_fn) in (
-        ("json_to_toon", bench_json_to_toon),
-        ("toon_to_json", bench_toon_to_json),
-        ("roundtrip", bench_roundtrip),
-    )
-        seconds, ok, bytes = bench_fn(files, log_fail)
-        record!(results, "ctoon", op, seconds, ok, length(files) * REPEATS, bytes)
-    end
+        seconds, ok, bytes = bench_toon_to_struct(lib, files, log_fail, toons)
+        record!(results, lib.name, "toon_to_struct", seconds, ok, n, bytes)
+        natives, has_native = prepass(lib, files)
+        seconds, ok, bytes = bench_struct_to_toon(lib, files, log_fail, natives, has_native)
+        record!(results, lib.name, "struct_to_toon", seconds, ok, n, bytes)
 
-    seconds, ok, bytes = bench_toon_to_struct(files, log_fail, struct_toons)
-    record!(results, "ctoon", "toon_to_struct", seconds, ok, length(files) * REPEATS, bytes)
-    seconds, ok, bytes = bench_struct_to_toon(files, log_fail, natives, has_native)
-    record!(results, "ctoon", "struct_to_toon", seconds, ok, length(files) * REPEATS, bytes)
-
-    order_rows = try
-        check_order("ctoon", CToon.json_to_toon, CToon.toon_to_json)
-    catch e
-        println(stderr, "warning: key-order check skipped: $e")
-        OrderRow[]
+        try
+            append!(order_rows, check_order(lib.name, lib.json_to_toon, lib.toon_to_json))
+        catch e
+            println(stderr, "warning: key-order check skipped for $(lib.name): $e")
+        end
     end
 
     write_results_json(results_path, "julia", length(files), total_json_bytes, results, order_rows)
