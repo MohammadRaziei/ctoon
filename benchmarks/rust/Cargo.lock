@@ -15,7 +15,7 @@ dependencies = [
 [[package]]
 name = "ctoon"
 version = "0.9.0"
-source = "git+https://github.com/mohammadraziei/ctoon.git#ccec95c2c0f0490e867279a372f0f5d76d107e29"
+source = "git+https://github.com/mohammadraziei/ctoon.git#e55cfd266e879b08bc1a31127bbc8d9cd79d264e"
 dependencies = [
  "cc",
 ]
