@@ -13,6 +13,10 @@ The version lives in `include/ctoon.h`; `python version.py` keeps `Cargo.toml`,
 
 ### Fixed
 
+- MATLAB/Octave binding: `ctoon.json_to_toon` and `ctoon.toon_to_json` built their
+  result with `mxCreateString`, which stops at the first NUL, while
+  `ctoon.loads`/`decode` already used the NUL-safe `str_to_mx`. Both now use
+  `str_to_mx(out, n)` (the same path as before for text without a NUL).
 - Benchmarks CMake: the Zig run steps printed a message with parentheses that
   the shell rejected (`Syntax error: "(" unexpected`), which aborted the whole
   `ctoon_benchmarks` run before results were copied to `benchmarks/results/`.

@@ -510,7 +510,7 @@ static void do_json_to_toon(int nlhs, mxArray *plhs[],
     char *out = ctoon_json_to_toon_opts(s, strlen(s), 0, &wo, NULL, &n, &rerr, &werr);
     mxFree(s);
     if (!out) convert_fail("json_to_toon", &rerr, &werr);
-    if (nlhs > 0) plhs[0] = mxCreateString(out);
+    if (nlhs > 0) plhs[0] = str_to_mx(out, n);   /* length-aware: keeps embedded NULs */
     free(out);
 }
 
@@ -526,7 +526,7 @@ static void do_toon_to_json(int nlhs, mxArray *plhs[],
     char *out = ctoon_toon_to_json_opts(s, strlen(s), 0, indent, 0, NULL, &n, &rerr, &werr);
     mxFree(s);
     if (!out) convert_fail("toon_to_json", &rerr, &werr);
-    if (nlhs > 0) plhs[0] = mxCreateString(out);
+    if (nlhs > 0) plhs[0] = str_to_mx(out, n);   /* length-aware: keeps embedded NULs */
     free(out);
 }
 
