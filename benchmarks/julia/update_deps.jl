@@ -29,6 +29,12 @@
 #     against the ref in [sources] -- "master" -- every time, so this
 #     benchmark always measures current master.
 import Pkg
+# resolve() first: a Manifest.toml left over from an older version of this
+# environment (before a dependency like ToonFormat was added to Project.toml)
+# makes instantiate() stop with "direct dependency, but does not appear in the
+# manifest" instead of re-resolving. resolve() brings it up to date and, with no
+# manifest at all, creates it.
+Pkg.resolve()
 Pkg.instantiate()
 Pkg.update(["CToon", "ToonFormat"])
 
