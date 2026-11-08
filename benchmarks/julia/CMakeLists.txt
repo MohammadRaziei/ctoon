@@ -42,8 +42,9 @@ add_custom_target(ctoon_benchmarks_julia_deps
             ${JULIA_EXECUTABLE} --project=${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/update_deps.jl
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Fetching Julia benchmark dependency [ctoon, pinned to master] from GitHub, into a local depot"
+    COMMENT "Fetching Julia benchmark dependency (ctoon, pinned to master) from GitHub, into a local depot"
     USES_TERMINAL
+    VERBATIM
 )
 
 if(CTOON_BENCH_LOG_DEBUG)
