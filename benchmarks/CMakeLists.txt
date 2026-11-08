@@ -87,6 +87,9 @@ ctoon_bench_proxy_env(CTOON_GO_PROXY_ENV    "${GO_PROXY}")
 ctoon_bench_proxy_env(CTOON_CARGO_PROXY_ENV "${CARGO_PROXY}" CARGO_HTTP_PROXY)
 ctoon_bench_proxy_env(CTOON_NPM_PROXY_ENV   "${NPM_PROXY}" npm_config_proxy npm_config_https_proxy)
 ctoon_bench_proxy_env(CTOON_JULIA_PROXY_ENV "${JULIA_PROXY}")
+if(JULIA_PROXY)  # Pkg's built-in libgit2 only knows http(s) proxies; the git CLI also does socks5/socks5h
+    list(APPEND CTOON_JULIA_PROXY_ENV JULIA_PKG_USE_CLI_GIT=true)
+endif()
 ctoon_bench_proxy_env(CTOON_ZIG_PROXY_ENV   "${ZIG_PROXY}")
 # FetchContent runs git inside this very configure process: put the proxy in its environment.
 ctoon_bench_proxy_env(_ctoon_git_env "${GIT_PROXY}")
