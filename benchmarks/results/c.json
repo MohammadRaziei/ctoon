@@ -8,13 +8,13 @@
     {
       "library": "ctoon",
       "operation": "json_to_toon",
-      "throughput_mb_s": 350.642,
-      "docs_per_sec": 53014.7,
+      "throughput_mb_s": 382.5111,
+      "docs_per_sec": 57833.09,
       "success_rate": 1,
-      "total_time_s": 0.172405,
+      "total_time_s": 0.158041,
       "raw": {
-        "throughput_mb_s": 350.642,
-        "docs_per_sec": 53014.7,
+        "throughput_mb_s": 382.5111,
+        "docs_per_sec": 57833.09,
         "success_rate": 1
       },
       "verified": true,
@@ -29,13 +29,13 @@
     {
       "library": "ctoon",
       "operation": "toon_to_json",
-      "throughput_mb_s": 218.8359,
-      "docs_per_sec": 54308.43,
+      "throughput_mb_s": 219.3494,
+      "docs_per_sec": 54435.87,
       "success_rate": 1,
-      "total_time_s": 0.168298,
+      "total_time_s": 0.167904,
       "raw": {
-        "throughput_mb_s": 218.8359,
-        "docs_per_sec": 54308.43,
+        "throughput_mb_s": 219.3494,
+        "docs_per_sec": 54435.87,
         "success_rate": 1
       },
       "verified": true,
@@ -50,13 +50,13 @@
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
-      "throughput_mb_s": 348.7094,
-      "docs_per_sec": 86539.1,
+      "throughput_mb_s": 349.9586,
+      "docs_per_sec": 86849.11,
       "success_rate": 1,
-      "total_time_s": 0.105617,
+      "total_time_s": 0.10524,
       "raw": {
-        "throughput_mb_s": 348.7094,
-        "docs_per_sec": 86539.1,
+        "throughput_mb_s": 349.9586,
+        "docs_per_sec": 86849.11,
         "success_rate": 1
       },
       "verified": true,
@@ -71,13 +71,13 @@
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
-      "throughput_mb_s": 781.4128,
-      "docs_per_sec": 118144.33,
+      "throughput_mb_s": 773.8705,
+      "docs_per_sec": 117003.98,
       "success_rate": 1,
-      "total_time_s": 0.077363,
+      "total_time_s": 0.078117,
       "raw": {
-        "throughput_mb_s": 781.4128,
-        "docs_per_sec": 118144.33,
+        "throughput_mb_s": 773.8705,
+        "docs_per_sec": 117003.98,
         "success_rate": 1
       },
       "verified": true,
@@ -92,13 +92,13 @@
     {
       "library": "ctoon",
       "operation": "roundtrip",
-      "throughput_mb_s": 179.0966,
-      "docs_per_sec": 27078.19,
+      "throughput_mb_s": 179.0218,
+      "docs_per_sec": 27066.89,
       "success_rate": 1,
-      "total_time_s": 0.337541,
+      "total_time_s": 0.337682,
       "raw": {
-        "throughput_mb_s": 179.0966,
-        "docs_per_sec": 27078.19,
+        "throughput_mb_s": 179.0218,
+        "docs_per_sec": 27066.89,
         "success_rate": 1
       },
       "verified": true,
@@ -116,10 +116,10 @@
       "throughput_mb_s": 0,
       "docs_per_sec": 0,
       "success_rate": 0.9846827133479212,
-      "total_time_s": 0.473844,
+      "total_time_s": 0.473099,
       "raw": {
-        "throughput_mb_s": 74.4231,
-        "docs_per_sec": 18993.59,
+        "throughput_mb_s": 74.5403,
+        "docs_per_sec": 19023.5,
         "success_rate": 0.9847
       },
       "verified": true,
@@ -141,240 +141,240 @@
       "library": "ctoon",
       "operation": "json_to_toon",
       "size_bytes": 1110,
-      "throughput_mb_s": 443.7795,
-      "docs_per_sec": 417422.87,
+      "throughput_mb_s": 438.6054,
+      "docs_per_sec": 412556.05,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_json",
       "size_bytes": 1110,
-      "throughput_mb_s": 195.5508,
-      "docs_per_sec": 359375,
+      "throughput_mb_s": 197.7133,
+      "docs_per_sec": 363349.13,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "roundtrip",
       "size_bytes": 1110,
-      "throughput_mb_s": 184.4757,
-      "docs_per_sec": 173519.43,
+      "throughput_mb_s": 185.3145,
+      "docs_per_sec": 174308.45,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
       "size_bytes": 1110,
-      "throughput_mb_s": 315.2456,
-      "docs_per_sec": 579345.09,
+      "throughput_mb_s": 317.2433,
+      "docs_per_sec": 583016.48,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
       "size_bytes": 1110,
-      "throughput_mb_s": 929.7433,
-      "docs_per_sec": 874524.71,
+      "throughput_mb_s": 949.6019,
+      "docs_per_sec": 893203.88,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "json_to_toon",
       "size_bytes": 2444,
-      "throughput_mb_s": 371.3178,
-      "docs_per_sec": 145018.92,
+      "throughput_mb_s": 370.5002,
+      "docs_per_sec": 144699.59,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_json",
       "size_bytes": 2444,
-      "throughput_mb_s": 187.901,
-      "docs_per_sec": 132450.33,
+      "throughput_mb_s": 188.0092,
+      "docs_per_sec": 132526.65,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "roundtrip",
       "size_bytes": 2444,
-      "throughput_mb_s": 165.9837,
-      "docs_per_sec": 64825.25,
+      "throughput_mb_s": 165.1227,
+      "docs_per_sec": 64488.99,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
       "size_bytes": 2444,
-      "throughput_mb_s": 316.6327,
-      "docs_per_sec": 223192.62,
+      "throughput_mb_s": 318.1765,
+      "docs_per_sec": 224280.84,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
       "size_bytes": 2444,
-      "throughput_mb_s": 765.8127,
-      "docs_per_sec": 299089.73,
+      "throughput_mb_s": 761.3575,
+      "docs_per_sec": 297349.71,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "json_to_toon",
       "size_bytes": 4827,
-      "throughput_mb_s": 373.2148,
-      "docs_per_sec": 77618.56,
+      "throughput_mb_s": 373.2785,
+      "docs_per_sec": 77631.8,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_json",
       "size_bytes": 4827,
-      "throughput_mb_s": 208.3005,
-      "docs_per_sec": 70520.77,
+      "throughput_mb_s": 210.0914,
+      "docs_per_sec": 71127.09,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "roundtrip",
       "size_bytes": 4827,
-      "throughput_mb_s": 169.2939,
-      "docs_per_sec": 35208.54,
+      "throughput_mb_s": 169.78,
+      "docs_per_sec": 35309.64,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
       "size_bytes": 4827,
-      "throughput_mb_s": 347.365,
-      "docs_per_sec": 117601.45,
+      "throughput_mb_s": 347.7245,
+      "docs_per_sec": 117723.16,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
       "size_bytes": 4827,
-      "throughput_mb_s": 751.0419,
-      "docs_per_sec": 156196.36,
+      "throughput_mb_s": 757.5433,
+      "docs_per_sec": 157548.48,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "json_to_toon",
       "size_bytes": 7753,
-      "throughput_mb_s": 421.4161,
-      "docs_per_sec": 54720.38,
+      "throughput_mb_s": 418.497,
+      "docs_per_sec": 54341.34,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_json",
       "size_bytes": 7753,
-      "throughput_mb_s": 232.3084,
-      "docs_per_sec": 48435.17,
+      "throughput_mb_s": 232.1354,
+      "docs_per_sec": 48399.11,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "roundtrip",
       "size_bytes": 7753,
-      "throughput_mb_s": 189.8507,
-      "docs_per_sec": 24651.89,
+      "throughput_mb_s": 189.1028,
+      "docs_per_sec": 24554.78,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
       "size_bytes": 7753,
-      "throughput_mb_s": 371.6459,
-      "docs_per_sec": 77486.38,
+      "throughput_mb_s": 370.0704,
+      "docs_per_sec": 77157.88,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
       "size_bytes": 7753,
-      "throughput_mb_s": 884.8674,
-      "docs_per_sec": 114898.99,
+      "throughput_mb_s": 887.1076,
+      "docs_per_sec": 115189.87,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "json_to_toon",
       "size_bytes": 13778,
-      "throughput_mb_s": 436.5716,
-      "docs_per_sec": 25616.48,
+      "throughput_mb_s": 438.9937,
+      "docs_per_sec": 25758.61,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_json",
       "size_bytes": 13778,
-      "throughput_mb_s": 247.5144,
-      "docs_per_sec": 23569.02,
+      "throughput_mb_s": 246.7602,
+      "docs_per_sec": 23497.21,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "roundtrip",
       "size_bytes": 13778,
-      "throughput_mb_s": 203.4898,
-      "docs_per_sec": 11940.06,
+      "throughput_mb_s": 203.1273,
+      "docs_per_sec": 11918.8,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "toon_to_struct",
       "size_bytes": 13778,
-      "throughput_mb_s": 391.2762,
-      "docs_per_sec": 37258.43,
+      "throughput_mb_s": 389.3315,
+      "docs_per_sec": 37073.25,
       "success_rate": 1
     },
     {
       "library": "ctoon",
       "operation": "struct_to_toon",
       "size_bytes": 13778,
-      "throughput_mb_s": 936.633,
-      "docs_per_sec": 54958.33,
+      "throughput_mb_s": 935.9547,
+      "docs_per_sec": 54918.53,
       "success_rate": 1
     },
     {
       "library": "TOONc",
       "operation": "toon_to_json",
       "size_bytes": 1110,
-      "throughput_mb_s": 54.7234,
-      "docs_per_sec": 100568.43,
+      "throughput_mb_s": 44.6893,
+      "docs_per_sec": 82128.19,
       "success_rate": 1
     },
     {
       "library": "TOONc",
       "operation": "toon_to_json",
       "size_bytes": 2444,
-      "throughput_mb_s": 34.821,
-      "docs_per_sec": 24545.11,
+      "throughput_mb_s": 52.9047,
+      "docs_per_sec": 37292.26,
       "success_rate": 1
     },
     {
       "library": "TOONc",
       "operation": "toon_to_json",
       "size_bytes": 4827,
-      "throughput_mb_s": 61.3594,
-      "docs_per_sec": 20773.41,
+      "throughput_mb_s": 62.2663,
+      "docs_per_sec": 21080.43,
       "success_rate": 1
     },
     {
       "library": "TOONc",
       "operation": "toon_to_json",
       "size_bytes": 7753,
-      "throughput_mb_s": 61.1033,
-      "docs_per_sec": 12739.75,
+      "throughput_mb_s": 62.4622,
+      "docs_per_sec": 13023.07,
       "success_rate": 1
     },
     {
       "library": "TOONc",
       "operation": "toon_to_json",
       "size_bytes": 13778,
-      "throughput_mb_s": 69.4402,
-      "docs_per_sec": 6647.88,
+      "throughput_mb_s": 62.0005,
+      "docs_per_sec": 5935.64,
       "success_rate": 0.9231
     }
   ],
