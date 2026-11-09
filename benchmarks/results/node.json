@@ -8,13 +8,13 @@
     {
       "library": "@toon-format/toon",
       "operation": "json_to_toon",
-      "throughput_mb_s": 45.73666203747106,
-      "docs_per_sec": 6915.0739163296885,
+      "throughput_mb_s": 50.51440240972301,
+      "docs_per_sec": 7637.435941789419,
       "success_rate": 1,
-      "total_time_s": 1.321750152,
+      "total_time_s": 1.196736715,
       "raw": {
-        "throughput_mb_s": 45.73666203747106,
-        "docs_per_sec": 6915.0739163296885,
+        "throughput_mb_s": 50.51440240972301,
+        "docs_per_sec": 7637.435941789419,
         "success_rate": 1
       },
       "verified": true,
@@ -29,13 +29,13 @@
     {
       "library": "@toon-format/toon",
       "operation": "toon_to_json",
-      "throughput_mb_s": 13.927379441475507,
-      "docs_per_sec": 3456.2125444687877,
+      "throughput_mb_s": 13.951568316420992,
+      "docs_per_sec": 3462.215245362698,
       "success_rate": 1,
-      "total_time_s": 2.644513288,
+      "total_time_s": 2.639928298,
       "raw": {
-        "throughput_mb_s": 13.927379441475507,
-        "docs_per_sec": 3456.2125444687877,
+        "throughput_mb_s": 13.951568316420992,
+        "docs_per_sec": 3462.215245362698,
         "success_rate": 1
       },
       "verified": true,
@@ -50,13 +50,13 @@
     {
       "library": "@toon-format/toon",
       "operation": "roundtrip",
-      "throughput_mb_s": 14.602542096435652,
-      "docs_per_sec": 2207.805586696283,
+      "throughput_mb_s": 15.058895652815211,
+      "docs_per_sec": 2276.803157436342,
       "success_rate": 1,
-      "total_time_s": 4.139857266,
+      "total_time_s": 4.014400617,
       "raw": {
-        "throughput_mb_s": 14.602542096435652,
-        "docs_per_sec": 2207.805586696283,
+        "throughput_mb_s": 15.058895652815211,
+        "docs_per_sec": 2276.803157436342,
         "success_rate": 1
       },
       "verified": true,
@@ -71,13 +71,13 @@
     {
       "library": "@toon-format/toon",
       "operation": "toon_to_struct",
-      "throughput_mb_s": 13.9264372249122,
-      "docs_per_sec": 3455.978724408137,
+      "throughput_mb_s": 12.598772244990199,
+      "docs_per_sec": 3126.505949020596,
       "success_rate": 1,
-      "total_time_s": 2.644692207,
+      "total_time_s": 2.923391207,
       "raw": {
-        "throughput_mb_s": 13.9264372249122,
-        "docs_per_sec": 3455.978724408137,
+        "throughput_mb_s": 12.598772244990199,
+        "docs_per_sec": 3126.505949020596,
         "success_rate": 1
       },
       "verified": true,
@@ -92,13 +92,13 @@
     {
       "library": "@toon-format/toon",
       "operation": "struct_to_toon",
-      "throughput_mb_s": 60.643790321903346,
-      "docs_per_sec": 9168.930874290543,
+      "throughput_mb_s": 59.409661131487056,
+      "docs_per_sec": 8982.33888891485,
       "success_rate": 1,
-      "total_time_s": 0.996844684,
+      "total_time_s": 1.017552345,
       "raw": {
-        "throughput_mb_s": 60.643790321903346,
-        "docs_per_sec": 9168.930874290543,
+        "throughput_mb_s": 59.409661131487056,
+        "docs_per_sec": 8982.33888891485,
         "success_rate": 1
       },
       "verified": true,

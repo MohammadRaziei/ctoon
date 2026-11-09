@@ -21,7 +21,7 @@
         // keeps go.mod/go.sum current instead of committing a fixed
         // version.
         .ctoon = .{
-            .url = "git+https://github.com/mohammadraziei/ctoon.git#a0a5738f1a3918e13849997fc5167424da401989",
+            .url = "git+https://github.com/mohammadraziei/ctoon.git#790d680220146803338990711b581e285180ce8a",
             .hash = "ctoon-0.9.0-0jwRE_9_CgBmiL1J_EnBQgVjdlGhKk9jltFHkNLc2u83",
         },
     },
