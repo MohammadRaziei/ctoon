@@ -240,9 +240,21 @@ function rows = checkOrder(library, jsonToToon, toonToJson)
             continue;
         end
         try
-            preserved = isequal(extract(convert(ops{k, 3})), expected);
-        catch
+            out = convert(ops{k, 3});
+            got = extract(out);
+            preserved = isequal(got, expected);
+            if ~preserved   % say WHY, so a failed check is never a silent "no"
+                fprintf('warning: key order %s/%s: got {%s}, expected {%s}\n', library, ops{k, 1}, ...
+                        strjoin(cellfun(@char, got, 'UniformOutput', false), ','), strjoin(expected, ','));
+                if ischar(out)
+                    fprintf('  output starts: %s\n', strrep(out(1:min(end, 160)), char(10), '\n'));
+                else
+                    fprintf('  output is a %s, not char\n', class(out));
+                end
+            end
+        catch err
             preserved = false;   % any failure is a failed check
+            fprintf('warning: key order %s/%s failed: %s\n', library, ops{k, 1}, err.message);
         end
         rows{end+1} = struct('library', library, 'operation', ops{k, 1}, ...
                              'preserved', preserved); %#ok<AGROW>
@@ -261,15 +273,21 @@ function keys = toonKeys(text)
     keys = {};
     lines = strsplit(text, char(10));
     for i = 1:numel(lines)
+        % Two plain one-group regexes, not one with an optional second group:
+        % MATLAB drops the token of the optional {fields} group, so the tabular
+        % header's fields (z, a in `list[2]{z,a}:`) never reached `keys`.
         tok = regexp(lines{i}, ...
-            '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{([^}]*)\})?:', ...
+            '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{[^}]*\})?:', ...
             'tokens', 'once');
         if isempty(tok)
             continue;
         end
         keys{end+1} = tok{1}; %#ok<AGROW>
-        if numel(tok) >= 2 && ~isempty(tok{2})
-            keys = [keys, strsplit(tok{2}, {',', '|', char(9)})]; %#ok<AGROW>
+        fields = regexp(lines{i}, ...
+            '^\s*(?:-\s+)*(?:"(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?\{([^}]*)\}:', ...
+            'tokens', 'once');
+        if ~isempty(fields) && ~isempty(fields{1})
+            keys = [keys, strsplit(fields{1}, {',', '|', char(9)})]; %#ok<AGROW>
         end
     end
     keys = uniqueKeys(keys);

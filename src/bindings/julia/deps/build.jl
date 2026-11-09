@@ -38,6 +38,8 @@
 #        c. "master", as a last resort - if (a)/(b) 404s (version.py
 #           wasn't run before this was published, or a stale ref), the
 #           build still succeeds rather than hard-failing.
+#      If raw.githubusercontent.com itself is unreachable, each ref is retried
+#      as a shallow `git clone` from github.com (needs `git`).
 #      Fetched files are cached under deps/downloaded/.
 
 using Downloads
@@ -64,10 +66,31 @@ function fetch_core_file(ref::AbstractString, repo_path::AbstractString, dest::A
     return dest
 end
 
+# Fallback when raw.githubusercontent.com is unreachable (it is blocked or times out on
+# some networks that still reach github.com): a shallow `git clone` of the ref, which
+# also honours http(s)_proxy / all_proxy. Needs `git`, and a branch or tag as ref.
+function fetch_core_via_git(ref::AbstractString, cache_dir::AbstractString)
+    tmp = mktempdir()
+    try
+        run(`git clone --quiet --depth 1 --branch $ref https://github.com/$CTOON_REPO.git $tmp`)
+        mkpath(cache_dir)
+        cp(joinpath(tmp, "src", "ctoon.c"), joinpath(cache_dir, "ctoon.c"); force = true)
+        cp(joinpath(tmp, "include", "ctoon.h"), joinpath(cache_dir, "ctoon.h"); force = true)
+    finally
+        rm(tmp; recursive = true, force = true)
+    end
+    return joinpath(cache_dir, "ctoon.c")
+end
+
 function fetch_core_at(ref::AbstractString, cache_dir::AbstractString)
-    ctoon_c = fetch_core_file(ref, "src/ctoon.c", joinpath(cache_dir, "ctoon.c"))
-    fetch_core_file(ref, "include/ctoon.h", joinpath(cache_dir, "ctoon.h"))
-    return ctoon_c
+    try
+        ctoon_c = fetch_core_file(ref, "src/ctoon.c", joinpath(cache_dir, "ctoon.c"))
+        fetch_core_file(ref, "include/ctoon.h", joinpath(cache_dir, "ctoon.h"))
+        return ctoon_c
+    catch e
+        @warn "ctoon: raw.githubusercontent.com download at ref '$ref' failed, trying git clone from github.com" exception = e
+        return fetch_core_via_git(ref, cache_dir)
+    end
 end
 
 function fetch_core_with_fallback(cache_dir::AbstractString)
