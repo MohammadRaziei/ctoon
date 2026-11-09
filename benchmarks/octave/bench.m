@@ -273,9 +273,11 @@ function keys = toonKeys(text)
     keys = {};
     lines = strsplit(text, char(10));
     for i = 1:numel(lines)
-        % Two plain one-group regexes, not one with an optional second group:
-        % MATLAB drops the token of the optional {fields} group, so the tabular
-        % header's fields (z, a in `list[2]{z,a}:`) never reached `keys`.
+        % Two plain one-group regexes instead of one with an optional second group:
+        % with that combined regex the tabular header's fields (z, a in
+        % `list[2]{z,a}:`) never reached `keys` on MATLAB (not on Octave). The exact
+        % regexp behaviour behind it was not pinned down; each regex here has a
+        % single token, so nothing depends on it.
         tok = regexp(lines{i}, ...
             '^\s*(?:-\s+)*("(?:[^"\\]|\\.)*"|[^\s:\[\]{}",]+)(?:\[[^\]]*\])?(?:\{[^}]*\})?:', ...
             'tokens', 'once');
